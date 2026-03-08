@@ -22,7 +22,7 @@
     "react": "^19.2.4",
     "react-native": "npm:react-native-tvos@^0.84.1-0",
     "react-native-safe-area-context": "^5.7.0",
-    "react-native-screens": "^4.24.0",
+    "react-native-screens": "^4.25.0-nightly-20260307-41c7ab703",
     "react-native-svg": "^15.15.3",
     "react-native-video": "^6.19.0",
     "zustand": "^5.0.11"
@@ -44,6 +44,7 @@
     "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
+    "playwright": "^1.50.1",
     "prettier": "2.8.8",
     "react-test-renderer": "^19.2.4",
     "typescript": "^5.8.3"
