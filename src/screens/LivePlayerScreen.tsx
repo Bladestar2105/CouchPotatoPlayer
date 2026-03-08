@@ -1,0 +1,220 @@
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import Video from 'react-native-video';
+import { RootStackParamList } from '../../App';
+import { useAppStore } from '../store';
+import { XtreamService } from '../services/xtream';
+import { Tv } from 'lucide-react-native';
+
+type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
+
+export const LivePlayerScreen = () => {
+  const route = useRoute<LivePlayerRouteProp>();
+  const navigation = useNavigation();
+  const { channelId, channelName, extension = 'ts', directSource } = route.params;
+  const config = useAppStore(state => state.config);
+
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
+
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (config?.type === 'xtream' && channelId) {
+      const xtream = new XtreamService(config);
+      const url = xtream.getLiveStreamUrl(channelId as number, extension);
+      setStreamUrl(url);
+    } else if (config?.type === 'm3u' && directSource) {
+      setStreamUrl(directSource);
+    }
+  }, [config, channelId, extension, directSource]);
+
+  const resetOverlayTimer = useCallback(() => {
+    setShowOverlay(true);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+
+    hideTimer.current = setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => setShowOverlay(false));
+    }, 5000);
+  }, [fadeAnim]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.goBack();
+      return true;
+    });
+
+    resetOverlayTimer();
+
+    return () => {
+      backHandler.remove();
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, [navigation, resetOverlayTimer]);
+
+  if (!streamUrl) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={styles.container}
+      activeOpacity={1}
+      onPress={resetOverlayTimer}
+    >
+      <Video
+        source={{ uri: streamUrl }}
+        style={styles.videoPlayer}
+        resizeMode="contain"
+        onLoadStart={() => setLoading(true)}
+        onLoad={() => {
+          setLoading(false);
+          resetOverlayTimer();
+        }}
+        onError={(e) => {
+          console.error('Video Playback Error:', e);
+          setError(true);
+          setLoading(false);
+        }}
+        bufferConfig={{
+          minBufferMs: 15000,
+          maxBufferMs: 50000,
+          bufferForPlaybackMs: 2500,
+          bufferForPlaybackAfterRebufferMs: 5000
+        }}
+        playInBackground={false}
+        controls={false}
+      />
+
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text style={styles.loadingText}>Buffering...</Text>
+        </View>
+      )}
+
+      {error && (
+        <View style={styles.errorOverlay}>
+          <Text style={styles.errorText}>Unable to play stream</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            hasTVPreferredFocus
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {showOverlay && !error && (
+        <Animated.View style={[styles.infoOverlay, { opacity: fadeAnim }]}>
+          <View style={styles.infoContainer}>
+            <Tv color="#FFF" size={32} />
+            <View style={styles.textContainer}>
+              <Text style={styles.channelName}>{channelName}</Text>
+              <Text style={styles.channelStatus}>LIVE</Text>
+            </View>
+          </View>
+        </Animated.View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  videoPlayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  loadingText: {
+    color: '#FFF',
+    fontSize: 20,
+    marginTop: 15,
+  },
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+  },
+  errorText: {
+    color: '#FF453A',
+    fontSize: 24,
+    marginBottom: 20,
+    fontWeight: 'bold',
+  },
+  backButton: {
+    backgroundColor: '#1C1C1E',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#3C3C3E',
+  },
+  backButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  infoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 150,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+    padding: 40,
+  },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textContainer: {
+    marginLeft: 20,
+  },
+  channelName: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  channelStatus: {
+    color: '#FF453A',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 5,
+  }
+});
