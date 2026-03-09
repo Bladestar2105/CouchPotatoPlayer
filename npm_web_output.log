@@ -1,0 +1,32 @@
+
+> CouchPotatoPlayer@0.0.1 web
+> webpack serve --mode development --config webpack.config.js
+
+<i> [webpack-dev-server] Project is running at:
+<i> [webpack-dev-server] Loopback: http://localhost:8080/, http://[::1]:8080/
+<i> [webpack-dev-server] On Your Network (IPv4): http://192.168.0.2:8080/
+<i> [webpack-dev-server] Content not from webpack is served from '/app/public' directory
+assets by path *.png 2.7 KiB
+  asset e7935e3b4e9fd0dc134a10c5ed4e139d.png 928 bytes [emitted] [immutable] [from: node_modules/@react-navigation/elements/lib/module/assets/search-icon.png] (auxiliary name: main)
+  asset b3a74c285a0e120c85bd942eacaa06c7.png 653 bytes [emitted] [immutable] [from: node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.png] (auxiliary name: main)
+  asset d54370a07df790a33e70bfff65e222a5.png 645 bytes [emitted] [immutable] [from: node_modules/@react-navigation/elements/lib/module/assets/clear-icon.png] (auxiliary name: main)
+  asset 992cf1d34fb7a6bde5b12f60d37d6d5d.png 332 bytes [emitted] [immutable] [from: node_modules/@react-navigation/elements/lib/module/assets/close-icon.png] (auxiliary name: main)
+  asset c733a880bd6d3d1f0f38ef1608fb8a32.png 207 bytes [emitted] [immutable] [from: node_modules/@react-navigation/elements/lib/module/assets/back-icon.png] (auxiliary name: main)
+  asset 31d6cfe0d16ae931b73c59d7e0c089c0.png 0 bytes [emitted] [immutable] [from: assets/images/placeholder.png] (auxiliary name: main)
+asset bundle.js 3.73 MiB [emitted] (name: main)
+asset index.html 442 bytes [emitted]
+orphan modules 1.12 MiB [orphan] 1710 modules
+runtime modules 28.1 KiB 13 modules
+cacheable modules 2.74 MiB
+  modules by path ./node_modules/ 2.71 MiB 590 modules
+  modules by path ./src/ 34 KiB
+    modules by path ./src/screens/*.tsx 25.5 KiB 4 modules
+    modules by path ./src/services/*.ts 7.83 KiB
+      ./src/services/xtream.ts 3.83 KiB [built] [code generated]
+      + 2 modules
+    ./src/store/index.ts 657 bytes [built] [code generated]
+  ./index.web.js 304 bytes [built] [code generated]
+  ./App.tsx 1.02 KiB [built] [code generated]
+  ./app.json 72 bytes [built] [code generated]
+  ./assets/images/placeholder.png 80 bytes [built] [code generated]
+webpack 5.105.4 compiled successfully in 15746 ms
