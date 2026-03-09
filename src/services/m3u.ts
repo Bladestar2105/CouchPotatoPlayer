@@ -11,7 +11,7 @@ export class M3UService {
 
   private proxyUrl(url: string): string {
     if (Platform.OS === 'web') {
-      return `/proxy/?url=${encodeURIComponent(url)}`;
+      return `/proxy/${url}`;
     }
     return url;
   }
