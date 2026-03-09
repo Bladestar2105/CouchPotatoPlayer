@@ -21,13 +21,18 @@ export const WelcomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
 
   const handleLogin = async () => {
+    const trimmedServerUrl = serverUrl.trim();
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+    const trimmedEpgUrl = epgUrl.trim();
+
     if (type === 'xtream') {
-      if (!serverUrl || !username || !password) {
+      if (!trimmedServerUrl || !trimmedUsername || !trimmedPassword) {
         setError('Please fill in all fields for Xtream Codes');
         return;
       }
     } else {
-      if (!serverUrl) {
+      if (!trimmedServerUrl) {
         setError('Please enter an M3U Playlist URL');
         return;
       }
@@ -38,7 +43,7 @@ export const WelcomeScreen = () => {
 
     try {
       if (type === 'xtream') {
-        const config = { type: 'xtream' as const, serverUrl, username, password };
+        const config = { type: 'xtream' as const, serverUrl: trimmedServerUrl, username: trimmedUsername, password: trimmedPassword };
         const xtream = new XtreamService(config);
 
         const auth = await xtream.authenticate();
@@ -50,7 +55,7 @@ export const WelcomeScreen = () => {
           setError('Authentication failed. Check credentials.');
         }
       } else {
-        const config = { type: 'm3u' as const, serverUrl, username: '', epgUrl };
+        const config = { type: 'm3u' as const, serverUrl: trimmedServerUrl, username: '', epgUrl: trimmedEpgUrl };
         setConfig(config);
         navigation.replace('Home');
       }

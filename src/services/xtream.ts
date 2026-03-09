@@ -8,9 +8,10 @@ export class XtreamService {
   constructor(config: PlayerConfig) {
     this.config = config;
     // ensure server url ends with a slash, or rather remove it to standardize
-    this.baseUrl = config.serverUrl.endsWith('/')
-      ? config.serverUrl.slice(0, -1)
-      : config.serverUrl;
+    const trimmedUrl = config.serverUrl.trim();
+    this.baseUrl = trimmedUrl.endsWith('/')
+      ? trimmedUrl.slice(0, -1)
+      : trimmedUrl;
   }
 
   private buildUrl(action: string, extraParams: Record<string, string | number> = {}) {
