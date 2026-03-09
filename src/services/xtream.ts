@@ -19,9 +19,9 @@ export class XtreamService {
     const password = encodeURIComponent((this.config.password || '').trim());
     let url = `${this.baseUrl}/player_api.php?username=${username}&password=${password}&action=${encodeURIComponent(action)}`;
 
-    const entries = Object.entries(extraParams);
-    if (entries.length > 0) {
-      url += '&' + entries.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&');
+    const queryString = new URLSearchParams(extraParams as Record<string, string>).toString();
+    if (queryString) {
+      url += '&' + queryString;
     }
 
     return url;
