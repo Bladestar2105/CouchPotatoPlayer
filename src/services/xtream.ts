@@ -14,10 +14,12 @@ export class XtreamService {
   }
 
   private buildUrl(action: string, extraParams: Record<string, string | number> = {}) {
-    let url = `${this.baseUrl}/player_api.php?username=${this.config.username}&password=${this.config.password}&action=${action}`;
+    const username = encodeURIComponent(this.config.username);
+    const password = encodeURIComponent(this.config.password || '');
+    let url = `${this.baseUrl}/player_api.php?username=${username}&password=${password}&action=${encodeURIComponent(action)}`;
 
     for (const [key, value] of Object.entries(extraParams)) {
-      url += `&${key}=${value}`;
+      url += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
     }
 
     return url;
@@ -25,7 +27,9 @@ export class XtreamService {
 
   async authenticate() {
     try {
-      const url = `${this.baseUrl}/player_api.php?username=${this.config.username}&password=${this.config.password}`;
+      const username = encodeURIComponent(this.config.username);
+      const password = encodeURIComponent(this.config.password || '');
+      const url = `${this.baseUrl}/player_api.php?username=${username}&password=${password}`;
       const response = await axios.get(url);
       return response.data;
     } catch (error) {
@@ -66,6 +70,8 @@ export class XtreamService {
   }
 
   getLiveStreamUrl(streamId: number, extension: string = 'ts'): string {
-    return `${this.baseUrl}/live/${this.config.username}/${this.config.password}/${streamId}.${extension}`;
+    const username = encodeURIComponent(this.config.username);
+    const password = encodeURIComponent(this.config.password || '');
+    return `${this.baseUrl}/live/${username}/${password}/${streamId}.${extension}`;
   }
 }
