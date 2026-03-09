@@ -136,4 +136,31 @@ describe('XMLTVParser', () => {
   it('should return empty array if no programmes provided to getChannelProgrammes', () => {
     expect(parser.getChannelProgrammes(null as any, 'channel1')).toEqual([]);
   });
+
+  it('should return empty array if undefined provided to getChannelProgrammes', () => {
+    expect(parser.getChannelProgrammes(undefined as any, 'channel1')).toEqual([]);
+  });
+
+  it('should return empty array if empty array provided to getChannelProgrammes', () => {
+    expect(parser.getChannelProgrammes([], 'channel1')).toEqual([]);
+  });
+
+  it('should return empty array if no programmes match the channel ID', () => {
+    const programmes = [
+      { '@_channel': 'channel2', title: 'P2' },
+      { '@_channel': 'channel3', title: 'P3' },
+    ];
+    const result = parser.getChannelProgrammes(programmes, 'channel1');
+    expect(result).toEqual([]);
+  });
+
+  it('should handle programme objects missing the @_channel attribute', () => {
+    const programmes = [
+      { title: 'P1' }, // Missing @_channel
+      { '@_channel': 'channel1', title: 'P2' },
+    ];
+    const result = parser.getChannelProgrammes(programmes, 'channel1');
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('P2');
+  });
 });
