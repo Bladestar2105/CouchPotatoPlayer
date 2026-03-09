@@ -41,12 +41,12 @@ export class M3UService {
           }
 
           let categoryId = '';
-          const existingCategory = Array.from(categoriesMap.values()).find(c => c.category_name === categoryName);
+          const existingCategory = categoriesMap.get(categoryName);
           if (existingCategory) {
             categoryId = existingCategory.category_id;
           } else {
             categoryId = `m3u_cat_${categoryCounter++}`;
-            categoriesMap.set(categoryId, {
+            categoriesMap.set(categoryName, {
               category_id: categoryId,
               category_name: categoryName,
               parent_id: 0
