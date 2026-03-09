@@ -54,11 +54,43 @@ describe('XMLTVParser', () => {
     expect(result.programmes).toHaveLength(1);
   });
 
+  it('should handle multiple channels and programmes and return them as arrays', async () => {
+    const mockXml = `
+      <tv>
+        <channel id="channel1">
+          <display-name>Channel 1</display-name>
+        </channel>
+        <channel id="channel2">
+          <display-name>Channel 2</display-name>
+        </channel>
+        <programme channel="channel1" start="20230101000000" stop="20230101010000">
+          <title>Program 1</title>
+        </programme>
+        <programme channel="channel2" start="20230101000000" stop="20230101010000">
+          <title>Program 2</title>
+        </programme>
+      </tv>
+    `;
+    mockedAxios.get.mockResolvedValueOnce({ data: mockXml });
+
+    const result = await parser.fetchAndParseEPG();
+    expect(Array.isArray(result.channels)).toBe(true);
+    expect(Array.isArray(result.programmes)).toBe(true);
+    expect(result.channels).toHaveLength(2);
+    expect(result.programmes).toHaveLength(2);
+  });
+
   it('should throw error for invalid XMLTV format (missing <tv> tag)', async () => {
     const mockXml = '<invalid></invalid>';
     mockedAxios.get.mockResolvedValueOnce({ data: mockXml });
 
     await expect(parser.fetchAndParseEPG()).rejects.toThrow('Invalid XMLTV format');
+  });
+
+  it('should throw error for invalid XML data (parser failure)', async () => {
+    mockedAxios.get.mockResolvedValueOnce({ data: undefined });
+
+    await expect(parser.fetchAndParseEPG()).rejects.toThrow();
   });
 
   it('should throw error for empty response', async () => {
@@ -77,6 +109,17 @@ describe('XMLTVParser', () => {
     await expect(parser.fetchAndParseEPG()).rejects.toThrow('Network Error');
 
     expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('should handle non-Error exceptions being thrown', async () => {
+    mockedAxios.get.mockRejectedValueOnce('String Error');
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(parser.fetchAndParseEPG()).rejects.toEqual('String Error');
+
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to parse XMLTV:', 'Unknown error');
     consoleSpy.mockRestore();
   });
 
