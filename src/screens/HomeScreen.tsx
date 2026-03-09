@@ -6,22 +6,21 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { M3UService } from '../services/m3u';
-import { Category, LiveChannel, XtreamEpgListing } from '../types/iptv';
+import { XMLTVParser, parseXmltvDate, formatProgramTime } from '../services/xmltv';
+import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
 import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Buffer } from 'buffer';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen = () => {
-  const { config, categories, channels, setCategories, setChannels } = useAppStore();
+  const { config, categories, channels, setCategories, setChannels, epgData, setEpgData } = useAppStore();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'live' | 'vod' | 'series'>('live');
-  const [epgData, setEpgData] = useState<Record<number, XtreamEpgListing>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,6 +60,69 @@ export const HomeScreen = () => {
   }, [config, setCategories, setChannels, activeTab]);
 
   useEffect(() => {
+    const fetchFullEpg = async () => {
+      if (!config) return;
+
+      // Only fetch once
+      if (Object.keys(epgData).length > 0) return;
+
+      try {
+        let epgUrl = '';
+        if (config.type === 'xtream') {
+          const xtream = new XtreamService(config);
+          epgUrl = xtream.getXmltvUrl();
+        } else if (config.type === 'm3u' && config.epgUrl) {
+          epgUrl = config.epgUrl;
+        }
+
+        if (epgUrl) {
+          const parser = new XMLTVParser(epgUrl);
+          const { programmes } = await parser.fetchAndParseEPG();
+
+          if (programmes && programmes.length > 0) {
+             const grouped: Record<string, ParsedProgram[]> = {};
+             programmes.forEach((p: any) => {
+               const cid = p['@_channel'];
+               if (!cid) return;
+
+               const startMs = parseXmltvDate(p['@_start']);
+               const stopMs = parseXmltvDate(p['@_stop']);
+
+               if (!startMs || !stopMs) return;
+
+               const prog: ParsedProgram = {
+                 start: startMs,
+                 end: stopMs,
+                 start_formatted: formatProgramTime(startMs),
+                 end_formatted: formatProgramTime(stopMs),
+                 title_raw: p.title?.['#text'] || p.title || 'Unknown Title',
+                 description_raw: p.desc?.['#text'] || p.desc || '',
+                 has_archive: 0
+               };
+
+               if (!grouped[cid]) {
+                 grouped[cid] = [];
+               }
+               grouped[cid].push(prog);
+             });
+
+             // Sort arrays
+             for (const cid in grouped) {
+               grouped[cid].sort((a, b) => a.start - b.start);
+             }
+
+             setEpgData(grouped);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load full EPG:', err);
+      }
+    };
+
+    fetchFullEpg();
+  }, [config, epgData, setEpgData]);
+
+  useEffect(() => {
     const fetchChannels = async () => {
       if (!config || !selectedCategoryId) return;
       if (config.type === 'm3u') return;
@@ -75,22 +137,6 @@ export const HomeScreen = () => {
         } else {
           channelData = await xtream.getLiveStreams(selectedCategoryId);
           setChannels(channelData);
-
-          // Fetch short EPG for the first 10 channels to show in timeline
-          // Do this sequentially in the background so it doesn't block the UI
-          // or hammer the server with concurrent requests
-          (async () => {
-            for (const c of channelData.slice(0, 10)) {
-              try {
-                const res = await xtream.getShortEpg(c.stream_id);
-                if (res && res.epg_listings && res.epg_listings.length > 0) {
-                  setEpgData(prev => ({ ...prev, [c.stream_id]: res.epg_listings[0] }));
-                }
-              } catch {
-                // Ignore EPG fetch errors
-              }
-            }
-          })();
         }
 
         if (activeTab === 'vod' || activeTab === 'series') {
@@ -128,7 +174,7 @@ export const HomeScreen = () => {
 
   const handleChannelLongPress = (channel: LiveChannel) => {
     navigation.navigate('Epg', {
-      channelId: config?.type === 'm3u' ? channel.epg_channel_id : channel.stream_id
+      channelId: config?.type === 'm3u' ? channel.epg_channel_id : (channel.epg_channel_id || channel.stream_id)
     });
   };
 
@@ -203,26 +249,33 @@ export const HomeScreen = () => {
 
   const renderChannelListItem = ({ item }: ListRenderItemInfo<LiveChannel>) => {
     const isFocused = (item.stream_id || item.series_id) === focusedChannelId;
-    const epg = epgData[item.stream_id];
-    let epgTitle = 'No EPG Data';
+    const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
+    const epg = epgData[epgKey] as ParsedProgram[] | undefined;
+
+    let nowProg: ParsedProgram | null = null;
+    let nextProg: ParsedProgram | null = null;
+    let laterProg: ParsedProgram | null = null;
     let progressWidth = '0%';
 
-    if (epg) {
-      try {
-        epgTitle = Buffer.from(epg.title, 'base64').toString('utf-8').replace(/=/g, '');
-        // Calculate rough progress if we have timestamps
-        const now = Date.now() / 1000;
-        const start = parseInt(epg.start_timestamp, 10);
-        const end = parseInt(epg.stop_timestamp, 10);
-        if (start && end && now >= start && now <= end) {
-          const total = end - start;
-          const current = now - start;
-          progressWidth = `${Math.round((current / total) * 100)}%`;
-        } else if (start && end && now > end) {
-          progressWidth = '100%';
+    if (epg && epg.length > 0) {
+      const nowMs = Date.now();
+
+      const nowIndex = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
+      if (nowIndex !== -1) {
+        nowProg = epg[nowIndex];
+        nextProg = epg[nowIndex + 1] || null;
+        laterProg = epg[nowIndex + 2] || null;
+
+        const total = nowProg.end - nowProg.start;
+        const current = nowMs - nowProg.start;
+        progressWidth = `${Math.round((current / total) * 100)}%`;
+      } else {
+        // Find next future program
+        const nextIndex = epg.findIndex(p => p.start > nowMs);
+        if (nextIndex !== -1) {
+          nextProg = epg[nextIndex];
+          laterProg = epg[nextIndex + 1] || null;
         }
-      } catch {
-        epgTitle = 'Error decoding EPG';
       }
     }
 
@@ -250,9 +303,42 @@ export const HomeScreen = () => {
             <Text style={styles.channelListName} numberOfLines={1}>
             {item.title || item.name}
             </Text>
-            <View style={styles.epgTimelineMock}>
-                <View style={[styles.epgProgressBarMock, { width: progressWidth as any }]} />
-                <Text style={styles.epgTextMock} numberOfLines={1}>{epgTitle}</Text>
+
+            <View style={styles.timelineRow}>
+              {/* NOW Block */}
+              <View style={[styles.programBlock, styles.programBlockNow]}>
+                {nowProg ? (
+                  <>
+                    <View style={styles.programProgressBg}>
+                      <View style={[styles.programProgressBar, { width: progressWidth as any }]} />
+                    </View>
+                    <Text style={styles.programTitle} numberOfLines={1}>{nowProg.title_raw}</Text>
+                    <Text style={styles.programTime}>{nowProg.start_formatted} - {nowProg.end_formatted}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.noDataText}>No EPG</Text>
+                )}
+              </View>
+
+              {/* NEXT Block */}
+              <View style={styles.programBlock}>
+                {nextProg ? (
+                  <>
+                    <Text style={styles.programTitle} numberOfLines={1}>{nextProg.title_raw}</Text>
+                    <Text style={styles.programTime}>{nextProg.start_formatted} - {nextProg.end_formatted}</Text>
+                  </>
+                ) : null}
+              </View>
+
+              {/* LATER Block */}
+              <View style={styles.programBlock}>
+                {laterProg ? (
+                  <>
+                    <Text style={styles.programTitle} numberOfLines={1}>{laterProg.title_raw}</Text>
+                    <Text style={styles.programTime}>{laterProg.start_formatted} - {laterProg.end_formatted}</Text>
+                  </>
+                ) : null}
+              </View>
             </View>
         </View>
       </TouchableOpacity>
@@ -616,29 +702,55 @@ const styles = StyleSheet.create({
     width: 150,
     marginRight: 20,
   },
-  epgTimelineMock: {
+  timelineRow: {
     flex: 1,
-    height: 40,
+    flexDirection: 'row',
+  },
+  programBlock: {
+    flex: 1,
+    height: 45,
     backgroundColor: '#2C2C2E',
     borderRadius: 5,
     justifyContent: 'center',
     paddingHorizontal: 10,
-    position: 'relative',
+    marginRight: 10,
     overflow: 'hidden',
+    position: 'relative',
   },
-  epgProgressBarMock: {
+  programBlockNow: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  programProgressBg: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    width: '40%',
-    backgroundColor: '#007AFF',
-    opacity: 0.3,
+    right: 0,
   },
-  epgTextMock: {
-    color: '#CCC',
-    fontSize: 14,
+  programProgressBar: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    opacity: 0.2,
+  },
+  programTitle: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: 'bold',
     position: 'relative',
     zIndex: 1,
+  },
+  programTime: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+    position: 'relative',
+    zIndex: 1,
+  },
+  noDataText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontStyle: 'italic',
   }
 });

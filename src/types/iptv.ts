@@ -54,7 +54,19 @@ export interface M3UFormattedEpgProgram {
   description?: string;
 }
 
-export type UnifiedEpgProgram = XtreamEpgListing | M3UFormattedEpgProgram;
+export interface ParsedProgram {
+  start: number; // unix timestamp
+  end: number;   // unix timestamp
+  start_formatted: string;
+  end_formatted: string;
+  title_raw: string;
+  description_raw: string;
+  has_archive: number;
+  title?: string;
+  description?: string;
+}
+
+export type UnifiedEpgProgram = XtreamEpgListing | M3UFormattedEpgProgram | ParsedProgram;
 
 export type EpgRenderItemType = UnifiedEpgProgram;
 
