@@ -40,7 +40,6 @@ describe('useAppStore', () => {
     expect(state.config).toBeNull();
     expect(state.categories).toEqual([]);
     expect(state.channels).toEqual([]);
-    expect(state.activeCategoryId).toBeNull();
   });
 
   it('should set config', () => {
@@ -61,22 +60,11 @@ describe('useAppStore', () => {
     expect(state.channels).toEqual(mockChannels);
   });
 
-  it('should set active category', () => {
-    useAppStore.getState().setActiveCategory('1');
-    const state = useAppStore.getState();
-    expect(state.activeCategoryId).toBe('1');
-
-    // Also test setting to null
-    useAppStore.getState().setActiveCategory(null);
-    expect(useAppStore.getState().activeCategoryId).toBeNull();
-  });
-
   it('should clear state', () => {
     // First set some state
     useAppStore.getState().setConfig(mockConfig);
     useAppStore.getState().setCategories(mockCategories);
     useAppStore.getState().setChannels(mockChannels);
-    useAppStore.getState().setActiveCategory('1');
 
     // Verify state is set
     expect(useAppStore.getState().config).not.toBeNull();
@@ -90,6 +78,5 @@ describe('useAppStore', () => {
     expect(state.config).toBeNull();
     expect(state.categories).toEqual([]);
     expect(state.channels).toEqual([]);
-    expect(state.activeCategoryId).toBeNull();
   });
 });
