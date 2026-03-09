@@ -5,7 +5,7 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { XMLTVParser } from '../services/xmltv';
-import { UnifiedEpgProgram, M3UFormattedEpgProgram } from '../types/iptv';
+import { UnifiedEpgProgram, M3UFormattedEpgProgram, EpgRenderItemType } from '../types/iptv';
 import { Calendar, Clock, ChevronLeft } from 'lucide-react-native';
 import { Buffer } from 'buffer';
 
@@ -39,7 +39,7 @@ export const EpgScreen = () => {
           const { programmes } = await xmltv.fetchAndParseEPG();
           const channelProgs = xmltv.getChannelProgrammes(programmes, channelId as string);
 
-          const formatted: M3UFormattedEpgProgram[] = channelProgs.map((p: any) => {
+          const formatted: M3UFormattedEpgProgram[] = channelProgs.map((p: Record<string, any>) => {
             const startRaw = p['@_start'] || '';
             const endRaw = p['@_stop'] || '';
             // Very basic parse assuming YYYYMMDDHHmmss formatting
@@ -71,7 +71,7 @@ export const EpgScreen = () => {
     fetchEpg();
   }, [channelId, config]);
 
-  const renderEpgItem = ({ item }: ListRenderItemInfo<UnifiedEpgProgram>) => {
+  const renderEpgItem = ({ item }: ListRenderItemInfo<EpgRenderItemType>) => {
     const isNow = item.has_archive === 0; // Rough heuristic, typically EPG API indicates now playing
 
     // M3U EPG vs Xtream EPG decode

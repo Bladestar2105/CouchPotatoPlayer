@@ -52,6 +52,8 @@ export interface M3UFormattedEpgProgram {
 
 export type UnifiedEpgProgram = XtreamEpgListing | M3UFormattedEpgProgram;
 
+export type EpgRenderItemType = UnifiedEpgProgram;
+
 export interface EpgChannel {
   id: string;
   display_name: string;
