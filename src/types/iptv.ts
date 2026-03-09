@@ -32,6 +32,26 @@ export interface EpgProgram {
   stop_timestamp: string;
 }
 
+export interface XtreamEpgListing extends EpgProgram {
+  has_archive: number;
+}
+
+export interface XtreamShortEpgResponse {
+  epg_listings: XtreamEpgListing[];
+}
+
+export interface M3UFormattedEpgProgram {
+  start: string;
+  end: string;
+  title_raw: string;
+  description_raw: string;
+  has_archive: number;
+  title?: string;
+  description?: string;
+}
+
+export type UnifiedEpgProgram = XtreamEpgListing | M3UFormattedEpgProgram;
+
 export interface EpgChannel {
   id: string;
   display_name: string;
