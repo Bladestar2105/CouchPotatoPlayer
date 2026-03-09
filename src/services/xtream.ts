@@ -148,6 +148,13 @@ export class XtreamService {
     }
   }
 
+  getXmltvUrl(): string {
+    const username = encodeURIComponent(this.config.username.trim());
+    const password = encodeURIComponent((this.config.password || '').trim());
+    const url = `${this.baseUrl}/xmltv.php?username=${username}&password=${password}`;
+    return this.proxyUrl(url);
+  }
+
   getVodStreamUrl(streamId: number, extension: string = 'mp4'): string {
     const username = encodeURIComponent(this.config.username.trim());
     const password = encodeURIComponent((this.config.password || '').trim());
