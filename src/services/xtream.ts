@@ -15,16 +15,14 @@ export class XtreamService {
   }
 
   private buildUrl(action: string, extraParams: Record<string, string | number> = {}) {
-    const username = encodeURIComponent(this.config.username.trim());
-    const password = encodeURIComponent((this.config.password || '').trim());
-    let url = `${this.baseUrl}/player_api.php?username=${username}&password=${password}&action=${encodeURIComponent(action)}`;
+    const params = new URLSearchParams({
+      username: this.config.username.trim(),
+      password: (this.config.password || '').trim(),
+      action: action,
+      ...extraParams,
+    } as Record<string, string>);
 
-    const queryString = new URLSearchParams(extraParams as Record<string, string>).toString();
-    if (queryString) {
-      url += '&' + queryString;
-    }
-
-    return url;
+    return `${this.baseUrl}/player_api.php?${params.toString()}`;
   }
 
   async authenticate() {
