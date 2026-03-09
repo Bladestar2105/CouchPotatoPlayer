@@ -87,6 +87,7 @@ export class XtreamService {
   getLiveStreamUrl(streamId: number, extension: string = 'ts'): string {
     const username = encodeURIComponent(this.config.username.trim());
     const password = encodeURIComponent((this.config.password || '').trim());
-    return `${this.baseUrl}/live/${username}/${password}/${streamId}.${extension}`;
+    const url = `${this.baseUrl}/live/${username}/${password}/${streamId}.${extension}`;
+    return this.proxyUrl(url);
   }
 }
