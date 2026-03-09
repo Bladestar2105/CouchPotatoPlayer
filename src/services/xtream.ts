@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Category, LiveChannel, PlayerConfig } from '../types/iptv';
+import { Category, LiveChannel, PlayerConfig, XtreamShortEpgResponse } from '../types/iptv';
 
 export class XtreamService {
   private config: PlayerConfig;
@@ -59,7 +59,7 @@ export class XtreamService {
     }
   }
 
-  async getShortEpg(streamId: number): Promise<any> {
+  async getShortEpg(streamId: number): Promise<XtreamShortEpgResponse> {
     try {
       const response = await axios.get(this.buildUrl('get_short_epg', { stream_id: streamId, limit: 10 }));
       return response.data;

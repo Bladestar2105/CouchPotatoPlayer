@@ -5,6 +5,7 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { XMLTVParser } from '../services/xmltv';
+import { UnifiedEpgProgram, M3UFormattedEpgProgram } from '../types/iptv';
 import { Calendar, Clock, ChevronLeft } from 'lucide-react-native';
 import { Buffer } from 'buffer';
 
@@ -16,7 +17,7 @@ export const EpgScreen = () => {
   const { channelId } = route.params;
   const config = useAppStore(state => state.config);
 
-  const [epgData, setEpgData] = useState<any[]>([]);
+  const [epgData, setEpgData] = useState<UnifiedEpgProgram[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -38,7 +39,7 @@ export const EpgScreen = () => {
           const { programmes } = await xmltv.fetchAndParseEPG();
           const channelProgs = xmltv.getChannelProgrammes(programmes, channelId as string);
 
-          const formatted = channelProgs.map((p: any) => {
+          const formatted: M3UFormattedEpgProgram[] = channelProgs.map((p: any) => {
             const startRaw = p['@_start'] || '';
             const endRaw = p['@_stop'] || '';
             // Very basic parse assuming YYYYMMDDHHmmss formatting
@@ -70,15 +71,15 @@ export const EpgScreen = () => {
     fetchEpg();
   }, [channelId, config]);
 
-  const renderEpgItem = ({ item }: ListRenderItemInfo<any>) => {
+  const renderEpgItem = ({ item }: ListRenderItemInfo<UnifiedEpgProgram>) => {
     const isNow = item.has_archive === 0; // Rough heuristic, typically EPG API indicates now playing
 
     // M3U EPG vs Xtream EPG decode
-    const title = item.title_raw
+    const title = 'title_raw' in item
       ? item.title_raw
       : Buffer.from(item.title || '', 'base64').toString('utf-8').replace(new RegExp('=', 'g'), '');
 
-    const description = item.description_raw !== undefined
+    const description = 'description_raw' in item
       ? item.description_raw
       : (item.description ? Buffer.from(item.description, 'base64').toString('utf-8').replace(new RegExp('=', 'g'), '') : '');
 
