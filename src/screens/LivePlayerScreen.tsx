@@ -90,7 +90,7 @@ export const LivePlayerScreen = () => {
           resetOverlayTimer();
         }}
         onError={(e) => {
-          console.error('Video Playback Error:', e);
+          console.error('Video Playback Error:', e && typeof e === 'object' && 'error' in e ? (e as any).error.errorString || (e as any).error.message || 'Unknown video error' : 'Unknown video error');
           setError(true);
           setLoading(false);
         }}

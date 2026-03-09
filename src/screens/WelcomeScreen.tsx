@@ -60,7 +60,7 @@ export const WelcomeScreen = () => {
         navigation.replace('Home');
       }
     } catch (err: unknown) {
-      console.error(err);
+      console.error('Login error:', err instanceof Error ? err.message : 'Unknown error');
       setError('Connection error. Verify URL or credentials.');
     } finally {
       setLoading(false);

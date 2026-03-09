@@ -35,7 +35,7 @@ export class XtreamService {
       const response = await axios.get(url);
       return response.data;
     } catch (error) {
-      console.error('Xtream Auth Error:', error);
+      console.error('Xtream Auth Error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -45,7 +45,7 @@ export class XtreamService {
       const response = await axios.get(this.buildUrl('get_live_categories'));
       return response.data;
     } catch (error) {
-      console.error('Xtream Get Categories Error:', error);
+      console.error('Xtream Get Categories Error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -56,7 +56,7 @@ export class XtreamService {
       const response = await axios.get(this.buildUrl('get_live_streams', params));
       return response.data;
     } catch (error) {
-      console.error('Xtream Get Streams Error:', error);
+      console.error('Xtream Get Streams Error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -66,7 +66,7 @@ export class XtreamService {
       const response = await axios.get(this.buildUrl('get_short_epg', { stream_id: streamId, limit: 10 }));
       return response.data;
     } catch (error) {
-      console.error('Xtream Get Short EPG Error:', error);
+      console.error('Xtream Get Short EPG Error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
