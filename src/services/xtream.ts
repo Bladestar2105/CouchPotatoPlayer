@@ -90,4 +90,75 @@ export class XtreamService {
     const url = `${this.baseUrl}/live/${username}/${password}/${streamId}.${extension}`;
     return this.proxyUrl(url);
   }
+
+  async getVodCategories(): Promise<Category[]> {
+    try {
+      const response = await axios.get(this.buildUrl('get_vod_categories'));
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get VOD Categories Error:', msg);
+      throw new Error(msg);
+    }
+  }
+
+  async getVodStreams(categoryId?: string): Promise<LiveChannel[]> {
+    try {
+      const params: Record<string, string | number> = categoryId ? { category_id: categoryId } : {};
+      const response = await axios.get(this.buildUrl('get_vod_streams', params));
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get VOD Streams Error:', msg);
+      throw new Error(msg);
+    }
+  }
+
+  async getSeriesCategories(): Promise<Category[]> {
+    try {
+      const response = await axios.get(this.buildUrl('get_series_categories'));
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get Series Categories Error:', msg);
+      throw new Error(msg);
+    }
+  }
+
+  async getSeries(categoryId?: string): Promise<LiveChannel[]> {
+    try {
+      const params: Record<string, string | number> = categoryId ? { category_id: categoryId } : {};
+      const response = await axios.get(this.buildUrl('get_series', params));
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get Series Error:', msg);
+      throw new Error(msg);
+    }
+  }
+
+  async getSeriesInfo(seriesId: number): Promise<any> {
+    try {
+      const response = await axios.get(this.buildUrl('get_series_info', { series_id: seriesId }));
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get Series Info Error:', msg);
+      throw new Error(msg);
+    }
+  }
+
+  getVodStreamUrl(streamId: number, extension: string = 'mp4'): string {
+    const username = encodeURIComponent(this.config.username.trim());
+    const password = encodeURIComponent((this.config.password || '').trim());
+    const url = `${this.baseUrl}/movie/${username}/${password}/${streamId}.${extension}`;
+    return this.proxyUrl(url);
+  }
+
+  getSeriesStreamUrl(streamId: number, extension: string = 'mp4'): string {
+    const username = encodeURIComponent(this.config.username.trim());
+    const password = encodeURIComponent((this.config.password || '').trim());
+    const url = `${this.baseUrl}/series/${username}/${password}/${streamId}.${extension}`;
+    return this.proxyUrl(url);
+  }
 }

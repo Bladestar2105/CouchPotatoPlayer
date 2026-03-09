@@ -12,7 +12,7 @@ type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
 export const LivePlayerScreen = () => {
   const route = useRoute<LivePlayerRouteProp>();
   const navigation = useNavigation();
-  const { channelId, channelName, extension = 'ts', directSource } = route.params;
+  const { channelId, channelName, extension = 'ts', directSource, type = 'live' } = route.params;
   const config = useAppStore(state => state.config);
 
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
@@ -24,14 +24,51 @@ export const LivePlayerScreen = () => {
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (config?.type === 'xtream' && channelId) {
-      const xtream = new XtreamService(config);
-      const url = xtream.getLiveStreamUrl(channelId as number, extension);
-      setStreamUrl(url);
-    } else if (config?.type === 'm3u' && directSource) {
-      setStreamUrl(directSource);
-    }
-  }, [config, channelId, extension, directSource]);
+    const fetchUrl = async () => {
+      if (config?.type === 'xtream' && channelId) {
+        const xtream = new XtreamService(config);
+        if (type === 'vod') {
+          const url = xtream.getVodStreamUrl(channelId as number, extension);
+          setStreamUrl(url);
+        } else if (type === 'series') {
+          try {
+            const seriesInfo = await xtream.getSeriesInfo(channelId as number);
+            // find the first available episode
+            let firstEpisodeId = null;
+            let epExtension = 'mp4';
+            if (seriesInfo && seriesInfo.episodes) {
+              const seasons = Object.values(seriesInfo.episodes) as any[][];
+              if (seasons.length > 0 && seasons[0].length > 0) {
+                const firstEp = seasons[0][0];
+                firstEpisodeId = firstEp.id;
+                if (firstEp.container_extension) {
+                  epExtension = firstEp.container_extension;
+                }
+              }
+            }
+            if (firstEpisodeId) {
+              const url = xtream.getSeriesStreamUrl(firstEpisodeId, epExtension);
+              setStreamUrl(url);
+            } else {
+              setError(true);
+              setLoading(false);
+            }
+          } catch (err) {
+            console.error('Failed to get series info', err);
+            setError(true);
+            setLoading(false);
+          }
+        } else {
+          const url = xtream.getLiveStreamUrl(channelId as number, extension);
+          setStreamUrl(url);
+        }
+      } else if (config?.type === 'm3u' && directSource) {
+        setStreamUrl(directSource);
+      }
+    };
+
+    fetchUrl();
+  }, [config, channelId, extension, directSource, type]);
 
   const resetOverlayTimer = useCallback(() => {
     setShowOverlay(true);

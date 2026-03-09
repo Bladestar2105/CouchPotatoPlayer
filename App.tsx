@@ -10,7 +10,7 @@ import { useAppStore } from './src/store';
 export type RootStackParamList = {
   Welcome: undefined;
   Home: undefined;
-  LivePlayer: { channelId: number; channelName: string; extension?: string; directSource?: string };
+  LivePlayer: { channelId: number; channelName: string; extension?: string; directSource?: string; type?: 'live' | 'vod' | 'series' };
   Epg: { channelId: number | string };
 };
 
