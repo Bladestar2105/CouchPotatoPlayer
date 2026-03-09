@@ -13,20 +13,91 @@ assets by path *.png 2.7 KiB
   asset 992cf1d34fb7a6bde5b12f60d37d6d5d.png 332 bytes [emitted] [immutable] [from: node_modules/@react-navigation/elements/lib/module/assets/close-icon.png] (auxiliary name: main)
   asset c733a880bd6d3d1f0f38ef1608fb8a32.png 207 bytes [emitted] [immutable] [from: node_modules/@react-navigation/elements/lib/module/assets/back-icon.png] (auxiliary name: main)
   asset 31d6cfe0d16ae931b73c59d7e0c089c0.png 0 bytes [emitted] [immutable] [from: assets/images/placeholder.png] (auxiliary name: main)
-asset bundle.js 3.73 MiB [emitted] (name: main)
+asset bundle.js 3.92 MiB [emitted] (name: main)
 asset index.html 442 bytes [emitted]
-orphan modules 1.12 MiB [orphan] 1710 modules
+orphan modules 1.12 MiB [orphan] 1708 modules
 runtime modules 28.1 KiB 13 modules
-cacheable modules 2.74 MiB
-  modules by path ./node_modules/ 2.71 MiB 590 modules
-  modules by path ./src/ 34 KiB
-    modules by path ./src/screens/*.tsx 25.5 KiB 4 modules
-    modules by path ./src/services/*.ts 7.83 KiB
-      ./src/services/xtream.ts 3.83 KiB [built] [code generated]
+cacheable modules 2.88 MiB
+  modules by path ./node_modules/ 2.83 MiB 619 modules
+  modules by path ./src/ 47.1 KiB
+    modules by path ./src/screens/*.tsx 34.4 KiB 5 modules
+    modules by path ./src/services/*.ts 11.4 KiB
+      ./src/services/xtream.ts 7.43 KiB [built] [code generated]
       + 2 modules
+    ./src/i18n/index.ts 693 bytes [built] [code generated]
     ./src/store/index.ts 657 bytes [built] [code generated]
   ./index.web.js 304 bytes [built] [code generated]
-  ./App.tsx 1.02 KiB [built] [code generated]
+  ./App.tsx 1.15 KiB [built] [code generated]
   ./app.json 72 bytes [built] [code generated]
   ./assets/images/placeholder.png 80 bytes [built] [code generated]
-webpack 5.105.4 compiled successfully in 15746 ms
+webpack 5.105.4 compiled successfully in 18088 ms
+assets by status 3.13 KiB [cached] 7 assets
+assets by status 3.95 MiB [emitted]
+  asset bundle.js 3.94 MiB [emitted] (name: main)
+  asset main.8a0eef7c6908c823e415.hot-update.js 17.1 KiB [emitted] [immutable] [hmr] (name: main)
+  asset main.8a0eef7c6908c823e415.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 3.95 MiB (2.7 KiB) = bundle.js 3.94 MiB main.8a0eef7c6908c823e415.hot-update.js 17.1 KiB 6 auxiliary assets
+cached modules 4 MiB [cached] 2340 modules
+runtime modules 28.1 KiB 13 modules
+./src/screens/SearchScreen.tsx 8.31 KiB [built] [code generated]
+webpack 5.105.4 compiled successfully in 2670 ms
+assets by status 3.13 KiB [cached] 7 assets
+assets by status 3.96 MiB [emitted]
+  asset bundle.js 3.94 MiB [emitted] (name: main)
+  asset main.86041681e070cc4a37d8.hot-update.js 28 KiB [emitted] [immutable] [hmr] (name: main)
+  asset main.86041681e070cc4a37d8.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 3.96 MiB (2.7 KiB) = bundle.js 3.94 MiB main.86041681e070cc4a37d8.hot-update.js 28 KiB 6 auxiliary assets
+cached modules 3.99 MiB [cached] 2340 modules
+runtime modules 28.1 KiB 13 modules
+./src/screens/HomeScreen.tsx 15.3 KiB [built] [code generated]
+webpack 5.105.4 compiled successfully in 1190 ms
+assets by status 3.13 KiB [cached] 7 assets
+assets by status 3.97 MiB [emitted]
+  asset bundle.js 3.94 MiB [emitted] (name: main)
+  asset main.82ae67e1b661d871c00c.hot-update.js 28.5 KiB [emitted] [immutable] [hmr] (name: main)
+  asset main.82ae67e1b661d871c00c.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 3.97 MiB (2.7 KiB) = bundle.js 3.94 MiB main.82ae67e1b661d871c00c.hot-update.js 28.5 KiB 6 auxiliary assets
+cached modules 3.99 MiB [cached] 2340 modules
+runtime modules 28.1 KiB 13 modules
+./src/screens/HomeScreen.tsx 15.8 KiB [built] [code generated]
+webpack 5.105.4 compiled successfully in 897 ms
+assets by status 3.13 KiB [cached] 7 assets
+assets by status 3.97 MiB [emitted]
+  asset bundle.js 3.94 MiB [emitted] (name: main)
+  asset main.880847a36d20d60a0d41.hot-update.js 28.5 KiB [emitted] [immutable] [hmr] (name: main)
+  asset main.880847a36d20d60a0d41.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 3.97 MiB (2.7 KiB) = bundle.js 3.94 MiB main.880847a36d20d60a0d41.hot-update.js 28.5 KiB 6 auxiliary assets
+cached modules 3.99 MiB [cached] 2340 modules
+runtime modules 28.1 KiB 13 modules
+./src/screens/HomeScreen.tsx 15.8 KiB [built] [code generated]
+webpack 5.105.4 compiled successfully in 556 ms
+assets by status 3.13 KiB [cached] 7 assets
+assets by status 3.96 MiB [emitted]
+  asset bundle.js 3.94 MiB [emitted] (name: main)
+  asset main.6175b0c73e7f2edd6494.hot-update.js 18.7 KiB [emitted] [immutable] [hmr] (name: main)
+  asset main.6175b0c73e7f2edd6494.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 3.96 MiB (2.7 KiB) = bundle.js 3.94 MiB main.6175b0c73e7f2edd6494.hot-update.js 18.7 KiB 6 auxiliary assets
+cached modules 4 MiB [cached] 2340 modules
+runtime modules 28.1 KiB 13 modules
+./src/screens/SearchScreen.tsx 9.34 KiB [built] [code generated]
+webpack 5.105.4 compiled successfully in 439 ms
+assets by status 3.13 KiB [cached] 7 assets
+assets by status 3.97 MiB [emitted]
+  asset bundle.js 3.94 MiB [emitted] (name: main)
+  asset main.ab90c9a1d009b53c1460.hot-update.js 28.5 KiB [emitted] [immutable] [hmr] (name: main)
+  asset main.ab90c9a1d009b53c1460.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 3.97 MiB (2.7 KiB) = bundle.js 3.94 MiB main.ab90c9a1d009b53c1460.hot-update.js 28.5 KiB 6 auxiliary assets
+cached modules 4 MiB [cached] 2340 modules
+runtime modules 28.1 KiB 13 modules
+./src/screens/HomeScreen.tsx 15.8 KiB [built] [code generated]
+webpack 5.105.4 compiled successfully in 529 ms
+assets by status 3.13 KiB [cached] 7 assets
+assets by status 3.95 MiB [emitted]
+  asset bundle.js 3.94 MiB [emitted] (name: main)
+  asset main.982217b7dc90de1f80cb.hot-update.js 12.7 KiB [emitted] [immutable] [hmr] (name: main)
+  asset main.982217b7dc90de1f80cb.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 3.95 MiB (2.7 KiB) = bundle.js 3.94 MiB main.982217b7dc90de1f80cb.hot-update.js 12.7 KiB 6 auxiliary assets
+cached modules 4.01 MiB [cached] 2340 modules
+runtime modules 28.1 KiB 13 modules
+./src/screens/EpgScreen.tsx 5.62 KiB [built] [code generated]
+webpack 5.105.4 compiled successfully in 1863 ms

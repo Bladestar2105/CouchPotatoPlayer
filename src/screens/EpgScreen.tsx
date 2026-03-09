@@ -29,6 +29,7 @@ export const EpgScreen = () => {
       try {
         setLoading(true);
         if (config.type === 'xtream') {
+          // Fast path: use Xtream's built-in short EPG endpoint
           const xtream = new XtreamService(config);
           const data = await xtream.getShortEpg(channelId as number);
           if (data && data.epg_listings) {
@@ -37,6 +38,7 @@ export const EpgScreen = () => {
             setEpgData([]);
           }
         } else if (config.type === 'm3u' && config.epgUrl) {
+          // M3U with provided XMLTV URL
           const xmltv = new XMLTVParser(config.epgUrl);
           const { programmes } = await xmltv.fetchAndParseEPG();
           const channelProgs = xmltv.getChannelProgrammes(programmes, channelId as string);

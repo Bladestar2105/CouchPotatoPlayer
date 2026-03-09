@@ -1,10 +1,12 @@
 import React from 'react';
+import './src/i18n';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LivePlayerScreen } from './src/screens/LivePlayerScreen';
 import { EpgScreen } from './src/screens/EpgScreen';
+import { SearchScreen } from './src/screens/SearchScreen';
 import { useAppStore } from './src/store';
 
 export type RootStackParamList = {
@@ -12,6 +14,7 @@ export type RootStackParamList = {
   Home: undefined;
   LivePlayer: { channelId: number; channelName: string; extension?: string; directSource?: string; type?: 'live' | 'vod' | 'series' };
   Epg: { channelId: number | string };
+  Search: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -32,6 +35,7 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="LivePlayer" component={LivePlayerScreen} />
         <Stack.Screen name="Epg" component={EpgScreen} />
+        <Stack.Screen name="Search" component={SearchScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
