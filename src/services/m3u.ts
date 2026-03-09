@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { Category, LiveChannel, PlayerConfig } from '../types/iptv';
 
 export class M3UService {
@@ -8,9 +9,16 @@ export class M3UService {
     this.config = config;
   }
 
+  private proxyUrl(url: string): string {
+    if (Platform.OS === 'web') {
+      return `/proxy/?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
   async parsePlaylist(): Promise<{ categories: Category[], channels: LiveChannel[] }> {
     try {
-      const response = await axios.get(this.config.serverUrl, { responseType: 'text' });
+      const response = await axios.get(this.proxyUrl(this.config.serverUrl), { responseType: 'text' });
       const m3uData = response.data as string;
 
       const lines = m3uData.split('\n');

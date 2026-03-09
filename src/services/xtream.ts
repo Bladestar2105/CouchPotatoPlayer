@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { Category, LiveChannel, PlayerConfig, XtreamShortEpgResponse } from '../types/iptv';
 
 export class XtreamService {
@@ -8,10 +9,19 @@ export class XtreamService {
   constructor(config: PlayerConfig) {
     this.config = config;
     // ensure server url ends with a slash, or rather remove it to standardize
-    const trimmedUrl = config.serverUrl.trim();
-    this.baseUrl = trimmedUrl.endsWith('/')
+    let trimmedUrl = config.serverUrl.trim();
+    trimmedUrl = trimmedUrl.endsWith('/')
       ? trimmedUrl.slice(0, -1)
       : trimmedUrl;
+
+    this.baseUrl = trimmedUrl;
+  }
+
+  private proxyUrl(url: string): string {
+    if (Platform.OS === 'web') {
+      return `/proxy/?url=${encodeURIComponent(url)}`;
+    }
+    return url;
   }
 
   private buildUrl(action: string, extraParams: Record<string, string | number> = {}) {
@@ -22,7 +32,8 @@ export class XtreamService {
       ...extraParams,
     } as Record<string, string>);
 
-    return `${this.baseUrl}/player_api.php?${params.toString()}`;
+    const rawUrl = `${this.baseUrl}/player_api.php?${params.toString()}`;
+    return this.proxyUrl(rawUrl);
   }
 
   async authenticate() {
@@ -30,11 +41,12 @@ export class XtreamService {
       const username = encodeURIComponent(this.config.username.trim());
       const password = encodeURIComponent((this.config.password || '').trim());
       const url = `${this.baseUrl}/player_api.php?username=${username}&password=${password}`;
-      const response = await axios.get(url);
+      const response = await axios.get(this.proxyUrl(url));
       return response.data;
-    } catch (error) {
-      console.error('Xtream Auth Error:', error instanceof Error ? error.message : 'Unknown error');
-      throw error;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Auth Error:', msg);
+      throw new Error(msg);
     }
   }
 
@@ -42,9 +54,10 @@ export class XtreamService {
     try {
       const response = await axios.get(this.buildUrl('get_live_categories'));
       return response.data;
-    } catch (error) {
-      console.error('Xtream Get Categories Error:', error instanceof Error ? error.message : 'Unknown error');
-      throw error;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get Categories Error:', msg);
+      throw new Error(msg);
     }
   }
 
@@ -53,9 +66,10 @@ export class XtreamService {
       const params: Record<string, string | number> = categoryId ? { category_id: categoryId } : {};
       const response = await axios.get(this.buildUrl('get_live_streams', params));
       return response.data;
-    } catch (error) {
-      console.error('Xtream Get Streams Error:', error instanceof Error ? error.message : 'Unknown error');
-      throw error;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get Streams Error:', msg);
+      throw new Error(msg);
     }
   }
 
@@ -63,9 +77,10 @@ export class XtreamService {
     try {
       const response = await axios.get(this.buildUrl('get_short_epg', { stream_id: streamId, limit: 10 }));
       return response.data;
-    } catch (error) {
-      console.error('Xtream Get Short EPG Error:', error instanceof Error ? error.message : 'Unknown error');
-      throw error;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get Short EPG Error:', msg);
+      throw new Error(msg);
     }
   }
 
