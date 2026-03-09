@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, ListRenderItemInfo } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, ListRenderItemInfo, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
@@ -71,10 +71,15 @@ export const HomeScreen = () => {
   }, [selectedCategoryId, config, setChannels]);
 
   const handleChannelPress = (channel: LiveChannel) => {
+    let extension = 'm3u8';
+    if (channel.stream_type === 'live') {
+      extension = Platform.OS === 'web' || Platform.OS === 'ios' ? 'm3u8' : 'ts';
+    }
+
     navigation.navigate('LivePlayer', {
       channelId: channel.stream_id,
       channelName: channel.name,
-      extension: channel.stream_type === 'live' ? 'ts' : 'm3u8',
+      extension: extension,
       directSource: channel.direct_source
     });
   };
