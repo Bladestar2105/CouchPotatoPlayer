@@ -91,6 +91,9 @@ export const HomeScreen = () => {
       extension = Platform.OS === 'web' || Platform.OS === 'ios' ? 'm3u8' : 'ts';
     } else if (activeTab === 'vod' || activeTab === 'series') {
       extension = channel.container_extension || 'mp4';
+      if ((Platform.OS === 'web' || Platform.OS === 'ios') && extension === 'mkv') {
+        extension = 'mp4';
+      }
     }
 
     navigation.navigate('LivePlayer', {
