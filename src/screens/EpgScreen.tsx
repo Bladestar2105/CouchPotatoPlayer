@@ -11,6 +11,8 @@ import { Buffer } from 'buffer';
 
 type EpgRouteProp = RouteProp<RootStackParamList, 'Epg'>;
 
+const BASE64_PADDING_REGEX = /=/g;
+
 export const EpgScreen = () => {
   const route = useRoute<EpgRouteProp>();
   const navigation = useNavigation();
@@ -77,11 +79,11 @@ export const EpgScreen = () => {
     // M3U EPG vs Xtream EPG decode
     const title = 'title_raw' in item
       ? item.title_raw
-      : Buffer.from(item.title || '', 'base64').toString('utf-8').replace(new RegExp('=', 'g'), '');
+      : Buffer.from(item.title || '', 'base64').toString('utf-8').replace(BASE64_PADDING_REGEX, '');
 
     const description = 'description_raw' in item
       ? item.description_raw
-      : (item.description ? Buffer.from(item.description, 'base64').toString('utf-8').replace(new RegExp('=', 'g'), '') : '');
+      : (item.description ? Buffer.from(item.description, 'base64').toString('utf-8').replace(BASE64_PADDING_REGEX, '') : '');
 
     return (
       <View style={[styles.epgCard, isNow && styles.epgCardNow]}>
