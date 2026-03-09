@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, ListRenderItemInfo } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -85,9 +85,11 @@ export const HomeScreen = () => {
     });
   };
 
-  const displayedChannels = config?.type === 'm3u'
-    ? channels.filter(c => c.category_id === selectedCategoryId)
-    : channels;
+  const displayedChannels = useMemo(() => {
+    return config?.type === 'm3u'
+      ? channels.filter(c => c.category_id === selectedCategoryId)
+      : channels;
+  }, [config?.type, channels, selectedCategoryId]);
 
   const renderCategory = ({ item }: ListRenderItemInfo<Category>) => {
     const isSelected = item.category_id === selectedCategoryId;
