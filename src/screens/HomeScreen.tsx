@@ -40,7 +40,7 @@ export const HomeScreen = () => {
           }
         }
       } catch (error) {
-        console.error('Failed to load data', error);
+        console.error('Failed to load data:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setLoading(false);
       }
@@ -61,7 +61,7 @@ export const HomeScreen = () => {
         const channelData = await xtream.getLiveStreams(selectedCategoryId);
         setChannels(channelData);
       } catch (error) {
-        console.error('Failed to load channels', error);
+        console.error('Failed to load channels:', error instanceof Error ? error.message : 'Unknown error');
       }
     };
 

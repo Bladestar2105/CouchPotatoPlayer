@@ -81,7 +81,7 @@ export class M3UService {
       };
 
     } catch (error) {
-      console.error('M3U Parsing Error:', error);
+      console.error('M3U Parsing Error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }

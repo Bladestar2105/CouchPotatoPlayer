@@ -61,7 +61,7 @@ export const EpgScreen = () => {
           setEpgData([]); // M3U without EPG URL
         }
       } catch (err) {
-        console.error('Failed to load EPG', err);
+        console.error('Failed to load EPG:', err instanceof Error ? err.message : 'Unknown error');
         setError(true);
       } finally {
         setLoading(false);

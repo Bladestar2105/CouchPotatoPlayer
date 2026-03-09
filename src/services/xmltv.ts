@@ -34,7 +34,7 @@ export class XMLTVParser {
 
       return { channels, programmes };
     } catch (error) {
-      console.error('Failed to parse XMLTV:', error);
+      console.error('Failed to parse XMLTV:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
