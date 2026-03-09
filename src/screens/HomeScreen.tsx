@@ -6,9 +6,10 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { M3UService } from '../services/m3u';
-import { Category, LiveChannel } from '../types/iptv';
+import { Category, LiveChannel, XtreamEpgListing } from '../types/iptv';
 import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { Buffer } from 'buffer';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -20,6 +21,7 @@ export const HomeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'live' | 'vod' | 'series'>('live');
+  const [epgData, setEpgData] = useState<Record<number, XtreamEpgListing>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,28 +74,28 @@ export const HomeScreen = () => {
           channelData = await xtream.getSeries(selectedCategoryId);
         } else {
           channelData = await xtream.getLiveStreams(selectedCategoryId);
+          setChannels(channelData);
 
           // Fetch short EPG for the first 10 channels to show in timeline
-          const epgPromises = channelData.slice(0, 10).map(async (c: LiveChannel) => {
-            try {
-              const res = await xtream.getShortEpg(c.stream_id);
-              if (res && res.epg_listings && res.epg_listings.length > 0) {
-                return { id: c.stream_id, epg: res.epg_listings[0] };
+          // Do this sequentially in the background so it doesn't block the UI
+          // or hammer the server with concurrent requests
+          (async () => {
+            for (const c of channelData.slice(0, 10)) {
+              try {
+                const res = await xtream.getShortEpg(c.stream_id);
+                if (res && res.epg_listings && res.epg_listings.length > 0) {
+                  setEpgData(prev => ({ ...prev, [c.stream_id]: res.epg_listings[0] }));
+                }
+              } catch {
+                // Ignore EPG fetch errors
               }
-            } catch {
-              return null;
             }
-            return null;
-          });
-
-          const epgResults = await Promise.all(epgPromises);
-          const newEpgData: Record<number, XtreamEpgListing> = {};
-          epgResults.forEach(res => {
-            if (res) newEpgData[res.id] = res.epg;
-          });
-          setEpgData(newEpgData);
+          })();
         }
-        setChannels(channelData);
+
+        if (activeTab === 'vod' || activeTab === 'series') {
+          setChannels(channelData);
+        }
       } catch (error) {
         console.error('Failed to load channels:', error instanceof Error ? error.message : 'Unknown error');
       }
