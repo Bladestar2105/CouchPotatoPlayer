@@ -34,9 +34,6 @@ export const HomeScreen = () => {
           const m3uService = new M3UService(config);
           const { categories, channels } = await m3uService.parsePlaylist();
           setCategories(categories);
-          // For M3U, we fetch all channels at once, store them to show filtered
-          // We will update setChannels immediately but use a local state for filtering if needed.
-          // For simplicity in this step, we'll store all and filter on render.
           setChannels(channels);
           if (categories.length > 0) {
             setSelectedCategoryId(categories[0].category_id);
