@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { Category, LiveChannel, PlayerConfig, XtreamShortEpgResponse } from '../types/iptv';
 
 export class XtreamService {
@@ -16,6 +17,13 @@ export class XtreamService {
     this.baseUrl = trimmedUrl;
   }
 
+  private proxyUrl(url: string): string {
+    if (Platform.OS === 'web') {
+      return `/proxy/?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
   private buildUrl(action: string, extraParams: Record<string, string | number> = {}) {
     const params = new URLSearchParams({
       username: this.config.username.trim(),
@@ -24,7 +32,8 @@ export class XtreamService {
       ...extraParams,
     } as Record<string, string>);
 
-    return `${this.baseUrl}/player_api.php?${params.toString()}`;
+    const rawUrl = `${this.baseUrl}/player_api.php?${params.toString()}`;
+    return this.proxyUrl(rawUrl);
   }
 
   async authenticate() {
@@ -32,7 +41,7 @@ export class XtreamService {
       const username = encodeURIComponent(this.config.username.trim());
       const password = encodeURIComponent((this.config.password || '').trim());
       const url = `${this.baseUrl}/player_api.php?username=${username}&password=${password}`;
-      const response = await axios.get(url);
+      const response = await axios.get(this.proxyUrl(url));
       return response.data;
     } catch (error: any) {
       const msg = error.response?.data?.message || error.message || 'Unknown error';

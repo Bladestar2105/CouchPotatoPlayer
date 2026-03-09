@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { XMLParser } from 'fast-xml-parser';
 
 export class XMLTVParser {
@@ -8,9 +9,16 @@ export class XMLTVParser {
     this.url = url;
   }
 
+  private proxyUrl(url: string): string {
+    if (Platform.OS === 'web') {
+      return `/proxy/?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
   async fetchAndParseEPG(): Promise<any> {
     try {
-      const response = await axios.get(this.url, { responseType: 'text' });
+      const response = await axios.get(this.proxyUrl(this.url), { responseType: 'text' });
       const xmlData = response.data;
 
       const parser = new XMLParser({
