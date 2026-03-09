@@ -32,11 +32,11 @@ export const HomeScreen = () => {
           }
         } else if (config.type === 'm3u') {
           const m3uService = new M3UService(config);
-          const { categories, channels } = await m3uService.parsePlaylist();
-          setCategories(categories);
-          setChannels(channels);
-          if (categories.length > 0) {
-            setSelectedCategoryId(categories[0].category_id);
+          const m3uData = await m3uService.parsePlaylist();
+          setCategories(m3uData.categories);
+          setChannels(m3uData.channels);
+          if (m3uData.categories.length > 0) {
+            setSelectedCategoryId(m3uData.categories[0].category_id);
           }
         }
       } catch (error) {
@@ -81,7 +81,7 @@ export const HomeScreen = () => {
 
   const handleChannelLongPress = (channel: LiveChannel) => {
     navigation.navigate('Epg', {
-      channelId: config?.type === 'm3u' ? (channel.epg_channel_id as any) : channel.stream_id
+      channelId: config?.type === 'm3u' ? channel.epg_channel_id : channel.stream_id
     });
   };
 
