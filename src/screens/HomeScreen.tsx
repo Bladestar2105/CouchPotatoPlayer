@@ -16,6 +16,7 @@ export const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [loading, setLoading] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'live' | 'vod' | 'series'>('live');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,7 +26,14 @@ export const HomeScreen = () => {
       try {
         if (config.type === 'xtream') {
           const xtream = new XtreamService(config);
-          const catData = await xtream.getLiveCategories();
+          let catData;
+          if (activeTab === 'vod') {
+            catData = await xtream.getVodCategories();
+          } else if (activeTab === 'series') {
+            catData = await xtream.getSeriesCategories();
+          } else {
+            catData = await xtream.getLiveCategories();
+          }
           setCategories(catData);
           if (catData.length > 0) {
             setSelectedCategoryId(catData[0].category_id);
@@ -49,7 +57,7 @@ export const HomeScreen = () => {
     if (config) {
       fetchData();
     }
-  }, [config, setCategories, setChannels]);
+  }, [config, setCategories, setChannels, activeTab]);
 
   useEffect(() => {
     const fetchChannels = async () => {
@@ -58,7 +66,14 @@ export const HomeScreen = () => {
 
       try {
         const xtream = new XtreamService(config);
-        const channelData = await xtream.getLiveStreams(selectedCategoryId);
+        let channelData;
+        if (activeTab === 'vod') {
+          channelData = await xtream.getVodStreams(selectedCategoryId);
+        } else if (activeTab === 'series') {
+          channelData = await xtream.getSeries(selectedCategoryId);
+        } else {
+          channelData = await xtream.getLiveStreams(selectedCategoryId);
+        }
         setChannels(channelData);
       } catch (error) {
         console.error('Failed to load channels:', error instanceof Error ? error.message : 'Unknown error');
@@ -68,19 +83,22 @@ export const HomeScreen = () => {
     if (selectedCategoryId && config?.type === 'xtream') {
       fetchChannels();
     }
-  }, [selectedCategoryId, config, setChannels]);
+  }, [selectedCategoryId, config, setChannels, activeTab]);
 
   const handleChannelPress = (channel: LiveChannel) => {
     let extension = 'm3u8';
-    if (channel.stream_type === 'live') {
+    if (activeTab === 'live' && channel.stream_type === 'live') {
       extension = Platform.OS === 'web' || Platform.OS === 'ios' ? 'm3u8' : 'ts';
+    } else if (activeTab === 'vod' || activeTab === 'series') {
+      extension = channel.container_extension || 'mp4';
     }
 
     navigation.navigate('LivePlayer', {
-      channelId: channel.stream_id,
-      channelName: channel.name,
+      channelId: activeTab === 'series' ? (channel.series_id as number) : channel.stream_id,
+      channelName: channel.title || channel.name,
       extension: extension,
-      directSource: channel.direct_source
+      directSource: channel.direct_source,
+      type: activeTab
     });
   };
 
@@ -120,9 +138,9 @@ export const HomeScreen = () => {
         onLongPress={() => handleChannelLongPress(item)}
       >
         <View style={styles.channelImageContainer}>
-          {item.stream_icon ? (
+          {(item.stream_icon || item.cover) ? (
             <Image
-              source={{ uri: item.stream_icon }}
+              source={{ uri: item.stream_icon || item.cover }}
               style={styles.channelIcon}
               resizeMode="contain"
               defaultSource={require('../../assets/images/placeholder.png')}
@@ -132,7 +150,7 @@ export const HomeScreen = () => {
           )}
         </View>
         <Text style={styles.channelName} numberOfLines={2}>
-          {item.name}
+          {item.title || item.name}
         </Text>
       </TouchableOpacity>
     );
@@ -156,17 +174,29 @@ export const HomeScreen = () => {
         </View>
 
         <View style={styles.navItems}>
-          <TouchableOpacity style={[styles.navItem, styles.navItemSelected]}>
-            <Tv color="#FFF" size={24} />
-            <Text style={styles.navItemText}>Live TV</Text>
+          <TouchableOpacity
+            style={[styles.navItem, activeTab === 'live' && styles.navItemSelected]}
+            onPress={() => setActiveTab('live')}
+            onFocus={() => setActiveTab('live')}
+          >
+            <Tv color={activeTab === 'live' ? "#FFF" : "#888"} size={24} />
+            <Text style={activeTab === 'live' ? styles.navItemText : styles.navItemTextInactive}>Live TV</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem}>
-            <FileVideo color="#888" size={24} />
-            <Text style={styles.navItemTextInactive}>Movies</Text>
+          <TouchableOpacity
+            style={[styles.navItem, activeTab === 'vod' && styles.navItemSelected]}
+            onPress={() => setActiveTab('vod')}
+            onFocus={() => setActiveTab('vod')}
+          >
+            <FileVideo color={activeTab === 'vod' ? "#FFF" : "#888"} size={24} />
+            <Text style={activeTab === 'vod' ? styles.navItemText : styles.navItemTextInactive}>Movies</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem}>
-            <LayoutList color="#888" size={24} />
-            <Text style={styles.navItemTextInactive}>Series</Text>
+          <TouchableOpacity
+            style={[styles.navItem, activeTab === 'series' && styles.navItemSelected]}
+            onPress={() => setActiveTab('series')}
+            onFocus={() => setActiveTab('series')}
+          >
+            <LayoutList color={activeTab === 'series' ? "#FFF" : "#888"} size={24} />
+            <Text style={activeTab === 'series' ? styles.navItemText : styles.navItemTextInactive}>Series</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -195,7 +225,7 @@ export const HomeScreen = () => {
           ) : (
             <FlatList
               data={displayedChannels}
-              keyExtractor={(item) => item.stream_id.toString()}
+              keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
               renderItem={renderChannel}
               numColumns={4}
               showsVerticalScrollIndicator={false}

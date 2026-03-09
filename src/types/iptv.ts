@@ -17,6 +17,10 @@ export interface LiveChannel {
   tv_archive: number;
   direct_source: string;
   tv_archive_duration: number;
+  container_extension?: string;
+  series_id?: number;
+  cover?: string;
+  title?: string;
 }
 
 export interface EpgProgram {
