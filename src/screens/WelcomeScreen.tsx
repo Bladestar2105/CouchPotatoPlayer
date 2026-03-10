@@ -3,8 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
+import { M3UService } from '../services/m3u';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Welcome'>;
 
@@ -16,6 +18,7 @@ export const WelcomeScreen = () => {
   const [epgUrl, setEpgUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { t } = useTranslation();
 
   const setConfig = useAppStore(state => state.setConfig);
   const navigation = useNavigation<NavigationProp>();
@@ -60,6 +63,13 @@ export const WelcomeScreen = () => {
         const config = { type: 'xtream' as const, serverUrl: trimmedServerUrl, username: trimmedUsername, password: trimmedPassword };
         const xtream = new XtreamService(config);
 
+        const isCompatible = await xtream.checkCompatibility();
+        if (!isCompatible) {
+          setError(t('login.iptvManagerOnly'));
+          setLoading(false);
+          return;
+        }
+
         const auth = await xtream.authenticate();
 
         if (auth && auth.user_info && auth.user_info.auth === 1) {
@@ -70,6 +80,15 @@ export const WelcomeScreen = () => {
         }
       } else {
         const config = { type: 'm3u' as const, serverUrl: trimmedServerUrl, username: '', epgUrl: trimmedEpgUrl };
+        const m3u = new M3UService(config);
+
+        const isCompatible = await m3u.checkCompatibility();
+        if (!isCompatible) {
+          setError(t('login.iptvManagerOnly'));
+          setLoading(false);
+          return;
+        }
+
         setConfig(config);
         navigation.replace('Home');
       }

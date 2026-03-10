@@ -36,6 +36,16 @@ export class XtreamService {
     return this.proxyUrl(rawUrl);
   }
 
+  async checkCompatibility(): Promise<boolean> {
+    try {
+      const url = `${this.baseUrl}/player_api.php?action=cpp`;
+      const response = await axios.get(this.proxyUrl(url), { timeout: 5000 });
+      return response.data === true;
+    } catch {
+      return false;
+    }
+  }
+
   async authenticate() {
     try {
       const username = encodeURIComponent(this.config.username.trim());

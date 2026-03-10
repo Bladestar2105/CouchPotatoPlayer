@@ -16,6 +16,18 @@ export class M3UService {
     return url;
   }
 
+  async checkCompatibility(): Promise<boolean> {
+    try {
+      const urlObj = new URL(this.config.serverUrl);
+      const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+      const checkUrl = `${baseUrl}/cpp`;
+      const response = await axios.get(this.proxyUrl(checkUrl), { timeout: 5000 });
+      return response.data === true;
+    } catch {
+      return false;
+    }
+  }
+
   async parsePlaylist(): Promise<{ categories: Category[], channels: LiveChannel[] }> {
     try {
       const response = await axios.get(this.proxyUrl(this.config.serverUrl), { responseType: 'text' });
