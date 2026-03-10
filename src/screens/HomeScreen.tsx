@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen = () => {
-  const { config, categories, channels, setCategories, setChannels, epgData, setEpgData } = useAppStore();
+  const { config, categories, channels, setCategories, setChannels, epgData, setEpgData, showAdult } = useAppStore();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
 
@@ -58,6 +58,10 @@ export const HomeScreen = () => {
       fetchData();
     }
   }, [config, setCategories, setChannels, activeTab]);
+
+  const visibleCategories = useMemo(() => {
+    return categories.filter(c => showAdult || String(c.adult) !== '1');
+  }, [categories, showAdult]);
 
   useEffect(() => {
     const fetchFullEpg = async () => {
@@ -433,14 +437,14 @@ export const HomeScreen = () => {
             <TouchableOpacity
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel={t('sidebar.settings')}
+              accessibilityLabel="Settings"
               style={[
                 styles.sidebarItem,
                 focusedTab === 'settings' && styles.sidebarItemFocused
               ]}
               onFocus={() => setFocusedTab('settings')}
               onBlur={() => setFocusedTab(null)}
-              onPress={() => console.log('Settings clicked')}
+              onPress={() => navigation.navigate('Settings')}
             >
               <Settings color={focusedTab === 'settings' ? "#FFF" : "#888"} size={24} />
             </TouchableOpacity>
@@ -450,7 +454,7 @@ export const HomeScreen = () => {
       {/* 2. Categories */}
       <View style={styles.categoriesContainer}>
         <FlatList
-          data={categories}
+          data={visibleCategories}
           keyExtractor={(item) => item.category_id}
           renderItem={renderCategory}
           showsVerticalScrollIndicator={false}
