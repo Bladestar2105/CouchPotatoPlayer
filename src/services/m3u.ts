@@ -23,7 +23,7 @@ export class M3UService {
       const checkUrl = `${baseUrl}/cpp`;
       const response = await axios.get(this.proxyUrl(checkUrl), { timeout: 5000 });
       return response.data === true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

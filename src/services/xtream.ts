@@ -41,7 +41,7 @@ export class XtreamService {
       const url = `${this.baseUrl}/player_api.php?action=cpp`;
       const response = await axios.get(this.proxyUrl(url), { timeout: 5000 });
       return response.data === true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

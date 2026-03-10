@@ -6,6 +6,7 @@ import { XtreamService } from '../services/xtream';
 import { M3UService } from '../services/m3u';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Welcome'>;
 
@@ -17,6 +18,7 @@ export const WelcomeScreen = () => {
   const [epgUrl, setEpgUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { t } = useTranslation();
 
   const setConfig = useAppStore(state => state.setConfig);
   const navigation = useNavigation<NavigationProp>();
@@ -63,7 +65,7 @@ export const WelcomeScreen = () => {
 
         const isCompatible = await xtream.checkCompatibility();
         if (!isCompatible) {
-          setError('Die App ist nur mit dem IPTV-Manager kompatibel.');
+          setError(t('login.iptvManagerOnly'));
           setLoading(false);
           return;
         }
@@ -82,7 +84,7 @@ export const WelcomeScreen = () => {
 
         const isCompatible = await m3u.checkCompatibility();
         if (!isCompatible) {
-          setError('Die App ist nur mit dem IPTV-Manager kompatibel.');
+          setError(t('login.iptvManagerOnly'));
           setLoading(false);
           return;
         }
