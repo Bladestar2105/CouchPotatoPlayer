@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated, Platform } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { Tv } from 'lucide-react-native';
+import { KSPlayerView } from '../components/KSPlayerView';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
 
@@ -117,29 +118,46 @@ export const LivePlayerScreen = () => {
       activeOpacity={1}
       onPress={resetOverlayTimer}
     >
-      <Video
-        source={{ uri: streamUrl }}
-        style={styles.videoPlayer}
-        resizeMode="contain"
-        onLoadStart={() => setLoading(true)}
-        onLoad={() => {
-          setLoading(false);
-          resetOverlayTimer();
-        }}
-        onError={(e) => {
-          console.error('Video Playback Error:', e && typeof e === 'object' && 'error' in e ? (e as any).error.errorString || (e as any).error.message || 'Unknown video error' : 'Unknown video error');
-          setError(true);
-          setLoading(false);
-        }}
-        bufferConfig={{
-          minBufferMs: 15000,
-          maxBufferMs: 50000,
-          bufferForPlaybackMs: 2500,
-          bufferForPlaybackAfterRebufferMs: 5000
-        }}
-        playInBackground={false}
-        controls={false}
-      />
+      {Platform.OS === 'ios' || Platform.OS === 'tvos' || Platform.OS === 'macos' ? (
+        <KSPlayerView
+          source={{ uri: streamUrl }}
+          style={styles.videoPlayer}
+          onLoadStart={() => setLoading(true)}
+          onLoad={() => {
+            setLoading(false);
+            resetOverlayTimer();
+          }}
+          onError={(e) => {
+            console.error('KSPlayer Playback Error:', e);
+            setError(true);
+            setLoading(false);
+          }}
+        />
+      ) : (
+        <Video
+          source={{ uri: streamUrl }}
+          style={styles.videoPlayer}
+          resizeMode="contain"
+          onLoadStart={() => setLoading(true)}
+          onLoad={() => {
+            setLoading(false);
+            resetOverlayTimer();
+          }}
+          onError={(e) => {
+            console.error('Video Playback Error:', e && typeof e === 'object' && 'error' in e ? (e as any).error.errorString || (e as any).error.message || 'Unknown video error' : 'Unknown video error');
+            setError(true);
+            setLoading(false);
+          }}
+          bufferConfig={{
+            minBufferMs: 15000,
+            maxBufferMs: 50000,
+            bufferForPlaybackMs: 2500,
+            bufferForPlaybackAfterRebufferMs: 5000
+          }}
+          playInBackground={false}
+          controls={false}
+        />
+      )}
 
       {loading && (
         <View style={styles.loadingOverlay}>

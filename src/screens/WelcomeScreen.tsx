@@ -74,7 +74,7 @@ export const WelcomeScreen = () => {
 
         if (auth && auth.user_info && auth.user_info.auth === 1) {
           setConfig(config);
-          navigation.replace('Home');
+          navigation.replace('PinSetup');
         } else {
           setError('Authentication failed. Check credentials.');
         }
@@ -90,7 +90,7 @@ export const WelcomeScreen = () => {
         }
 
         setConfig(config);
-        navigation.replace('Home');
+        navigation.replace('PinSetup');
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -195,7 +195,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1C1E',
     padding: 40,
     borderRadius: 20,
-    width: 600,
+    width: '100%',
+    maxWidth: 600,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
