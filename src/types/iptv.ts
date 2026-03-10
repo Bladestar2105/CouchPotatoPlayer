@@ -79,6 +79,8 @@ export interface EpgChannel {
 }
 
 export interface PlayerConfig {
+  id: string;
+  name: string;
   serverUrl: string;
   username: string;
   password?: string;

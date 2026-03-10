@@ -12,6 +12,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Welcome'>;
 
 export const WelcomeScreen = () => {
   const [type, setType] = useState<'xtream' | 'm3u'>('xtream');
+  const [name, setName] = useState('');
   const [serverUrl, setServerUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -21,15 +22,22 @@ export const WelcomeScreen = () => {
   const { t } = useTranslation();
 
   const setConfig = useAppStore(state => state.setConfig);
+  const addProvider = useAppStore(state => state.addProvider);
   const navigation = useNavigation<NavigationProp>();
 
   const handleLogin = async () => {
+    const trimmedName = name.trim();
     const trimmedServerUrl = serverUrl.trim();
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
     const trimmedEpgUrl = epgUrl.trim();
 
     const isValidUrl = (url: string) => /^https?:\/\//i.test(url);
+
+    if (!trimmedName) {
+      setError('Please enter a name for this provider');
+      return;
+    }
 
     if (type === 'xtream') {
       if (!trimmedServerUrl || !trimmedUsername || !trimmedPassword) {
@@ -60,7 +68,14 @@ export const WelcomeScreen = () => {
 
     try {
       if (type === 'xtream') {
-        const config = { type: 'xtream' as const, serverUrl: trimmedServerUrl, username: trimmedUsername, password: trimmedPassword };
+        const config = {
+          id: Date.now().toString(),
+          name: trimmedName,
+          type: 'xtream' as const,
+          serverUrl: trimmedServerUrl,
+          username: trimmedUsername,
+          password: trimmedPassword
+        };
         const xtream = new XtreamService(config);
 
         const isCompatible = await xtream.checkCompatibility();
@@ -73,13 +88,21 @@ export const WelcomeScreen = () => {
         const auth = await xtream.authenticate();
 
         if (auth && auth.user_info && auth.user_info.auth === 1) {
+          addProvider(config);
           setConfig(config);
           navigation.replace('PinSetup');
         } else {
           setError('Authentication failed. Check credentials.');
         }
       } else {
-        const config = { type: 'm3u' as const, serverUrl: trimmedServerUrl, username: '', epgUrl: trimmedEpgUrl };
+        const config = {
+          id: Date.now().toString(),
+          name: trimmedName,
+          type: 'm3u' as const,
+          serverUrl: trimmedServerUrl,
+          username: '',
+          epgUrl: trimmedEpgUrl
+        };
         const m3u = new M3UService(config);
 
         const isCompatible = await m3u.checkCompatibility();
@@ -89,6 +112,7 @@ export const WelcomeScreen = () => {
           return;
         }
 
+        addProvider(config);
         setConfig(config);
         navigation.replace('PinSetup');
       }
@@ -125,6 +149,15 @@ export const WelcomeScreen = () => {
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Provider Name"
+          placeholderTextColor="#888"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+        />
 
         <TextInput
           style={styles.input}
