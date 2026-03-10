@@ -363,6 +363,10 @@ export const HomeScreen = () => {
             <PlaySquare color="#007AFF" size={32} style={styles.sidebarLogo} />
 
             <TouchableOpacity
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t('sidebar.live')}
+              accessibilityState={{ selected: activeTab === 'live' }}
               style={[
                 styles.sidebarItem,
                 activeTab === 'live' && styles.sidebarItemSelected,
@@ -376,6 +380,10 @@ export const HomeScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t('sidebar.movies')}
+              accessibilityState={{ selected: activeTab === 'vod' }}
               style={[
                 styles.sidebarItem,
                 activeTab === 'vod' && styles.sidebarItemSelected,
@@ -389,6 +397,10 @@ export const HomeScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t('sidebar.series')}
+              accessibilityState={{ selected: activeTab === 'series' }}
               style={[
                 styles.sidebarItem,
                 activeTab === 'series' && styles.sidebarItemSelected,
@@ -402,6 +414,9 @@ export const HomeScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t('sidebar.search')}
               style={[
                 styles.sidebarItem,
                 focusedTab === 'search' && styles.sidebarItemFocused
@@ -416,6 +431,9 @@ export const HomeScreen = () => {
 
         <View style={styles.sidebarBottom}>
             <TouchableOpacity
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t('sidebar.settings')}
               style={[
                 styles.sidebarItem,
                 focusedTab === 'settings' && styles.sidebarItemFocused
