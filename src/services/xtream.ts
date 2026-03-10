@@ -19,7 +19,11 @@ export class XtreamService {
 
   private proxyUrl(url: string): string {
     if (Platform.OS === 'web') {
-      return url.startsWith('/proxy/') ? url : `/proxy/${url}`;
+      let cleanUrl = url;
+      while (cleanUrl.startsWith('/') || cleanUrl.startsWith('proxy')) {
+        cleanUrl = cleanUrl.replace(/^\/+/, '').replace(/^proxy\/?/, '');
+      }
+      return `/proxy/${cleanUrl}`;
     }
     return url;
   }
