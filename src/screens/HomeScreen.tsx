@@ -251,36 +251,58 @@ export const HomeScreen = () => {
     );
   };
 
+  const timelineStart = useMemo(() => {
+    const now = new Date();
+    // Start timeline 30 minutes before current time, rounded to previous half hour
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes() < 30 ? 0 : 30, 0, 0);
+    start.setMinutes(start.getMinutes() - 30);
+    return start.getTime();
+  }, []);
+
+  // 6 hour timeline window
+  const TIMELINE_DURATION = 6 * 60 * 60 * 1000;
+  const timelineEnd = timelineStart + TIMELINE_DURATION;
+
+  const timeMarkers = useMemo(() => {
+    const markers = [];
+    for (let i = 0; i < 7; i++) {
+      const markerTime = new Date(timelineStart + i * 60 * 60 * 1000);
+      markers.push({
+        time: markerTime.getTime(),
+        label: `${markerTime.getHours().toString().padStart(2, '0')}:${markerTime.getMinutes().toString().padStart(2, '0')}`
+      });
+    }
+    return markers;
+  }, [timelineStart]);
+
+  const [nowTime, setNowTime] = useState(Date.now());
+
+  useEffect(() => {
+    // Update the current time indicator every minute
+    const interval = setInterval(() => {
+      setNowTime(Date.now());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentProgressPercent = ((nowTime - timelineStart) / TIMELINE_DURATION) * 100;
+
   const renderChannelListItem = ({ item }: ListRenderItemInfo<LiveChannel>) => {
     const isFocused = (item.stream_id || item.series_id) === focusedChannelId;
     const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
 
     let nowProg: ParsedProgram | null = null;
-    let nextProg: ParsedProgram | null = null;
-    let laterProg: ParsedProgram | null = null;
-    let progressWidth = '0%';
+    let visibleEpg: ParsedProgram[] = [];
 
     if (epg && epg.length > 0) {
       const nowMs = Date.now();
-
       const nowIndex = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
       if (nowIndex !== -1) {
         nowProg = epg[nowIndex];
-        nextProg = epg[nowIndex + 1] || null;
-        laterProg = epg[nowIndex + 2] || null;
-
-        const total = nowProg.end - nowProg.start;
-        const current = nowMs - nowProg.start;
-        progressWidth = `${Math.round((current / total) * 100)}%`;
-      } else {
-        // Find next future program
-        const nextIndex = epg.findIndex(p => p.start > nowMs);
-        if (nextIndex !== -1) {
-          nextProg = epg[nextIndex];
-          laterProg = epg[nextIndex + 1] || null;
-        }
       }
+
+      visibleEpg = epg.filter(p => p.end > timelineStart && p.start < timelineEnd);
     }
 
     return (
@@ -291,59 +313,61 @@ export const HomeScreen = () => {
         onPress={() => handleChannelPress(item)}
         onLongPress={() => handleChannelLongPress(item)}
       >
-        <View style={styles.channelListImageContainer}>
-          {(item.stream_icon || item.cover) ? (
-            <Image
-              source={{ uri: item.stream_icon || item.cover }}
-              style={styles.channelListIcon}
-              resizeMode="contain"
-              defaultSource={require('../../assets/images/placeholder.png')}
-            />
-          ) : (
-            <Tv size={24} color="#444" />
-          )}
-        </View>
-        <View style={styles.channelListInfo}>
+        {/* Left Pane (Logo, Channel Info) */}
+        <View style={styles.channelListLeftPane}>
+          <View style={styles.channelListImageContainer}>
+            {(item.stream_icon || item.cover) ? (
+              <Image
+                source={{ uri: item.stream_icon || item.cover }}
+                style={styles.channelListIcon}
+                resizeMode="contain"
+                defaultSource={require('../../assets/images/placeholder.png')}
+              />
+            ) : (
+              <Tv size={24} color="#444" />
+            )}
+          </View>
+          <View style={styles.channelListInfo}>
             <Text style={styles.channelListName} numberOfLines={1}>
-            {item.title || item.name}
+              {item.title || item.name}
             </Text>
+            {nowProg && (
+              <Text style={styles.channelListNowProgram} numberOfLines={1}>
+                {nowProg.title_raw}
+              </Text>
+            )}
+          </View>
+        </View>
 
-            <View style={styles.timelineRow}>
-              {/* NOW Block */}
-              <View style={[styles.programBlock, styles.programBlockNow]}>
-                {nowProg ? (
-                  <>
-                    <View style={styles.programProgressBg}>
-                      <View style={[styles.programProgressBar, { width: progressWidth as any }]} />
-                    </View>
-                    <Text style={styles.programTitle} numberOfLines={1}>{nowProg.title_raw}</Text>
-                    <Text style={styles.programTime}>{nowProg.start_formatted} - {nowProg.end_formatted}</Text>
-                  </>
-                ) : (
-                  <Text style={styles.noDataText}>No EPG</Text>
-                )}
-              </View>
+        {/* Right Pane (Continuous Timeline) */}
+        <View style={styles.timelineRow}>
+            {visibleEpg.map((prog, index) => {
+              // Calculate positioning
+              const startPos = Math.max(timelineStart, prog.start);
+              const endPos = Math.min(timelineEnd, prog.end);
+              const leftPercent = ((startPos - timelineStart) / TIMELINE_DURATION) * 100;
+              const widthPercent = ((endPos - startPos) / TIMELINE_DURATION) * 100;
 
-              {/* NEXT Block */}
-              <View style={styles.programBlock}>
-                {nextProg ? (
-                  <>
-                    <Text style={styles.programTitle} numberOfLines={1}>{nextProg.title_raw}</Text>
-                    <Text style={styles.programTime}>{nextProg.start_formatted} - {nextProg.end_formatted}</Text>
-                  </>
-                ) : null}
-              </View>
+              if (widthPercent <= 0) return null;
 
-              {/* LATER Block */}
-              <View style={styles.programBlock}>
-                {laterProg ? (
-                  <>
-                    <Text style={styles.programTitle} numberOfLines={1}>{laterProg.title_raw}</Text>
-                    <Text style={styles.programTime}>{laterProg.start_formatted} - {laterProg.end_formatted}</Text>
-                  </>
-                ) : null}
-              </View>
-            </View>
+              const isNow = prog.start <= nowTime && prog.end > nowTime;
+
+              return (
+                <View
+                  key={`${prog.start}-${index}`}
+                  style={[
+                    styles.programBlockTimeline,
+                    { left: `${leftPercent}%`, width: `${widthPercent}%` },
+                    isNow && styles.programBlockTimelineNow
+                  ]}
+                >
+                  <Text style={[styles.programTitleTimeline, isNow && styles.programTitleTimelineNow]} numberOfLines={1}>
+                    <Text style={[styles.programTimeTimeline, isNow && styles.programTimeTimelineNow]}>{prog.start_formatted} </Text>
+                    {prog.title_raw}
+                  </Text>
+                </View>
+              );
+            })}
         </View>
       </TouchableOpacity>
     );
@@ -481,17 +505,27 @@ export const HomeScreen = () => {
               activeTab === 'live' ? (
                 <View style={styles.liveTvContainer}>
                     <View style={styles.timelineHeader}>
-                        <Text style={styles.timelineHeaderText}>Now</Text>
-                        <Text style={styles.timelineHeaderText}>Next</Text>
-                        <Text style={styles.timelineHeaderText}>Later</Text>
+                        <View style={styles.channelListLeftPaneHeader} />
+                        <View style={styles.timelineHeaderMarkers}>
+                          {timeMarkers.map((marker, idx) => (
+                            <View key={idx} style={[styles.timeMarker, { left: `${((marker.time - timelineStart) / TIMELINE_DURATION) * 100}%` }]}>
+                              <Text style={styles.timelineHeaderText}>{marker.label}</Text>
+                            </View>
+                          ))}
+                        </View>
                     </View>
-                    <FlatList
-                        data={displayedChannels}
-                        keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
-                        renderItem={renderChannelListItem}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.channelListContent}
-                    />
+                    <View style={styles.timelineContainer}>
+                      {currentProgressPercent >= 0 && currentProgressPercent <= 100 && (
+                        <View style={[styles.currentTimeIndicator, { left: `${currentProgressPercent}%`, marginLeft: 250 }]} />
+                      )}
+                      <FlatList
+                          data={displayedChannels}
+                          keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
+                          renderItem={renderChannelListItem}
+                          showsVerticalScrollIndicator={false}
+                          contentContainerStyle={styles.channelListContent}
+                      />
+                    </View>
                 </View>
               ) : (
                 <FlatList
@@ -668,45 +702,87 @@ const styles = StyleSheet.create({
   },
   timelineHeader: {
     flexDirection: 'row',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
+    height: 50,
     backgroundColor: '#1A1A1C',
     borderBottomWidth: 1,
     borderBottomColor: '#2C2C2E',
-    justifyContent: 'space-around',
-    marginLeft: 150,
+    alignItems: 'center',
+  },
+  timelineHeaderMarkers: {
+    flex: 1,
+    flexDirection: 'row',
+    position: 'relative',
+    height: '100%',
+    marginLeft: 250,
+  },
+  timeMarker: {
+    position: 'absolute',
+    borderLeftWidth: 1,
+    borderLeftColor: '#2C2C2E',
+    height: '100%',
+    paddingLeft: 10,
+    justifyContent: 'center',
   },
   timelineHeaderText: {
     color: '#888',
     fontSize: 14,
     fontWeight: 'bold',
   },
+  timelineContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  currentTimeIndicator: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: '#FF453A',
+    zIndex: 10,
+  },
   channelListContent: {
-    padding: 20,
+    padding: 0,
   },
   channelListItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     backgroundColor: '#1C1C1E',
-    borderRadius: 10,
-    marginBottom: 10,
-    padding: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+    height: 80,
   },
   channelListItemFocused: {
-    borderColor: '#007AFF',
-    transform: [{ scale: 1.02 }],
+    backgroundColor: '#2C2C2E',
+  },
+  channelListLeftPaneHeader: {
+    width: 250,
+    borderRightWidth: 1,
+    borderRightColor: '#2C2C2E',
+    height: '100%',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 1,
+    backgroundColor: '#1A1A1C',
+  },
+  channelListLeftPane: {
+    width: 250,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#2C2C2E',
+    backgroundColor: '#1C1C1E',
+    zIndex: 2,
   },
   channelListImageContainer: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#2C2C2E',
-    borderRadius: 5,
+    width: 50,
+    height: 50,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
-    overflow: 'hidden',
+    marginRight: 10,
   },
   channelListIcon: {
     width: '100%',
@@ -714,61 +790,52 @@ const styles = StyleSheet.create({
   },
   channelListInfo: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'center',
   },
   channelListName: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '500',
-    width: 150,
-    marginRight: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  channelListNowProgram: {
+    color: '#888',
+    fontSize: 12,
   },
   timelineRow: {
     flex: 1,
-    flexDirection: 'row',
-  },
-  programBlock: {
-    flex: 1,
-    height: 45,
-    backgroundColor: '#2C2C2E',
-    borderRadius: 5,
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    marginRight: 10,
-    overflow: 'hidden',
     position: 'relative',
   },
-  programBlockNow: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  programProgressBg: {
+  programBlockTimeline: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    right: 0,
+    top: 5,
+    bottom: 5,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#1C1C1E',
   },
-  programProgressBar: {
-    height: '100%',
-    backgroundColor: '#007AFF',
-    opacity: 0.2,
+  programBlockTimelineNow: {
+    backgroundColor: '#1E3A8A', // Dark blue
+    borderColor: '#3B82F6', // Lighter blue border
   },
-  programTitle: {
+  programTitleTimeline: {
     color: '#E2E8F0',
     fontSize: 13,
     fontWeight: 'bold',
-    position: 'relative',
-    zIndex: 1,
   },
-  programTime: {
+  programTitleTimelineNow: {
+    color: '#FFF',
+  },
+  programTimeTimeline: {
     color: '#94A3B8',
-    fontSize: 11,
-    marginTop: 2,
-    position: 'relative',
-    zIndex: 1,
+    fontSize: 12,
+    fontWeight: 'normal',
+  },
+  programTimeTimelineNow: {
+    color: '#93C5FD',
   },
   noDataText: {
     color: '#64748B',
