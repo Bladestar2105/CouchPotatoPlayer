@@ -185,20 +185,26 @@ export const HomeScreen = () => {
     let extension = 'm3u8';
     if (activeTab === 'live' && channel.stream_type === 'live') {
       extension = Platform.OS === 'web' || Platform.OS === 'ios' ? 'm3u8' : 'ts';
+      navigation.navigate('LivePlayer', {
+        channelId: channel.stream_id,
+        channelName: channel.title || channel.name,
+        extension: extension,
+        directSource: channel.direct_source,
+        type: activeTab
+      });
     } else if (activeTab === 'vod' || activeTab === 'series') {
       extension = channel.container_extension || 'mp4';
       if ((Platform.OS === 'web' || Platform.OS === 'ios') && extension === 'mkv') {
         extension = 'mp4';
       }
+      navigation.navigate('MediaInfo', {
+        id: activeTab === 'series' ? (channel.series_id as number) : channel.stream_id,
+        type: activeTab,
+        title: channel.title || channel.name,
+        cover: channel.cover || channel.stream_icon,
+        extension: extension
+      });
     }
-
-    navigation.navigate('LivePlayer', {
-      channelId: activeTab === 'series' ? (channel.series_id as number) : channel.stream_id,
-      channelName: channel.title || channel.name,
-      extension: extension,
-      directSource: channel.direct_source,
-      type: activeTab
-    });
   };
 
   const handleChannelLongPress = (channel: LiveChannel) => {
@@ -554,10 +560,11 @@ export const HomeScreen = () => {
                 </View>
               ) : (
                 <FlatList
+                  key={`grid-${activeTab}`}
                   data={displayedChannels}
                   keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
                   renderItem={renderChannelCard}
-                  numColumns={4}
+                  numColumns={3}
                   showsVerticalScrollIndicator={false}
                   columnWrapperStyle={styles.channelsRow}
                   contentContainerStyle={styles.channelsGridList}
@@ -688,8 +695,8 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   channelCard: {
-    width: '23%',
-    marginRight: '2.6%',
+    width: '31%',
+    marginRight: '3%',
     backgroundColor: '#1C1C1E',
     borderRadius: 15,
     padding: 15,
