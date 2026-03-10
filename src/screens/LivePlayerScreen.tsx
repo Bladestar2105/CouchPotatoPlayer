@@ -149,10 +149,10 @@ export const LivePlayerScreen = () => {
             setLoading(false);
           }}
           bufferConfig={{
-            minBufferMs: 15000,
-            maxBufferMs: 50000,
-            bufferForPlaybackMs: 2500,
-            bufferForPlaybackAfterRebufferMs: 5000
+            minBufferMs: 5000,
+            maxBufferMs: 15000,
+            bufferForPlaybackMs: 500,
+            bufferForPlaybackAfterRebufferMs: 1000
           }}
           playInBackground={false}
           controls={false}
