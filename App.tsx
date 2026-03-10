@@ -11,12 +11,14 @@ import { useAppStore } from './src/store';
 
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { PinSetupScreen } from './src/screens/PinSetupScreen';
+import { MediaInfoScreen } from './src/screens/MediaInfoScreen';
 
 export type RootStackParamList = {
   Welcome: undefined;
   PinSetup: undefined;
   Home: undefined;
   LivePlayer: { channelId: number; channelName: string; extension?: string; directSource?: string; type?: 'live' | 'vod' | 'series' };
+  MediaInfo: { id: number | string; type: 'vod' | 'series'; title: string; cover?: string; extension?: string };
   Epg: { channelId: number | string };
   Search: undefined;
   Settings: undefined;
@@ -41,6 +43,7 @@ export default function App() {
         <Stack.Screen name="PinSetup" component={PinSetupScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="LivePlayer" component={LivePlayerScreen} />
+        <Stack.Screen name="MediaInfo" component={MediaInfoScreen} />
         <Stack.Screen name="Epg" component={EpgScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />

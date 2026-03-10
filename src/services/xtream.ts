@@ -64,6 +64,17 @@ export class XtreamService {
     }
   }
 
+  async getVodInfo(vodId: number): Promise<any> {
+    try {
+      const response = await axios.get(this.buildUrl('get_vod_info', { vod_id: vodId }));
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || 'Unknown error';
+      console.error('Xtream Get VOD Info Error:', msg);
+      throw new Error(msg);
+    }
+  }
+
   async getLiveCategories(): Promise<Category[]> {
     try {
       const response = await axios.get(this.buildUrl('get_live_categories'));
