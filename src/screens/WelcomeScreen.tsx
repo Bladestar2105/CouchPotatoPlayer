@@ -26,14 +26,28 @@ export const WelcomeScreen = () => {
     const trimmedPassword = password.trim();
     const trimmedEpgUrl = epgUrl.trim();
 
+    const isValidUrl = (url: string) => /^https?:\/\//i.test(url);
+
     if (type === 'xtream') {
       if (!trimmedServerUrl || !trimmedUsername || !trimmedPassword) {
         setError('Please fill in all fields for Xtream Codes');
         return;
       }
+      if (!isValidUrl(trimmedServerUrl)) {
+        setError('Server URL must start with http:// or https://');
+        return;
+      }
     } else {
       if (!trimmedServerUrl) {
         setError('Please enter an M3U Playlist URL');
+        return;
+      }
+      if (!isValidUrl(trimmedServerUrl)) {
+        setError('Playlist URL must start with http:// or https://');
+        return;
+      }
+      if (trimmedEpgUrl && !isValidUrl(trimmedEpgUrl)) {
+        setError('EPG URL must start with http:// or https://');
         return;
       }
     }
