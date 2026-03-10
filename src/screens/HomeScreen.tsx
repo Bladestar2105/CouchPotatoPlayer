@@ -60,7 +60,7 @@ export const HomeScreen = () => {
   }, [config, setCategories, setChannels, activeTab]);
 
   const visibleCategories = useMemo(() => {
-    return categories.filter(c => showAdult || String(c.adult) !== '1');
+    return categories.filter(c => showAdult || (String(c.adult) !== '1' && String(c.is_adult) !== '1'));
   }, [categories, showAdult]);
 
   useEffect(() => {
