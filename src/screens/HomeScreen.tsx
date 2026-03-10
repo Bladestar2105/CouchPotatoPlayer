@@ -35,13 +35,16 @@ export const HomeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'live' | 'vod' | 'series'>('live');
+  const [lastFetchedTab, setLastFetchedTab] = useState<'live' | 'vod' | 'series' | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!config) return;
 
       const needsProviderUpdate = !categories.length || (Date.now() - lastProviderUpdate > updateIntervalHours * 3600000);
-      if (!needsProviderUpdate) {
+      const tabChanged = config.type === 'xtream' && activeTab !== lastFetchedTab;
+
+      if (!needsProviderUpdate && !tabChanged) {
         if (categories.length > 0) {
            setSelectedCategoryId(null);
         }
@@ -62,6 +65,7 @@ export const HomeScreen = () => {
             catData = await xtream.getLiveCategories();
           }
           setCategories(catData);
+          setLastFetchedTab(activeTab);
           setSelectedCategoryId(null);
         } else if (config.type === 'm3u') {
           const m3uService = new M3UService(config);
@@ -81,7 +85,7 @@ export const HomeScreen = () => {
     if (config) {
       fetchData();
     }
-  }, [config, setCategories, setChannels, activeTab]);
+  }, [config, setCategories, setChannels, activeTab, lastFetchedTab]);
 
   const visibleCategories = useMemo(() => {
     return categories.filter(c => showAdult || (String(c.adult) !== '1' && String(c.is_adult) !== '1'));
