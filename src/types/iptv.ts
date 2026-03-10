@@ -3,6 +3,7 @@ export interface Category {
   category_name: string;
   parent_id: number;
   adult?: number;
+  is_adult?: number;
 }
 
 export interface LiveChannel {
