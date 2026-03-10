@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
+import { M3UService } from '../services/m3u';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 
@@ -60,6 +61,13 @@ export const WelcomeScreen = () => {
         const config = { type: 'xtream' as const, serverUrl: trimmedServerUrl, username: trimmedUsername, password: trimmedPassword };
         const xtream = new XtreamService(config);
 
+        const isCompatible = await xtream.checkCompatibility();
+        if (!isCompatible) {
+          setError('Die App ist nur mit dem IPTV-Manager kompatibel.');
+          setLoading(false);
+          return;
+        }
+
         const auth = await xtream.authenticate();
 
         if (auth && auth.user_info && auth.user_info.auth === 1) {
@@ -70,6 +78,15 @@ export const WelcomeScreen = () => {
         }
       } else {
         const config = { type: 'm3u' as const, serverUrl: trimmedServerUrl, username: '', epgUrl: trimmedEpgUrl };
+        const m3u = new M3UService(config);
+
+        const isCompatible = await m3u.checkCompatibility();
+        if (!isCompatible) {
+          setError('Die App ist nur mit dem IPTV-Manager kompatibel.');
+          setLoading(false);
+          return;
+        }
+
         setConfig(config);
         navigation.replace('Home');
       }
