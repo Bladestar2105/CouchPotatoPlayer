@@ -7,6 +7,8 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('XtreamService', () => {
   const config: PlayerConfig = {
+    id: 'test-id',
+    name: 'test-name',
     serverUrl: 'http://example.com/',
     username: 'user/name',
     password: 'pass&word',
@@ -33,6 +35,8 @@ describe('XtreamService', () => {
 
     it('should properly trim whitespace from username and password before encoding', () => {
       const dirtyConfig: PlayerConfig = {
+        id: 'dirty-id',
+        name: 'dirty-name',
         serverUrl: 'http://example.com/',
         username: '  user/name  ',
         password: '  pass&word  ',

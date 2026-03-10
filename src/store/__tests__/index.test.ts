@@ -3,6 +3,8 @@ import { PlayerConfig, Category, LiveChannel } from '../../types/iptv';
 
 describe('useAppStore', () => {
   const mockConfig: PlayerConfig = {
+    id: 'test',
+    name: 'test',
     serverUrl: 'http://test.com',
     username: 'testuser',
     password: 'testpassword',

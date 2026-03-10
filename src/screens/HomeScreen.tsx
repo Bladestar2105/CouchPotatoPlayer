@@ -14,7 +14,21 @@ import { useTranslation } from 'react-i18next';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen = () => {
-  const { config, categories, channels, setCategories, setChannels, epgData, setEpgData, showAdult } = useAppStore();
+  const {
+    config,
+    categories,
+    channels,
+    setCategories,
+    setChannels,
+    epgData,
+    setEpgData,
+    showAdult,
+    updateIntervalHours,
+    lastProviderUpdate,
+    setLastProviderUpdate,
+    lastEpgUpdate,
+    setLastEpgUpdate
+  } = useAppStore();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
 
@@ -25,6 +39,15 @@ export const HomeScreen = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!config) return;
+
+      const needsProviderUpdate = !categories.length || (Date.now() - lastProviderUpdate > updateIntervalHours * 3600000);
+      if (!needsProviderUpdate) {
+        if (categories.length > 0) {
+           setSelectedCategoryId(null);
+        }
+        return;
+      }
+
       setLoading(true);
 
       try {
@@ -47,6 +70,7 @@ export const HomeScreen = () => {
           setChannels(m3uData.channels);
           setSelectedCategoryId(null);
         }
+        setLastProviderUpdate(Date.now());
       } catch (error) {
         console.error('Failed to load data:', error instanceof Error ? error.message : 'Unknown error');
       } finally {
@@ -67,8 +91,8 @@ export const HomeScreen = () => {
     const fetchFullEpg = async () => {
       if (!config) return;
 
-      // Only fetch once
-      if (Object.keys(epgData).length > 0) return;
+      const needsEpgUpdate = Object.keys(epgData).length === 0 || (Date.now() - lastEpgUpdate > updateIntervalHours * 3600000);
+      if (!needsEpgUpdate) return;
 
       try {
         let epgUrl = '';
@@ -116,6 +140,7 @@ export const HomeScreen = () => {
              }
 
              setEpgData(grouped);
+             setLastEpgUpdate(Date.now());
           }
         }
       } catch (err) {
@@ -124,7 +149,7 @@ export const HomeScreen = () => {
     };
 
     fetchFullEpg();
-  }, [config, epgData, setEpgData]);
+  }, [config, epgData, setEpgData, updateIntervalHours, lastEpgUpdate, setLastEpgUpdate]);
 
   useEffect(() => {
     const fetchChannels = async () => {

@@ -13,6 +13,13 @@ export const SettingsScreen = () => {
   const showAdult = useAppStore(state => state.showAdult);
   const setAppPin = useAppStore(state => state.setPin);
   const setShowAdult = useAppStore(state => state.setShowAdult);
+  const updateIntervalHours = useAppStore(state => state.updateIntervalHours);
+  const setUpdateIntervalHours = useAppStore(state => state.setUpdateIntervalHours);
+  const providers = useAppStore(state => state.providers);
+  const activeConfig = useAppStore(state => state.config);
+  const setConfig = useAppStore(state => state.setConfig);
+  const removeProvider = useAppStore(state => state.removeProvider);
+  const clearState = useAppStore(state => state.clearState);
 
   const [enteredPin, setEnteredPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -22,6 +29,8 @@ export const SettingsScreen = () => {
 
   const [unlockAdult, setUnlockAdult] = useState(false);
   const [changingPin, setChangingPin] = useState(false);
+  const [managingProviders, setManagingProviders] = useState(false);
+  const [intervalSetting, setIntervalSetting] = useState(false);
 
   const navigation = useNavigation<NavigationProp>();
 
@@ -89,6 +98,30 @@ export const SettingsScreen = () => {
     setError('');
   };
 
+  const handleSetInterval = (hours: number) => {
+    setUpdateIntervalHours(hours);
+    setIntervalSetting(false);
+    setSuccess(`Update interval set to ${hours} hours.`);
+  };
+
+  const handleSwitchProvider = (providerId: string) => {
+    const provider = providers.find(p => p.id === providerId);
+    if (provider) {
+      setConfig(provider);
+      setManagingProviders(false);
+      setSuccess(`Switched to provider: ${provider.name}`);
+    }
+  };
+
+  const handleDeleteProvider = (providerId: string) => {
+    removeProvider(providerId);
+    if (activeConfig?.id === providerId) {
+      // If we deleted the active provider, we need to log out basically
+      clearState();
+      navigation.replace('Welcome');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -107,8 +140,24 @@ export const SettingsScreen = () => {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {success ? <Text style={styles.success}>{success}</Text> : null}
 
-        {!unlockAdult && !changingPin && (
+        {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && (
           <>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => setManagingProviders(true)}
+            >
+              <Text style={styles.menuItemText}>Manage Providers</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => setIntervalSetting(true)}
+            >
+              <Text style={styles.menuItemText}>
+                Update Interval ({updateIntervalHours}h)
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={handleToggleAdult}
@@ -125,6 +174,60 @@ export const SettingsScreen = () => {
               <Text style={styles.menuItemText}>Change PIN</Text>
             </TouchableOpacity>
           </>
+        )}
+
+        {intervalSetting && (
+          <View>
+            <Text style={styles.subtitle}>Select Update Interval:</Text>
+            {[1, 6, 12, 24, 48].map((hours) => (
+              <TouchableOpacity
+                key={hours}
+                style={[styles.menuItem, updateIntervalHours === hours && styles.menuItemSelected]}
+                onPress={() => handleSetInterval(hours)}
+              >
+                <Text style={styles.menuItemText}>Every {hours} hours</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setIntervalSetting(false)}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {managingProviders && (
+          <View>
+            <Text style={styles.subtitle}>Your Providers:</Text>
+            {providers.map((provider) => (
+              <View key={provider.id} style={styles.providerItem}>
+                <TouchableOpacity
+                  style={[styles.providerSelectBtn, activeConfig?.id === provider.id && styles.providerActiveBtn]}
+                  onPress={() => handleSwitchProvider(provider.id)}
+                >
+                  <Text style={styles.menuItemText}>
+                    {provider.name} {activeConfig?.id === provider.id ? '(Active)' : ''}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.providerDeleteBtn}
+                  onPress={() => handleDeleteProvider(provider.id)}
+                >
+                  <Text style={styles.providerDeleteText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => {
+                setManagingProviders(false);
+                navigation.navigate('Welcome');
+              }}
+            >
+              <Text style={styles.buttonText}>Add New Provider</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setManagingProviders(false)}>
+              <Text style={styles.cancelButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {unlockAdult && (
@@ -256,11 +359,40 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 15,
   },
+  menuItemSelected: {
+    borderColor: '#007AFF',
+    borderWidth: 2,
+  },
   menuItemText: {
     color: '#FFF',
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  providerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  providerSelectBtn: {
+    flex: 1,
+    backgroundColor: '#2C2C2E',
+    padding: 20,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  providerActiveBtn: {
+    backgroundColor: '#007AFF',
+  },
+  providerDeleteBtn: {
+    backgroundColor: '#FF453A',
+    padding: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+  },
+  providerDeleteText: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
   input: {
     backgroundColor: '#2C2C2E',
