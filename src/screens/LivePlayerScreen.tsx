@@ -1,17 +1,23 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated, Platform, StatusBar, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated, Platform, StatusBar, PanResponder, ScrollView, Modal } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Video from 'react-native-video';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { LiveChannel } from '../types/iptv';
-import { Tv, ChevronLeft, ChevronUp, ChevronDown, RotateCcw, Play, FastForward } from 'lucide-react-native';
+import { Tv, ChevronLeft, ChevronUp, ChevronDown, RotateCcw, Play, FastForward, Moon, Volume2, Subtitles, SkipForward, Settings } from 'lucide-react-native';
 import { KSPlayerView } from '../components/KSPlayerView';
 import { isTV, isMobile } from '../utils/platform';
 import { getPlayerConfig, getOptimalExtension } from '../utils/streamingConfig';
+import { MiniEpg } from '../components/MiniEpg';
+import { showToast } from '../components/Toast';
+import { PlayerGestures } from '../components/PlayerGestures';
+import { GestureControls } from '../components/GestureControls';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
+type LivePlayerNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LivePlayer'>;
 
 // ── Extension fallback order for Xtream streams ──
 const LIVE_FALLBACK_EXTENSIONS = ['m3u8', 'ts'];
@@ -28,7 +34,7 @@ const formatTime = (seconds: number): string => {
 
 export const LivePlayerScreen = () => {
   const route = useRoute<LivePlayerRouteProp>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<LivePlayerNavigationProp>();
   const { channelId, channelName, extension = 'ts', directSource, type = 'live' } = route.params;
   const config = useAppStore(state => state.config);
   const streamingSettings = useAppStore(state => state.streamingSettings);
@@ -59,6 +65,30 @@ export const LivePlayerScreen = () => {
   // ── Playback speed (VOD only) ──
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+  // ── Audio/Subtitle track selection ──
+  const [audioTracks, setAudioTracks] = useState<any[]>([]);
+  const [textTracks, setTextTracks] = useState<any[]>([]);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<any>(undefined);
+  const [selectedTextTrack, setSelectedTextTrack] = useState<any>(undefined);
+  const [showTrackPicker, setShowTrackPicker] = useState<'audio' | 'subtitle' | null>(null);
+
+  // ── Sleep timer ──
+  const [sleepMinutes, setSleepMinutes] = useState<number | null>(null);
+  const [sleepRemaining, setSleepRemaining] = useState<number>(0);
+  const [showSleepPicker, setShowSleepPicker] = useState(false);
+  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const SLEEP_OPTIONS = [15, 30, 45, 60, 90, 120];
+
+  // ── Auto-play next episode (series) ──
+  const [currentDuration, setCurrentDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [showNextEpisode, setShowNextEpisode] = useState(false);
+  const [nextEpisodeInfo, setNextEpisodeInfo] = useState<{id: number; name: string; ext: string} | null>(null);
+  const autoPlayTriggered = useRef(false);
+
+  // ── Volume control ──
+  const [volume, setVolume] = useState(1.0);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -299,6 +329,150 @@ export const LivePlayerScreen = () => {
     });
   }, []);
 
+  // ── Sleep timer management ──
+  const startSleepTimer = useCallback((minutes: number) => {
+    if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
+    setSleepMinutes(minutes);
+    setSleepRemaining(minutes * 60);
+    setShowSleepPicker(false);
+    showToast(`Sleep timer: ${minutes} min`, 'info');
+    sleepTimerRef.current = setInterval(() => {
+      setSleepRemaining(prev => {
+        if (prev <= 1) {
+          if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
+          setSleepMinutes(null);
+          showToast('Sleep timer ended', 'info');
+          navigation.goBack();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [navigation]);
+
+  const cancelSleepTimer = useCallback(() => {
+    if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
+    setSleepMinutes(null);
+    setSleepRemaining(0);
+    setShowSleepPicker(false);
+    showToast('Sleep timer cancelled', 'info');
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
+    };
+  }, []);
+
+  // ── Handle video loaded - extract tracks ──
+  const handleVideoLoad = useCallback((data: any) => {
+    setLoading(false);
+    setRetryCount(0);
+    resetOverlayTimer();
+    if (seekOnLoad !== null && seekOnLoad > 0 && videoRef.current) {
+      videoRef.current.seek(seekOnLoad);
+      setSeekOnLoad(null);
+    }
+    // Extract audio tracks
+    if (data?.audioTracks && data.audioTracks.length > 0) {
+      setAudioTracks(data.audioTracks);
+    }
+    // Extract text/subtitle tracks
+    if (data?.textTracks && data.textTracks.length > 0) {
+      setTextTracks(data.textTracks);
+    }
+    // Store duration for auto-play
+    if (data?.duration) {
+      setCurrentDuration(data.duration);
+    }
+  }, [resetOverlayTimer, seekOnLoad]);
+
+  // ── Handle progress - auto-play next episode detection ──
+  const handleProgress = useCallback((data: { currentTime: number; seekableDuration: number }) => {
+    setCurrentTime(data.currentTime);
+    // Save position for VOD/Series
+    if (type !== 'live' && channelId && data.currentTime > 0 && Math.floor(data.currentTime) % 10 === 0) {
+      updatePlaybackPosition(channelId, data.currentTime, data.seekableDuration);
+    }
+    // Auto-play next episode: show prompt 30s before end
+    if (type === 'series' && nextEpisodeInfo && !autoPlayTriggered.current) {
+      if (data.seekableDuration > 60 && data.currentTime > data.seekableDuration - 30) {
+        setShowNextEpisode(true);
+        autoPlayTriggered.current = true;
+      }
+    }
+  }, [type, channelId, updatePlaybackPosition, nextEpisodeInfo]);
+
+  // ── Auto-play: navigate to next episode ──
+  const playNextEpisode = useCallback(() => {
+    if (!nextEpisodeInfo) return;
+    setShowNextEpisode(false);
+    addRecentlyWatched({
+      id: nextEpisodeInfo.id,
+      type: 'series',
+      name: nextEpisodeInfo.name,
+      icon: '',
+      extension: nextEpisodeInfo.ext,
+      lastWatchedAt: Date.now(),
+    });
+    navigation.replace('LivePlayer', {
+      channelId: nextEpisodeInfo.id,
+      channelName: nextEpisodeInfo.name,
+      extension: nextEpisodeInfo.ext,
+      type: 'series',
+    });
+  }, [nextEpisodeInfo, navigation, addRecentlyWatched]);
+
+  const dismissNextEpisode = useCallback(() => {
+    setShowNextEpisode(false);
+  }, []);
+
+  // ── Fetch next episode info for series ──
+  useEffect(() => {
+    if (type !== 'series' || !config || config.type !== 'xtream' || !channelId) return;
+    const fetchNextEp = async () => {
+      try {
+        const xtream = new XtreamService(config);
+        const seriesInfo = await xtream.getSeriesInfo(channelId as number);
+        if (!seriesInfo?.episodes) return;
+        const allEpisodes: any[] = [];
+        Object.values(seriesInfo.episodes).forEach((season: any) => {
+          if (Array.isArray(season)) allEpisodes.push(...season);
+        });
+        const currentIdx = allEpisodes.findIndex((ep: any) => ep.id === channelId);
+        if (currentIdx >= 0 && currentIdx < allEpisodes.length - 1) {
+          const next = allEpisodes[currentIdx + 1];
+          setNextEpisodeInfo({
+            id: next.id,
+            name: next.title || `Episode ${next.episode_num || currentIdx + 2}`,
+            ext: next.container_extension || 'mp4',
+          });
+        }
+      } catch (e) {
+        // Silently fail - no next episode available
+      }
+    };
+    fetchNextEp();
+  }, [type, config, channelId]);
+
+  // ── Double-tap seek (10 seconds) ──
+  const handleSeekForward = useCallback(() => {
+    if (type === 'live' || !videoRef.current) return;
+    videoRef.current.seek && videoRef.current.seek(10);
+  }, [type]);
+
+  const handleSeekBackward = useCallback(() => {
+    if (type === 'live' || !videoRef.current) return;
+    videoRef.current.seek && videoRef.current.seek(-10);
+  }, [type]);
+
+  // ── Get EPG channel ID for MiniEpg ──
+  const epgChannelId = useMemo(() => {
+    if (type !== 'live' || currentChannelIndex < 0) return undefined;
+    const ch = channels[currentChannelIndex];
+    return ch?.epg_channel_id || ch?.stream_id?.toString();
+  }, [type, currentChannelIndex, channels]);
+
   // ── Resume dialog screen ──
   if (showResumeDialog) {
     return (
@@ -348,13 +522,23 @@ export const LivePlayerScreen = () => {
   };
 
   return (
+    <GestureControls
+      enabled={isMobile}
+      onVolumeChange={setVolume}
+    >
+    <PlayerGestures
+      onSeekForward={handleSeekForward}
+      onSeekBackward={handleSeekBackward}
+      onTap={resetOverlayTimer}
+      enabled={type !== 'live'}
+    >
     <TouchableOpacity
       style={styles.container}
       activeOpacity={1}
-      onPress={resetOverlayTimer}
+      onPress={type === 'live' ? resetOverlayTimer : undefined}
       {...(panResponder ? panResponder.panHandlers : {})}
     >
-      {Platform.OS === 'ios' || Platform.OS === 'tvos' || Platform.OS === 'macos' ? (
+      {(Platform.OS as string) === 'ios' || (Platform.OS as string) === 'tvos' || (Platform.OS as string) === 'macos' ? (
         <KSPlayerView
           source={{ uri: streamUrl }}
           style={styles.videoPlayer}
@@ -386,31 +570,20 @@ export const LivePlayerScreen = () => {
           style={styles.videoPlayer}
           resizeMode="contain"
           rate={type !== 'live' ? playbackRate : 1.0}
+          volume={volume}
           onLoadStart={() => setLoading(true)}
-          onLoad={() => {
-            setLoading(false);
-            setRetryCount(0);
-            resetOverlayTimer();
-            if (seekOnLoad !== null && seekOnLoad > 0 && videoRef.current) {
-              videoRef.current.seek(seekOnLoad);
-              setSeekOnLoad(null);
-            }
-          }}
+          onLoad={handleVideoLoad}
           onError={(e) => {
             handleStreamError(e);
           }}
-          onProgress={({ currentTime, seekableDuration }: { currentTime: number; seekableDuration: number }) => {
-            if (type !== 'live' && channelId && currentTime > 0 && Math.floor(currentTime) % 10 === 0) {
-              updatePlaybackPosition(channelId, currentTime, seekableDuration);
-            }
-          }}
+          onProgress={handleProgress}
           onBuffer={({ isBuffering }: { isBuffering: boolean }) => {
             if (isBuffering && !loading) setLoading(true);
             else if (!isBuffering && loading) setLoading(false);
           }}
           bufferConfig={playerConfig.bufferConfig}
           {...(playerConfig.maxBitRate > 0 ? { maxBitRate: playerConfig.maxBitRate } : {})}
-          {...(Platform.OS === 'android' ? { viewType: playerConfig.viewType } : {})}
+          {...(Platform.OS === 'android' ? { viewType: playerConfig.viewType as any } : {})}
           disableDisconnectError={playerConfig.disableDisconnectError}
           minLoadRetryCount={playerConfig.minLoadRetryCount}
           hideShutterView={playerConfig.hideShutterView}
@@ -419,6 +592,8 @@ export const LivePlayerScreen = () => {
           controls={isMobile}
           reportBandwidth={true}
           progressUpdateInterval={1000}
+          {...(selectedAudioTrack ? { selectedAudioTrack } : {})}
+          {...(selectedTextTrack ? { selectedTextTrack } : {})}
         />
       )}
 
@@ -477,6 +652,16 @@ export const LivePlayerScreen = () => {
             </TouchableOpacity>
           )}
 
+          {/* Mini EPG for live channels */}
+          {type === 'live' && (
+            <MiniEpg
+              channelId={channelId}
+              epgChannelId={epgChannelId}
+              visible={true}
+              configType={config?.type}
+            />
+          )}
+
           <View style={[styles.infoBottom, isMobile && mStyles.infoBottom]}>
             <View style={styles.infoContainer}>
               <Tv color="#FFF" size={isMobile ? 22 : 32} />
@@ -510,7 +695,140 @@ export const LivePlayerScreen = () => {
           </Text>
         </View>
       )}
+
+      {/* Player toolbar: audio, subtitles, sleep timer */}
+      {showOverlay && !error && isMobile && (
+        <Animated.View style={[mStyles.playerToolbar, { opacity: fadeAnim }]}>
+          {audioTracks.length > 1 && (
+            <TouchableOpacity style={mStyles.toolbarButton} onPress={() => { setShowTrackPicker('audio'); resetOverlayTimer(); }}>
+              <Volume2 color="#FFF" size={20} />
+              <Text style={mStyles.toolbarLabel}>Audio</Text>
+            </TouchableOpacity>
+          )}
+          {textTracks.length > 0 && (
+            <TouchableOpacity style={mStyles.toolbarButton} onPress={() => { setShowTrackPicker('subtitle'); resetOverlayTimer(); }}>
+              <Subtitles color="#FFF" size={20} />
+              <Text style={mStyles.toolbarLabel}>Subs</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={mStyles.toolbarButton} onPress={() => { setShowSleepPicker(true); resetOverlayTimer(); }}>
+            <Moon color={sleepMinutes ? '#4CD964' : '#FFF'} size={20} />
+            <Text style={[mStyles.toolbarLabel, sleepMinutes ? { color: '#4CD964' } : {}]}>
+              {sleepMinutes ? `${Math.floor(sleepRemaining / 60)}m` : 'Sleep'}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {/* Sleep timer remaining indicator */}
+      {sleepMinutes && !showOverlay && (
+        <View style={mStyles.sleepBadge}>
+          <Moon color="#4CD964" size={12} />
+          <Text style={mStyles.sleepBadgeText}>{Math.floor(sleepRemaining / 60)}:{(sleepRemaining % 60).toString().padStart(2, '0')}</Text>
+        </View>
+      )}
+
+      {/* Audio/Subtitle Track Picker Modal */}
+      <Modal
+        visible={showTrackPicker !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTrackPicker(null)}
+      >
+        <TouchableOpacity style={mStyles.modalBackdrop} activeOpacity={1} onPress={() => setShowTrackPicker(null)}>
+          <View style={mStyles.trackPickerContainer}>
+            <Text style={mStyles.trackPickerTitle}>
+              {showTrackPicker === 'audio' ? 'Audio Track' : 'Subtitles'}
+            </Text>
+            <ScrollView style={mStyles.trackPickerList}>
+              {showTrackPicker === 'subtitle' && (
+                <TouchableOpacity
+                  style={[mStyles.trackItem, !selectedTextTrack ? mStyles.trackItemActive : {}]}
+                  onPress={() => { setSelectedTextTrack({ type: 'disabled' }); setShowTrackPicker(null); }}
+                >
+                  <Text style={[mStyles.trackItemText, !selectedTextTrack ? mStyles.trackItemTextActive : {}]}>Off</Text>
+                </TouchableOpacity>
+              )}
+              {(showTrackPicker === 'audio' ? audioTracks : textTracks).map((track: any, idx: number) => {
+                const isSelected = showTrackPicker === 'audio'
+                  ? selectedAudioTrack?.value === (track.index ?? idx)
+                  : selectedTextTrack?.value === (track.index ?? idx);
+                const label = track.language
+                  ? `${track.title || track.language}${track.language ? ` (${track.language})` : ''}`
+                  : track.title || `Track ${idx + 1}`;
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[mStyles.trackItem, isSelected ? mStyles.trackItemActive : {}]}
+                    onPress={() => {
+                      if (showTrackPicker === 'audio') {
+                        setSelectedAudioTrack({ type: 'index', value: track.index ?? idx });
+                      } else {
+                        setSelectedTextTrack({ type: 'index', value: track.index ?? idx });
+                      }
+                      setShowTrackPicker(null);
+                    }}
+                  >
+                    <Text style={[mStyles.trackItemText, isSelected ? mStyles.trackItemTextActive : {}]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Sleep Timer Picker Modal */}
+      <Modal
+        visible={showSleepPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSleepPicker(false)}
+      >
+        <TouchableOpacity style={mStyles.modalBackdrop} activeOpacity={1} onPress={() => setShowSleepPicker(false)}>
+          <View style={mStyles.trackPickerContainer}>
+            <Text style={mStyles.trackPickerTitle}>Sleep Timer</Text>
+            <ScrollView style={mStyles.trackPickerList}>
+              {sleepMinutes && (
+                <TouchableOpacity style={[mStyles.trackItem, { borderBottomWidth: 1, borderBottomColor: '#333' }]} onPress={cancelSleepTimer}>
+                  <Text style={[mStyles.trackItemText, { color: '#FF453A' }]}>Cancel Timer ({Math.floor(sleepRemaining / 60)}m remaining)</Text>
+                </TouchableOpacity>
+              )}
+              {SLEEP_OPTIONS.map((mins) => (
+                <TouchableOpacity
+                  key={mins}
+                  style={[mStyles.trackItem, sleepMinutes === mins ? mStyles.trackItemActive : {}]}
+                  onPress={() => startSleepTimer(mins)}
+                >
+                  <Text style={[mStyles.trackItemText, sleepMinutes === mins ? mStyles.trackItemTextActive : {}]}>
+                    {mins < 60 ? `${mins} minutes` : `${mins / 60} hour${mins > 60 ? 's' : ''}`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Auto-play next episode prompt */}
+      {showNextEpisode && nextEpisodeInfo && (
+        <View style={mStyles.nextEpisodeBar}>
+          <View style={mStyles.nextEpisodeInfo}>
+            <Text style={mStyles.nextEpisodeLabel}>Up Next</Text>
+            <Text style={mStyles.nextEpisodeName} numberOfLines={1}>{nextEpisodeInfo.name}</Text>
+          </View>
+          <TouchableOpacity style={mStyles.nextEpisodePlayBtn} onPress={playNextEpisode}>
+            <SkipForward color="#FFF" size={18} />
+            <Text style={mStyles.nextEpisodePlayText}>Play</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={mStyles.nextEpisodeDismiss} onPress={dismissNextEpisode}>
+            <Text style={mStyles.nextEpisodeDismissText}>Dismiss</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </TouchableOpacity>
+    </PlayerGestures>
+    </GestureControls>
   );
 };
 
@@ -773,5 +1091,137 @@ const mStyles = StyleSheet.create({
     color: '#FFF',
     fontSize: isMobile ? 16 : 20,
     fontWeight: '600',
+  },
+  // ── Player toolbar (audio/subs/sleep) ──
+  playerToolbar: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    transform: [{ translateY: -60 }],
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 12,
+    padding: 8,
+    gap: 4,
+  },
+  toolbarButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    minWidth: 48,
+  },
+  toolbarLabel: {
+    color: '#FFF',
+    fontSize: 10,
+    marginTop: 3,
+    fontWeight: '600',
+  },
+  // ── Sleep badge ──
+  sleepBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  sleepBadgeText: {
+    color: '#4CD964',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // ── Track picker modal ──
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  trackPickerContainer: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '50%',
+    paddingBottom: 30,
+  },
+  trackPickerTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  trackPickerList: {
+    maxHeight: 300,
+  },
+  trackItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  trackItemActive: {
+    backgroundColor: 'rgba(0,122,255,0.2)',
+  },
+  trackItemText: {
+    color: '#CCC',
+    fontSize: 16,
+  },
+  trackItemTextActive: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  // ── Next episode bar ──
+  nextEpisodeBar: {
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  nextEpisodeInfo: {
+    flex: 1,
+  },
+  nextEpisodeLabel: {
+    color: '#999',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  nextEpisodeName: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  nextEpisodePlayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  nextEpisodePlayText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  nextEpisodeDismiss: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  nextEpisodeDismissText: {
+    color: '#999',
+    fontSize: 13,
   },
 });

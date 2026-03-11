@@ -18,6 +18,8 @@ import { StatusBar, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ToastProvider } from './src/components/Toast';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { NetworkMonitor } from './src/components/NetworkMonitor';
 
 // ─── Type definitions ────────────────────────────────────────────────
 export type RootStackParamList = {
@@ -116,6 +118,8 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <ErrorBoundary>
+      <NetworkMonitor>
       <ToastProvider>
       {Platform.OS !== 'web' && (
         <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
@@ -153,6 +157,8 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
       </ToastProvider>
+      </NetworkMonitor>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
