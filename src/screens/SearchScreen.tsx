@@ -4,7 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, Search, Tv } from 'lucide-react-native';
+import { ChevronLeft, Search, Tv, Clock, X } from 'lucide-react-native';
+import { ChannelLogo } from '../components/ChannelLogo';
 import { useAppStore } from '../store';
 import { LiveChannel } from '../types/iptv';
 import { XtreamService } from '../services/xtream';
@@ -24,6 +25,7 @@ export const SearchScreen = () => {
   const [results, setResults] = useState<LiveChannel[]>([]);
   const [loading, setLoading] = useState(false);
   const [numColumns, setNumColumns] = useState(gridColumns());
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
   // TV focus states
   const [focusedFilter, setFocusedFilter] = useState<FilterType | null>(null);
@@ -43,6 +45,11 @@ export const SearchScreen = () => {
       }
 
       setLoading(true);
+      // Save to search history
+      setSearchHistory(prev => {
+        const newHistory = [query, ...prev.filter(h => h !== query)].slice(0, 10);
+        return newHistory;
+      });
       try {
         if (config.type === 'xtream') {
           const xtream = new XtreamService(config);
@@ -90,18 +97,28 @@ export const SearchScreen = () => {
     let extension = 'm3u8';
 
     if (activeTab === 'live' && channel.stream_type === 'live') {
-      extension = Platform.OS === 'web' || Platform.OS === 'ios' ? 'm3u8' : 'ts';
+      extension = 'm3u8';  // HLS for ALL platforms
     } else if (activeTab === 'vod' || activeTab === 'series') {
       extension = channel.container_extension || 'mp4';
     }
 
-    navigation.navigate('LivePlayer', {
-      channelId: activeTab === 'series' ? (channel.series_id as number) : channel.stream_id,
-      channelName: channel.title || channel.name,
-      extension: extension,
-      directSource: channel.direct_source,
-      type: activeTab
-    });
+    if (activeTab === 'vod' || activeTab === 'series') {
+      navigation.navigate('MediaInfo', {
+        id: activeTab === 'series' ? (channel.series_id as number) : channel.stream_id,
+        type: activeTab,
+        title: channel.title || channel.name,
+        cover: channel.cover || channel.stream_icon,
+        extension: extension,
+      });
+    } else {
+      navigation.navigate('LivePlayer', {
+        channelId: channel.stream_id,
+        channelName: channel.title || channel.name,
+        extension: extension,
+        directSource: channel.direct_source,
+        type: 'live',
+      });
+    }
   };
 
   const renderChannel = ({ item }: { item: any }) => {
@@ -120,7 +137,11 @@ export const SearchScreen = () => {
                 resizeMode="cover"
               />
             ) : (
-              <Tv size={32} color="#444" />
+              <ChannelLogo
+                name={item.title || item.name || 'CH'}
+                size={48}
+                borderRadius={8}
+              />
             )}
           </View>
           <Text style={mStyles.channelName} numberOfLines={2}>
@@ -228,6 +249,20 @@ export const SearchScreen = () => {
       <View style={styles.resultsContainer}>
         {loading ? (
           <ActivityIndicator size="large" color="#007AFF" />
+        ) : query.length === 0 && searchHistory.length > 0 ? (
+          <View style={isMobile ? mStyles.historyContainer : styles.resultsContainer}>
+            <Text style={isMobile ? mStyles.historyTitle : styles.emptyText}>Recent Searches</Text>
+            {searchHistory.map((h, i) => (
+              <TouchableOpacity
+                key={`hist-${i}`}
+                style={isMobile ? mStyles.historyItem : styles.filterButton}
+                onPress={() => setQuery(h)}
+              >
+                <Clock size={14} color="#888" />
+                <Text style={isMobile ? mStyles.historyText : styles.filterText}>{h}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         ) : query.length > 0 && query.length < 3 ? (
           <Text style={isMobile ? mStyles.emptyText : styles.emptyText}>Type at least 3 characters to search...</Text>
         ) : results.length === 0 && query.length >= 3 ? (
@@ -468,5 +503,30 @@ const mStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     paddingBottom: 8,
+  },
+  historyContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  historyTitle: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#2C2C2E',
+    gap: 10,
+  },
+  historyText: {
+    color: '#CCC',
+    fontSize: 15,
   },
 });

@@ -11,6 +11,8 @@ import { Tv, ChevronLeft, ChevronUp, ChevronDown, RotateCcw, Play, FastForward }
 import { KSPlayerView } from '../components/KSPlayerView';
 import { isTV, isMobile } from '../utils/platform';
 import { getPlayerConfig, getOptimalExtension } from '../utils/streamingConfig';
+import { MiniEpg } from '../components/MiniEpg';
+import { PlayerGestures } from '../components/PlayerGestures';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
 type LivePlayerNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LivePlayer'>;
@@ -301,6 +303,24 @@ export const LivePlayerScreen = () => {
     });
   }, []);
 
+  // ── Double-tap seek (10 seconds) ──
+  const handleSeekForward = useCallback(() => {
+    if (type === 'live' || !videoRef.current) return;
+    videoRef.current.seek && videoRef.current.seek(10);
+  }, [type]);
+
+  const handleSeekBackward = useCallback(() => {
+    if (type === 'live' || !videoRef.current) return;
+    videoRef.current.seek && videoRef.current.seek(-10);
+  }, [type]);
+
+  // ── Get EPG channel ID for MiniEpg ──
+  const epgChannelId = useMemo(() => {
+    if (type !== 'live' || currentChannelIndex < 0) return undefined;
+    const ch = channels[currentChannelIndex];
+    return ch?.epg_channel_id || ch?.stream_id?.toString();
+  }, [type, currentChannelIndex, channels]);
+
   // ── Resume dialog screen ──
   if (showResumeDialog) {
     return (
@@ -350,10 +370,16 @@ export const LivePlayerScreen = () => {
   };
 
   return (
+    <PlayerGestures
+      onSeekForward={handleSeekForward}
+      onSeekBackward={handleSeekBackward}
+      onTap={resetOverlayTimer}
+      enabled={type !== 'live'}
+    >
     <TouchableOpacity
       style={styles.container}
       activeOpacity={1}
-      onPress={resetOverlayTimer}
+      onPress={type === 'live' ? resetOverlayTimer : undefined}
       {...(panResponder ? panResponder.panHandlers : {})}
     >
       {(Platform.OS as string) === 'ios' || (Platform.OS as string) === 'tvos' || (Platform.OS as string) === 'macos' ? (
@@ -479,6 +505,16 @@ export const LivePlayerScreen = () => {
             </TouchableOpacity>
           )}
 
+          {/* Mini EPG for live channels */}
+          {type === 'live' && (
+            <MiniEpg
+              channelId={channelId}
+              epgChannelId={epgChannelId}
+              visible={true}
+              configType={config?.type}
+            />
+          )}
+
           <View style={[styles.infoBottom, isMobile && mStyles.infoBottom]}>
             <View style={styles.infoContainer}>
               <Tv color="#FFF" size={isMobile ? 22 : 32} />
@@ -513,6 +549,7 @@ export const LivePlayerScreen = () => {
         </View>
       )}
     </TouchableOpacity>
+    </PlayerGestures>
   );
 };
 

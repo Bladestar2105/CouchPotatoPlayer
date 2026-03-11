@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { isTV, isMobile } from '../utils/platform';
+import { checkProviderHealth, HealthResult, getLatencyColor, formatLatency } from '../utils/providerHealth';
 import { showToast } from '../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { VideoQualityPreset, BufferSizePreset, VideoViewType } from '../types/iptv';
@@ -43,6 +44,8 @@ export const SettingsScreen = () => {
   const [streamingQuality, setStreamingQuality] = useState(false);
   const [streamingBuffer, setStreamingBuffer] = useState(false);
   const [streamingAdvanced, setStreamingAdvanced] = useState(false);
+  const [healthResults, setHealthResults] = useState<Record<string, HealthResult>>({});
+  const [checkingHealth, setCheckingHealth] = useState(false);
 
   const navigation = useNavigation<NavigationProp>();
 
@@ -333,21 +336,52 @@ export const SettingsScreen = () => {
           {managingProviders && (
             <View style={mStyles.section}>
               <Text style={mStyles.sectionTitle}>Your Providers</Text>
-              {providers.map((provider) => (
+              {providers.map((provider) => {
+                const health = healthResults[provider.id];
+                return (
                 <View key={provider.id} style={mStyles.providerRow}>
                   <TouchableOpacity
                     style={[mStyles.providerItem, activeConfig?.id === provider.id && mStyles.providerItemActive]}
                     onPress={() => handleSwitchProvider(provider.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={mStyles.providerName}>{provider.name}</Text>
-                    {activeConfig?.id === provider.id && <Text style={mStyles.providerBadge}>Active</Text>}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: health ? getLatencyColor(health.latencyMs) : '#555' }} />
+                      <Text style={mStyles.providerName}>{provider.name}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {health && <Text style={{ color: getLatencyColor(health.latencyMs), fontSize: 12 }}>{formatLatency(health.latencyMs)}</Text>}
+                      {activeConfig?.id === provider.id && <Text style={mStyles.providerBadge}>Active</Text>}
+                    </View>
                   </TouchableOpacity>
                   <TouchableOpacity style={mStyles.providerDeleteBtn} onPress={() => handleDeleteProvider(provider.id)}>
                     <Text style={mStyles.providerDeleteText}>✕</Text>
                   </TouchableOpacity>
                 </View>
-              ))}
+                );
+              })}
+              <TouchableOpacity
+                style={[mStyles.addBtn, { backgroundColor: '#2C2C2E', marginBottom: 8 }]}
+                onPress={async () => {
+                  setCheckingHealth(true);
+                  const results: Record<string, HealthResult> = {};
+                  for (const p of providers) {
+                    results[p.id] = { id: p.id, status: 'checking', latencyMs: null };
+                    setHealthResults({ ...results });
+                    const result = await checkProviderHealth(p);
+                    results[p.id] = result;
+                    setHealthResults({ ...results });
+                  }
+                  setCheckingHealth(false);
+                  showToast('Health check complete', 'success');
+                }}
+                activeOpacity={0.7}
+                disabled={checkingHealth}
+              >
+                <Text style={[mStyles.addBtnText, { color: '#007AFF' }]}>
+                  {checkingHealth ? 'Checking...' : 'Check Provider Health'}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={mStyles.addBtn}
                 onPress={() => { setManagingProviders(false); navigation.navigate('Welcome'); }}
