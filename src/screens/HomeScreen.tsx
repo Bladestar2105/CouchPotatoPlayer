@@ -9,9 +9,15 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { M3UService } from '../services/m3u';
-import { XMLTVParser, parseXmltvDate, formatProgramTime } from '../services/xmltv';
-import { Category, LiveChannel, ParsedProgram, FavoriteItem, RecentlyWatchedItem } from '../types/iptv';
-import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock, Heart, Play } from 'lucide-react-native';
+import {
+  XMLTVParser,
+  parseXmltvDate,
+  formatProgramTime,
+  findCurrentProgramIndex,
+  findProgramsInRange
+} from '../services/xmltv';
+import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
+import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
 import { getEpgKey, getCurrentProgram } from '../utils/epg';
@@ -440,10 +446,12 @@ export const HomeScreen = () => {
   const renderMobileChannelCard = ({ item }: ListRenderItemInfo<LiveChannel>) => {
     const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
-    const nowProg = getCurrentProgram(epg, nowTime);
-
-    const itemId = activeTab === 'series' ? (item.series_id || item.stream_id) : item.stream_id;
-    const isFav = favorites.some(f => f.id === itemId);
+    let nowProg: ParsedProgram | null = null;
+    if (epg && epg.length > 0) {
+      const nowMs = Date.now();
+      const idx = findCurrentProgramIndex(epg, nowMs);
+      if (idx !== -1) nowProg = epg[idx];
+    }
 
     if (activeTab === 'live') {
       // List item for live
@@ -563,7 +571,12 @@ export const HomeScreen = () => {
     let visibleEpg: ParsedProgram[] = [];
 
     if (epg && epg.length > 0) {
-      visibleEpg = epg.filter(p => p.end > timelineStart && p.start < timelineEnd);
+      const nowMs = Date.now();
+      const nowIndex = findCurrentProgramIndex(epg, nowMs);
+      if (nowIndex !== -1) {
+        nowProg = epg[nowIndex];
+      }
+      visibleEpg = findProgramsInRange(epg, timelineStart, timelineEnd);
     }
 
     return (

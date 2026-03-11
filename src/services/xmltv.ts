@@ -1,6 +1,65 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { XMLParser } from 'fast-xml-parser';
+import { ParsedProgram } from '../types/iptv';
+
+export function findCurrentProgramIndex(epg: ParsedProgram[], nowMs: number): number {
+  let low = 0;
+  let high = epg.length - 1;
+
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    const p = epg[mid];
+    if (nowMs >= p.start && nowMs < p.end) {
+      return mid;
+    } else if (nowMs < p.start) {
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+  return -1;
+}
+
+export function findProgramsInRange(epg: ParsedProgram[], startMs: number, endMs: number): ParsedProgram[] {
+  if (epg.length === 0) return [];
+
+  // Find first index where p.end > startMs
+  let low = 0;
+  let high = epg.length - 1;
+  let startIndex = -1;
+
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    if (epg[mid].end > startMs) {
+      startIndex = mid;
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+
+  if (startIndex === -1) return [];
+
+  // Find last index where p.start < endMs
+  low = startIndex;
+  high = epg.length - 1;
+  let endIndex = -1;
+
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    if (epg[mid].start < endMs) {
+      endIndex = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  if (endIndex === -1 || endIndex < startIndex) return [];
+
+  return epg.slice(startIndex, endIndex + 1);
+}
 
 export function parseXmltvDate(dateStr: string): number {
   if (!dateStr || dateStr.length < 14) return 0;
