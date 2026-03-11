@@ -59,8 +59,8 @@ export interface M3UFormattedEpgProgram {
 export interface ParsedProgram {
   start: number; // unix timestamp
   end: number;   // unix timestamp
-  start_formatted: string;
-  end_formatted: string;
+  start_formatted?: string;
+  end_formatted?: string;
   title_raw: string;
   description_raw: string;
   has_archive: number;

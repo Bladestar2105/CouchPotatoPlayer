@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PlayerConfig, Category, LiveChannel } from '../types/iptv';
+import { saveLargeData, loadLargeData, clearLargeData } from '../utils/storage';
 
 interface AppState {
   config: PlayerConfig | null;
@@ -14,17 +15,19 @@ interface AppState {
   epgData: Record<string, any[]>;
   pin: string | null;
   showAdult: boolean;
+  isDiskDataLoaded: boolean;
   setConfig: (config: PlayerConfig | null) => void;
   addProvider: (provider: PlayerConfig) => void;
   removeProvider: (id: string) => void;
   setUpdateIntervalHours: (hours: number) => void;
   setLastProviderUpdate: (time: number) => void;
   setLastEpgUpdate: (time: number) => void;
-  setCategories: (categories: Category[]) => void;
-  setChannels: (channels: LiveChannel[]) => void;
-  setEpgData: (epgData: Record<string, any[]>) => void;
+  setCategories: (categories: Category[], skipSave?: boolean) => void;
+  setChannels: (channels: LiveChannel[], skipSave?: boolean) => void;
+  setEpgData: (epgData: Record<string, any[]>, skipSave?: boolean) => void;
   setPin: (pin: string | null) => void;
   setShowAdult: (showAdult: boolean) => void;
+  setDiskDataLoaded: (loaded: boolean) => void;
   clearState: () => void;
 }
 
@@ -41,6 +44,7 @@ export const useAppStore = create<AppState>()(
       epgData: {},
       pin: null,
       showAdult: false,
+      isDiskDataLoaded: false,
       setConfig: (config) => set({ config }),
       addProvider: (provider) => set((state) => {
         const existingIndex = state.providers.findIndex(p => p.id === provider.id);
@@ -58,12 +62,27 @@ export const useAppStore = create<AppState>()(
       setUpdateIntervalHours: (hours) => set({ updateIntervalHours: hours }),
       setLastProviderUpdate: (time) => set({ lastProviderUpdate: time }),
       setLastEpgUpdate: (time) => set({ lastEpgUpdate: time }),
-      setCategories: (categories) => set({ categories }),
-      setChannels: (channels) => set({ channels }),
-      setEpgData: (epgData) => set({ epgData }),
+      setCategories: (categories, skipSave) => {
+        set({ categories });
+        if (!skipSave) saveLargeData('categories.json', categories);
+      },
+      setChannels: (channels, skipSave) => {
+        set({ channels });
+        if (!skipSave) saveLargeData('channels.json', channels);
+      },
+      setEpgData: (epgData, skipSave) => {
+        set({ epgData });
+        if (!skipSave) saveLargeData('epgData.json', epgData);
+      },
       setPin: (pin) => set({ pin }),
       setShowAdult: (showAdult) => set({ showAdult }),
-      clearState: () => set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0 }),
+      setDiskDataLoaded: (loaded) => set({ isDiskDataLoaded: loaded }),
+      clearState: () => {
+        set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0 });
+        clearLargeData('categories.json');
+        clearLargeData('channels.json');
+        clearLargeData('epgData.json');
+      },
     }),
     {
       name: 'cpp-storage',
@@ -74,12 +93,27 @@ export const useAppStore = create<AppState>()(
         updateIntervalHours: state.updateIntervalHours,
         lastProviderUpdate: state.lastProviderUpdate,
         lastEpgUpdate: state.lastEpgUpdate,
-        categories: state.categories,
-        channels: state.channels,
         pin: state.pin,
         showAdult: state.showAdult,
-        // Do not persist epgData since it can be very large
+        // Do not persist large lists in AsyncStorage
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          Promise.all([
+            loadLargeData('categories.json'),
+            loadLargeData('channels.json'),
+            loadLargeData('epgData.json')
+          ]).then(([cats, chans, epg]) => {
+            if (cats) state.setCategories(cats, true);
+            if (chans) state.setChannels(chans, true);
+            if (epg) state.setEpgData(epg, true);
+            state.setDiskDataLoaded(true);
+          }).catch((err) => {
+            console.error('Failed to load disk data during rehydration:', err);
+            state.setDiskDataLoaded(true); // Always set to true so app can start
+          });
+        }
+      }
     }
   )
 );
