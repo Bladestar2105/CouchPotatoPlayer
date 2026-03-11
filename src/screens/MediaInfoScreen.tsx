@@ -4,10 +4,12 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
-import { Play, ArrowLeft, ChevronLeft } from 'lucide-react-native';
+import { Play, ArrowLeft, ChevronLeft, Heart } from 'lucide-react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { isTV, isMobile } from '../utils/platform';
+import { showToast } from '../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FavoriteItem } from '../types/iptv';
 
 type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'MediaInfo'>;
@@ -17,6 +19,28 @@ export const MediaInfoScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { id, type, title, cover, extension } = route.params;
   const config = useAppStore(state => state.config);
+  const favorites = useAppStore(state => state.favorites);
+  const addFavorite = useAppStore(state => state.addFavorite);
+  const removeFavorite = useAppStore(state => state.removeFavorite);
+  const addRecentlyWatched = useAppStore(state => state.addRecentlyWatched);
+
+  const isFav = favorites.some(f => f.id === id);
+
+  const toggleFavorite = () => {
+    if (isFav) {
+      removeFavorite(id);
+      showToast('Removed from favorites', 'info');
+    } else {
+      addFavorite({
+        id,
+        type,
+        name: title,
+        icon: cover,
+        addedAt: Date.now(),
+      });
+      showToast('Added to favorites', 'success');
+    }
+  };
 
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +70,15 @@ export const MediaInfoScreen = () => {
   }, [config, id, type]);
 
   const handlePlay = () => {
+    // Track recently watched
+    addRecentlyWatched({
+      id: id as number,
+      type,
+      name: title,
+      icon: cover,
+      extension,
+      lastWatchedAt: Date.now(),
+    });
     navigation.navigate('LivePlayer', {
       channelId: id as number,
       channelName: title,
@@ -98,11 +131,16 @@ export const MediaInfoScreen = () => {
               {releaseDate ? <Text style={mStyles.metaText}>{releaseDate}</Text> : null}
             </View>
 
-            {/* Play button */}
-            <TouchableOpacity style={mStyles.playButton} onPress={handlePlay} activeOpacity={0.8}>
-              <Play color="#FFF" size={20} fill="#FFF" />
-              <Text style={mStyles.playButtonText}>Play</Text>
-            </TouchableOpacity>
+            {/* Action buttons */}
+            <View style={mStyles.actionRow}>
+              <TouchableOpacity style={mStyles.playButton} onPress={handlePlay} activeOpacity={0.8}>
+                <Play color="#FFF" size={20} fill="#FFF" />
+                <Text style={mStyles.playButtonText}>Play</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={mStyles.favButtonMedia} onPress={toggleFavorite} activeOpacity={0.7}>
+                <Heart size={22} color={isFav ? '#FF453A' : '#FFF'} fill={isFav ? '#FF453A' : 'none'} />
+              </TouchableOpacity>
+            </View>
 
             <Text style={mStyles.description}>{description}</Text>
 
@@ -316,20 +354,34 @@ const mStyles = StyleSheet.create({
     color: '#888',
     fontSize: 14,
   },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
   playButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#007AFF',
     paddingVertical: 14,
     borderRadius: 12,
-    marginBottom: 20,
   },
   playButtonText: {
     color: '#FFF',
     fontSize: 17,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  favButtonMedia: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   description: {
     color: '#DDD',

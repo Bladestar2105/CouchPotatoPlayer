@@ -123,3 +123,32 @@ export const BUFFER_MULTIPLIER_MAP: Record<BufferSizePreset, number> = {
   large: 2,
   maximum: 3,
 };
+
+// ── Favorites & Recently Watched ────────────────────────────────────
+export interface FavoriteItem {
+  id: string | number;          // stream_id or series_id
+  type: 'live' | 'vod' | 'series';
+  name: string;
+  icon?: string;                // stream_icon or cover
+  categoryId?: string;
+  addedAt: number;              // timestamp when favorited
+}
+
+export interface RecentlyWatchedItem {
+  id: string | number;          // stream_id or series_id
+  type: 'live' | 'vod' | 'series';
+  name: string;
+  icon?: string;
+  extension?: string;
+  directSource?: string;
+  lastWatchedAt: number;        // timestamp
+  /** Playback position in seconds (for VOD/Series resume) */
+  position?: number;
+  /** Total duration in seconds (for progress bar) */
+  duration?: number;
+  /** Series-specific: last watched episode info */
+  episodeId?: number;
+  episodeName?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}

@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { isTV, isMobile } from '../utils/platform';
+import { showToast } from '../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { VideoQualityPreset, BufferSizePreset, VideoViewType } from '../types/iptv';
 import { getQualityLabel, getBufferLabel } from '../utils/streamingConfig';
@@ -24,6 +25,7 @@ export const SettingsScreen = () => {
   const setConfig = useAppStore(state => state.setConfig);
   const removeProvider = useAppStore(state => state.removeProvider);
   const clearState = useAppStore(state => state.clearState);
+  const clearRecentlyWatched = useAppStore(state => state.clearRecentlyWatched);
 
   const [enteredPin, setEnteredPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -196,6 +198,18 @@ export const SettingsScreen = () => {
               <TouchableOpacity style={mStyles.menuItem} onPress={() => setStreamingAdvanced(true)} activeOpacity={0.7}>
                 <Text style={mStyles.menuItemText}>Erweiterte Einstellungen</Text>
                 <ChevronRight size={18} color="#666" />
+              </TouchableOpacity>
+
+              <Text style={[mStyles.sectionTitle, { marginTop: 24 }]}>Data</Text>
+
+              <TouchableOpacity style={mStyles.menuItem} onPress={() => { clearRecentlyWatched(); showToast('Watch history cleared', 'success'); }} activeOpacity={0.7}>
+                <Text style={mStyles.menuItemText}>Clear Watch History</Text>
+                <ChevronRight size={18} color="#666" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[mStyles.menuItem, { marginTop: 16 }]} onPress={() => { clearState(); showToast('All data cleared', 'info'); navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] }); }} activeOpacity={0.7}>
+                <Text style={[mStyles.menuItemText, { color: '#FF453A' }]}>Reset App</Text>
+                <ChevronRight size={18} color="#FF453A" />
               </TouchableOpacity>
             </View>
           )}
