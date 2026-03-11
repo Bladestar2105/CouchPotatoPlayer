@@ -27,7 +27,8 @@ export const HomeScreen = () => {
     lastProviderUpdate,
     setLastProviderUpdate,
     lastEpgUpdate,
-    setLastEpgUpdate
+    setLastEpgUpdate,
+    isDiskDataLoaded
   } = useAppStore();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
@@ -39,7 +40,7 @@ export const HomeScreen = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!config) return;
+      if (!config || !isDiskDataLoaded) return;
 
       const needsProviderUpdate = !categories.length || (Date.now() - lastProviderUpdate > updateIntervalHours * 3600000);
       const tabChanged = config.type === 'xtream' && activeTab !== lastFetchedTab;
@@ -85,7 +86,7 @@ export const HomeScreen = () => {
     if (config) {
       fetchData();
     }
-  }, [config, setCategories, setChannels, activeTab, lastFetchedTab]);
+  }, [config, setCategories, setChannels, activeTab, lastFetchedTab, isDiskDataLoaded, categories.length, lastProviderUpdate, setLastProviderUpdate, updateIntervalHours]);
 
   const visibleCategories = useMemo(() => {
     return categories.filter(c => showAdult || (String(c.adult) !== '1' && String(c.is_adult) !== '1'));
@@ -93,7 +94,7 @@ export const HomeScreen = () => {
 
   useEffect(() => {
     const fetchFullEpg = async () => {
-      if (!config) return;
+      if (!config || !isDiskDataLoaded) return;
 
       const needsEpgUpdate = Object.keys(epgData).length === 0 || (Date.now() - lastEpgUpdate > updateIntervalHours * 3600000);
       if (!needsEpgUpdate) return;
@@ -153,7 +154,7 @@ export const HomeScreen = () => {
     };
 
     fetchFullEpg();
-  }, [config, epgData, setEpgData, updateIntervalHours, lastEpgUpdate, setLastEpgUpdate]);
+  }, [config, epgData, setEpgData, updateIntervalHours, lastEpgUpdate, setLastEpgUpdate, isDiskDataLoaded]);
 
   useEffect(() => {
     const fetchChannels = async () => {
