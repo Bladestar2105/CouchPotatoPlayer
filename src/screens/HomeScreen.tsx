@@ -126,8 +126,6 @@ export const HomeScreen = () => {
                const prog: ParsedProgram = {
                  start: startMs,
                  end: stopMs,
-                 start_formatted: formatProgramTime(startMs),
-                 end_formatted: formatProgramTime(stopMs),
                  title_raw: p.title?.['#text'] || p.title || 'Unknown Title',
                  description_raw: p.desc?.['#text'] || p.desc || '',
                  has_archive: 0
@@ -398,7 +396,9 @@ export const HomeScreen = () => {
                   ]}
                 >
                   <Text style={[styles.programTitleTimeline, isNow && styles.programTitleTimelineNow]} numberOfLines={1}>
-                    <Text style={[styles.programTimeTimeline, isNow && styles.programTimeTimelineNow]}>{prog.start_formatted} </Text>
+                    <Text style={[styles.programTimeTimeline, isNow && styles.programTimeTimelineNow]}>
+                      {prog.start_formatted || formatProgramTime(prog.start)}{' '}
+                    </Text>
                     {prog.title_raw}
                   </Text>
                 </View>
