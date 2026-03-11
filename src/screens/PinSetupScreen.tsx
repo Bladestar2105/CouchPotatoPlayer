@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../store';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import { isTV, isMobile } from '../utils/platform';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'PinSetup'>;
 
@@ -35,50 +37,78 @@ export const PinSetupScreen = () => {
     }
 
     setAppPin(trimmedPin);
-    navigation.replace('Home');
+    // Navigate to the correct home based on platform
+    if (isMobile) {
+      navigation.replace('MainTabs');
+    } else {
+      navigation.replace('Home');
+    }
   };
+
+  const content = (
+    <View style={[styles.card, isMobile && mStyles.card]}>
+      <Text style={[styles.title, isMobile && mStyles.title]}>Set up a PIN</Text>
+      <Text style={[styles.subtitle, isMobile && mStyles.subtitle]}>This PIN is needed to display adult categories, which are invisible by default.</Text>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <TextInput
+        style={[styles.input, isMobile && mStyles.input]}
+        placeholder="Enter PIN"
+        placeholderTextColor="#888"
+        value={pin}
+        onChangeText={setPinValue}
+        autoCapitalize="none"
+        keyboardType="number-pad"
+        secureTextEntry
+        maxLength={8}
+      />
+
+      <TextInput
+        style={[styles.input, isMobile && mStyles.input]}
+        placeholder="Confirm PIN"
+        placeholderTextColor="#888"
+        value={confirmPin}
+        onChangeText={setConfirmPin}
+        autoCapitalize="none"
+        keyboardType="number-pad"
+        secureTextEntry
+        maxLength={8}
+      />
+
+      <TouchableOpacity
+        style={[styles.button, isMobile && mStyles.button]}
+        onPress={handleSetup}
+        activeOpacity={0.8}
+        {...(isTV ? { hasTVPreferredFocus: true } : {})}
+      >
+        <Text style={[styles.buttonText, isMobile && mStyles.buttonText]}>Save PIN</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (isMobile) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={mStyles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {content}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Set up a PIN</Text>
-        <Text style={styles.subtitle}>This PIN is needed to display adult categories, which are invisible by default.</Text>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <TextInput
-          style={styles.input}
-          placeholder="Enter PIN"
-          placeholderTextColor="#888"
-          value={pin}
-          onChangeText={setPinValue}
-          autoCapitalize="none"
-          keyboardType="number-pad"
-          secureTextEntry
-          maxLength={8}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm PIN"
-          placeholderTextColor="#888"
-          value={confirmPin}
-          onChangeText={setConfirmPin}
-          autoCapitalize="none"
-          keyboardType="number-pad"
-          secureTextEntry
-          maxLength={8}
-        />
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleSetup}
-          activeOpacity={0.8}
-          hasTVPreferredFocus
-        >
-          <Text style={styles.buttonText}>Save PIN</Text>
-        </TouchableOpacity>
-      </View>
+      {content}
     </View>
   );
 };
@@ -144,4 +174,39 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 16,
   }
+});
+
+const mStyles = StyleSheet.create({
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  card: {
+    padding: 24,
+    borderRadius: 16,
+    maxWidth: undefined,
+    width: '100%',
+  },
+  title: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 15,
+    marginBottom: 16,
+  },
+  input: {
+    padding: 14,
+    fontSize: 16,
+    marginBottom: 14,
+  },
+  button: {
+    padding: 14,
+    marginTop: 8,
+  },
+  buttonText: {
+    fontSize: 17,
+  },
 });

@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated, Platform, StatusBar } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
-import { Tv } from 'lucide-react-native';
+import { Tv, ChevronLeft } from 'lucide-react-native';
 import { KSPlayerView } from '../components/KSPlayerView';
+import { isTV, isMobile } from '../utils/platform';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
 
@@ -25,6 +26,14 @@ export const LivePlayerScreen = () => {
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Hide status bar for immersive player on mobile
+    if (isMobile) {
+      StatusBar.setHidden(true, 'fade');
+      return () => { StatusBar.setHidden(false, 'fade'); };
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchUrl = async () => {
       if (config?.type === 'xtream' && channelId) {
         const xtream = new XtreamService(config);
@@ -34,7 +43,6 @@ export const LivePlayerScreen = () => {
         } else if (type === 'series') {
           try {
             const seriesInfo = await xtream.getSeriesInfo(channelId as number);
-            // find the first available episode
             let firstEpisodeId = null;
             let epExtension = 'mp4';
             if (seriesInfo && seriesInfo.episodes) {
@@ -87,7 +95,7 @@ export const LivePlayerScreen = () => {
         duration: 500,
         useNativeDriver: true,
       }).start(() => setShowOverlay(false));
-    }, 5000);
+    }, isMobile ? 3000 : 5000);
   }, [fadeAnim]);
 
   useEffect(() => {
@@ -155,7 +163,7 @@ export const LivePlayerScreen = () => {
             bufferForPlaybackAfterRebufferMs: 1000
           }}
           playInBackground={false}
-          controls={false}
+          controls={isMobile}
         />
       )}
 
@@ -168,11 +176,11 @@ export const LivePlayerScreen = () => {
 
       {error && (
         <View style={styles.errorOverlay}>
-          <Text style={styles.errorText}>Unable to play stream</Text>
+          <Text style={[styles.errorText, isMobile && mStyles.errorText]}>Unable to play stream</Text>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, isMobile && mStyles.errorBackButton]}
             onPress={() => navigation.goBack()}
-            hasTVPreferredFocus
+            {...(isTV ? { hasTVPreferredFocus: true } : {})}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -180,12 +188,27 @@ export const LivePlayerScreen = () => {
       )}
 
       {showOverlay && !error && (
-        <Animated.View style={[styles.infoOverlay, { opacity: fadeAnim }]}>
-          <View style={styles.infoContainer}>
-            <Tv color="#FFF" size={32} />
-            <View style={styles.textContainer}>
-              <Text style={styles.channelName}>{channelName}</Text>
-              <Text style={styles.channelStatus}>LIVE</Text>
+        <Animated.View style={[styles.infoOverlay, isMobile && mStyles.infoOverlay, { opacity: fadeAnim }]}>
+          {/* Mobile: back button at top */}
+          {isMobile && (
+            <TouchableOpacity
+              style={mStyles.topBackButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <ChevronLeft color="#FFF" size={28} />
+            </TouchableOpacity>
+          )}
+
+          <View style={[styles.infoBottom, isMobile && mStyles.infoBottom]}>
+            <View style={styles.infoContainer}>
+              <Tv color="#FFF" size={isMobile ? 22 : 32} />
+              <View style={styles.textContainer}>
+                <Text style={[styles.channelName, isMobile && mStyles.channelName]}>{channelName}</Text>
+                {type === 'live' && (
+                  <Text style={[styles.channelStatus, isMobile && mStyles.channelStatus]}>LIVE</Text>
+                )}
+              </View>
             </View>
           </View>
         </Animated.View>
@@ -194,6 +217,7 @@ export const LivePlayerScreen = () => {
   );
 };
 
+// ── Base styles (TV) ──────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -245,10 +269,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   infoOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  infoBottom: {
     height: 150,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
@@ -272,4 +296,42 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 5,
   }
+});
+
+// ── Mobile overrides ──────────────────────────────────────────────
+const mStyles = StyleSheet.create({
+  infoOverlay: {
+    justifyContent: 'space-between',
+  },
+  topBackButton: {
+    position: 'absolute',
+    top: 44,
+    left: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoBottom: {
+    height: 'auto',
+    padding: 20,
+    paddingBottom: 30,
+  },
+  channelName: {
+    fontSize: 18,
+  },
+  channelStatus: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  errorText: {
+    fontSize: 18,
+  },
+  errorBackButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
 });

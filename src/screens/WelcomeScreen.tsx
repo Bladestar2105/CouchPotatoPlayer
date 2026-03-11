@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
@@ -7,6 +7,8 @@ import { M3UService } from '../services/m3u';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { useTranslation } from 'react-i18next';
+import { isTV, isMobile, adaptiveValue } from '../utils/platform';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Welcome'>;
 
@@ -125,98 +127,122 @@ export const WelcomeScreen = () => {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>CouchPotatoPlayer</Text>
-        <Text style={styles.subtitle}>Welcome</Text>
+  const content = (
+    <View style={[styles.card, isMobile && mStyles.card]}>
+      <Text style={[styles.title, isMobile && mStyles.title]}>CouchPotatoPlayer</Text>
+      <Text style={[styles.subtitle, isMobile && mStyles.subtitle]}>Welcome</Text>
 
-        <View style={styles.typeSelector}>
-          <TouchableOpacity
-            style={[styles.typeButton, type === 'xtream' && styles.typeButtonActive]}
-            onPress={() => setType('xtream')}
-            onFocus={() => setType('xtream')}
-          >
-            <Text style={[styles.typeText, type === 'xtream' && styles.typeTextActive]}>Xtream Codes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.typeButton, type === 'm3u' && styles.typeButtonActive]}
-            onPress={() => setType('m3u')}
-            onFocus={() => setType('m3u')}
-          >
-            <Text style={[styles.typeText, type === 'm3u' && styles.typeTextActive]}>M3U Playlist</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={[styles.typeSelector, isMobile && mStyles.typeSelector]}>
+        <TouchableOpacity
+          style={[styles.typeButton, type === 'xtream' && styles.typeButtonActive]}
+          onPress={() => setType('xtream')}
+          {...(isTV ? { onFocus: () => setType('xtream') } : {})}
+        >
+          <Text style={[styles.typeText, isMobile && mStyles.typeText, type === 'xtream' && styles.typeTextActive]}>Xtream Codes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.typeButton, type === 'm3u' && styles.typeButtonActive]}
+          onPress={() => setType('m3u')}
+          {...(isTV ? { onFocus: () => setType('m3u') } : {})}
+        >
+          <Text style={[styles.typeText, isMobile && mStyles.typeText, type === 'm3u' && styles.typeTextActive]}>M3U Playlist</Text>
+        </TouchableOpacity>
+      </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      <TextInput
+        style={[styles.input, isMobile && mStyles.input]}
+        placeholder="Provider Name"
+        placeholderTextColor="#888"
+        value={name}
+        onChangeText={setName}
+        autoCapitalize="words"
+      />
+
+      <TextInput
+        style={[styles.input, isMobile && mStyles.input]}
+        placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
+        placeholderTextColor="#888"
+        value={serverUrl}
+        onChangeText={setServerUrl}
+        autoCapitalize="none"
+        keyboardType="url"
+      />
+
+      {type === 'xtream' ? (
+        <>
+          <TextInput
+            style={[styles.input, isMobile && mStyles.input]}
+            placeholder="Username"
+            placeholderTextColor="#888"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={[styles.input, isMobile && mStyles.input]}
+            placeholder="Password"
+            placeholderTextColor="#888"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </>
+      ) : (
         <TextInput
-          style={styles.input}
-          placeholder="Provider Name"
+          style={[styles.input, isMobile && mStyles.input]}
+          placeholder="XMLTV EPG URL (Optional)"
           placeholderTextColor="#888"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
-          placeholderTextColor="#888"
-          value={serverUrl}
-          onChangeText={setServerUrl}
+          value={epgUrl}
+          onChangeText={setEpgUrl}
           autoCapitalize="none"
           keyboardType="url"
         />
+      )}
 
-        {type === 'xtream' ? (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Username"
-              placeholderTextColor="#888"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#888"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </>
+      <TouchableOpacity
+        style={[styles.button, isMobile && mStyles.button]}
+        onPress={handleLogin}
+        activeOpacity={0.8}
+        {...(isTV ? { hasTVPreferredFocus: true } : {})}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFF" />
         ) : (
-          <TextInput
-            style={styles.input}
-            placeholder="XMLTV EPG URL (Optional)"
-            placeholderTextColor="#888"
-            value={epgUrl}
-            onChangeText={setEpgUrl}
-            autoCapitalize="none"
-            keyboardType="url"
-          />
+          <Text style={[styles.buttonText, isMobile && mStyles.buttonText]}>Login</Text>
         )}
+      </TouchableOpacity>
+    </View>
+  );
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleLogin}
-          activeOpacity={0.8}
-          hasTVPreferredFocus
+  if (isMobile) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.buttonText}>Login</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          <ScrollView
+            contentContainerStyle={mStyles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {content}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {content}
     </View>
   );
 };
 
+// ── TV styles (original) ───────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -301,4 +327,46 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 16,
   }
+});
+
+// ── Mobile overrides ───────────────────────────────────────────────
+const mStyles = StyleSheet.create({
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  card: {
+    padding: 24,
+    borderRadius: 16,
+    maxWidth: undefined,
+    width: '100%',
+  },
+  title: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  typeSelector: {
+    marginBottom: 20,
+  },
+  typeText: {
+    fontSize: 14,
+  },
+  input: {
+    padding: 14,
+    fontSize: 16,
+    marginBottom: 14,
+  },
+  button: {
+    padding: 14,
+    marginTop: 8,
+  },
+  buttonText: {
+    fontSize: 17,
+  },
 });
