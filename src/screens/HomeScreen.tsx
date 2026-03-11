@@ -9,7 +9,13 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { M3UService } from '../services/m3u';
-import { XMLTVParser, parseXmltvDate, formatProgramTime } from '../services/xmltv';
+import {
+  XMLTVParser,
+  parseXmltvDate,
+  formatProgramTime,
+  findCurrentProgramIndex,
+  findProgramsInRange
+} from '../services/xmltv';
 import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
 import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -326,7 +332,7 @@ export const HomeScreen = () => {
     let nowProg: ParsedProgram | null = null;
     if (epg && epg.length > 0) {
       const nowMs = Date.now();
-      const idx = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
+      const idx = findCurrentProgramIndex(epg, nowMs);
       if (idx !== -1) nowProg = epg[idx];
     }
 
@@ -431,11 +437,11 @@ export const HomeScreen = () => {
 
     if (epg && epg.length > 0) {
       const nowMs = Date.now();
-      const nowIndex = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
+      const nowIndex = findCurrentProgramIndex(epg, nowMs);
       if (nowIndex !== -1) {
         nowProg = epg[nowIndex];
       }
-      visibleEpg = epg.filter(p => p.end > timelineStart && p.start < timelineEnd);
+      visibleEpg = findProgramsInRange(epg, timelineStart, timelineEnd);
     }
 
     return (
