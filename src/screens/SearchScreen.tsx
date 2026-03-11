@@ -135,6 +135,9 @@ export const SearchScreen = () => {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back') || 'Go back'}
         >
           <ChevronLeft size={32} color="#FFF" />
         </TouchableOpacity>
