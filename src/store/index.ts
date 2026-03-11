@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PlayerConfig, Category, LiveChannel } from '../types/iptv';
+import { PlayerConfig, Category, LiveChannel, StreamingSettings, DEFAULT_STREAMING_SETTINGS } from '../types/iptv';
 import { saveLargeData, loadLargeData, clearLargeData } from '../utils/storage';
 
 interface AppState {
@@ -16,6 +16,7 @@ interface AppState {
   pin: string | null;
   showAdult: boolean;
   isDiskDataLoaded: boolean;
+  streamingSettings: StreamingSettings;
   setConfig: (config: PlayerConfig | null) => void;
   addProvider: (provider: PlayerConfig) => void;
   removeProvider: (id: string) => void;
@@ -28,6 +29,7 @@ interface AppState {
   setPin: (pin: string | null) => void;
   setShowAdult: (showAdult: boolean) => void;
   setDiskDataLoaded: (loaded: boolean) => void;
+  setStreamingSettings: (settings: Partial<StreamingSettings>) => void;
   clearState: () => void;
 }
 
@@ -45,6 +47,7 @@ export const useAppStore = create<AppState>()(
       pin: null,
       showAdult: false,
       isDiskDataLoaded: false,
+      streamingSettings: DEFAULT_STREAMING_SETTINGS,
       setConfig: (config) => set({ config }),
       addProvider: (provider) => set((state) => {
         const existingIndex = state.providers.findIndex(p => p.id === provider.id);
@@ -77,8 +80,11 @@ export const useAppStore = create<AppState>()(
       setPin: (pin) => set({ pin }),
       setShowAdult: (showAdult) => set({ showAdult }),
       setDiskDataLoaded: (loaded) => set({ isDiskDataLoaded: loaded }),
+      setStreamingSettings: (settings) => set((state) => ({
+        streamingSettings: { ...state.streamingSettings, ...settings },
+      })),
       clearState: () => {
-        set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0 });
+        set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0, streamingSettings: DEFAULT_STREAMING_SETTINGS });
         clearLargeData('categories.json');
         clearLargeData('channels.json');
         clearLargeData('epgData.json');
@@ -95,6 +101,7 @@ export const useAppStore = create<AppState>()(
         lastEpgUpdate: state.lastEpgUpdate,
         pin: state.pin,
         showAdult: state.showAdult,
+        streamingSettings: state.streamingSettings,
         // Do not persist large lists in AsyncStorage
       }),
       onRehydrateStorage: () => (state) => {

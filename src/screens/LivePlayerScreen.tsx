@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated, Platform, StatusBar } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video';
@@ -8,6 +8,7 @@ import { XtreamService } from '../services/xtream';
 import { Tv, ChevronLeft } from 'lucide-react-native';
 import { KSPlayerView } from '../components/KSPlayerView';
 import { isTV, isMobile } from '../utils/platform';
+import { getPlayerConfig, getOptimalExtension } from '../utils/streamingConfig';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
 
@@ -16,14 +17,29 @@ export const LivePlayerScreen = () => {
   const navigation = useNavigation();
   const { channelId, channelName, extension = 'ts', directSource, type = 'live' } = route.params;
   const config = useAppStore(state => state.config);
+  const streamingSettings = useAppStore(state => state.streamingSettings);
 
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRef = useRef<any>(null);
+
+  // ── Compute optimized player config based on stream type and settings ──
+  const playerConfig = useMemo(
+    () => getPlayerConfig(type as 'live' | 'vod' | 'series', streamingSettings),
+    [type, streamingSettings]
+  );
+
+  // ── Determine optimal stream extension ──
+  const optimalExtension = useMemo(() => {
+    if (config?.type === 'm3u') return extension; // M3U uses direct source URL
+    return getOptimalExtension(type as 'live' | 'vod' | 'series', extension);
+  }, [type, extension, config?.type]);
 
   useEffect(() => {
     // Hide status bar for immersive player on mobile
@@ -38,7 +54,7 @@ export const LivePlayerScreen = () => {
       if (config?.type === 'xtream' && channelId) {
         const xtream = new XtreamService(config);
         if (type === 'vod') {
-          const url = xtream.getVodStreamUrl(channelId as number, extension);
+          const url = xtream.getVodStreamUrl(channelId as number, optimalExtension);
           setStreamUrl(url);
         } else if (type === 'series') {
           try {
@@ -56,7 +72,8 @@ export const LivePlayerScreen = () => {
               }
             }
             if (firstEpisodeId) {
-              const url = xtream.getSeriesStreamUrl(firstEpisodeId, epExtension);
+              const finalExt = getOptimalExtension('series', epExtension);
+              const url = xtream.getSeriesStreamUrl(firstEpisodeId, finalExt);
               setStreamUrl(url);
             } else {
               setError(true);
@@ -68,7 +85,8 @@ export const LivePlayerScreen = () => {
             setLoading(false);
           }
         } else {
-          const url = xtream.getLiveStreamUrl(channelId as number, extension);
+          // Live stream – use optimal extension (m3u8 for ABR)
+          const url = xtream.getLiveStreamUrl(channelId as number, optimalExtension);
           setStreamUrl(url);
         }
       } else if (config?.type === 'm3u' && directSource) {
@@ -77,7 +95,23 @@ export const LivePlayerScreen = () => {
     };
 
     fetchUrl();
-  }, [config, channelId, extension, directSource, type]);
+  }, [config, channelId, optimalExtension, directSource, type]);
+
+  // ── Retry mechanism for stream errors ──
+  const handleRetry = useCallback(() => {
+    if (retryCount < 3) {
+      setError(false);
+      setLoading(true);
+      setRetryCount(prev => prev + 1);
+      // Force re-fetch by toggling URL
+      setStreamUrl(prev => {
+        if (!prev) return prev;
+        // Add a cache-busting param to force reload
+        const separator = prev.includes('?') ? '&' : '?';
+        return `${prev}${separator}_retry=${Date.now()}`;
+      });
+    }
+  }, [retryCount]);
 
   const resetOverlayTimer = useCallback(() => {
     setShowOverlay(true);
@@ -120,6 +154,13 @@ export const LivePlayerScreen = () => {
     );
   }
 
+  // ── Build Video source with headers for better compatibility ──
+  const videoSource = {
+    uri: streamUrl,
+    // Enable HLS/DASH metadata for adaptive streaming
+    ...(type === 'live' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
+  };
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -133,22 +174,49 @@ export const LivePlayerScreen = () => {
           onLoadStart={() => setLoading(true)}
           onLoad={() => {
             setLoading(false);
+            setRetryCount(0);
             resetOverlayTimer();
           }}
           onError={(e) => {
             console.error('KSPlayer Playback Error:', e);
-            setError(true);
-            setLoading(false);
+            // Auto-retry on error for iOS/tvOS/macOS
+            if (retryCount < 3) {
+              handleRetry();
+            } else {
+              setError(true);
+              setLoading(false);
+            }
           }}
+          onBuffer={({ isBuffering }: { isBuffering: boolean }) => {
+            if (isBuffering && !loading) {
+              setLoading(true);
+            } else if (!isBuffering && loading) {
+              setLoading(false);
+            }
+          }}
+          // ── Optimized KSPlayer Settings ──
+          preferredForwardBufferDuration={
+            type === 'live'
+              ? (playerConfig.bufferConfig.minBufferMs / 1000)
+              : (playerConfig.bufferConfig.minBufferMs / 1000)
+          }
+          maxBufferDuration={playerConfig.bufferConfig.maxBufferMs / 1000}
+          hardwareDecode={streamingSettings.hardwareAcceleration}
+          isSecondOpen={true}
+          videoAdaptable={streamingSettings.videoQuality === 'auto'}
+          isAutoPlay={true}
+          {...(playerConfig.maxBitRate > 0 ? { maxBitRate: playerConfig.maxBitRate } : {})}
         />
       ) : (
         <Video
-          source={{ uri: streamUrl }}
+          ref={videoRef}
+          source={videoSource}
           style={styles.videoPlayer}
           resizeMode="contain"
           onLoadStart={() => setLoading(true)}
           onLoad={() => {
             setLoading(false);
+            setRetryCount(0);
             resetOverlayTimer();
           }}
           onError={(e) => {
@@ -156,14 +224,30 @@ export const LivePlayerScreen = () => {
             setError(true);
             setLoading(false);
           }}
-          bufferConfig={{
-            minBufferMs: 5000,
-            maxBufferMs: 15000,
-            bufferForPlaybackMs: 500,
-            bufferForPlaybackAfterRebufferMs: 1000
+          onBuffer={({ isBuffering }: { isBuffering: boolean }) => {
+            if (isBuffering && !loading) {
+              setLoading(true);
+            } else if (!isBuffering && loading) {
+              setLoading(false);
+            }
           }}
+          // ── Optimized Buffer Configuration ──
+          bufferConfig={playerConfig.bufferConfig}
+          // ── Quality & Bitrate Control ──
+          {...(playerConfig.maxBitRate > 0 ? { maxBitRate: playerConfig.maxBitRate } : {})}
+          // ── Android: SurfaceView for HW-accelerated rendering ──
+          {...(Platform.OS === 'android' ? { viewType: playerConfig.viewType } : {})}
+          // ── Network Resilience ──
+          disableDisconnectError={playerConfig.disableDisconnectError}
+          minLoadRetryCount={playerConfig.minLoadRetryCount}
+          // ── Visual: No black flashes on stream switch ──
+          hideShutterView={playerConfig.hideShutterView}
+          shutterColor={playerConfig.shutterColor}
+          // ── Playback settings ──
           playInBackground={false}
           controls={isMobile}
+          reportBandwidth={true}
+          progressUpdateInterval={1000}
         />
       )}
 
@@ -177,10 +261,19 @@ export const LivePlayerScreen = () => {
       {error && (
         <View style={styles.errorOverlay}>
           <Text style={[styles.errorText, isMobile && mStyles.errorText]}>Unable to play stream</Text>
+          {retryCount < 3 && (
+            <TouchableOpacity
+              style={[styles.retryButton]}
+              onPress={handleRetry}
+              {...(isTV ? { hasTVPreferredFocus: true } : {})}
+            >
+              <Text style={styles.retryButtonText}>Retry ({3 - retryCount} left)</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.backButton, isMobile && mStyles.errorBackButton]}
             onPress={() => navigation.goBack()}
-            {...(isTV ? { hasTVPreferredFocus: true } : {})}
+            {...(isTV && retryCount >= 3 ? { hasTVPreferredFocus: true } : {})}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -206,7 +299,10 @@ export const LivePlayerScreen = () => {
               <View style={styles.textContainer}>
                 <Text style={[styles.channelName, isMobile && mStyles.channelName]}>{channelName}</Text>
                 {type === 'live' && (
-                  <Text style={[styles.channelStatus, isMobile && mStyles.channelStatus]}>LIVE</Text>
+                  <View style={styles.liveRow}>
+                    <View style={styles.liveDot} />
+                    <Text style={[styles.channelStatus, isMobile && mStyles.channelStatus]}>LIVE</Text>
+                  </View>
                 )}
               </View>
             </View>
@@ -217,7 +313,7 @@ export const LivePlayerScreen = () => {
   );
 };
 
-// ── Base styles (TV) ──────────────────────────────────────────────
+// ── Base styles (TV) ──────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -255,6 +351,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontWeight: 'bold',
   },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   backButton: {
     backgroundColor: '#1C1C1E',
     paddingHorizontal: 30,
@@ -290,15 +398,26 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
   },
+  liveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF453A',
+    marginRight: 6,
+  },
   channelStatus: {
     color: '#FF453A',
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 5,
   }
 });
 
-// ── Mobile overrides ──────────────────────────────────────────────
+// ── Mobile overrides ──────────────────────────────────────────────────
 const mStyles = StyleSheet.create({
   infoOverlay: {
     justifyContent: 'space-between',

@@ -7,10 +7,20 @@
 
 RCT_EXPORT_MODULE(RNKSPlayerView)
 
-// We define the properties we want to pass from React Native
+// Source & Callbacks
 RCT_EXPORT_VIEW_PROPERTY(source, NSDictionary)
 RCT_EXPORT_VIEW_PROPERTY(onLoadStart, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onLoad, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onError, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onBuffer, RCTDirectEventBlock)
+
+// Buffer & Quality Settings
+RCT_EXPORT_VIEW_PROPERTY(preferredForwardBufferDuration, double)
+RCT_EXPORT_VIEW_PROPERTY(maxBufferDuration, double)
+RCT_EXPORT_VIEW_PROPERTY(hardwareDecode, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(isSecondOpen, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(videoAdaptable, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(isAutoPlay, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(maxBitRate, double)
 
 @end

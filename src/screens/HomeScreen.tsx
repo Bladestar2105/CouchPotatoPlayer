@@ -197,18 +197,18 @@ export const HomeScreen = () => {
   }, [selectedCategoryId, config, setChannels, activeTab]);
 
   const handleChannelPress = useCallback((channel: LiveChannel) => {
-    let extension = 'm3u8';
     if (activeTab === 'live' && channel.stream_type === 'live') {
-      extension = Platform.OS === 'web' || Platform.OS === 'ios' ? 'm3u8' : 'ts';
+      // HLS (m3u8) for ALL platforms – enables Adaptive Bitrate Streaming
+      const liveExtension = 'm3u8';
       navigation.navigate('LivePlayer', {
         channelId: channel.stream_id,
         channelName: channel.title || channel.name,
-        extension: extension,
+        extension: liveExtension,
         directSource: channel.direct_source,
         type: activeTab
       });
     } else if (activeTab === 'vod' || activeTab === 'series') {
-      extension = channel.container_extension || 'mp4';
+      let extension = channel.container_extension || 'mp4';
       if ((Platform.OS === 'web' || Platform.OS === 'ios') && extension === 'mkv') {
         extension = 'mp4';
       }

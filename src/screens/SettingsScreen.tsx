@@ -7,6 +7,8 @@ import { RootStackParamList } from '../../App';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { isTV, isMobile } from '../utils/platform';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { VideoQualityPreset, BufferSizePreset, VideoViewType } from '../types/iptv';
+import { getQualityLabel, getBufferLabel } from '../utils/streamingConfig';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -29,10 +31,16 @@ export const SettingsScreen = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const streamingSettings = useAppStore(state => state.streamingSettings);
+  const setStreamingSettings = useAppStore(state => state.setStreamingSettings);
+
   const [unlockAdult, setUnlockAdult] = useState(false);
   const [changingPin, setChangingPin] = useState(false);
   const [managingProviders, setManagingProviders] = useState(false);
   const [intervalSetting, setIntervalSetting] = useState(false);
+  const [streamingQuality, setStreamingQuality] = useState(false);
+  const [streamingBuffer, setStreamingBuffer] = useState(false);
+  const [streamingAdvanced, setStreamingAdvanced] = useState(false);
 
   const navigation = useNavigation<NavigationProp>();
 
@@ -136,7 +144,7 @@ export const SettingsScreen = () => {
           {success ? <Text style={mStyles.success}>{success}</Text> : null}
 
           {/* Main menu */}
-          {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && (
+          {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && !streamingQuality && !streamingBuffer && !streamingAdvanced && (
             <View style={mStyles.section}>
               <Text style={mStyles.sectionTitle}>General</Text>
 
@@ -165,6 +173,123 @@ export const SettingsScreen = () => {
               <TouchableOpacity style={mStyles.menuItem} onPress={handleChangePin} activeOpacity={0.7}>
                 <Text style={mStyles.menuItemText}>Change PIN</Text>
                 <ChevronRight size={18} color="#666" />
+              </TouchableOpacity>
+
+              <Text style={[mStyles.sectionTitle, { marginTop: 24 }]}>Streaming</Text>
+
+              <TouchableOpacity style={mStyles.menuItem} onPress={() => setStreamingQuality(true)} activeOpacity={0.7}>
+                <Text style={mStyles.menuItemText}>Video-Qualität</Text>
+                <View style={mStyles.menuItemRight}>
+                  <Text style={mStyles.menuItemValue}>{getQualityLabel(streamingSettings.videoQuality)}</Text>
+                  <ChevronRight size={18} color="#666" />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={mStyles.menuItem} onPress={() => setStreamingBuffer(true)} activeOpacity={0.7}>
+                <Text style={mStyles.menuItemText}>Buffer-Größe</Text>
+                <View style={mStyles.menuItemRight}>
+                  <Text style={mStyles.menuItemValue}>{getBufferLabel(streamingSettings.bufferSize)}</Text>
+                  <ChevronRight size={18} color="#666" />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={mStyles.menuItem} onPress={() => setStreamingAdvanced(true)} activeOpacity={0.7}>
+                <Text style={mStyles.menuItemText}>Erweiterte Einstellungen</Text>
+                <ChevronRight size={18} color="#666" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Streaming: Quality selection */}
+          {streamingQuality && (
+            <View style={mStyles.section}>
+              <Text style={mStyles.sectionTitle}>Video-Qualität auswählen</Text>
+              <Text style={mStyles.hintText}>Auto nutzt Adaptive Bitrate (ABR) – die beste Wahl für die meisten Nutzer.</Text>
+              {(['auto', 'max', '1080p', '720p', '480p'] as VideoQualityPreset[]).map((quality) => (
+                <TouchableOpacity
+                  key={quality}
+                  style={[mStyles.menuItem, streamingSettings.videoQuality === quality && mStyles.menuItemSelected]}
+                  onPress={() => {
+                    setStreamingSettings({ videoQuality: quality });
+                    setStreamingQuality(false);
+                    setSuccess(`Video-Qualität: ${getQualityLabel(quality)}`);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={mStyles.menuItemText}>{getQualityLabel(quality)}</Text>
+                  {streamingSettings.videoQuality === quality && <Text style={mStyles.checkmark}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={mStyles.cancelBtn} onPress={() => setStreamingQuality(false)} activeOpacity={0.7}>
+                <Text style={mStyles.cancelBtnText}>Zurück</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Streaming: Buffer size selection */}
+          {streamingBuffer && (
+            <View style={mStyles.section}>
+              <Text style={mStyles.sectionTitle}>Buffer-Größe auswählen</Text>
+              <Text style={mStyles.hintText}>Größerer Buffer = stabileres Streaming, aber längere Startzeit.</Text>
+              {(['normal', 'large', 'maximum'] as BufferSizePreset[]).map((buffer) => (
+                <TouchableOpacity
+                  key={buffer}
+                  style={[mStyles.menuItem, streamingSettings.bufferSize === buffer && mStyles.menuItemSelected]}
+                  onPress={() => {
+                    setStreamingSettings({ bufferSize: buffer });
+                    setStreamingBuffer(false);
+                    setSuccess(`Buffer-Größe: ${getBufferLabel(buffer)}`);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={mStyles.menuItemText}>{getBufferLabel(buffer)}</Text>
+                  {streamingSettings.bufferSize === buffer && <Text style={mStyles.checkmark}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={mStyles.cancelBtn} onPress={() => setStreamingBuffer(false)} activeOpacity={0.7}>
+                <Text style={mStyles.cancelBtnText}>Zurück</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Streaming: Advanced settings */}
+          {streamingAdvanced && (
+            <View style={mStyles.section}>
+              <Text style={mStyles.sectionTitle}>Erweiterte Streaming-Einstellungen</Text>
+
+              <Text style={[mStyles.hintText, { marginTop: 12 }]}>Video-Rendering (Android)</Text>
+              <TouchableOpacity
+                style={[mStyles.menuItem, streamingSettings.viewType === 'surfaceView' && mStyles.menuItemSelected]}
+                onPress={() => {
+                  setStreamingSettings({ viewType: 'surfaceView' });
+                  setSuccess('SurfaceView aktiviert (Hardware-beschleunigt)');
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={mStyles.menuItemText}>SurfaceView (empfohlen)</Text>
+                  <Text style={mStyles.menuItemDesc}>HW-beschleunigt, bessere Bildqualität</Text>
+                </View>
+                {streamingSettings.viewType === 'surfaceView' && <Text style={mStyles.checkmark}>✓</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[mStyles.menuItem, streamingSettings.viewType === 'textureView' && mStyles.menuItemSelected]}
+                onPress={() => {
+                  setStreamingSettings({ viewType: 'textureView' });
+                  setSuccess('TextureView aktiviert (kompatibel)');
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={mStyles.menuItemText}>TextureView</Text>
+                  <Text style={mStyles.menuItemDesc}>Fallback bei Darstellungsproblemen</Text>
+                </View>
+                {streamingSettings.viewType === 'textureView' && <Text style={mStyles.checkmark}>✓</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={mStyles.cancelBtn} onPress={() => setStreamingAdvanced(false)} activeOpacity={0.7}>
+                <Text style={mStyles.cancelBtnText}>Zurück</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -315,7 +440,7 @@ export const SettingsScreen = () => {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {success ? <Text style={styles.success}>{success}</Text> : null}
 
-        {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && (
+        {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && !streamingQuality && !streamingBuffer && !streamingAdvanced && (
           <>
             <TouchableOpacity style={styles.menuItem} onPress={() => setManagingProviders(true)}>
               <Text style={styles.menuItemText}>Manage Providers</Text>
@@ -330,6 +455,16 @@ export const SettingsScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleChangePin}>
               <Text style={styles.menuItemText}>Change PIN</Text>
+            </TouchableOpacity>
+            <Text style={[styles.subtitle, { marginTop: 20 }]}>Streaming Settings</Text>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setStreamingQuality(true)}>
+              <Text style={styles.menuItemText}>Video Quality: {getQualityLabel(streamingSettings.videoQuality)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setStreamingBuffer(true)}>
+              <Text style={styles.menuItemText}>Buffer Size: {getBufferLabel(streamingSettings.bufferSize)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setStreamingAdvanced(true)}>
+              <Text style={styles.menuItemText}>Advanced Settings</Text>
             </TouchableOpacity>
           </>
         )}
@@ -449,6 +584,94 @@ export const SettingsScreen = () => {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* TV: Video Quality Selection */}
+        {streamingQuality && (
+          <View>
+            <Text style={styles.subtitle}>Select Video Quality:</Text>
+            {(['auto', 'max', '1080p', '720p', '480p'] as VideoQualityPreset[]).map((quality) => (
+              <TouchableOpacity
+                key={quality}
+                style={[styles.menuItem, streamingSettings.videoQuality === quality && styles.menuItemSelected]}
+                onPress={() => {
+                  setStreamingSettings({ videoQuality: quality });
+                  setStreamingQuality(false);
+                  setSuccess(`Video Quality: ${getQualityLabel(quality)}`);
+                }}
+              >
+                <Text style={styles.menuItemText}>{getQualityLabel(quality)}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setStreamingQuality(false)}>
+              <Text style={styles.cancelButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* TV: Buffer Size Selection */}
+        {streamingBuffer && (
+          <View>
+            <Text style={styles.subtitle}>Select Buffer Size:</Text>
+            {(['normal', 'large', 'maximum'] as BufferSizePreset[]).map((buffer) => (
+              <TouchableOpacity
+                key={buffer}
+                style={[styles.menuItem, streamingSettings.bufferSize === buffer && styles.menuItemSelected]}
+                onPress={() => {
+                  setStreamingSettings({ bufferSize: buffer });
+                  setStreamingBuffer(false);
+                  setSuccess(`Buffer Size: ${getBufferLabel(buffer)}`);
+                }}
+              >
+                <Text style={styles.menuItemText}>{getBufferLabel(buffer)}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setStreamingBuffer(false)}>
+              <Text style={styles.cancelButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* TV: Advanced Streaming Settings */}
+        {streamingAdvanced && (
+          <View>
+            <Text style={styles.subtitle}>Video Rendering:</Text>
+            <TouchableOpacity
+              style={[styles.menuItem, streamingSettings.viewType === 'surfaceView' && styles.menuItemSelected]}
+              onPress={() => {
+                setStreamingSettings({ viewType: 'surfaceView' });
+                setSuccess('SurfaceView enabled (HW-accelerated)');
+              }}
+            >
+              <Text style={styles.menuItemText}>SurfaceView (recommended)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.menuItem, streamingSettings.viewType === 'textureView' && styles.menuItemSelected]}
+              onPress={() => {
+                setStreamingSettings({ viewType: 'textureView' });
+                setSuccess('TextureView enabled (compatible)');
+              }}
+            >
+              <Text style={styles.menuItemText}>TextureView (fallback)</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.subtitle, { marginTop: 20 }]}>Hardware Acceleration:</Text>
+            <TouchableOpacity
+              style={[styles.menuItem, streamingSettings.hardwareAcceleration && styles.menuItemSelected]}
+              onPress={() => {
+                setStreamingSettings({ hardwareAcceleration: !streamingSettings.hardwareAcceleration });
+                setSuccess(streamingSettings.hardwareAcceleration ? 'HW Acceleration disabled' : 'HW Acceleration enabled');
+              }}
+            >
+              <Text style={styles.menuItemText}>
+                {streamingSettings.hardwareAcceleration ? 'Enabled ✓' : 'Disabled'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setStreamingAdvanced(false)}>
+              <Text style={styles.cancelButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -516,4 +739,6 @@ const mStyles = StyleSheet.create({
   addBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
   cancelBtn: { backgroundColor: '#2C2C2E', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   cancelBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  hintText: { color: '#888', fontSize: 13, marginBottom: 12, lineHeight: 18 },
+  menuItemDesc: { color: '#888', fontSize: 12, marginTop: 4 },
 });
