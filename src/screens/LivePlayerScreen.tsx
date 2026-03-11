@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacity, Animated, Platform, StatusBar, PanResponder } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Video from 'react-native-video';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
@@ -12,6 +13,7 @@ import { isTV, isMobile } from '../utils/platform';
 import { getPlayerConfig, getOptimalExtension } from '../utils/streamingConfig';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
+type LivePlayerNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LivePlayer'>;
 
 // ── Extension fallback order for Xtream streams ──
 const LIVE_FALLBACK_EXTENSIONS = ['m3u8', 'ts'];
@@ -28,7 +30,7 @@ const formatTime = (seconds: number): string => {
 
 export const LivePlayerScreen = () => {
   const route = useRoute<LivePlayerRouteProp>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<LivePlayerNavigationProp>();
   const { channelId, channelName, extension = 'ts', directSource, type = 'live' } = route.params;
   const config = useAppStore(state => state.config);
   const streamingSettings = useAppStore(state => state.streamingSettings);
@@ -354,7 +356,7 @@ export const LivePlayerScreen = () => {
       onPress={resetOverlayTimer}
       {...(panResponder ? panResponder.panHandlers : {})}
     >
-      {Platform.OS === 'ios' || Platform.OS === 'tvos' || Platform.OS === 'macos' ? (
+      {(Platform.OS as string) === 'ios' || (Platform.OS as string) === 'tvos' || (Platform.OS as string) === 'macos' ? (
         <KSPlayerView
           source={{ uri: streamUrl }}
           style={styles.videoPlayer}
@@ -410,7 +412,7 @@ export const LivePlayerScreen = () => {
           }}
           bufferConfig={playerConfig.bufferConfig}
           {...(playerConfig.maxBitRate > 0 ? { maxBitRate: playerConfig.maxBitRate } : {})}
-          {...(Platform.OS === 'android' ? { viewType: playerConfig.viewType } : {})}
+          {...(Platform.OS === 'android' ? { viewType: playerConfig.viewType as any } : {})}
           disableDisconnectError={playerConfig.disableDisconnectError}
           minLoadRetryCount={playerConfig.minLoadRetryCount}
           hideShutterView={playerConfig.hideShutterView}

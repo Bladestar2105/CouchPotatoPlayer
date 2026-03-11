@@ -101,7 +101,7 @@ export const useAppStore = create<AppState>()(
       removeFavorite: (id) => set((state) => ({
         favorites: state.favorites.filter(f => f.id !== id),
       })),
-      isFavorite: (id) => {
+      isFavorite: (id): boolean => {
         return useAppStore.getState().favorites.some(f => f.id === id);
       },
       addRecentlyWatched: (item) => set((state) => {
