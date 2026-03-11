@@ -7,6 +7,8 @@ import { UnifiedEpgProgram, EpgRenderItemType } from '../types/iptv';
 import { Calendar, Clock, ChevronLeft } from 'lucide-react-native';
 import { formatProgramTime } from '../services/xmltv';
 import { Buffer } from 'buffer';
+import { isTV, isMobile } from '../utils/platform';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type EpgRouteProp = RouteProp<RootStackParamList, 'Epg'>;
 
@@ -24,8 +26,6 @@ export const EpgScreen = () => {
 
   useEffect(() => {
     if (!config) return;
-
-    // Read from the global state instead of fetching individually
     const channelEpg = globalEpgData[channelId as string] || [];
     setEpgData(channelEpg);
     setLoading(false);
@@ -39,7 +39,6 @@ export const EpgScreen = () => {
     let endStr = '';
 
     if ('title_raw' in item && typeof item.start === 'number') {
-      // ParsedProgram
       const nowMs = Date.now();
       isNow = item.start <= nowMs && (item.end as number) > nowMs;
       title = item.title_raw;
@@ -47,14 +46,12 @@ export const EpgScreen = () => {
       startStr = (item as any).start_formatted || formatProgramTime(item.start);
       endStr = (item as any).end_formatted || formatProgramTime(item.end as number);
     } else if ('title_raw' in item) {
-      // M3UFormattedEpgProgram
       isNow = item.has_archive === 0;
       title = item.title_raw;
       description = item.description_raw;
       startStr = String(item.start);
       endStr = String(item.end);
     } else {
-      // XtreamEpgListing
       isNow = item.has_archive === 0;
       title = Buffer.from(item.title || '', 'base64').toString('utf-8').replace(BASE64_PADDING_REGEX, '');
       description = item.description ? Buffer.from(item.description, 'base64').toString('utf-8').replace(BASE64_PADDING_REGEX, '') : '';
@@ -62,6 +59,28 @@ export const EpgScreen = () => {
       endStr = item.end;
     }
 
+    if (isMobile) {
+      return (
+        <View style={[mStyles.epgCard, isNow && mStyles.epgCardNow]}>
+          <View style={mStyles.timeRow}>
+            <Clock size={14} color={isNow ? "#FFF" : "#888"} />
+            <Text style={[mStyles.timeText, isNow && mStyles.timeTextNow]}>
+              {startStr} – {endStr}
+            </Text>
+          </View>
+          <Text style={[mStyles.title, isNow && mStyles.titleNow]} numberOfLines={2}>
+            {title || 'Unknown Title'}
+          </Text>
+          {description ? (
+            <Text style={mStyles.description} numberOfLines={2}>
+              {description}
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
+
+    // TV layout
     return (
       <View style={[styles.epgCard, isNow && styles.epgCardNow]}>
         <View style={styles.timeContainer}>
@@ -82,17 +101,22 @@ export const EpgScreen = () => {
     );
   };
 
+  const Wrapper = isMobile ? SafeAreaView : View;
+  const wrapperProps = isMobile ? { edges: ['top'] as const, style: mStyles.container } : { style: styles.container };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <Wrapper {...wrapperProps}>
+      {/* Header */}
+      <View style={isMobile ? mStyles.header : styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={isMobile ? mStyles.backButton : styles.backButton}
           onPress={() => navigation.goBack()}
-          hasTVPreferredFocus
+          {...(isTV ? { hasTVPreferredFocus: true } : {})}
         >
-          <ChevronLeft size={32} color="#FFF" />
-          <Text style={styles.headerTitle}>TV Guide</Text>
+          <ChevronLeft size={isMobile ? 24 : 32} color="#FFF" />
+          {!isMobile && <Text style={styles.headerTitle}>TV Guide</Text>}
         </TouchableOpacity>
+        {isMobile && <Text style={mStyles.headerTitle}>TV Guide</Text>}
       </View>
 
       {loading ? (
@@ -101,22 +125,23 @@ export const EpgScreen = () => {
         </View>
       ) : epgData.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Calendar size={64} color="#444" />
-          <Text style={styles.emptyText}>No programming information available.</Text>
+          <Calendar size={isMobile ? 48 : 64} color="#444" />
+          <Text style={isMobile ? mStyles.emptyText : styles.emptyText}>No programming information available.</Text>
         </View>
       ) : (
         <FlatList
           data={epgData}
           keyExtractor={(item, index) => index.toString()}
           renderItem={renderEpgItem}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={isMobile ? mStyles.listContainer : styles.listContainer}
           showsVerticalScrollIndicator={false}
         />
       )}
-    </View>
+    </Wrapper>
   );
 };
 
+// ── TV styles (original) ──────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -144,10 +169,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  errorText: {
-    color: '#FF453A',
-    fontSize: 20,
   },
   emptyText: {
     color: '#888',
@@ -197,4 +218,82 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   }
+});
+
+// ── Mobile styles ─────────────────────────────────────────────────
+const mStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0A0A0A',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#1C1C1E',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  headerTitle: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  listContainer: {
+    padding: 16,
+  },
+  epgCard: {
+    backgroundColor: '#1C1C1E',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+  },
+  epgCardNow: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  timeText: {
+    color: '#888',
+    fontSize: 13,
+    marginLeft: 6,
+    fontWeight: '600',
+  },
+  timeTextNow: {
+    color: '#FFF',
+  },
+  title: {
+    color: '#E5E5E5',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  titleNow: {
+    color: '#FFF',
+  },
+  description: {
+    color: '#AAA',
+    fontSize: 13,
+    lineHeight: 19,
+  },
 });

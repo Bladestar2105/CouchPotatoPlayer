@@ -87,3 +87,39 @@ export interface PlayerConfig {
   type: 'xtream' | 'm3u';
   epgUrl?: string; // Optional URL for M3U playlist EPG data (xmltv.php)
 }
+
+// ── Streaming Quality Settings ──────────────────────────────────────
+export type VideoQualityPreset = 'auto' | 'max' | '1080p' | '720p' | '480p';
+export type BufferSizePreset = 'normal' | 'large' | 'maximum';
+export type VideoViewType = 'surfaceView' | 'textureView';
+
+export interface StreamingSettings {
+  videoQuality: VideoQualityPreset;
+  bufferSize: BufferSizePreset;
+  viewType: VideoViewType;
+  hardwareAcceleration: boolean;
+  // Computed values derived from presets
+}
+
+export const DEFAULT_STREAMING_SETTINGS: StreamingSettings = {
+  videoQuality: 'auto',
+  bufferSize: 'normal',
+  viewType: 'surfaceView',
+  hardwareAcceleration: true,
+};
+
+/** Maps quality presets to max bitrate in bits/s. 0 = unlimited (ABR decides) */
+export const QUALITY_BITRATE_MAP: Record<VideoQualityPreset, number> = {
+  auto: 0,
+  max: 0,
+  '1080p': 8_000_000,   // 8 Mbit/s
+  '720p': 4_000_000,    // 4 Mbit/s
+  '480p': 2_000_000,    // 2 Mbit/s
+};
+
+/** Buffer multiplier for each preset */
+export const BUFFER_MULTIPLIER_MAP: Record<BufferSizePreset, number> = {
+  normal: 1,
+  large: 2,
+  maximum: 3,
+};

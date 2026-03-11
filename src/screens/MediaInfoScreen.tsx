@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
-import { Play, ArrowLeft } from 'lucide-react-native';
+import { Play, ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { isTV, isMobile } from '../utils/platform';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'MediaInfo'>;
@@ -68,6 +70,53 @@ export const MediaInfoScreen = () => {
   const cast = info?.cast ? `Cast: ${info.cast}` : '';
   const releaseDate = info?.releasedate || info?.release_date ? `Released: ${info.releasedate || info.release_date}` : '';
 
+  // ── Mobile Layout ──────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <SafeAreaView style={mStyles.container} edges={['top']}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header with back button over cover image */}
+          <View style={mStyles.coverContainer}>
+            {displayCover ? (
+              <Image source={{ uri: displayCover }} style={mStyles.coverImage} resizeMode="cover" />
+            ) : (
+              <View style={mStyles.coverPlaceholder} />
+            )}
+            <TouchableOpacity style={mStyles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+              <ChevronLeft color="#FFF" size={24} />
+            </TouchableOpacity>
+            {/* Gradient overlay at bottom of cover */}
+            <View style={mStyles.coverGradient} />
+          </View>
+
+          {/* Details */}
+          <View style={mStyles.detailsContainer}>
+            <Text style={mStyles.title}>{displayTitle}</Text>
+
+            <View style={mStyles.metaRow}>
+              {rating ? <View style={mStyles.metaBadge}><Text style={mStyles.metaBadgeText}>{info?.rating}</Text></View> : null}
+              {releaseDate ? <Text style={mStyles.metaText}>{releaseDate}</Text> : null}
+            </View>
+
+            {/* Play button */}
+            <TouchableOpacity style={mStyles.playButton} onPress={handlePlay} activeOpacity={0.8}>
+              <Play color="#FFF" size={20} fill="#FFF" />
+              <Text style={mStyles.playButtonText}>Play</Text>
+            </TouchableOpacity>
+
+            <Text style={mStyles.description}>{description}</Text>
+
+            {director ? <Text style={mStyles.castText}>{director}</Text> : null}
+            {cast ? <Text style={mStyles.castText}>{cast}</Text> : null}
+
+            <View style={{ height: 40 }} />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ── TV Layout (original) ───────────────────────────────────────
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -105,6 +154,7 @@ export const MediaInfoScreen = () => {
   );
 };
 
+// ── TV styles (original) ──────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -190,5 +240,106 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 10,
+  },
+});
+
+// ── Mobile styles ─────────────────────────────────────────────────
+const { width: screenWidth } = Dimensions.get('window');
+
+const mStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F0F0F',
+  },
+  coverContainer: {
+    width: '100%',
+    height: screenWidth * 0.65,
+    backgroundColor: '#1C1C1E',
+    position: 'relative',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2C2C2E',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  coverGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    backgroundColor: 'transparent',
+  },
+  detailsContainer: {
+    padding: 20,
+  },
+  title: {
+    color: '#FFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  metaBadge: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  metaBadgeText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  metaText: {
+    color: '#888',
+    fontSize: 14,
+  },
+  playButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  playButtonText: {
+    color: '#FFF',
+    fontSize: 17,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  description: {
+    color: '#DDD',
+    fontSize: 15,
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  castText: {
+    color: '#AAA',
+    fontSize: 14,
+    marginBottom: 8,
   },
 });

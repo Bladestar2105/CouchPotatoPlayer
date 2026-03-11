@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Image, Platform, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
@@ -8,6 +8,8 @@ import { ChevronLeft, Search, Tv } from 'lucide-react-native';
 import { useAppStore } from '../store';
 import { LiveChannel } from '../types/iptv';
 import { XtreamService } from '../services/xtream';
+import { isTV, isMobile, gridColumns } from '../utils/platform';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Search'>;
 type FilterType = 'all' | 'live' | 'vod' | 'series';
@@ -21,9 +23,17 @@ export const SearchScreen = () => {
   const [filter, setFilter] = useState<FilterType>('all');
   const [results, setResults] = useState<LiveChannel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [numColumns, setNumColumns] = useState(gridColumns());
 
-  // Focus states
+  // TV focus states
   const [focusedFilter, setFocusedFilter] = useState<FilterType | null>(null);
+
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', () => {
+      setNumColumns(gridColumns());
+    });
+    return () => sub?.remove();
+  }, []);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -39,11 +49,6 @@ export const SearchScreen = () => {
           let allResults: LiveChannel[] = [];
 
           if (filter === 'all' || filter === 'live') {
-            // Very naive search: Xtream API doesn't have a global search endpoint.
-            // In a real app we'd need to cache all streams or have a specific server-side search.
-            // For now we simulate by fetching a few categories or just telling the user it's limited.
-            // Wait, we can fetch all channels if categoryId is omitted, but it might be massive.
-            // Let's assume XtreamService.getLiveStreams() returns all if no category is passed.
             const live = await xtream.getLiveStreams();
             const filteredLive = live.filter(c => (c.name || c.title || '').toLowerCase().includes(query.toLowerCase()));
             allResults = [...allResults, ...filteredLive.map(c => ({...c, _type: 'live'} as any))];
@@ -60,8 +65,6 @@ export const SearchScreen = () => {
           }
           setResults(allResults);
         } else if (config.type === 'm3u') {
-          // M3U logic is local and synchronous if stored in the store, but we might not have all channels here unless loaded.
-          // Fallback empty for now or rely on store channels.
           const storeChannels = useAppStore.getState().channels;
           if (storeChannels && storeChannels.length > 0) {
             const filtered = storeChannels.filter(c => (c.name || c.title || '').toLowerCase().includes(query.toLowerCase()));
@@ -102,6 +105,35 @@ export const SearchScreen = () => {
   };
 
   const renderChannel = ({ item }: { item: any }) => {
+    if (isMobile) {
+      return (
+        <TouchableOpacity
+          style={mStyles.channelCard}
+          onPress={() => handleChannelPress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={mStyles.channelImageContainer}>
+            {(item.stream_icon || item.cover) ? (
+              <Image
+                source={{ uri: item.stream_icon || item.cover }}
+                style={mStyles.channelIcon}
+                resizeMode="cover"
+              />
+            ) : (
+              <Tv size={32} color="#444" />
+            )}
+          </View>
+          <Text style={mStyles.channelName} numberOfLines={2}>
+            {item.title || item.name}
+          </Text>
+          <Text style={mStyles.channelType} numberOfLines={1}>
+            {item._type ? item._type.toUpperCase() : 'UNKNOWN'}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+
+    // TV card
     return (
       <TouchableOpacity
         style={styles.channelCard}
@@ -128,67 +160,68 @@ export const SearchScreen = () => {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={t('common.back') || 'Go back'}
-        >
-          <ChevronLeft size={32} color="#FFF" />
-        </TouchableOpacity>
+  const filters: { key: FilterType; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'live', label: 'Live TV' },
+    { key: 'vod', label: 'Movies' },
+    { key: 'series', label: 'Series' },
+  ];
 
-        <View style={styles.searchContainer}>
-          <Search size={24} color="#888" style={styles.searchIcon} />
+  const Wrapper = isMobile ? SafeAreaView : View;
+  const wrapperProps = isMobile ? { edges: ['top'] as const, style: mStyles.container } : { style: styles.container };
+
+  return (
+    <Wrapper {...wrapperProps}>
+      {/* Header */}
+      <View style={isMobile ? mStyles.header : styles.header}>
+        {/* Back button – only show on TV or when not inside bottom tabs */}
+        {isTV && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back') || 'Go back'}
+          >
+            <ChevronLeft size={32} color="#FFF" />
+          </TouchableOpacity>
+        )}
+
+        <View style={isMobile ? mStyles.searchContainer : styles.searchContainer}>
+          <Search size={isMobile ? 20 : 24} color="#888" style={isMobile ? mStyles.searchIcon : styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={isMobile ? mStyles.searchInput : styles.searchInput}
             placeholder={t('sidebar.search') + "..."}
             placeholderTextColor="#888"
             value={query}
             onChangeText={setQuery}
-            autoFocus
+            autoFocus={!isTV}
           />
         </View>
       </View>
 
       {/* Filters */}
-      <View style={styles.filtersContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, filter === 'all' && styles.filterButtonSelected, focusedFilter === 'all' && styles.filterButtonFocused]}
-          onFocus={() => setFocusedFilter('all')}
-          onBlur={() => setFocusedFilter(null)}
-          onPress={() => setFilter('all')}
-        >
-          <Text style={[styles.filterText, (filter === 'all' || focusedFilter === 'all') && styles.filterTextSelected]}>All</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, filter === 'live' && styles.filterButtonSelected, focusedFilter === 'live' && styles.filterButtonFocused]}
-          onFocus={() => setFocusedFilter('live')}
-          onBlur={() => setFocusedFilter(null)}
-          onPress={() => setFilter('live')}
-        >
-          <Text style={[styles.filterText, (filter === 'live' || focusedFilter === 'live') && styles.filterTextSelected]}>Live TV</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, filter === 'vod' && styles.filterButtonSelected, focusedFilter === 'vod' && styles.filterButtonFocused]}
-          onFocus={() => setFocusedFilter('vod')}
-          onBlur={() => setFocusedFilter(null)}
-          onPress={() => setFilter('vod')}
-        >
-          <Text style={[styles.filterText, (filter === 'vod' || focusedFilter === 'vod') && styles.filterTextSelected]}>Movies</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, filter === 'series' && styles.filterButtonSelected, focusedFilter === 'series' && styles.filterButtonFocused]}
-          onFocus={() => setFocusedFilter('series')}
-          onBlur={() => setFocusedFilter(null)}
-          onPress={() => setFilter('series')}
-        >
-          <Text style={[styles.filterText, (filter === 'series' || focusedFilter === 'series') && styles.filterTextSelected]}>Series</Text>
-        </TouchableOpacity>
+      <View style={isMobile ? mStyles.filtersContainer : styles.filtersContainer}>
+        {filters.map(f => (
+          <TouchableOpacity
+            key={f.key}
+            style={[
+              isMobile ? mStyles.filterButton : styles.filterButton,
+              filter === f.key && (isMobile ? mStyles.filterButtonSelected : styles.filterButtonSelected),
+              ...(isTV && focusedFilter === f.key ? [styles.filterButtonFocused] : []),
+            ]}
+            {...(isTV ? {
+              onFocus: () => setFocusedFilter(f.key),
+              onBlur: () => setFocusedFilter(null),
+            } : {})}
+            onPress={() => setFilter(f.key)}
+          >
+            <Text style={[
+              isMobile ? mStyles.filterText : styles.filterText,
+              (filter === f.key || focusedFilter === f.key) && (isMobile ? mStyles.filterTextSelected : styles.filterTextSelected),
+            ]}>{f.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Results */}
@@ -196,24 +229,26 @@ export const SearchScreen = () => {
         {loading ? (
           <ActivityIndicator size="large" color="#007AFF" />
         ) : query.length > 0 && query.length < 3 ? (
-          <Text style={styles.emptyText}>Type at least 3 characters to search...</Text>
+          <Text style={isMobile ? mStyles.emptyText : styles.emptyText}>Type at least 3 characters to search...</Text>
         ) : results.length === 0 && query.length >= 3 ? (
-          <Text style={styles.emptyText}>No results found.</Text>
+          <Text style={isMobile ? mStyles.emptyText : styles.emptyText}>No results found.</Text>
         ) : (
           <FlatList
+            key={`search-grid-${numColumns}`}
             data={results}
             keyExtractor={(item, index) => `${item.stream_id || item.series_id || index}`}
             renderItem={renderChannel}
-            numColumns={4}
-            columnWrapperStyle={styles.channelsRow}
-            contentContainerStyle={styles.channelsList}
+            numColumns={numColumns}
+            columnWrapperStyle={isMobile ? mStyles.channelsRow : styles.channelsRow}
+            contentContainerStyle={isMobile ? mStyles.channelsList : styles.channelsList}
           />
         )}
       </View>
-    </View>
+    </Wrapper>
   );
 };
 
+// ── TV styles (original) ──────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -329,4 +364,109 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   }
+});
+
+// ── Mobile styles ─────────────────────────────────────────────────
+const mStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F0F0F',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#1C1C1E',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 16,
+    paddingVertical: 12,
+  },
+  filtersContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+    gap: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#1C1C1E',
+  },
+  filterButtonSelected: {
+    backgroundColor: '#007AFF',
+  },
+  filterText: {
+    color: '#888',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  filterTextSelected: {
+    color: '#FFF',
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 15,
+  },
+  channelsList: {
+    padding: 12,
+  },
+  channelsRow: {
+    justifyContent: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
+  },
+  channelCard: {
+    flex: 1,
+    maxWidth: '48%',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    overflow: 'hidden',
+    alignItems: 'center',
+  },
+  channelImageContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  channelIcon: {
+    width: '100%',
+    height: '100%',
+  },
+  channelName: {
+    color: '#FFF',
+    fontSize: 13,
+    textAlign: 'center',
+    fontWeight: '500',
+    padding: 8,
+    paddingBottom: 2,
+  },
+  channelType: {
+    color: '#007AFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+    paddingBottom: 8,
+  },
 });

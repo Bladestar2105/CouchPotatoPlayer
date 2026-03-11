@@ -6,6 +6,15 @@ interface KSPlayerViewProps extends ViewProps {
   onLoadStart?: () => void;
   onLoad?: () => void;
   onError?: (e: any) => void;
+  onBuffer?: (e: { isBuffering: boolean }) => void;
+  // ── Buffer & Quality Settings ──
+  preferredForwardBufferDuration?: number;  // seconds (default: 10)
+  maxBufferDuration?: number;               // seconds (default: 30)
+  hardwareDecode?: boolean;                 // default: true
+  isSecondOpen?: boolean;                   // fast channel switch (default: true)
+  videoAdaptable?: boolean;                 // adaptive bitrate (default: true)
+  isAutoPlay?: boolean;                     // default: true
+  maxBitRate?: number;                      // 0 = unlimited
 }
 
 let RNKSPlayerView: any;

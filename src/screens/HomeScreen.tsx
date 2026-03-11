@@ -1,5 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, ListRenderItemInfo, Platform } from 'react-native';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
+  ActivityIndicator, ListRenderItemInfo, Platform, Dimensions, ScrollView,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
@@ -10,6 +13,7 @@ import { XMLTVParser, parseXmltvDate, formatProgramTime } from '../services/xmlt
 import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
 import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -37,6 +41,15 @@ export const HomeScreen = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'live' | 'vod' | 'series'>('live');
   const [lastFetchedTab, setLastFetchedTab] = useState<'live' | 'vod' | 'series' | null>(null);
+  const [numColumns, setNumColumns] = useState(gridColumns());
+
+  // Listen for dimension changes (rotation)
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', () => {
+      setNumColumns(gridColumns());
+    });
+    return () => sub?.remove();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -137,7 +150,6 @@ export const HomeScreen = () => {
                grouped[cid].push(prog);
              });
 
-             // Sort arrays
              for (const cid in grouped) {
                grouped[cid].sort((a, b) => a.start - b.start);
              }
@@ -184,19 +196,19 @@ export const HomeScreen = () => {
     }
   }, [selectedCategoryId, config, setChannels, activeTab]);
 
-  const handleChannelPress = (channel: LiveChannel) => {
-    let extension = 'm3u8';
+  const handleChannelPress = useCallback((channel: LiveChannel) => {
     if (activeTab === 'live' && channel.stream_type === 'live') {
-      extension = Platform.OS === 'web' || Platform.OS === 'ios' ? 'm3u8' : 'ts';
+      // HLS (m3u8) for ALL platforms – enables Adaptive Bitrate Streaming
+      const liveExtension = 'm3u8';
       navigation.navigate('LivePlayer', {
         channelId: channel.stream_id,
         channelName: channel.title || channel.name,
-        extension: extension,
+        extension: liveExtension,
         directSource: channel.direct_source,
         type: activeTab
       });
     } else if (activeTab === 'vod' || activeTab === 'series') {
-      extension = channel.container_extension || 'mp4';
+      let extension = channel.container_extension || 'mp4';
       if ((Platform.OS === 'web' || Platform.OS === 'ios') && extension === 'mkv') {
         extension = 'mp4';
       }
@@ -208,13 +220,13 @@ export const HomeScreen = () => {
         extension: extension
       });
     }
-  };
+  }, [activeTab, config, navigation]);
 
-  const handleChannelLongPress = (channel: LiveChannel) => {
+  const handleChannelLongPress = useCallback((channel: LiveChannel) => {
     navigation.navigate('Epg', {
       channelId: config?.type === 'm3u' ? channel.epg_channel_id : (channel.epg_channel_id || channel.stream_id)
     });
-  };
+  }, [config, navigation]);
 
   const displayedChannels = useMemo(() => {
     if (!selectedCategoryId) return [];
@@ -223,77 +235,19 @@ export const HomeScreen = () => {
       : channels;
   }, [config?.type, channels, selectedCategoryId]);
 
+  // ─── TV-specific state ──────────────────────────────────────────
   const [focusedCategoryId, setFocusedCategoryId] = useState<string | null>(null);
-
-  const renderCategory = ({ item }: ListRenderItemInfo<Category>) => {
-    const isSelected = item.category_id === selectedCategoryId;
-    const isFocused = item.category_id === focusedCategoryId;
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.categoryItem,
-          isSelected && styles.categoryItemSelected,
-          isFocused && styles.categoryItemFocused
-        ]}
-        onFocus={() => {
-          setFocusedCategoryId(item.category_id);
-          setSelectedCategoryId(item.category_id);
-        }}
-        onBlur={() => setFocusedCategoryId(null)}
-        onPress={() => setSelectedCategoryId(item.category_id)}
-      >
-        <Text style={[
-          styles.categoryText,
-          (isSelected || isFocused) && styles.categoryTextSelected
-        ]} numberOfLines={1}>
-          {item.category_name}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
   const [focusedChannelId, setFocusedChannelId] = useState<string | number | null>(null);
+  const [focusedTab, setFocusedTab] = useState<string | null>(null);
 
-  const renderChannelCard = ({ item }: ListRenderItemInfo<LiveChannel>) => {
-    const isFocused = (item.stream_id || item.series_id) === focusedChannelId;
-
-    return (
-      <TouchableOpacity
-        style={[styles.channelCard, isFocused && styles.channelCardFocused]}
-        onFocus={() => setFocusedChannelId(item.stream_id || item.series_id || null)}
-        onBlur={() => setFocusedChannelId(null)}
-        onPress={() => handleChannelPress(item)}
-        onLongPress={() => handleChannelLongPress(item)}
-      >
-        <View style={styles.channelImageContainer}>
-          {(item.stream_icon || item.cover) ? (
-            <Image
-              source={{ uri: item.stream_icon || item.cover }}
-              style={styles.channelIcon}
-              resizeMode="contain"
-              defaultSource={require('../../assets/images/placeholder.png')}
-            />
-          ) : (
-            <Tv size={48} color="#444" />
-          )}
-        </View>
-        <Text style={styles.channelName} numberOfLines={2}>
-          {item.title || item.name}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
+  // ─── Timeline state (TV live view) ─────────────────────────────
   const timelineStart = useMemo(() => {
     const now = new Date();
-    // Start timeline 30 minutes before current time, rounded to previous half hour
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes() < 30 ? 0 : 30, 0, 0);
     start.setMinutes(start.getMinutes() - 30);
     return start.getTime();
   }, []);
 
-  // 6 hour timeline window
   const TIMELINE_DURATION = 6 * 60 * 60 * 1000;
   const timelineEnd = timelineStart + TIMELINE_DURATION;
 
@@ -312,7 +266,6 @@ export const HomeScreen = () => {
   const [nowTime, setNowTime] = useState(Date.now());
 
   useEffect(() => {
-    // Update the current time indicator every minute
     const interval = setInterval(() => {
       setNowTime(Date.now());
     }, 60000);
@@ -321,7 +274,154 @@ export const HomeScreen = () => {
 
   const currentProgressPercent = ((nowTime - timelineStart) / TIMELINE_DURATION) * 100;
 
-  const renderChannelListItem = ({ item }: ListRenderItemInfo<LiveChannel>) => {
+  // ─── Renderers ──────────────────────────────────────────────────
+
+  const renderCategory = ({ item }: ListRenderItemInfo<Category>) => {
+    const isSelected = item.category_id === selectedCategoryId;
+    const isFocused = item.category_id === focusedCategoryId;
+
+    if (isMobile) {
+      return (
+        <TouchableOpacity
+          style={[mobileStyles.categoryChip, isSelected && mobileStyles.categoryChipSelected]}
+          onPress={() => setSelectedCategoryId(item.category_id)}
+          activeOpacity={0.7}
+        >
+          <Text style={[mobileStyles.categoryChipText, isSelected && mobileStyles.categoryChipTextSelected]} numberOfLines={1}>
+            {item.category_name}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+
+    // TV layout
+    return (
+      <TouchableOpacity
+        style={[
+          tvStyles.categoryItem,
+          isSelected && tvStyles.categoryItemSelected,
+          isFocused && tvStyles.categoryItemFocused
+        ]}
+        onFocus={() => {
+          setFocusedCategoryId(item.category_id);
+          setSelectedCategoryId(item.category_id);
+        }}
+        onBlur={() => setFocusedCategoryId(null)}
+        onPress={() => setSelectedCategoryId(item.category_id)}
+      >
+        <Text style={[
+          tvStyles.categoryText,
+          (isSelected || isFocused) && tvStyles.categoryTextSelected
+        ]} numberOfLines={1}>
+          {item.category_name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // ─── Mobile channel card ────────────────────────────────────────
+  const renderMobileChannelCard = ({ item }: ListRenderItemInfo<LiveChannel>) => {
+    const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
+    const epg = epgData[epgKey] as ParsedProgram[] | undefined;
+    let nowProg: ParsedProgram | null = null;
+    if (epg && epg.length > 0) {
+      const nowMs = Date.now();
+      const idx = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
+      if (idx !== -1) nowProg = epg[idx];
+    }
+
+    if (activeTab === 'live') {
+      // List item for live
+      return (
+        <TouchableOpacity
+          style={mobileStyles.liveChannelItem}
+          onPress={() => handleChannelPress(item)}
+          onLongPress={() => handleChannelLongPress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={mobileStyles.liveChannelIcon}>
+            {(item.stream_icon || item.cover) ? (
+              <Image
+                source={{ uri: item.stream_icon || item.cover }}
+                style={mobileStyles.liveChannelImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Tv size={28} color="#444" />
+            )}
+          </View>
+          <View style={mobileStyles.liveChannelInfo}>
+            <Text style={mobileStyles.liveChannelName} numberOfLines={1}>
+              {item.title || item.name}
+            </Text>
+            {nowProg && (
+              <Text style={mobileStyles.liveChannelNow} numberOfLines={1}>
+                {formatProgramTime(nowProg.start)} – {nowProg.title_raw}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    // Grid card for VOD / Series
+    return (
+      <TouchableOpacity
+        style={mobileStyles.gridCard}
+        onPress={() => handleChannelPress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={mobileStyles.gridCardImage}>
+          {(item.stream_icon || item.cover) ? (
+            <Image
+              source={{ uri: item.stream_icon || item.cover }}
+              style={mobileStyles.gridCardImg}
+              resizeMode="cover"
+            />
+          ) : (
+            <Tv size={32} color="#444" />
+          )}
+        </View>
+        <Text style={mobileStyles.gridCardTitle} numberOfLines={2}>
+          {item.title || item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // ─── TV channel card (grid for VOD/series) ─────────────────────
+  const renderTVChannelCard = ({ item }: ListRenderItemInfo<LiveChannel>) => {
+    const isFocused = (item.stream_id || item.series_id) === focusedChannelId;
+
+    return (
+      <TouchableOpacity
+        style={[tvStyles.channelCard, isFocused && tvStyles.channelCardFocused]}
+        onFocus={() => setFocusedChannelId(item.stream_id || item.series_id || null)}
+        onBlur={() => setFocusedChannelId(null)}
+        onPress={() => handleChannelPress(item)}
+        onLongPress={() => handleChannelLongPress(item)}
+      >
+        <View style={tvStyles.channelImageContainer}>
+          {(item.stream_icon || item.cover) ? (
+            <Image
+              source={{ uri: item.stream_icon || item.cover }}
+              style={tvStyles.channelIcon}
+              resizeMode="contain"
+              defaultSource={require('../../assets/images/placeholder.png')}
+            />
+          ) : (
+            <Tv size={48} color="#444" />
+          )}
+        </View>
+        <Text style={tvStyles.channelName} numberOfLines={2}>
+          {item.title || item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // ─── TV live channel list item with timeline ────────────────────
+  const renderTVChannelListItem = ({ item }: ListRenderItemInfo<LiveChannel>) => {
     const isFocused = (item.stream_id || item.series_id) === focusedChannelId;
     const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
@@ -335,25 +435,23 @@ export const HomeScreen = () => {
       if (nowIndex !== -1) {
         nowProg = epg[nowIndex];
       }
-
       visibleEpg = epg.filter(p => p.end > timelineStart && p.start < timelineEnd);
     }
 
     return (
       <TouchableOpacity
-        style={[styles.channelListItem, isFocused && styles.channelListItemFocused]}
+        style={[tvStyles.channelListItem, isFocused && tvStyles.channelListItemFocused]}
         onFocus={() => setFocusedChannelId(item.stream_id || item.series_id || null)}
         onBlur={() => setFocusedChannelId(null)}
         onPress={() => handleChannelPress(item)}
         onLongPress={() => handleChannelLongPress(item)}
       >
-        {/* Left Pane (Logo, Channel Info) */}
-        <View style={styles.channelListLeftPane}>
-          <View style={styles.channelListImageContainer}>
+        <View style={tvStyles.channelListLeftPane}>
+          <View style={tvStyles.channelListImageContainer}>
             {(item.stream_icon || item.cover) ? (
               <Image
                 source={{ uri: item.stream_icon || item.cover }}
-                style={styles.channelListIcon}
+                style={tvStyles.channelListIcon}
                 resizeMode="contain"
                 defaultSource={require('../../assets/images/placeholder.png')}
               />
@@ -361,22 +459,20 @@ export const HomeScreen = () => {
               <Tv size={24} color="#444" />
             )}
           </View>
-          <View style={styles.channelListInfo}>
-            <Text style={styles.channelListName} numberOfLines={1}>
+          <View style={tvStyles.channelListInfo}>
+            <Text style={tvStyles.channelListName} numberOfLines={1}>
               {item.title || item.name}
             </Text>
             {nowProg && (
-              <Text style={styles.channelListNowProgram} numberOfLines={1}>
+              <Text style={tvStyles.channelListNowProgram} numberOfLines={1}>
                 {nowProg.title_raw}
               </Text>
             )}
           </View>
         </View>
 
-        {/* Right Pane (Continuous Timeline) */}
-        <View style={styles.timelineRow}>
+        <View style={tvStyles.timelineRow}>
             {visibleEpg.map((prog, index) => {
-              // Calculate positioning
               const startPos = Math.max(timelineStart, prog.start);
               const endPos = Math.min(timelineEnd, prog.end);
               const leftPercent = ((startPos - timelineStart) / TIMELINE_DURATION) * 100;
@@ -390,13 +486,13 @@ export const HomeScreen = () => {
                 <View
                   key={`${prog.start}-${index}`}
                   style={[
-                    styles.programBlockTimeline,
+                    tvStyles.programBlockTimeline,
                     { left: `${leftPercent}%`, width: `${widthPercent}%` },
-                    isNow && styles.programBlockTimelineNow
+                    isNow && tvStyles.programBlockTimelineNow
                   ]}
                 >
-                  <Text style={[styles.programTitleTimeline, isNow && styles.programTitleTimelineNow]} numberOfLines={1}>
-                    <Text style={[styles.programTimeTimeline, isNow && styles.programTimeTimelineNow]}>
+                  <Text style={[tvStyles.programTitleTimeline, isNow && tvStyles.programTitleTimelineNow]} numberOfLines={1}>
+                    <Text style={[tvStyles.programTimeTimeline, isNow && tvStyles.programTimeTimelineNow]}>
                       {prog.start_formatted || formatProgramTime(prog.start)}{' '}
                     </Text>
                     {prog.title_raw}
@@ -409,22 +505,96 @@ export const HomeScreen = () => {
     );
   };
 
-  const [focusedTab, setFocusedTab] = useState<string | null>(null);
-
+  // ─── Loading state ──────────────────────────────────────────────
   if (loading && categories.length === 0) {
     return (
-      <View style={styles.centerContainer}>
+      <View style={sharedStyles.centerContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
       </View>
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  //  MOBILE LAYOUT
+  // ═══════════════════════════════════════════════════════════════
+  if (isMobile) {
+    return (
+      <View style={mobileStyles.container}>
+        {/* Content type tabs */}
+        <View style={mobileStyles.tabBar}>
+          {(['live', 'vod', 'series'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[mobileStyles.tab, activeTab === tab && mobileStyles.tabActive]}
+              onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
+            >
+              {tab === 'live' && <Tv color={activeTab === tab ? '#FFF' : '#888'} size={18} />}
+              {tab === 'vod' && <FileVideo color={activeTab === tab ? '#FFF' : '#888'} size={18} />}
+              {tab === 'series' && <LayoutList color={activeTab === tab ? '#FFF' : '#888'} size={18} />}
+              <Text style={[mobileStyles.tabText, activeTab === tab && mobileStyles.tabTextActive]}>
+                {tab === 'live' ? t('sidebar.live') : tab === 'vod' ? t('sidebar.movies') : t('sidebar.series')}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Horizontal category chips */}
+        <FlatList
+          data={visibleCategories}
+          keyExtractor={(item) => item.category_id}
+          renderItem={renderCategory}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={mobileStyles.categoryList}
+          style={mobileStyles.categoryListContainer}
+        />
+
+        {/* Channel list / grid */}
+        {!selectedCategoryId ? (
+          <View style={sharedStyles.centerContainer}>
+            <Clock size={48} color="#444" />
+            <Text style={mobileStyles.emptyTitle}>{t('home.recentlyWatched')}</Text>
+            <Text style={mobileStyles.emptyText}>{t('home.nothingToSeeHere')}</Text>
+          </View>
+        ) : displayedChannels.length === 0 ? (
+          <View style={sharedStyles.centerContainer}>
+            <ActivityIndicator size="large" color="#444" />
+            <Text style={mobileStyles.emptyText}>{t('home.noChannels')}</Text>
+          </View>
+        ) : activeTab === 'live' ? (
+          <FlatList
+            data={displayedChannels}
+            keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
+            renderItem={renderMobileChannelCard}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={mobileStyles.channelListContent}
+          />
+        ) : (
+          <FlatList
+            key={`mobile-grid-${activeTab}-${numColumns}`}
+            data={displayedChannels}
+            keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
+            renderItem={renderMobileChannelCard}
+            numColumns={numColumns}
+            showsVerticalScrollIndicator={false}
+            columnWrapperStyle={mobileStyles.gridRow}
+            contentContainerStyle={mobileStyles.gridContent}
+          />
+        )}
+      </View>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  TV LAYOUT (original – completely preserved)
+  // ═══════════════════════════════════════════════════════════════
   return (
-    <View style={styles.container}>
+    <View style={tvStyles.container}>
       {/* 1. Sidebar */}
-      <View style={styles.sidebar}>
-        <View style={styles.sidebarTop}>
-            <PlaySquare color="#007AFF" size={32} style={styles.sidebarLogo} />
+      <View style={tvStyles.sidebar}>
+        <View style={tvStyles.sidebarTop}>
+            <PlaySquare color="#007AFF" size={32} style={tvStyles.sidebarLogo} />
 
             <TouchableOpacity
               accessible={true}
@@ -432,9 +602,9 @@ export const HomeScreen = () => {
               accessibilityLabel={t('sidebar.live')}
               accessibilityState={{ selected: activeTab === 'live' }}
               style={[
-                styles.sidebarItem,
-                activeTab === 'live' && styles.sidebarItemSelected,
-                focusedTab === 'live' && styles.sidebarItemFocused
+                tvStyles.sidebarItem,
+                activeTab === 'live' && tvStyles.sidebarItemSelected,
+                focusedTab === 'live' && tvStyles.sidebarItemFocused
               ]}
               onFocus={() => { setFocusedTab('live'); setActiveTab('live'); }}
               onBlur={() => setFocusedTab(null)}
@@ -449,9 +619,9 @@ export const HomeScreen = () => {
               accessibilityLabel={t('sidebar.movies')}
               accessibilityState={{ selected: activeTab === 'vod' }}
               style={[
-                styles.sidebarItem,
-                activeTab === 'vod' && styles.sidebarItemSelected,
-                focusedTab === 'vod' && styles.sidebarItemFocused
+                tvStyles.sidebarItem,
+                activeTab === 'vod' && tvStyles.sidebarItemSelected,
+                focusedTab === 'vod' && tvStyles.sidebarItemFocused
               ]}
               onFocus={() => { setFocusedTab('vod'); setActiveTab('vod'); }}
               onBlur={() => setFocusedTab(null)}
@@ -466,9 +636,9 @@ export const HomeScreen = () => {
               accessibilityLabel={t('sidebar.series')}
               accessibilityState={{ selected: activeTab === 'series' }}
               style={[
-                styles.sidebarItem,
-                activeTab === 'series' && styles.sidebarItemSelected,
-                focusedTab === 'series' && styles.sidebarItemFocused
+                tvStyles.sidebarItem,
+                activeTab === 'series' && tvStyles.sidebarItemSelected,
+                focusedTab === 'series' && tvStyles.sidebarItemFocused
               ]}
               onFocus={() => { setFocusedTab('series'); setActiveTab('series'); }}
               onBlur={() => setFocusedTab(null)}
@@ -482,8 +652,8 @@ export const HomeScreen = () => {
               accessibilityRole="button"
               accessibilityLabel={t('sidebar.search')}
               style={[
-                styles.sidebarItem,
-                focusedTab === 'search' && styles.sidebarItemFocused
+                tvStyles.sidebarItem,
+                focusedTab === 'search' && tvStyles.sidebarItemFocused
               ]}
               onFocus={() => setFocusedTab('search')}
               onBlur={() => setFocusedTab(null)}
@@ -493,14 +663,14 @@ export const HomeScreen = () => {
             </TouchableOpacity>
         </View>
 
-        <View style={styles.sidebarBottom}>
+        <View style={tvStyles.sidebarBottom}>
             <TouchableOpacity
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel="Settings"
               style={[
-                styles.sidebarItem,
-                focusedTab === 'settings' && styles.sidebarItemFocused
+                tvStyles.sidebarItem,
+                focusedTab === 'settings' && tvStyles.sidebarItemFocused
               ]}
               onFocus={() => setFocusedTab('settings')}
               onBlur={() => setFocusedTab(null)}
@@ -512,54 +682,54 @@ export const HomeScreen = () => {
       </View>
 
       {/* 2. Categories */}
-      <View style={styles.categoriesContainer}>
+      <View style={tvStyles.categoriesContainer}>
         <FlatList
           data={visibleCategories}
           keyExtractor={(item) => item.category_id}
           renderItem={renderCategory}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesList}
+          contentContainerStyle={tvStyles.categoriesList}
         />
       </View>
 
       {/* 3. Main Content */}
-      <View style={styles.mainContent}>
+      <View style={tvStyles.mainContent}>
         {!selectedCategoryId ? (
-          <View style={styles.emptyContainer}>
-            <Clock size={64} color="#444" style={styles.recentlyWatchedIcon} />
-            <Text style={styles.recentlyWatchedTitle}>{t('home.recentlyWatched')}</Text>
-            <Text style={styles.emptyText}>{t('home.nothingToSeeHere')}</Text>
+          <View style={sharedStyles.centerContainer}>
+            <Clock size={64} color="#444" style={tvStyles.recentlyWatchedIcon} />
+            <Text style={tvStyles.recentlyWatchedTitle}>{t('home.recentlyWatched')}</Text>
+            <Text style={tvStyles.emptyText}>{t('home.nothingToSeeHere')}</Text>
           </View>
         ) : (
-          <View style={styles.channelsContainer}>
+          <View style={tvStyles.channelsContainer}>
             {displayedChannels.length === 0 ? (
-              <View style={styles.emptyContainer}>
+              <View style={sharedStyles.centerContainer}>
                 <ActivityIndicator size="large" color="#444" />
-                <Text style={styles.emptyText}>{t('home.noChannels')}</Text>
+                <Text style={tvStyles.emptyText}>{t('home.noChannels')}</Text>
               </View>
             ) : (
               activeTab === 'live' ? (
-                <View style={styles.liveTvContainer}>
-                    <View style={styles.timelineHeader}>
-                        <View style={styles.channelListLeftPaneHeader} />
-                        <View style={styles.timelineHeaderMarkers}>
+                <View style={tvStyles.liveTvContainer}>
+                    <View style={tvStyles.timelineHeader}>
+                        <View style={tvStyles.channelListLeftPaneHeader} />
+                        <View style={tvStyles.timelineHeaderMarkers}>
                           {timeMarkers.map((marker, idx) => (
-                            <View key={idx} style={[styles.timeMarker, { left: `${((marker.time - timelineStart) / TIMELINE_DURATION) * 100}%` }]}>
-                              <Text style={styles.timelineHeaderText}>{marker.label}</Text>
+                            <View key={idx} style={[tvStyles.timeMarker, { left: `${((marker.time - timelineStart) / TIMELINE_DURATION) * 100}%` }]}>
+                              <Text style={tvStyles.timelineHeaderText}>{marker.label}</Text>
                             </View>
                           ))}
                         </View>
                     </View>
-                    <View style={styles.timelineContainer}>
+                    <View style={tvStyles.timelineContainer}>
                       {currentProgressPercent >= 0 && currentProgressPercent <= 100 && (
-                        <View style={[styles.currentTimeIndicator, { left: `${currentProgressPercent}%`, marginLeft: 250 }]} />
+                        <View style={[tvStyles.currentTimeIndicator, { left: `${currentProgressPercent}%`, marginLeft: 250 }]} />
                       )}
                       <FlatList
                           data={displayedChannels}
                           keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
-                          renderItem={renderChannelListItem}
+                          renderItem={renderTVChannelListItem}
                           showsVerticalScrollIndicator={false}
-                          contentContainerStyle={styles.channelListContent}
+                          contentContainerStyle={tvStyles.channelListContent}
                       />
                     </View>
                 </View>
@@ -568,11 +738,11 @@ export const HomeScreen = () => {
                   key={`grid-${activeTab}`}
                   data={displayedChannels}
                   keyExtractor={(item) => (item.stream_id || item.series_id || Math.random()).toString()}
-                  renderItem={renderChannelCard}
+                  renderItem={renderTVChannelCard}
                   numColumns={3}
                   showsVerticalScrollIndicator={false}
-                  columnWrapperStyle={styles.channelsRow}
-                  contentContainerStyle={styles.channelsGridList}
+                  columnWrapperStyle={tvStyles.channelsRow}
+                  contentContainerStyle={tvStyles.channelsGridList}
                 />
               )
             )}
@@ -583,19 +753,181 @@ export const HomeScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#0F0F0F',
-  },
+// ═══════════════════════════════════════════════════════════════════
+//  SHARED STYLES
+// ═══════════════════════════════════════════════════════════════════
+const sharedStyles = StyleSheet.create({
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#0F0F0F',
   },
+});
 
+// ═══════════════════════════════════════════════════════════════════
+//  MOBILE STYLES
+// ═══════════════════════════════════════════════════════════════════
+const mobileStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F0F0F',
+  },
+  // ── Tab bar ──
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#1C1C1E',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  tabActive: {
+    backgroundColor: '#007AFF',
+  },
+  tabText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: '#FFF',
+  },
+  // ── Category chips ──
+  categoryListContainer: {
+    maxHeight: 52,
+    backgroundColor: '#151515',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  categoryList: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#2C2C2E',
+    marginRight: 0,
+  },
+  categoryChipSelected: {
+    backgroundColor: '#007AFF',
+  },
+  categoryChipText: {
+    color: '#888',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  categoryChipTextSelected: {
+    color: '#FFF',
+  },
+  // ── Empty state ──
+  emptyTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 14,
+  },
+  // ── Live channel list ──
+  channelListContent: {
+    paddingBottom: 20,
+  },
+  liveChannelItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1C1C1E',
+  },
+  liveChannelIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  liveChannelImage: {
+    width: '100%',
+    height: '100%',
+  },
+  liveChannelInfo: {
+    flex: 1,
+  },
+  liveChannelName: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  liveChannelNow: {
+    color: '#888',
+    fontSize: 12,
+  },
+  // ── Grid (VOD / Series) ──
+  gridContent: {
+    padding: 12,
+  },
+  gridRow: {
+    justifyContent: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
+  },
+  gridCard: {
+    flex: 1,
+    maxWidth: '48%',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  gridCardImage: {
+    width: '100%',
+    aspectRatio: 2 / 3,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridCardImg: {
+    width: '100%',
+    height: '100%',
+  },
+  gridCardTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '500',
+    padding: 8,
+    textAlign: 'center',
+  },
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  TV STYLES (original – 100% preserved)
+// ═══════════════════════════════════════════════════════════════════
+const tvStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#0F0F0F',
+  },
   sidebar: {
     width: 80,
     backgroundColor: '#1C1C1E',
@@ -632,7 +964,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFF',
   },
-
   categoriesContainer: {
     width: 250,
     backgroundColor: '#151515',
@@ -665,7 +996,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
   },
-
   mainContent: {
     flex: 1,
     flexDirection: 'column',
@@ -679,11 +1009,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   emptyText: {
     color: '#888',
     fontSize: 18,
@@ -691,7 +1016,6 @@ const styles = StyleSheet.create({
   channelsContainer: {
     flex: 1,
   },
-
   channelsGridList: {
     padding: 30,
   },
@@ -733,7 +1057,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-
   liveTvContainer: {
     flex: 1,
   },
@@ -855,8 +1178,8 @@ const styles = StyleSheet.create({
     borderColor: '#1C1C1E',
   },
   programBlockTimelineNow: {
-    backgroundColor: '#1E3A8A', // Dark blue
-    borderColor: '#3B82F6', // Lighter blue border
+    backgroundColor: '#1E3A8A',
+    borderColor: '#3B82F6',
   },
   programTitleTimeline: {
     color: '#E2E8F0',
@@ -874,9 +1197,4 @@ const styles = StyleSheet.create({
   programTimeTimelineNow: {
     color: '#93C5FD',
   },
-  noDataText: {
-    color: '#64748B',
-    fontSize: 13,
-    fontStyle: 'italic',
-  }
 });
