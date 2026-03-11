@@ -5,6 +5,7 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { UnifiedEpgProgram, EpgRenderItemType } from '../types/iptv';
 import { Calendar, Clock, ChevronLeft } from 'lucide-react-native';
+import { formatProgramTime } from '../services/xmltv';
 import { Buffer } from 'buffer';
 
 type EpgRouteProp = RouteProp<RootStackParamList, 'Epg'>;
@@ -37,21 +38,21 @@ export const EpgScreen = () => {
     let startStr = '';
     let endStr = '';
 
-    if ('start_formatted' in item) {
+    if ('title_raw' in item && typeof item.start === 'number') {
       // ParsedProgram
       const nowMs = Date.now();
-      isNow = item.start <= nowMs && item.end > nowMs;
+      isNow = item.start <= nowMs && (item.end as number) > nowMs;
       title = item.title_raw;
       description = item.description_raw;
-      startStr = item.start_formatted;
-      endStr = item.end_formatted;
+      startStr = (item as any).start_formatted || formatProgramTime(item.start);
+      endStr = (item as any).end_formatted || formatProgramTime(item.end as number);
     } else if ('title_raw' in item) {
       // M3UFormattedEpgProgram
       isNow = item.has_archive === 0;
       title = item.title_raw;
       description = item.description_raw;
-      startStr = item.start;
-      endStr = item.end;
+      startStr = String(item.start);
+      endStr = String(item.end);
     } else {
       // XtreamEpgListing
       isNow = item.has_archive === 0;
