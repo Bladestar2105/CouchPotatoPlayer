@@ -22,3 +22,15 @@ jest.mock('@react-navigation/native', () => {
     NavigationContainer: ({ children }) => children,
   };
 });
+
+jest.mock('react-native-file-access', () => ({
+  Dirs: {
+    DocumentDir: '/mock/document/dir',
+  },
+  FileSystem: {
+    writeFile: jest.fn(),
+    readFile: jest.fn().mockResolvedValue('null'),
+    exists: jest.fn().mockResolvedValue(true),
+    unlink: jest.fn(),
+  },
+}));

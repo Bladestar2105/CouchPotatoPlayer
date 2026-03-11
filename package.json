@@ -25,6 +25,7 @@
     "react-dom": "^19.2.4",
     "react-i18next": "^16.5.6",
     "react-native": "npm:react-native-tvos@^0.84.1-0",
+    "react-native-file-access": "^3.2.0",
     "react-native-ksplayer": "file:local_modules/react-native-ksplayer",
     "react-native-safe-area-context": "^5.7.0",
     "react-native-screens": "^4.25.0-nightly-20260307-41c7ab703",
