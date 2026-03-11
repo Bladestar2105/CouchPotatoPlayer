@@ -1,0 +1,4 @@
+## 2024-03-11 - [Restrict Proxy Target Schemes to Prevent SSRF/LFI]
+**Vulnerability:** The Nginx reverse proxy configuration (`nginx.conf`) allowed capturing any arbitrary URI scheme via the regex `(.*)` for the target proxy URL (e.g. `/proxy/file:///etc/passwd`). This introduces critical SSRF (Server-Side Request Forgery) and LFI (Local File Inclusion) risks.
+**Learning:** Open proxy endpoints must strictly validate user-provided URLs. Even internal proxy paths used to bypass CORS can be abused to access internal systems or read local files if not properly sanitized to web protocols.
+**Prevention:** Always restrict proxy targets to expected web protocols (`http://` or `https://`) directly in the matching configuration or code, such as updating the regex to `(https?://.*)`.
