@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../store';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, ChevronLeft, ChevronRight, Lock, Shield } from 'lucide-react-native';
 import { isTV, isMobile } from '../utils/platform';
 import { checkProviderHealth, HealthResult, getLatencyColor, formatLatency } from '../utils/providerHealth';
 import { showToast } from '../components/Toast';
@@ -27,6 +27,8 @@ export const SettingsScreen = () => {
   const removeProvider = useAppStore(state => state.removeProvider);
   const clearState = useAppStore(state => state.clearState);
   const clearRecentlyWatched = useAppStore(state => state.clearRecentlyWatched);
+  const setPin = useAppStore(state => state.setPin);
+  const lockedChannels = useAppStore(state => state.lockedChannels);
 
   const [enteredPin, setEnteredPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -46,6 +48,7 @@ export const SettingsScreen = () => {
   const [streamingAdvanced, setStreamingAdvanced] = useState(false);
   const [healthResults, setHealthResults] = useState<Record<string, HealthResult>>({});
   const [checkingHealth, setCheckingHealth] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
 
   const navigation = useNavigation<NavigationProp>();
 

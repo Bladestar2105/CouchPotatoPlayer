@@ -19,6 +19,7 @@ interface AppState {
   streamingSettings: StreamingSettings;
   favorites: FavoriteItem[];
   recentlyWatched: RecentlyWatchedItem[];
+  lockedChannels: (string | number)[];
   setConfig: (config: PlayerConfig | null) => void;
   addProvider: (provider: PlayerConfig) => void;
   removeProvider: (id: string) => void;
@@ -39,6 +40,9 @@ interface AppState {
   updatePlaybackPosition: (id: string | number, position: number, duration?: number) => void;
   removeRecentlyWatched: (id: string | number) => void;
   clearRecentlyWatched: () => void;
+  lockChannel: (id: string | number) => void;
+  unlockChannel: (id: string | number) => void;
+  isChannelLocked: (id: string | number) => boolean;
   clearState: () => void;
 }
 
@@ -59,6 +63,7 @@ export const useAppStore = create<AppState>()(
       streamingSettings: DEFAULT_STREAMING_SETTINGS,
       favorites: [],
       recentlyWatched: [],
+      lockedChannels: [],
       setConfig: (config) => set({ config }),
       addProvider: (provider) => set((state) => {
         const existingIndex = state.providers.findIndex(p => p.id === provider.id);
@@ -118,11 +123,23 @@ export const useAppStore = create<AppState>()(
         recentlyWatched: state.recentlyWatched.filter(r => r.id !== id),
       })),
       clearRecentlyWatched: () => set({ recentlyWatched: [] }),
+      lockChannel: (id) => set((state) => ({
+        lockedChannels: state.lockedChannels.includes(id)
+          ? state.lockedChannels
+          : [...state.lockedChannels, id],
+      })),
+      unlockChannel: (id) => set((state) => ({
+        lockedChannels: state.lockedChannels.filter((c: string | number) => c !== id),
+      })),
+      isChannelLocked: (id): boolean => {
+        return useAppStore.getState().lockedChannels.includes(id);
+      },
       clearState: () => {
-        set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0, streamingSettings: DEFAULT_STREAMING_SETTINGS, favorites: [], recentlyWatched: [] });
+        set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0, streamingSettings: DEFAULT_STREAMING_SETTINGS, favorites: [], recentlyWatched: [], lockedChannels: [] });
         clearLargeData('categories.json');
         clearLargeData('channels.json');
         clearLargeData('epgData.json');
+        set({ lockedChannels: [] });
       },
     }),
     {
@@ -139,6 +156,7 @@ export const useAppStore = create<AppState>()(
         streamingSettings: state.streamingSettings,
         favorites: state.favorites,
         recentlyWatched: state.recentlyWatched,
+        lockedChannels: state.lockedChannels,
         // Do not persist large lists in AsyncStorage
       }),
       onRehydrateStorage: () => (state) => {
