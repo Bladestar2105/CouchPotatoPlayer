@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PlayerConfig, Category, LiveChannel, StreamingSettings, DEFAULT_STREAMING_SETTINGS } from '../types/iptv';
+import { PlayerConfig, Category, LiveChannel, StreamingSettings, DEFAULT_STREAMING_SETTINGS, FavoriteItem, RecentlyWatchedItem } from '../types/iptv';
 import { saveLargeData, loadLargeData, clearLargeData } from '../utils/storage';
 
 interface AppState {
@@ -17,6 +17,8 @@ interface AppState {
   showAdult: boolean;
   isDiskDataLoaded: boolean;
   streamingSettings: StreamingSettings;
+  favorites: FavoriteItem[];
+  recentlyWatched: RecentlyWatchedItem[];
   setConfig: (config: PlayerConfig | null) => void;
   addProvider: (provider: PlayerConfig) => void;
   removeProvider: (id: string) => void;
@@ -30,6 +32,13 @@ interface AppState {
   setShowAdult: (showAdult: boolean) => void;
   setDiskDataLoaded: (loaded: boolean) => void;
   setStreamingSettings: (settings: Partial<StreamingSettings>) => void;
+  addFavorite: (item: FavoriteItem) => void;
+  removeFavorite: (id: string | number) => void;
+  isFavorite: (id: string | number) => boolean;
+  addRecentlyWatched: (item: RecentlyWatchedItem) => void;
+  updatePlaybackPosition: (id: string | number, position: number, duration?: number) => void;
+  removeRecentlyWatched: (id: string | number) => void;
+  clearRecentlyWatched: () => void;
   clearState: () => void;
 }
 
@@ -48,6 +57,8 @@ export const useAppStore = create<AppState>()(
       showAdult: false,
       isDiskDataLoaded: false,
       streamingSettings: DEFAULT_STREAMING_SETTINGS,
+      favorites: [],
+      recentlyWatched: [],
       setConfig: (config) => set({ config }),
       addProvider: (provider) => set((state) => {
         const existingIndex = state.providers.findIndex(p => p.id === provider.id);
@@ -83,8 +94,32 @@ export const useAppStore = create<AppState>()(
       setStreamingSettings: (settings) => set((state) => ({
         streamingSettings: { ...state.streamingSettings, ...settings },
       })),
+      addFavorite: (item) => set((state) => {
+        if (state.favorites.some(f => f.id === item.id && f.type === item.type)) return state;
+        return { favorites: [item, ...state.favorites] };
+      }),
+      removeFavorite: (id) => set((state) => ({
+        favorites: state.favorites.filter(f => f.id !== id),
+      })),
+      isFavorite: (id) => {
+        return useAppStore.getState().favorites.some(f => f.id === id);
+      },
+      addRecentlyWatched: (item) => set((state) => {
+        // Remove existing entry for same item, add to front, limit to 50
+        const filtered = state.recentlyWatched.filter(r => !(r.id === item.id && r.type === item.type));
+        return { recentlyWatched: [item, ...filtered].slice(0, 50) };
+      }),
+      updatePlaybackPosition: (id, position, duration) => set((state) => ({
+        recentlyWatched: state.recentlyWatched.map(r =>
+          r.id === id ? { ...r, position, ...(duration !== undefined ? { duration } : {}), lastWatchedAt: Date.now() } : r
+        ),
+      })),
+      removeRecentlyWatched: (id) => set((state) => ({
+        recentlyWatched: state.recentlyWatched.filter(r => r.id !== id),
+      })),
+      clearRecentlyWatched: () => set({ recentlyWatched: [] }),
       clearState: () => {
-        set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0, streamingSettings: DEFAULT_STREAMING_SETTINGS });
+        set({ config: null, providers: [], categories: [], channels: [], epgData: {}, pin: null, showAdult: false, lastProviderUpdate: 0, lastEpgUpdate: 0, streamingSettings: DEFAULT_STREAMING_SETTINGS, favorites: [], recentlyWatched: [] });
         clearLargeData('categories.json');
         clearLargeData('channels.json');
         clearLargeData('epgData.json');
@@ -102,6 +137,8 @@ export const useAppStore = create<AppState>()(
         pin: state.pin,
         showAdult: state.showAdult,
         streamingSettings: state.streamingSettings,
+        favorites: state.favorites,
+        recentlyWatched: state.recentlyWatched,
         // Do not persist large lists in AsyncStorage
       }),
       onRehydrateStorage: () => (state) => {

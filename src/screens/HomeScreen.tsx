@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
-  ActivityIndicator, ListRenderItemInfo, Platform, Dimensions, ScrollView,
+  ActivityIndicator, ListRenderItemInfo, Platform, Dimensions, ScrollView, RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,6 +20,10 @@ import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
 import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
+import { getEpgKey, getCurrentProgram } from '../utils/epg';
+import { ChannelLogo } from '../components/ChannelLogo';
+import { ChannelListSkeleton, GridSkeleton, HorizontalRowSkeleton } from '../components/SkeletonLoader';
+import { showToast } from '../components/Toast';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -38,7 +42,12 @@ export const HomeScreen = () => {
     setLastProviderUpdate,
     lastEpgUpdate,
     setLastEpgUpdate,
-    isDiskDataLoaded
+    isDiskDataLoaded,
+    favorites,
+    addFavorite,
+    removeFavorite,
+    recentlyWatched,
+    addRecentlyWatched,
   } = useAppStore();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
@@ -48,6 +57,7 @@ export const HomeScreen = () => {
   const [activeTab, setActiveTab] = useState<'live' | 'vod' | 'series'>('live');
   const [lastFetchedTab, setLastFetchedTab] = useState<'live' | 'vod' | 'series' | null>(null);
   const [numColumns, setNumColumns] = useState(gridColumns());
+  const [refreshing, setRefreshing] = useState(false);
 
   // Listen for dimension changes (rotation)
   useEffect(() => {
@@ -230,9 +240,116 @@ export const HomeScreen = () => {
 
   const handleChannelLongPress = useCallback((channel: LiveChannel) => {
     navigation.navigate('Epg', {
-      channelId: config?.type === 'm3u' ? channel.epg_channel_id : (channel.epg_channel_id || channel.stream_id)
+      channelId: getEpgKey(channel, config?.type)
     });
   }, [config, navigation]);
+
+  // ── Favorites toggle ──
+  const toggleFavorite = useCallback((channel: LiveChannel) => {
+    const itemId = activeTab === 'series' ? (channel.series_id || channel.stream_id) : channel.stream_id;
+    const isFav = favorites.some(f => f.id === itemId);
+    if (isFav) {
+      removeFavorite(itemId);
+      showToast('Removed from favorites', 'info');
+    } else {
+      addFavorite({
+        id: itemId,
+        type: activeTab,
+        name: channel.title || channel.name,
+        icon: channel.cover || channel.stream_icon,
+        categoryId: channel.category_id,
+        addedAt: Date.now(),
+      });
+      showToast('Added to favorites', 'success');
+    }
+  }, [activeTab, favorites, addFavorite, removeFavorite]);
+
+  // ── Track recently watched when pressing a channel ──
+  const handleChannelPressWithTracking = useCallback((channel: LiveChannel) => {
+    const itemId = activeTab === 'series' ? (channel.series_id || channel.stream_id) : channel.stream_id;
+    addRecentlyWatched({
+      id: itemId,
+      type: activeTab === 'live' ? 'live' : activeTab,
+      name: channel.title || channel.name,
+      icon: channel.cover || channel.stream_icon,
+      extension: activeTab === 'live' ? 'm3u8' : (channel.container_extension || 'mp4'),
+      directSource: channel.direct_source,
+      lastWatchedAt: Date.now(),
+    });
+    handleChannelPress(channel);
+  }, [activeTab, addRecentlyWatched, handleChannelPress]);
+
+  // ── Navigate from recently watched item ──
+  const handleRecentPress = useCallback((item: RecentlyWatchedItem) => {
+    if (item.type === 'live') {
+      navigation.navigate('LivePlayer', {
+        channelId: item.id as number,
+        channelName: item.name,
+        extension: item.extension || 'm3u8',
+        directSource: item.directSource,
+        type: 'live',
+      });
+    } else {
+      navigation.navigate('MediaInfo', {
+        id: item.id as number,
+        type: item.type,
+        title: item.name,
+        cover: item.icon,
+        extension: item.extension,
+      });
+    }
+  }, [navigation]);
+
+  // ── Navigate from favorite item ──
+  const handleFavoritePress = useCallback((item: FavoriteItem) => {
+    if (item.type === 'live') {
+      navigation.navigate('LivePlayer', {
+        channelId: item.id as number,
+        channelName: item.name,
+        extension: 'm3u8',
+        type: 'live',
+      });
+    } else {
+      navigation.navigate('MediaInfo', {
+        id: item.id as number,
+        type: item.type,
+        title: item.name,
+        cover: item.icon,
+      });
+    }
+  }, [navigation]);
+
+  // ── Pull-to-refresh handler ──
+  const onRefresh = useCallback(async () => {
+    if (!config) return;
+    setRefreshing(true);
+    try {
+      if (config.type === 'xtream') {
+        const xtream = new XtreamService(config);
+        let catData;
+        if (activeTab === 'vod') {
+          catData = await xtream.getVodCategories();
+        } else if (activeTab === 'series') {
+          catData = await xtream.getSeriesCategories();
+        } else {
+          catData = await xtream.getLiveCategories();
+        }
+        setCategories(catData);
+        setLastProviderUpdate(Date.now());
+      } else if (config.type === 'm3u') {
+        const m3uService = new M3UService(config);
+        const m3uData = await m3uService.parsePlaylist();
+        setCategories(m3uData.categories);
+        setChannels(m3uData.channels);
+      }
+      showToast('Content refreshed', 'success');
+    } catch (error) {
+      showToast('Refresh failed', 'error');
+      console.error('Refresh failed:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [config, activeTab, setCategories, setChannels, setLastProviderUpdate]);
 
   const displayedChannels = useMemo(() => {
     if (!selectedCategoryId) return [];
@@ -327,7 +444,7 @@ export const HomeScreen = () => {
 
   // ─── Mobile channel card ────────────────────────────────────────
   const renderMobileChannelCard = ({ item }: ListRenderItemInfo<LiveChannel>) => {
-    const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
+    const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
     let nowProg: ParsedProgram | null = null;
     if (epg && epg.length > 0) {
@@ -341,31 +458,42 @@ export const HomeScreen = () => {
       return (
         <TouchableOpacity
           style={mobileStyles.liveChannelItem}
-          onPress={() => handleChannelPress(item)}
+          onPress={() => handleChannelPressWithTracking(item)}
           onLongPress={() => handleChannelLongPress(item)}
           activeOpacity={0.7}
         >
           <View style={mobileStyles.liveChannelIcon}>
-            {(item.stream_icon || item.cover) ? (
-              <Image
-                source={{ uri: item.stream_icon || item.cover }}
-                style={mobileStyles.liveChannelImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <Tv size={28} color="#444" />
-            )}
+            <ChannelLogo
+              uri={item.stream_icon || item.cover}
+              name={item.title || item.name || 'CH'}
+              size={44}
+              borderRadius={22}
+            />
           </View>
           <View style={mobileStyles.liveChannelInfo}>
             <Text style={mobileStyles.liveChannelName} numberOfLines={1}>
               {item.title || item.name}
             </Text>
             {nowProg && (
-              <Text style={mobileStyles.liveChannelNow} numberOfLines={1}>
-                {formatProgramTime(nowProg.start)} – {nowProg.title_raw}
-              </Text>
+              <View style={mobileStyles.epgRow}>
+                <View style={mobileStyles.epgProgressBarBg}>
+                  <View style={[mobileStyles.epgProgressBarFill, {
+                    width: `${Math.min(100, Math.max(0, ((nowTime - nowProg.start) / (nowProg.end - nowProg.start)) * 100))}%`
+                  }]} />
+                </View>
+                <Text style={mobileStyles.liveChannelNow} numberOfLines={1}>
+                  {formatProgramTime(nowProg.start)} – {nowProg.title_raw}
+                </Text>
+              </View>
             )}
           </View>
+          <TouchableOpacity
+            style={mobileStyles.favButton}
+            onPress={() => toggleFavorite(item)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Heart size={20} color={isFav ? '#FF453A' : '#555'} fill={isFav ? '#FF453A' : 'none'} />
+          </TouchableOpacity>
         </TouchableOpacity>
       );
     }
@@ -374,7 +502,7 @@ export const HomeScreen = () => {
     return (
       <TouchableOpacity
         style={mobileStyles.gridCard}
-        onPress={() => handleChannelPress(item)}
+        onPress={() => handleChannelPressWithTracking(item)}
         activeOpacity={0.7}
       >
         <View style={mobileStyles.gridCardImage}>
@@ -387,6 +515,13 @@ export const HomeScreen = () => {
           ) : (
             <Tv size={32} color="#444" />
           )}
+          <TouchableOpacity
+            style={mobileStyles.gridFavButton}
+            onPress={() => toggleFavorite(item)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Heart size={16} color={isFav ? '#FF453A' : '#FFF'} fill={isFav ? '#FF453A' : 'none'} />
+          </TouchableOpacity>
         </View>
         <Text style={mobileStyles.gridCardTitle} numberOfLines={2}>
           {item.title || item.name}
@@ -429,10 +564,10 @@ export const HomeScreen = () => {
   // ─── TV live channel list item with timeline ────────────────────
   const renderTVChannelListItem = ({ item }: ListRenderItemInfo<LiveChannel>) => {
     const isFocused = (item.stream_id || item.series_id) === focusedChannelId;
-    const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
+    const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
 
-    let nowProg: ParsedProgram | null = null;
+    const nowProg = getCurrentProgram(epg, nowTime);
     let visibleEpg: ParsedProgram[] = [];
 
     if (epg && epg.length > 0) {
@@ -558,15 +693,120 @@ export const HomeScreen = () => {
 
         {/* Channel list / grid */}
         {!selectedCategoryId ? (
-          <View style={sharedStyles.centerContainer}>
-            <Clock size={48} color="#444" />
-            <Text style={mobileStyles.emptyTitle}>{t('home.recentlyWatched')}</Text>
-            <Text style={mobileStyles.emptyText}>{t('home.nothingToSeeHere')}</Text>
-          </View>
+          <ScrollView
+            style={mobileStyles.homeScrollContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#007AFF"
+                colors={['#007AFF']}
+              />
+            }
+          >
+            {/* Favorites Row */}
+            {favorites.length > 0 && (
+              <View style={mobileStyles.homeSection}>
+                <View style={mobileStyles.homeSectionHeader}>
+                  <Heart size={18} color="#FF453A" fill="#FF453A" />
+                  <Text style={mobileStyles.homeSectionTitle}>Favorites</Text>
+                </View>
+                <FlatList
+                  data={favorites}
+                  keyExtractor={(item) => `fav-${item.id}`}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={mobileStyles.horizontalListContent}
+                  renderItem={({ item: fav }) => (
+                    <TouchableOpacity
+                      style={mobileStyles.homeCard}
+                      onPress={() => handleFavoritePress(fav)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={mobileStyles.homeCardImage}>
+                        {fav.icon ? (
+                          <Image source={{ uri: fav.icon }} style={mobileStyles.homeCardImg} resizeMode="cover" />
+                        ) : (
+                          <View style={mobileStyles.homeCardPlaceholder}>
+                            <Text style={mobileStyles.homeCardInitial}>{fav.name.charAt(0).toUpperCase()}</Text>
+                          </View>
+                        )}
+                        {fav.type === 'live' && (
+                          <View style={mobileStyles.liveBadge}>
+                            <Text style={mobileStyles.liveBadgeText}>LIVE</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={mobileStyles.homeCardTitle} numberOfLines={2}>{fav.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
+
+            {/* Recently Watched / Continue Watching Row */}
+            {recentlyWatched.length > 0 && (
+              <View style={mobileStyles.homeSection}>
+                <View style={mobileStyles.homeSectionHeader}>
+                  <Clock size={18} color="#007AFF" />
+                  <Text style={mobileStyles.homeSectionTitle}>{t('home.recentlyWatched')}</Text>
+                </View>
+                <FlatList
+                  data={recentlyWatched.slice(0, 20)}
+                  keyExtractor={(item) => `recent-${item.id}-${item.lastWatchedAt}`}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={mobileStyles.horizontalListContent}
+                  renderItem={({ item: recent }) => (
+                    <TouchableOpacity
+                      style={mobileStyles.homeCard}
+                      onPress={() => handleRecentPress(recent)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={mobileStyles.homeCardImage}>
+                        {recent.icon ? (
+                          <Image source={{ uri: recent.icon }} style={mobileStyles.homeCardImg} resizeMode="cover" />
+                        ) : (
+                          <View style={mobileStyles.homeCardPlaceholder}>
+                            <Text style={mobileStyles.homeCardInitial}>{recent.name.charAt(0).toUpperCase()}</Text>
+                          </View>
+                        )}
+                        {recent.position && recent.duration && recent.duration > 0 && (
+                          <View style={mobileStyles.progressOverlay}>
+                            <View style={[mobileStyles.progressBar, { width: `${Math.min(100, (recent.position / recent.duration) * 100)}%` }]} />
+                          </View>
+                        )}
+                        <View style={mobileStyles.playOverlay}>
+                          <Play size={24} color="#FFF" fill="#FFF" />
+                        </View>
+                      </View>
+                      <Text style={mobileStyles.homeCardTitle} numberOfLines={2}>{recent.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
+
+            {/* Empty state when no favorites and no recent */}
+            {favorites.length === 0 && recentlyWatched.length === 0 && (
+              <View style={[sharedStyles.centerContainer, { paddingTop: 80 }]}>
+                <Clock size={48} color="#444" />
+                <Text style={mobileStyles.emptyTitle}>{t('home.recentlyWatched')}</Text>
+                <Text style={mobileStyles.emptyText}>{t('home.nothingToSeeHere')}</Text>
+              </View>
+            )}
+          </ScrollView>
         ) : displayedChannels.length === 0 ? (
           <View style={sharedStyles.centerContainer}>
-            <ActivityIndicator size="large" color="#444" />
-            <Text style={mobileStyles.emptyText}>{t('home.noChannels')}</Text>
+            {loading ? (
+              activeTab === 'live' ? <ChannelListSkeleton count={8} /> : <GridSkeleton count={6} />
+            ) : (
+              <>
+                <Tv size={48} color="#444" />
+                <Text style={mobileStyles.emptyText}>{t('home.noChannels')}</Text>
+              </>
+            )}
           </View>
         ) : activeTab === 'live' ? (
           <FlatList
@@ -575,6 +815,14 @@ export const HomeScreen = () => {
             renderItem={renderMobileChannelCard}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={mobileStyles.channelListContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#007AFF"
+                colors={['#007AFF']}
+              />
+            }
           />
         ) : (
           <FlatList
@@ -922,6 +1170,130 @@ const mobileStyles = StyleSheet.create({
     fontWeight: '500',
     padding: 8,
     textAlign: 'center',
+  },
+  // ── Favorites & Recently Watched ──
+  homeScrollContainer: {
+    flex: 1,
+  },
+  homeSection: {
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  homeSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  homeSectionTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  horizontalListContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  homeCard: {
+    width: 130,
+  },
+  homeCardImage: {
+    width: 130,
+    height: 180,
+    borderRadius: 10,
+    backgroundColor: '#2C2C2E',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  homeCardImg: {
+    width: '100%',
+    height: '100%',
+  },
+  homeCardPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+  },
+  homeCardInitial: {
+    color: '#555',
+    fontSize: 36,
+    fontWeight: 'bold',
+  },
+  homeCardTitle: {
+    color: '#CCC',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 6,
+  },
+  liveBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#FF453A',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  liveBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  progressOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+  },
+  playOverlay: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  // ── EPG Progress Bar on Live Items ──
+  epgRow: {
+    marginTop: 2,
+  },
+  epgProgressBarBg: {
+    height: 2,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 1,
+    marginBottom: 3,
+    overflow: 'hidden',
+  },
+  epgProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#FF453A',
+    borderRadius: 1,
+  },
+  // ── Favorite Buttons ──
+  favButton: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  gridFavButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 14,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

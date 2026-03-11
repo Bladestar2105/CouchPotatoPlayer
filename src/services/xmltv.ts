@@ -77,7 +77,8 @@ export function parseXmltvDate(dateStr: string): number {
 
   let offsetMs = 0;
   // Check for timezone like +0200 or -0500 which is typically at the end of the string
-  if (dateStr.length >= 19) {
+  // Ensure we have enough characters for both hours and minutes (+/-HHMM)
+  if (dateStr.length >= 20) {
     const tzSign = dateStr[15];
     if (tzSign === '+' || tzSign === '-') {
       const sign = tzSign === '+' ? 1 : -1;
