@@ -17,6 +17,7 @@ import { Tv, Search, Settings } from 'lucide-react-native';
 import { StatusBar, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { ToastProvider } from './src/components/Toast';
 
 // ─── Type definitions ────────────────────────────────────────────────
 export type RootStackParamList = {
@@ -115,6 +116,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <ToastProvider>
       {Platform.OS !== 'web' && (
         <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
       )}
@@ -150,6 +152,7 @@ export default function App() {
           <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }
