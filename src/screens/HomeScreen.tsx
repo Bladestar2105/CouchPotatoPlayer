@@ -14,6 +14,7 @@ import { Category, LiveChannel, ParsedProgram, FavoriteItem, RecentlyWatchedItem
 import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock, Heart, Play } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
+import { getEpgKey, getCurrentProgram } from '../utils/epg';
 import { ChannelLogo } from '../components/ChannelLogo';
 import { ChannelListSkeleton, GridSkeleton, HorizontalRowSkeleton } from '../components/SkeletonLoader';
 import { showToast } from '../components/Toast';
@@ -233,7 +234,7 @@ export const HomeScreen = () => {
 
   const handleChannelLongPress = useCallback((channel: LiveChannel) => {
     navigation.navigate('Epg', {
-      channelId: config?.type === 'm3u' ? channel.epg_channel_id : (channel.epg_channel_id || channel.stream_id)
+      channelId: getEpgKey(channel, config?.type)
     });
   }, [config, navigation]);
 
@@ -437,14 +438,9 @@ export const HomeScreen = () => {
 
   // ─── Mobile channel card ────────────────────────────────────────
   const renderMobileChannelCard = ({ item }: ListRenderItemInfo<LiveChannel>) => {
-    const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
+    const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
-    let nowProg: ParsedProgram | null = null;
-    if (epg && epg.length > 0) {
-      const nowMs = Date.now();
-      const idx = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
-      if (idx !== -1) nowProg = epg[idx];
-    }
+    const nowProg = getCurrentProgram(epg, nowTime);
 
     const itemId = activeTab === 'series' ? (item.series_id || item.stream_id) : item.stream_id;
     const isFav = favorites.some(f => f.id === itemId);
@@ -560,18 +556,13 @@ export const HomeScreen = () => {
   // ─── TV live channel list item with timeline ────────────────────
   const renderTVChannelListItem = ({ item }: ListRenderItemInfo<LiveChannel>) => {
     const isFocused = (item.stream_id || item.series_id) === focusedChannelId;
-    const epgKey = config?.type === 'm3u' ? item.epg_channel_id : item.epg_channel_id || item.stream_id?.toString();
+    const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
 
-    let nowProg: ParsedProgram | null = null;
+    const nowProg = getCurrentProgram(epg, nowTime);
     let visibleEpg: ParsedProgram[] = [];
 
     if (epg && epg.length > 0) {
-      const nowMs = Date.now();
-      const nowIndex = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
-      if (nowIndex !== -1) {
-        nowProg = epg[nowIndex];
-      }
       visibleEpg = epg.filter(p => p.end > timelineStart && p.start < timelineEnd);
     }
 
