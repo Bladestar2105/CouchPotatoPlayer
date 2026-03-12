@@ -26,6 +26,7 @@ const checkConnectivity = async (): Promise<boolean> => {
     const timeout = setTimeout(() => controller.abort(), 5000);
     await fetch(`https://www.google.com/generate_204?_=${Date.now()}`, {
       method: 'HEAD',
+      mode: 'no-cors',
       signal: controller.signal,
     });
     clearTimeout(timeout);
