@@ -19,7 +19,7 @@ interface KSPlayerViewProps extends ViewProps {
 
 let RNKSPlayerView: any;
 
-if (Platform.OS === 'ios' || Platform.OS === 'macos' || Platform.OS === 'tvos') {
+if (Platform.OS === 'ios' || Platform.OS === 'macos' || (Platform.OS as string) === 'tvos') {
   try {
     RNKSPlayerView = require('react-native-ksplayer').RNKSPlayerView;
   } catch (e) {
