@@ -11,7 +11,7 @@ index 957ccae..036b920 100644
 +        propertyName,
 +        indexVariable,
 +        loopLocalVariable,
-+        val => `toString(${val})`,
++        val => `jsi::String::createFromUtf8(runtime, ${val})`,
 +      );
      case 'UnionTypeAnnotation':
        const validUnionType = parseValidUnionType(elementType);
@@ -26,7 +26,7 @@ index 957ccae..036b920 100644
 +            eventProperty.name,
 +            propertyParts,
 +            usingEvent,
-+            prop => `toString(${prop})`,
++            prop => `jsi::String::createFromUtf8(runtime, ${prop})`,
 +          );
          case 'UnionTypeAnnotation':
            const validUnionType = parseValidUnionType(typeAnnotation);
