@@ -21,7 +21,7 @@ target 'CouchPotatoPlayer' do
 
   pod 'KSPlayer/Video', :git => 'https://github.com/kingslay/KSPlayer.git'
   pod 'KSPlayer/Metal', :git => 'https://github.com/kingslay/KSPlayer.git'
-  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :branch => 'main'
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :branch => 'main', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],
