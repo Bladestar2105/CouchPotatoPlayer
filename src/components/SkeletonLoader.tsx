@@ -84,29 +84,29 @@ export const HorizontalCardSkeleton: React.FC = () => (
   </View>
 );
 
-export const ChannelListSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => (
-  <View>
-    {Array.from({ length: count }).map((_, i) => (
-      <ChannelCardSkeleton key={i} />
-    ))}
-  </View>
-);
+export const ChannelListSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => {
+  const skeletons = [];
+  for (let i = 0; i < count; i++) {
+    skeletons.push(<ChannelCardSkeleton key={i} />);
+  }
+  return <View>{skeletons}</View>;
+};
 
-export const GridSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => (
-  <View style={skStyles.gridContainer}>
-    {Array.from({ length: count }).map((_, i) => (
-      <GridCardSkeleton key={i} />
-    ))}
-  </View>
-);
+export const GridSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => {
+  const skeletons = [];
+  for (let i = 0; i < count; i++) {
+    skeletons.push(<GridCardSkeleton key={i} />);
+  }
+  return <View style={skStyles.gridContainer}>{skeletons}</View>;
+};
 
-export const HorizontalRowSkeleton: React.FC<{ count?: number }> = ({ count = 5 }) => (
-  <View style={skStyles.horizontalRow}>
-    {Array.from({ length: count }).map((_, i) => (
-      <HorizontalCardSkeleton key={i} />
-    ))}
-  </View>
-);
+export const HorizontalRowSkeleton: React.FC<{ count?: number }> = ({ count = 5 }) => {
+  const skeletons = [];
+  for (let i = 0; i < count; i++) {
+    skeletons.push(<HorizontalCardSkeleton key={i} />);
+  }
+  return <View style={skStyles.horizontalRow}>{skeletons}</View>;
+};
 
 const skStyles = StyleSheet.create({
   channelCard: {
