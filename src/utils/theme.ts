@@ -1,5 +1,3 @@
-import { useAppStore } from '../store';
-
 export type ThemeMode = 'dark' | 'oled' | 'light';
 
 export interface Theme {
