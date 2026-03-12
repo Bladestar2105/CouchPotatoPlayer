@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ThemeMode } from '../utils/theme';
 import { PlayerConfig, Category, LiveChannel, StreamingSettings, DEFAULT_STREAMING_SETTINGS, FavoriteItem, RecentlyWatchedItem } from '../types/iptv';
 import { saveLargeData, loadLargeData, clearLargeData } from '../utils/storage';
 
@@ -16,6 +17,7 @@ interface AppState {
   pin: string | null;
   showAdult: boolean;
   isDiskDataLoaded: boolean;
+  themeMode: ThemeMode;
   streamingSettings: StreamingSettings;
   favorites: FavoriteItem[];
   recentlyWatched: RecentlyWatchedItem[];
@@ -32,6 +34,7 @@ interface AppState {
   setPin: (pin: string | null) => void;
   setShowAdult: (showAdult: boolean) => void;
   setDiskDataLoaded: (loaded: boolean) => void;
+  setThemeMode: (mode: ThemeMode) => void;
   setStreamingSettings: (settings: Partial<StreamingSettings>) => void;
   addFavorite: (item: FavoriteItem) => void;
   removeFavorite: (id: string | number) => void;
@@ -60,6 +63,7 @@ export const useAppStore = create<AppState>()(
       pin: null,
       showAdult: false,
       isDiskDataLoaded: false,
+      themeMode: 'dark' as ThemeMode,
       streamingSettings: DEFAULT_STREAMING_SETTINGS,
       favorites: [],
       recentlyWatched: [],
@@ -96,6 +100,7 @@ export const useAppStore = create<AppState>()(
       setPin: (pin) => set({ pin }),
       setShowAdult: (showAdult) => set({ showAdult }),
       setDiskDataLoaded: (loaded) => set({ isDiskDataLoaded: loaded }),
+      setThemeMode: (mode) => set({ themeMode: mode }),
       setStreamingSettings: (settings) => set((state) => ({
         streamingSettings: { ...state.streamingSettings, ...settings },
       })),
@@ -153,6 +158,7 @@ export const useAppStore = create<AppState>()(
         lastEpgUpdate: state.lastEpgUpdate,
         pin: state.pin,
         showAdult: state.showAdult,
+        themeMode: state.themeMode,
         streamingSettings: state.streamingSettings,
         favorites: state.favorites,
         recentlyWatched: state.recentlyWatched,

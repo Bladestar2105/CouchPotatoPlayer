@@ -8,6 +8,9 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Lock, Shield } from 'lucide-react
 import { isTV, isMobile } from '../utils/platform';
 import { checkProviderHealth, HealthResult, getLatencyColor, formatLatency } from '../utils/providerHealth';
 import { showToast } from '../components/Toast';
+import { getTheme, themeOptions, ThemeMode } from '../utils/theme';
+import { supportedLanguages } from '../i18n';
+import i18n from '../i18n';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { VideoQualityPreset, BufferSizePreset, VideoViewType } from '../types/iptv';
 import { getQualityLabel, getBufferLabel } from '../utils/streamingConfig';
@@ -28,6 +31,8 @@ export const SettingsScreen = () => {
   const clearState = useAppStore(state => state.clearState);
   const clearRecentlyWatched = useAppStore(state => state.clearRecentlyWatched);
   const setPin = useAppStore(state => state.setPin);
+  const themeMode = useAppStore(state => state.themeMode);
+  const setThemeMode = useAppStore(state => state.setThemeMode);
   const lockedChannels = useAppStore(state => state.lockedChannels);
 
   const [enteredPin, setEnteredPin] = useState('');
@@ -49,6 +54,9 @@ export const SettingsScreen = () => {
   const [healthResults, setHealthResults] = useState<Record<string, HealthResult>>({});
   const [checkingHealth, setCheckingHealth] = useState(false);
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
+  const [currentLang, setCurrentLang] = useState(i18n.language || 'en');
 
   const navigation = useNavigation<NavigationProp>();
 

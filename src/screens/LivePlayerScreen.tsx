@@ -7,7 +7,7 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { LiveChannel } from '../types/iptv';
-import { Tv, ChevronLeft, ChevronUp, ChevronDown, RotateCcw, Play, FastForward, Moon, Volume2, Subtitles, SkipForward, Settings } from 'lucide-react-native';
+import { Tv, ChevronLeft, ChevronUp, ChevronDown, RotateCcw, Play, FastForward, Moon, Volume2, Subtitles, SkipForward, Settings, Share2, Activity } from 'lucide-react-native';
 import { KSPlayerView } from '../components/KSPlayerView';
 import { isTV, isMobile } from '../utils/platform';
 import { getPlayerConfig, getOptimalExtension } from '../utils/streamingConfig';
@@ -15,6 +15,8 @@ import { MiniEpg } from '../components/MiniEpg';
 import { showToast } from '../components/Toast';
 import { PlayerGestures } from '../components/PlayerGestures';
 import { GestureControls } from '../components/GestureControls';
+import { PlayerStats } from '../components/PlayerStats';
+import { shareStream } from '../utils/shareStream';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
 type LivePlayerNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LivePlayer'>;
@@ -89,6 +91,11 @@ export const LivePlayerScreen = () => {
 
   // ── Volume control ──
   const [volume, setVolume] = useState(1.0);
+
+  // ── Player stats overlay ──
+  const [showStats, setShowStats] = useState(false);
+  const [videoMeta, setVideoMeta] = useState<any>({});
+  const [isBuffering, setIsBuffering] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -385,6 +392,17 @@ export const LivePlayerScreen = () => {
     if (data?.duration) {
       setCurrentDuration(data.duration);
     }
+    // Capture video metadata for stats overlay
+    setVideoMeta({
+      naturalSize: data?.naturalSize,
+      width: data?.naturalSize?.width,
+      height: data?.naturalSize?.height,
+      codec: data?.videoCodec || data?.codec,
+      audioCodec: data?.audioCodec,
+      fps: data?.fps,
+      bitrate: data?.bitrate,
+      audioChannels: data?.audioChannels,
+    });
   }, [resetOverlayTimer, seekOnLoad]);
 
   // ── Handle progress - auto-play next episode detection ──
@@ -426,6 +444,15 @@ export const LivePlayerScreen = () => {
   const dismissNextEpisode = useCallback(() => {
     setShowNextEpisode(false);
   }, []);
+
+  // ── Share current stream ──
+  const handleShare = useCallback(() => {
+    shareStream({
+      channelName: currentChannelName,
+      type: type as 'live' | 'vod' | 'series',
+      streamUrl: streamUrl || undefined,
+    });
+  }, [currentChannelName, type, streamUrl]);
 
   // ── Fetch next episode info for series ──
   useEffect(() => {
@@ -551,9 +578,10 @@ export const LivePlayerScreen = () => {
           onError={(e) => {
             handleStreamError(e);
           }}
-          onBuffer={({ isBuffering }: { isBuffering: boolean }) => {
-            if (isBuffering && !loading) setLoading(true);
-            else if (!isBuffering && loading) setLoading(false);
+          onBuffer={({ isBuffering: buf }: { isBuffering: boolean }) => {
+            setIsBuffering(buf);
+            if (buf && !loading) setLoading(true);
+            else if (!buf && loading) setLoading(false);
           }}
           preferredForwardBufferDuration={playerConfig.bufferConfig.minBufferMs / 1000}
           maxBufferDuration={playerConfig.bufferConfig.maxBufferMs / 1000}
@@ -577,9 +605,10 @@ export const LivePlayerScreen = () => {
             handleStreamError(e);
           }}
           onProgress={handleProgress}
-          onBuffer={({ isBuffering }: { isBuffering: boolean }) => {
-            if (isBuffering && !loading) setLoading(true);
-            else if (!isBuffering && loading) setLoading(false);
+          onBuffer={({ isBuffering: buf }: { isBuffering: boolean }) => {
+            setIsBuffering(buf);
+            if (buf && !loading) setLoading(true);
+            else if (!buf && loading) setLoading(false);
           }}
           bufferConfig={playerConfig.bufferConfig}
           {...(playerConfig.maxBitRate > 0 ? { maxBitRate: playerConfig.maxBitRate } : {})}
@@ -591,6 +620,7 @@ export const LivePlayerScreen = () => {
           playInBackground={false}
           controls={isMobile}
           reportBandwidth={true}
+          onBandwidthUpdate={({ bitrate }: { bitrate: number }) => setVideoMeta((prev: any) => ({ ...prev, bitrate }))}
           progressUpdateInterval={1000}
           {...(selectedAudioTrack ? { selectedAudioTrack } : {})}
           {...(selectedTextTrack ? { selectedTextTrack } : {})}
@@ -717,6 +747,14 @@ export const LivePlayerScreen = () => {
               {sleepMinutes ? `${Math.floor(sleepRemaining / 60)}m` : 'Sleep'}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity style={mStyles.toolbarButton} onPress={handleShare}>
+            <Share2 color="#FFF" size={20} />
+            <Text style={mStyles.toolbarLabel}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={mStyles.toolbarButton} onPress={() => { setShowStats(s => !s); resetOverlayTimer(); }}>
+            <Activity color={showStats ? '#4CD964' : '#FFF'} size={20} />
+            <Text style={[mStyles.toolbarLabel, showStats ? { color: '#4CD964' } : {}]}>Stats</Text>
+          </TouchableOpacity>
         </Animated.View>
       )}
 
@@ -809,6 +847,17 @@ export const LivePlayerScreen = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Player stats overlay */}
+      <PlayerStats
+        visible={showStats}
+        streamUrl={streamUrl}
+        videoData={videoMeta}
+        bufferHealth={{ isBuffering }}
+        currentTime={currentTime}
+        duration={currentDuration}
+        playbackRate={playbackRate}
+      />
 
       {/* Auto-play next episode prompt */}
       {showNextEpisode && nextEpisodeInfo && (
