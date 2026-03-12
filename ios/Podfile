@@ -21,6 +21,7 @@ target 'CouchPotatoPlayer' do
 
   pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git'
   pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git'
+  pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :tag => '6.1.3'
 
   use_react_native!(
     :path => config[:reactNativePath],
