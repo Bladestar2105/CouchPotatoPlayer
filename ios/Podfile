@@ -20,7 +20,7 @@ target 'CouchPotatoPlayer' do
   config = use_native_modules!
 
   pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git'
-  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/DisplayCriteria.git'
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :branch => 'main'
 
   use_react_native!(
     :path => config[:reactNativePath],
