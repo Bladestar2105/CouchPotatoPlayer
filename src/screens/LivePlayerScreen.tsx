@@ -546,7 +546,7 @@ export const LivePlayerScreen = () => {
   // ── Build Video source ──
   const videoSource = {
     uri: streamUrl,
-    ...(type === 'live' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
+    ...(type === 'live' && Platform.OS !== 'web' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
   };
 
   // ── Keyboard shortcut handlers (web) ──
