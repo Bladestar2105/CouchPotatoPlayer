@@ -24,6 +24,7 @@ import { getEpgKey, getCurrentProgram } from '../utils/epg';
 import { ChannelLogo } from '../components/ChannelLogo';
 import { ChannelListSkeleton, GridSkeleton, HorizontalRowSkeleton } from '../components/SkeletonLoader';
 import { showToast } from '../components/Toast';
+import { ProviderSwitcher } from '../components/ProviderSwitcher';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -682,6 +683,11 @@ export const HomeScreen = () => {
           ))}
         </View>
 
+        {/* Provider quick-switch */}
+        <View style={mobileStyles.providerRow}>
+          <ProviderSwitcher compact />
+        </View>
+
         {/* Horizontal category chips */}
         <FlatList
           data={visibleCategories}
@@ -1064,6 +1070,10 @@ const mobileStyles = StyleSheet.create({
     backgroundColor: '#151515',
     borderBottomWidth: 1,
     borderBottomColor: '#2C2C2E',
+  },
+  providerRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
   categoryList: {
     paddingHorizontal: 12,

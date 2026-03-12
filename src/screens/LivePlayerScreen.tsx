@@ -17,6 +17,7 @@ import { PlayerGestures } from '../components/PlayerGestures';
 import { GestureControls } from '../components/GestureControls';
 import { PlayerStats } from '../components/PlayerStats';
 import { shareStream } from '../utils/shareStream';
+import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 
 type LivePlayerRouteProp = RouteProp<RootStackParamList, 'LivePlayer'>;
 type LivePlayerNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LivePlayer'>;
@@ -548,7 +549,70 @@ export const LivePlayerScreen = () => {
     ...(type === 'live' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
   };
 
+  // ── Keyboard shortcut handlers (web) ──
+  const handlePlayPause = useCallback(() => {
+    if (videoRef.current) {
+      // Toggle play/pause via ref if available
+    }
+  }, []);
+
+  const handleMute = useCallback(() => {
+    setVolume(prev => prev > 0 ? 0 : 1.0);
+  }, []);
+
+  const handleVolumeUp = useCallback(() => {
+    setVolume(prev => Math.min(1, prev + 0.1));
+  }, []);
+
+  const handleVolumeDown = useCallback(() => {
+    setVolume(prev => Math.max(0, prev - 0.1));
+  }, []);
+
+  const handleFullscreen = useCallback(() => {
+    if (typeof globalThis !== 'undefined' && (globalThis as any).document) {
+      const doc = (globalThis as any).document;
+      const el = doc.documentElement;
+      if (!doc.fullscreenElement) {
+        el.requestFullscreen?.();
+      } else {
+        doc.exitFullscreen?.();
+      }
+    }
+  }, []);
+
+  const handleSpeedUp = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
+    });
+  }, [type]);
+
+  const handleSpeedDown = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
+    });
+  }, [type]);
+
   return (
+    <KeyboardShortcuts
+      onPlayPause={handlePlayPause}
+      onSeekForward={handleSeekForward}
+      onSeekBackward={handleSeekBackward}
+      onVolumeUp={handleVolumeUp}
+      onVolumeDown={handleVolumeDown}
+      onMute={handleMute}
+      onFullscreen={handleFullscreen}
+      onEscape={() => navigation.goBack()}
+      onSpeedUp={handleSpeedUp}
+      onSpeedDown={handleSpeedDown}
+      onNextChannel={() => zapToChannel('down')}
+      onPrevChannel={() => zapToChannel('up')}
+      onToggleStats={() => setShowStats(s => !s)}
+      enabled={true}
+    >
     <GestureControls
       enabled={isMobile}
       onVolumeChange={setVolume}
@@ -878,6 +942,7 @@ export const LivePlayerScreen = () => {
     </TouchableOpacity>
     </PlayerGestures>
     </GestureControls>
+    </KeyboardShortcuts>
   );
 };
 
