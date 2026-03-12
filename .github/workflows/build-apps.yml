@@ -85,6 +85,7 @@ jobs:
           pod install --repo-update || pod install
       - name: Build iOS App
         run: |
+          mkdir -p ios/build/iOS
           # Try workspace first (created by pod install), fall back to xcodeproj
           if [ -d "ios/CouchPotatoPlayer.xcworkspace" ]; then
             xcodebuild -workspace ios/CouchPotatoPlayer.xcworkspace \
@@ -92,6 +93,7 @@ jobs:
               -configuration Release \
               -sdk iphoneos \
               -destination 'generic/platform=iOS' \
+              -derivedDataPath ios/build/iOS \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
               CODE_SIGN_IDENTITY="" \
@@ -102,8 +104,57 @@ jobs:
               -configuration Release \
               -sdk iphoneos \
               -destination 'generic/platform=iOS' \
+              -derivedDataPath ios/build/iOS \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
               CODE_SIGN_IDENTITY="" \
               | tail -50
           fi
+      - name: Package iOS Build
+        run: |
+          cd ios/build/iOS/Build/Products/Release-iphoneos
+          tar -czf ../../../../../ios-build.tar.gz CouchPotatoPlayer.app
+      - name: Upload iOS Build
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ios-build.tar.gz
+          path: ios/ios-build.tar.gz
+
+      - name: Build tvOS App
+        run: |
+          mkdir -p ios/build/tvOS
+          # Try workspace first (created by pod install), fall back to xcodeproj
+          if [ -d "ios/CouchPotatoPlayer.xcworkspace" ]; then
+            xcodebuild -workspace ios/CouchPotatoPlayer.xcworkspace \
+              -scheme CouchPotatoPlayer \
+              -configuration Release \
+              -sdk appletvos \
+              -destination 'generic/platform=tvOS' \
+              -derivedDataPath ios/build/tvOS \
+              clean build \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              | tail -50
+          else
+            xcodebuild -project ios/CouchPotatoPlayer.xcodeproj \
+              -scheme CouchPotatoPlayer \
+              -configuration Release \
+              -sdk appletvos \
+              -destination 'generic/platform=tvOS' \
+              -derivedDataPath ios/build/tvOS \
+              clean build \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              | tail -50
+          fi
+      - name: Package tvOS Build
+        run: |
+          cd ios/build/tvOS/Build/Products/Release-appletvos
+          tar -czf ../../../../../tvos-build.tar.gz CouchPotatoPlayer.app
+      - name: Upload tvOS Build
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: tvos-build.tar.gz
+          path: ios/tvos-build.tar.gz

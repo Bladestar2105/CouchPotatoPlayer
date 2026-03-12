@@ -1,97 +1,151 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# CouchPotatoPlayer
 
-# Getting Started
+CouchPotatoPlayer is a modern, cross-platform media player application built with React Native (specifically `react-native-tvos` fork). It is strictly designed for use with IPTV-Manager backends.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+This guide provides instructions on how to set up your local development environment, build the application for Android, iOS, and tvOS devices, and use emulators/simulators.
 
-## Step 1: Start Metro
+## Prerequisites
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+Before you begin, ensure you have the following installed on your machine:
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- **Node.js** (v22 recommended)
+- **pnpm** (The project strictly uses `pnpm` for dependency management. *Do not use npm or yarn.*)
+- **Watchman** (macOS only, recommended for React Native)
+- **Java Development Kit (JDK)** (version 17, required for Android)
+- **Android Studio** (for Android development and emulators)
+- **Xcode** (macOS only, for iOS/tvOS development and simulators)
+- **CocoaPods** (macOS only, required for iOS/tvOS native dependencies)
 
-```sh
-# Using npm
-npm start
+For a comprehensive guide on setting up your environment for React Native development, refer to the official [React Native Environment Setup documentation](https://reactnative.dev/docs/environment-setup). Note: Make sure to select the `React Native CLI` tab, not `Expo Go`.
 
-# OR using Yarn
-yarn start
+## Getting Started
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/CouchPotatoPlayer.git
+    cd CouchPotatoPlayer
+    ```
+
+2.  **Install dependencies:**
+    Use `pnpm` to install the JavaScript dependencies:
+    ```bash
+    pnpm install
+    ```
+
+3.  **Install native iOS/tvOS dependencies (macOS only):**
+    ```bash
+    cd ios
+    bundle install
+    bundle exec pod install
+    cd ..
+    ```
+
+---
+
+## Running on Emulators and Simulators
+
+During development, you will typically run the app on an Android Emulator or iOS/tvOS Simulator.
+
+### 1. Start the Metro Bundler
+
+In a terminal window at the root of the project, start the React Native Metro bundler:
+
+```bash
+pnpm start
 ```
 
-## Step 2: Build and run your app
+Leave this terminal window running.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+### 2. Run on Android Emulator
 
-### Android
+1.  Open **Android Studio**.
+2.  Open the Virtual Device Manager (AVD Manager) and start an Android emulator.
+3.  In a new terminal window at the project root, run:
+    ```bash
+    pnpm run android
+    ```
+    This command will build the app and install it on the running emulator.
 
-```sh
-# Using npm
-npm run android
+### 3. Run on iOS Simulator (macOS only)
 
-# OR using Yarn
-yarn android
-```
+1.  In a new terminal window at the project root, run:
+    ```bash
+    pnpm run ios
+    ```
+    This command will automatically launch an iPhone simulator, build the app, and install it.
 
-### iOS
+    *To specify a simulator, you can use the `--simulator` flag (e.g., `pnpm run ios --simulator="iPhone 15 Pro"`).*
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+### 4. Run on tvOS Simulator (macOS only)
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+1.  In a new terminal window at the project root, run:
+    ```bash
+    pnpm run tvos
+    ```
+    This will launch an Apple TV simulator and install the app.
 
-```sh
-bundle install
-```
+---
 
-Then, and every time you update your native dependencies, run:
+## Building for Physical Devices (Release Builds)
 
-```sh
-bundle exec pod install
-```
+To run the app on your physical device without being connected to the Metro bundler, or to distribute the app, you need to create release builds.
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+### Android Release Build (APK)
 
-```sh
-# Using npm
-npm run ios
+1.  Open a terminal at the project root and navigate to the `android` directory:
+    ```bash
+    cd android
+    ```
+2.  Run the Gradle task to build a release APK:
+    ```bash
+    ./gradlew assembleRelease
+    ```
+3.  The generated `.apk` file will be located at:
+    `android/app/build/outputs/apk/release/app-release.apk`
+    You can transfer this file to your Android device to install it.
 
-# OR using Yarn
-yarn ios
-```
+### iOS/tvOS Release Build
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+Building for iOS/tvOS physical devices requires an Apple Developer account to sign the application. The easiest way to build for a device is using Xcode.
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+1.  Open Xcode.
+2.  Select **File > Open...** and choose the `ios/CouchPotatoPlayer.xcworkspace` file (not the `.xcodeproj` file).
+3.  Connect your physical iPhone or Apple TV to your Mac.
+4.  In the Xcode toolbar, select your physical device as the target destination.
+5.  In the Project Navigator, select the `CouchPotatoPlayer` project, go to the **Signing & Capabilities** tab, and configure your Apple Developer Team for signing.
+6.  Select **Product > Build** (or `Cmd + B`) to build the app, or **Product > Run** (`Cmd + R`) to build and install it directly onto your connected device.
+7.  To create an archive for distribution (TestFlight or App Store), select **Product > Archive**.
 
-## Step 3: Modify your app
+---
 
-Now that you have successfully run the app, let's make changes!
+## Automated Builds via GitHub Actions
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+This repository is configured with a GitHub Actions workflow (`.github/workflows/build-apps.yml`) that automatically builds the application when changes are pushed to the `main` or `master` branches.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+These automated builds generate artifacts that you can download directly from the GitHub repository:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+1.  Navigate to the **Actions** tab on the repository's GitHub page.
+2.  Click on the most recent successful run of the **Build Apps** workflow.
+3.  Scroll down to the **Artifacts** section.
+4.  You can download the following compiled packages:
+    -   **`app-release.apk`**: The Android application package (ready to be installed on Android devices).
+    -   **`ios-build.tar.gz`**: An archive of the compiled iOS app bundle.
+    -   **`tvos-build.tar.gz`**: An archive of the compiled tvOS app bundle.
 
-## Congratulations! :tada:
+*Note: iOS and tvOS application bundles downloaded from GitHub Actions are **not signed** with a developer certificate. They are primarily intended for automated testing or distribution methods that re-sign the app (e.g., enterprise distribution).*
 
-You've successfully run and modified your React Native App. :partying_face:
+## Web Build
 
-### Now what?
+The application can also be run locally as a web app.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+1.  Ensure you have run `pnpm install`
+2.  Start the development web server:
+    ```bash
+    pnpm run web
+    ```
+    The application will be accessible at `http://localhost:8080/`.
 
-# Troubleshooting
+## Important Notes
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+*   **pnpm**: Always use `pnpm` instead of `npm` or `yarn` for managing dependencies. Using other package managers may lead to inconsistent lockfiles and build issues.
+*   **IPTV-Manager**: This application checks for compatibility with an IPTV-Manager backend (`/player_api.php?action=cpp` or `/cpp` endpoints) upon account creation.
