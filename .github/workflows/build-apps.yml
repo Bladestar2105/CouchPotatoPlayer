@@ -43,7 +43,7 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
       - name: Install CocoaPods
-        run: cd ios && pod install
+        run: cd ios && pod install --repo-update
       - name: Build iOS App
         run: |
           xcodebuild -workspace ios/CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -sdk iphoneos clean archive -archivePath CouchPotatoPlayer.xcarchive CODE_SIGNING_ALLOWED=NO || xcodebuild -project ios/CouchPotatoPlayer.xcodeproj -scheme CouchPotatoPlayer -configuration Release -sdk iphoneos clean archive -archivePath CouchPotatoPlayer.xcarchive CODE_SIGNING_ALLOWED=NO
