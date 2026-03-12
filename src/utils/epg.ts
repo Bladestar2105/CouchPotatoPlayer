@@ -1,4 +1,5 @@
 import { LiveChannel, ParsedProgram } from '../types/iptv';
+import { findCurrentProgramIndex } from '../services/xmltv';
 
 /**
  * Generates the EPG lookup key for a given channel.
@@ -20,6 +21,9 @@ export const getCurrentProgram = (
   nowMs: number = Date.now()
 ): ParsedProgram | null => {
   if (!epg || epg.length === 0) return null;
-  const idx = epg.findIndex(p => p.start <= nowMs && p.end > nowMs);
+  // ⚡ Bolt Optimization: Replace O(N) Array.findIndex with O(log N) binary search
+  // Performance improvement: Drastically reduces lookup time in hot render loops,
+  // preventing frame drops when displaying currently airing programs across large channel lists.
+  const idx = findCurrentProgramIndex(epg, nowMs);
   return idx !== -1 ? epg[idx] : null;
 };

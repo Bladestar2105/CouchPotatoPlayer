@@ -1,3 +1,7 @@
 ## 2024-03-07 - [Lazy format XMLTV dates to fix parsing loop bottleneck]
 **Learning:** Eagerly stringifying timestamps for tens of thousands of EPG programs blocks the main thread and uses excessive memory. A loop with 100k items creating formatted strings takes ~263ms vs ~15ms when just assigning numbers.
 **Action:** Always prefer lazy evaluation of display strings (like formatted dates) inside the render function rather than eagerly generating them during the data parsing/ingestion phase for large datasets like XMLTV.
+
+## 2024-03-12 - [Array.findIndex in hot render loops causes frame drops]
+**Learning:** Using `Array.prototype.findIndex` to search for the currently airing program within a large, time-sorted EPG array (thousands of items) creates an O(N) bottleneck. When executed repeatedly inside React render functions (like `HomeScreen.tsx` or list item renders), this linear search causes main thread blocking and noticeable frame drops.
+**Action:** Always leverage the fact that EPG programs are time-sorted. Use O(log N) binary search utilities (like `findCurrentProgramIndex` or `findProgramsInRange` in `src/services/xmltv.ts`) instead of standard array iterators when searching for time-based items in hot paths.

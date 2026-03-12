@@ -13,11 +13,10 @@ import {
   XMLTVParser,
   parseXmltvDate,
   formatProgramTime,
-  findCurrentProgramIndex,
   findProgramsInRange
 } from '../services/xmltv';
 import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
-import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
+import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock, Heart, Play } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
 import { getEpgKey, getCurrentProgram } from '../utils/epg';
@@ -446,12 +445,7 @@ export const HomeScreen = () => {
   const renderMobileChannelCard = ({ item }: ListRenderItemInfo<LiveChannel>) => {
     const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
-    let nowProg: ParsedProgram | null = null;
-    if (epg && epg.length > 0) {
-      const nowMs = Date.now();
-      const idx = findCurrentProgramIndex(epg, nowMs);
-      if (idx !== -1) nowProg = epg[idx];
-    }
+    const nowProg: ParsedProgram | null = getCurrentProgram(epg, nowTime);
 
     if (activeTab === 'live') {
       // List item for live
@@ -567,15 +561,10 @@ export const HomeScreen = () => {
     const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
 
-    const nowProg = getCurrentProgram(epg, nowTime);
     let visibleEpg: ParsedProgram[] = [];
+    const nowProg = getCurrentProgram(epg, nowTime);
 
     if (epg && epg.length > 0) {
-      const nowMs = Date.now();
-      const nowIndex = findCurrentProgramIndex(epg, nowMs);
-      if (nowIndex !== -1) {
-        nowProg = epg[nowIndex];
-      }
       visibleEpg = findProgramsInRange(epg, timelineStart, timelineEnd);
     }
 
