@@ -29,7 +29,7 @@
     "react-native-file-access": "^3.2.0",
     "react-native-ksplayer": "file:local_modules/react-native-ksplayer",
     "react-native-safe-area-context": "^5.7.0",
-    "react-native-screens": "^4.25.0-nightly-20260307-41c7ab703",
+    "react-native-screens": "^4.24.0",
     "react-native-svg": "^15.15.3",
     "react-native-video": "^6.19.0",
     "react-native-web": "^0.21.2",

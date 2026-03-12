@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-file-access/src/NativeFileAccess.ts b/node_modules/react-native-file-access/src/NativeFileAccess.ts
+index 1bc594b..055fb20 100644
+--- a/node_modules/react-native-file-access/src/NativeFileAccess.ts
++++ b/node_modules/react-native-file-access/src/NativeFileAccess.ts
+@@ -12,7 +12,7 @@ export type FileStat = {
+    * File size in bytes.
+    */
+   size: number;
+-  type: 'directory' | 'file';
++  type: string;
+ };
+
+ /**
