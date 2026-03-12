@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, Animated } from 'react-native';
 import { Lock, X, Shield } from 'lucide-react-native';
 import { isMobile } from '../utils/platform';
+import { useAppStore } from '../store';
 
 interface ParentalLockProps {
   visible: boolean;
@@ -21,6 +22,7 @@ export const ParentalLock: React.FC<ParentalLockProps> = ({
   const [attempts, setAttempts] = useState(0);
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const storedPin = useAppStore(state => state.pin);
 
   useEffect(() => {
     if (visible) {
@@ -55,7 +57,7 @@ export const ParentalLock: React.FC<ParentalLockProps> = ({
     if (value && index === 3) {
       const fullPin = newPin.join('');
       // Default PIN is 0000, or stored PIN from settings
-      const correctPin = '0000'; // Will be configurable from store
+      const correctPin = storedPin || '0000';
       if (fullPin === correctPin) {
         onSuccess();
       } else {
