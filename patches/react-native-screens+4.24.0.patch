@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-screens/src/fabric/tabs/TabsBottomAccessoryNativeComponent.ts b/node_modules/react-native-screens/src/fabric/tabs/TabsBottomAccessoryNativeComponent.ts
+index 6675dff..02868e8 100644
+--- a/node_modules/react-native-screens/src/fabric/tabs/TabsBottomAccessoryNativeComponent.ts
++++ b/node_modules/react-native-screens/src/fabric/tabs/TabsBottomAccessoryNativeComponent.ts
+@@ -4,7 +4,7 @@ import { codegenNativeComponent } from 'react-native';
+ import type { CodegenTypes as CT, ViewProps } from 'react-native';
+
+ type EnvironmentChangeEvent = {
+-  environment: 'regular' | 'inline';
++  environment: string;
+ };
+
+ export interface NativeProps extends ViewProps {
