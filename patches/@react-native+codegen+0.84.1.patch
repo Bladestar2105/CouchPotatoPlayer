@@ -1,0 +1,33 @@
+diff --git a/node_modules/@react-native/codegen/lib/generators/components/GenerateEventEmitterCpp.js b/node_modules/@react-native/codegen/lib/generators/components/GenerateEventEmitterCpp.js
+index 957ccae..036b920 100644
+--- a/node_modules/@react-native/codegen/lib/generators/components/GenerateEventEmitterCpp.js
++++ b/node_modules/@react-native/codegen/lib/generators/components/GenerateEventEmitterCpp.js
+@@ -147,6 +147,13 @@ function handleArrayElementType(
+         loopLocalVariable,
+         val => `jsi::valueFromDynamic(runtime, ${val})`,
+       );
++    case 'StringLiteralUnionTypeAnnotation':
++      return setValueAtIndex(
++        propertyName,
++        indexVariable,
++        loopLocalVariable,
++        val => `toString(${val})`,
++      );
+     case 'UnionTypeAnnotation':
+       const validUnionType = parseValidUnionType(elementType);
+       if (validUnionType !== 'string') {
+@@ -247,6 +254,14 @@ function generateSetters(
+             usingEvent,
+             prop => `jsi::valueFromDynamic(runtime, ${prop})`,
+           );
++        case 'StringLiteralUnionTypeAnnotation':
++          return generateSetter(
++            parentPropertyName,
++            eventProperty.name,
++            propertyParts,
++            usingEvent,
++            prop => `toString(${prop})`,
++          );
+         case 'UnionTypeAnnotation':
+           const validUnionType = parseValidUnionType(typeAnnotation);
+           if (validUnionType !== 'string') {
