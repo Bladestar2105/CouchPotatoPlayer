@@ -1,4 +1,4 @@
-require("Pathname")
+require "pathname"
 
 Pod::Spec.new do |s|
   s.name         = "react-native-ksplayer"
