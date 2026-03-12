@@ -14,12 +14,30 @@ jest.mock('@react-navigation/native-stack', () => {
     createNativeStackNavigator: jest.fn().mockReturnValue({
       Navigator: ({ children }) => children,
       Screen: ({ children }) => children,
+      Group: ({ children }) => children,
+    }),
+  };
+});
+jest.mock('@react-navigation/bottom-tabs', () => {
+  return {
+    createBottomTabNavigator: jest.fn().mockReturnValue({
+      Navigator: ({ children }) => children,
+      Screen: ({ children }) => children,
     }),
   };
 });
 jest.mock('@react-navigation/native', () => {
   return {
     NavigationContainer: ({ children }) => children,
+    useNavigation: () => ({
+      navigate: jest.fn(),
+      replace: jest.fn(),
+      goBack: jest.fn(),
+    }),
+    useRoute: () => ({
+      params: {},
+    }),
+    createNavigatorFactory: jest.fn(),
   };
 });
 

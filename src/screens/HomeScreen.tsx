@@ -16,8 +16,8 @@ import {
   findCurrentProgramIndex,
   findProgramsInRange
 } from '../services/xmltv';
-import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
-import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
+import { Category, LiveChannel, ParsedProgram, RecentlyWatchedItem, FavoriteItem } from '../types/iptv';
+import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock, Heart, Play } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
 import { getEpgKey, getCurrentProgram } from '../utils/epg';
@@ -453,6 +453,8 @@ export const HomeScreen = () => {
       if (idx !== -1) nowProg = epg[idx];
     }
 
+    const isFav = favorites.some(f => f.id === (activeTab === 'series' ? (item.series_id || item.stream_id) : item.stream_id));
+
     if (activeTab === 'live') {
       // List item for live
       return (
@@ -567,7 +569,7 @@ export const HomeScreen = () => {
     const epgKey = getEpgKey(item, config?.type);
     const epg = epgData[epgKey] as ParsedProgram[] | undefined;
 
-    const nowProg = getCurrentProgram(epg, nowTime);
+    let nowProg = getCurrentProgram(epg, nowTime);
     let visibleEpg: ParsedProgram[] = [];
 
     if (epg && epg.length > 0) {

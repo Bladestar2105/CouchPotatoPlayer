@@ -30,24 +30,24 @@ describe('EPG Lookup Utilities', () => {
   const nowMs = Date.now();
 
   test('Linear Search Performance', () => {
-    const start = performance.now();
+    const start = Date.now();
     for (let i = 0; i < 1000; i++) {
       for (let j = 0; j < channelCount; j++) {
         findCurrentProgramLinear(epgData[`channel_${j}`], nowMs);
       }
     }
-    const end = performance.now();
+    const end = Date.now();
     console.log(`Linear Search took: ${end - start}ms`);
   });
 
   test('Binary Search Performance', () => {
-    const start = performance.now();
+    const start = Date.now();
     for (let i = 0; i < 1000; i++) {
       for (let j = 0; j < channelCount; j++) {
-        findCurrentProgramBinary(epgData[`channel_${j}`], nowMs);
+        findCurrentProgramIndex(epgData[`channel_${j}`], nowMs);
       }
     }
-    const end = performance.now();
+    const end = Date.now();
     console.log(`Binary Search took: ${end - start}ms`);
   });
 
