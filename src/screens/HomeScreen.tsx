@@ -17,7 +17,7 @@ import {
   findProgramsInRange
 } from '../services/xmltv';
 import { Category, LiveChannel, ParsedProgram } from '../types/iptv';
-import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock } from 'lucide-react-native';
+import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock, Heart, Play } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
 import { getEpgKey, getCurrentProgram } from '../utils/epg';
@@ -453,6 +453,9 @@ export const HomeScreen = () => {
       if (idx !== -1) nowProg = epg[idx];
     }
 
+    const itemId = activeTab === 'series' ? (item.series_id || item.stream_id) : item.stream_id;
+    const isFav = favorites.some(f => f.id === itemId);
+
     if (activeTab === 'live') {
       // List item for live
       return (
@@ -491,6 +494,9 @@ export const HomeScreen = () => {
             style={mobileStyles.favButton}
             onPress={() => toggleFavorite(item)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={isFav ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart size={20} color={isFav ? '#FF453A' : '#555'} fill={isFav ? '#FF453A' : 'none'} />
           </TouchableOpacity>
@@ -519,6 +525,9 @@ export const HomeScreen = () => {
             style={mobileStyles.gridFavButton}
             onPress={() => toggleFavorite(item)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={isFav ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart size={16} color={isFav ? '#FF453A' : '#FFF'} fill={isFav ? '#FF453A' : 'none'} />
           </TouchableOpacity>
