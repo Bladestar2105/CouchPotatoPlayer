@@ -504,6 +504,51 @@ export const LivePlayerScreen = () => {
     return ch?.epg_channel_id || ch?.stream_id?.toString();
   }, [type, currentChannelIndex, channels]);
 
+  // ── Keyboard shortcut handlers (web) ──
+  const handlePlayPause = useCallback(() => {
+    setPaused(prev => !prev);
+  }, []);
+
+  const handleMute = useCallback(() => {
+    setVolume(prev => prev > 0 ? 0 : 1.0);
+  }, []);
+
+  const handleVolumeUp = useCallback(() => {
+    setVolume(prev => Math.min(1, prev + 0.1));
+  }, []);
+
+  const handleVolumeDown = useCallback(() => {
+    setVolume(prev => Math.max(0, prev - 0.1));
+  }, []);
+
+  const handleFullscreen = useCallback(() => {
+    if (typeof globalThis !== 'undefined' && (globalThis as any).document) {
+      const doc = (globalThis as any).document;
+      const el = doc.documentElement;
+      if (!doc.fullscreenElement) {
+        el.requestFullscreen?.();
+      } else {
+        doc.exitFullscreen?.();
+      }
+    }
+  }, []);
+
+  const handleSpeedUp = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
+    });
+  }, [type, SPEED_OPTIONS]);
+
+  const handleSpeedDown = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
+    });
+  }, [type, SPEED_OPTIONS]);
+
   // ── Resume dialog screen ──
   if (showResumeDialog) {
     return (
@@ -551,51 +596,6 @@ export const LivePlayerScreen = () => {
     uri: streamUrl,
     ...(Platform.OS !== 'web' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
   };
-
-  // ── Keyboard shortcut handlers (web) ──
-  const handlePlayPause = useCallback(() => {
-    setPaused(prev => !prev);
-  }, []);
-
-  const handleMute = useCallback(() => {
-    setVolume(prev => prev > 0 ? 0 : 1.0);
-  }, []);
-
-  const handleVolumeUp = useCallback(() => {
-    setVolume(prev => Math.min(1, prev + 0.1));
-  }, []);
-
-  const handleVolumeDown = useCallback(() => {
-    setVolume(prev => Math.max(0, prev - 0.1));
-  }, []);
-
-  const handleFullscreen = useCallback(() => {
-    if (typeof globalThis !== 'undefined' && (globalThis as any).document) {
-      const doc = (globalThis as any).document;
-      const el = doc.documentElement;
-      if (!doc.fullscreenElement) {
-        el.requestFullscreen?.();
-      } else {
-        doc.exitFullscreen?.();
-      }
-    }
-  }, []);
-
-  const handleSpeedUp = useCallback(() => {
-    if (type === 'live') return;
-    setPlaybackRate(prev => {
-      const currentIdx = SPEED_OPTIONS.indexOf(prev);
-      return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
-    });
-  }, [type, SPEED_OPTIONS]);
-
-  const handleSpeedDown = useCallback(() => {
-    if (type === 'live') return;
-    setPlaybackRate(prev => {
-      const currentIdx = SPEED_OPTIONS.indexOf(prev);
-      return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
-    });
-  }, [type, SPEED_OPTIONS]);
 
   return (
     <KeyboardShortcuts

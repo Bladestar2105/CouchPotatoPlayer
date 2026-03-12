@@ -89,7 +89,7 @@ jobs:
           # Try workspace first (created by pod install), fall back to xcodeproj
           if [ -d "ios/CouchPotatoPlayer.xcworkspace" ]; then
             xcodebuild -workspace ios/CouchPotatoPlayer.xcworkspace \
-              -scheme CouchPotatoPlayer \
+              -scheme CouchPotatoPlayer-iOS \
               -configuration Release \
               -sdk iphoneos \
               -destination 'generic/platform=iOS' \
@@ -100,7 +100,7 @@ jobs:
               | tail -50
           else
             xcodebuild -project ios/CouchPotatoPlayer.xcodeproj \
-              -scheme CouchPotatoPlayer \
+              -scheme CouchPotatoPlayer-iOS \
               -configuration Release \
               -sdk iphoneos \
               -destination 'generic/platform=iOS' \
@@ -113,7 +113,7 @@ jobs:
       - name: Package iOS Build
         run: |
           cd ios/build/iOS/Build/Products/Release-iphoneos
-          tar -czf ../../../../../ios-build.tar.gz CouchPotatoPlayer.app
+          tar -czf ../../../../../ios-build.tar.gz CouchPotatoPlayer-iOS.app
       - name: Upload iOS Build
         uses: actions/upload-artifact@v4
         if: success()
