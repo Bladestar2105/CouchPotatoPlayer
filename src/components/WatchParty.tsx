@@ -22,12 +22,15 @@ interface PartyState {
   isActive: boolean;
 }
 
-// Simple room ID generator
+// Secure room ID generator using CSPRNG
 const generateRoomId = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const array = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(array);
   let result = '';
   for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    // chars.length is 32 (power of 2), so byte % 32 is perfectly uniform
+    result += chars.charAt(array[i] % chars.length);
   }
   return result;
 };

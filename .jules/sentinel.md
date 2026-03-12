@@ -7,3 +7,8 @@
 **Vulnerability:** Use of wildcard `Access-Control-Allow-Origin: *` in the Nginx proxy allowed any website to use the proxy to access IPTV APIs and streams, potentially leaking credentials or sensitive media data.
 **Learning:** Wildcard CORS is dangerous for proxies that handle sensitive data. Origins should be whitelisted. When using dynamic origins, the `Vary: Origin` header is required for correct caching.
 **Prevention:** Whitelist specific origins (like localhost and the application's own host) for CORS and ensure `Vary: Origin` is set when reflecting the origin in headers.
+
+## 2026-03-12 - [Insecure Randomness for Room ID Generation]
+**Vulnerability:** The `generateRoomId` function used `Math.random()` to generate Watch Party room codes. `Math.random()` is not cryptographically secure, making it theoretically possible for an attacker to predict future room IDs and join private watch parties unauthorized.
+**Learning:** For identifiers that require a degree of unguessability or security, standard PRNGs like `Math.random()` are insufficient. Cryptographically Secure Pseudo-Random Number Generators (CSPRNG) must be used.
+**Prevention:** Use `crypto.getRandomValues()` for generating random identifiers, tokens, or any data where predictability could lead to security compromises.
