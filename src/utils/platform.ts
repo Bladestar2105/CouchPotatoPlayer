@@ -10,7 +10,7 @@ const { width, height } = Dimensions.get('window');
 /** True on Apple TV, Android TV, Fire TV Stick etc. */
 export const isTV: boolean =
   Platform.isTV ||
-  Platform.OS === 'tvos' ||
+  (Platform.OS as string) === 'tvos' ||
   // Fallback heuristic: leanback / very large screens on Android
   (Platform.OS === 'android' && (width >= 960 || height >= 960));
 

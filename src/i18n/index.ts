@@ -51,7 +51,7 @@ const getSystemLanguage = () => {
   } else if (Platform.OS === 'android') {
     locale = NativeModules.I18nManager?.localeIdentifier || 'en';
   } else if (Platform.OS === 'web') {
-    locale = navigator.language || 'en';
+    locale = typeof globalThis !== 'undefined' && (globalThis as any).navigator ? (globalThis as any).navigator.language : 'en';
   }
   return locale.split(/[-_]/)[0].toLowerCase();
 };
