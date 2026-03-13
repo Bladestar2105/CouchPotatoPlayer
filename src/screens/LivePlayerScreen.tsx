@@ -7,7 +7,7 @@ import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
 import { LiveChannel } from '../types/iptv';
-import { Tv, ChevronLeft, ChevronUp, ChevronDown, RotateCcw, Play, FastForward, Moon, Volume2, Subtitles, SkipForward, Settings, Share2, Activity } from 'lucide-react-native';
+import { Tv, ChevronLeft, ChevronUp, ChevronDown, RotateCcw, Play, Pause, FastForward, Moon, Volume2, Subtitles, SkipForward, Settings, Share2, Activity } from 'lucide-react-native';
 import { KSPlayerView } from '../components/KSPlayerView';
 import { isTV, isMobile } from '../utils/platform';
 import { getPlayerConfig, getOptimalExtension } from '../utils/streamingConfig';
@@ -48,6 +48,7 @@ export const LivePlayerScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [paused, setPaused] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [currentChannelName, setCurrentChannelName] = useState(channelName);
   const [zapDirection, setZapDirection] = useState<'up' | 'down' | null>(null);
@@ -67,7 +68,7 @@ export const LivePlayerScreen = () => {
 
   // ── Playback speed (VOD only) ──
   const [playbackRate, setPlaybackRate] = useState(1.0);
-  const SPEED_OPTIONS = useMemo(() => [0.5, 0.75, 1.0, 1.25, 1.5, 2.0], []);
+  const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
   // ── Audio/Subtitle track selection ──
   const [audioTracks, setAudioTracks] = useState<any[]>([]);
@@ -92,9 +93,6 @@ export const LivePlayerScreen = () => {
 
   // ── Volume control ──
   const [volume, setVolume] = useState(1.0);
-
-  // ── Play/Pause state ──
-  const [paused, setPaused] = useState(false);
 
   // ── Player stats overlay ──
   const [showStats, setShowStats] = useState(false);
@@ -338,7 +336,7 @@ export const LivePlayerScreen = () => {
       const nextIdx = (currentIdx + 1) % SPEED_OPTIONS.length;
       return SPEED_OPTIONS[nextIdx];
     });
-  }, [SPEED_OPTIONS]);
+  }, []);
 
   // ── Sleep timer management ──
   const startSleepTimer = useCallback((minutes: number) => {
@@ -504,51 +502,6 @@ export const LivePlayerScreen = () => {
     return ch?.epg_channel_id || ch?.stream_id?.toString();
   }, [type, currentChannelIndex, channels]);
 
-  // ── Keyboard shortcut handlers (web) ──
-  const handlePlayPause = useCallback(() => {
-    setPaused(prev => !prev);
-  }, []);
-
-  const handleMute = useCallback(() => {
-    setVolume(prev => prev > 0 ? 0 : 1.0);
-  }, []);
-
-  const handleVolumeUp = useCallback(() => {
-    setVolume(prev => Math.min(1, prev + 0.1));
-  }, []);
-
-  const handleVolumeDown = useCallback(() => {
-    setVolume(prev => Math.max(0, prev - 0.1));
-  }, []);
-
-  const handleFullscreen = useCallback(() => {
-    if (typeof globalThis !== 'undefined' && (globalThis as any).document) {
-      const doc = (globalThis as any).document;
-      const el = doc.documentElement;
-      if (!doc.fullscreenElement) {
-        el.requestFullscreen?.();
-      } else {
-        doc.exitFullscreen?.();
-      }
-    }
-  }, []);
-
-  const handleSpeedUp = useCallback(() => {
-    if (type === 'live') return;
-    setPlaybackRate(prev => {
-      const currentIdx = SPEED_OPTIONS.indexOf(prev);
-      return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
-    });
-  }, [type, SPEED_OPTIONS]);
-
-  const handleSpeedDown = useCallback(() => {
-    if (type === 'live') return;
-    setPlaybackRate(prev => {
-      const currentIdx = SPEED_OPTIONS.indexOf(prev);
-      return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
-    });
-  }, [type, SPEED_OPTIONS]);
-
   // ── Resume dialog screen ──
   if (showResumeDialog) {
     return (
@@ -596,6 +549,51 @@ export const LivePlayerScreen = () => {
     uri: streamUrl,
     ...(Platform.OS !== 'web' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
   };
+
+  // ── Keyboard shortcut handlers (web) ──
+  const handlePlayPause = useCallback(() => {
+    setPaused(prev => !prev);
+  }, []);
+
+  const handleMute = useCallback(() => {
+    setVolume(prev => prev > 0 ? 0 : 1.0);
+  }, []);
+
+  const handleVolumeUp = useCallback(() => {
+    setVolume(prev => Math.min(1, prev + 0.1));
+  }, []);
+
+  const handleVolumeDown = useCallback(() => {
+    setVolume(prev => Math.max(0, prev - 0.1));
+  }, []);
+
+  const handleFullscreen = useCallback(() => {
+    if (typeof globalThis !== 'undefined' && (globalThis as any).document) {
+      const doc = (globalThis as any).document;
+      const el = doc.documentElement;
+      if (!doc.fullscreenElement) {
+        el.requestFullscreen?.();
+      } else {
+        doc.exitFullscreen?.();
+      }
+    }
+  }, []);
+
+  const handleSpeedUp = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
+    });
+  }, [type]);
+
+  const handleSpeedDown = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
+    });
+  }, [type]);
 
   return (
     <KeyboardShortcuts
@@ -662,9 +660,9 @@ export const LivePlayerScreen = () => {
           source={videoSource}
           style={styles.videoPlayer}
           resizeMode="contain"
+          paused={paused}
           rate={type !== 'live' ? playbackRate : 1.0}
           volume={volume}
-          paused={paused}
           onLoadStart={() => setLoading(true)}
           onLoad={handleVideoLoad}
           onError={(e) => {
@@ -756,6 +754,24 @@ export const LivePlayerScreen = () => {
               visible={true}
               configType={config?.type}
             />
+          )}
+
+          {/* Center Play/Pause button for web/mobile manual control */}
+          {Platform.OS !== 'ios' && !isTV && (
+            <View style={StyleSheet.absoluteFill}>
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <TouchableOpacity
+                  onPress={handlePlayPause}
+                  style={{
+                    padding: 20,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    borderRadius: 40,
+                  }}
+                >
+                  {paused ? <Play color="#FFF" size={40} /> : <Pause color="#FFF" size={40} />}
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
 
           <View style={[styles.infoBottom, isMobile && mStyles.infoBottom]}>
