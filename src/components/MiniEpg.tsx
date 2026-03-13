@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useAppStore } from '../store';
 import { ParsedProgram } from '../types/iptv';
-import { formatProgramTime } from '../services/xmltv';
+import { formatProgramTime, findCurrentProgramIndex } from '../services/xmltv';
 import { isMobile } from '../utils/platform';
 
 interface MiniEpgProps {
@@ -29,7 +29,7 @@ export const MiniEpg: React.FC<MiniEpgProps> = ({ channelId, epgChannelId, visib
       return { currentProg: null, nextProg: null, progress: 0 };
     }
 
-    const idx = programs.findIndex(p => p.start <= now && p.end > now);
+    const idx = findCurrentProgramIndex(programs, now);
     const current = idx !== -1 ? programs[idx] : null;
     const next = idx !== -1 && idx + 1 < programs.length ? programs[idx + 1] : null;
     const prog = current ? Math.min(100, Math.max(0, ((now - current.start) / (current.end - current.start)) * 100)) : 0;

@@ -67,7 +67,7 @@ export const LivePlayerScreen = () => {
 
   // ── Playback speed (VOD only) ──
   const [playbackRate, setPlaybackRate] = useState(1.0);
-  const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+  const SPEED_OPTIONS = useMemo(() => [0.5, 0.75, 1.0, 1.25, 1.5, 2.0], []);
 
   // ── Audio/Subtitle track selection ──
   const [audioTracks, setAudioTracks] = useState<any[]>([]);
@@ -92,6 +92,9 @@ export const LivePlayerScreen = () => {
 
   // ── Volume control ──
   const [volume, setVolume] = useState(1.0);
+
+  // ── Play/Pause state ──
+  const [paused, setPaused] = useState(false);
 
   // ── Player stats overlay ──
   const [showStats, setShowStats] = useState(false);
@@ -335,7 +338,7 @@ export const LivePlayerScreen = () => {
       const nextIdx = (currentIdx + 1) % SPEED_OPTIONS.length;
       return SPEED_OPTIONS[nextIdx];
     });
-  }, []);
+  }, [SPEED_OPTIONS]);
 
   // ── Sleep timer management ──
   const startSleepTimer = useCallback((minutes: number) => {
@@ -546,14 +549,12 @@ export const LivePlayerScreen = () => {
   // ── Build Video source ──
   const videoSource = {
     uri: streamUrl,
-    ...(type === 'live' && Platform.OS !== 'web' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
+    ...(Platform.OS !== 'web' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
   };
 
   // ── Keyboard shortcut handlers (web) ──
   const handlePlayPause = useCallback(() => {
-    if (videoRef.current) {
-      // Toggle play/pause via ref if available
-    }
+    setPaused(prev => !prev);
   }, []);
 
   const handleMute = useCallback(() => {
@@ -586,7 +587,7 @@ export const LivePlayerScreen = () => {
       const currentIdx = SPEED_OPTIONS.indexOf(prev);
       return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
     });
-  }, [type]);
+  }, [type, SPEED_OPTIONS]);
 
   const handleSpeedDown = useCallback(() => {
     if (type === 'live') return;
@@ -594,7 +595,7 @@ export const LivePlayerScreen = () => {
       const currentIdx = SPEED_OPTIONS.indexOf(prev);
       return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
     });
-  }, [type]);
+  }, [type, SPEED_OPTIONS]);
 
   return (
     <KeyboardShortcuts
@@ -663,6 +664,7 @@ export const LivePlayerScreen = () => {
           resizeMode="contain"
           rate={type !== 'live' ? playbackRate : 1.0}
           volume={volume}
+          paused={paused}
           onLoadStart={() => setLoading(true)}
           onLoad={handleVideoLoad}
           onError={(e) => {
@@ -729,8 +731,6 @@ export const LivePlayerScreen = () => {
               style={mStyles.topBackButton}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
             >
               <ChevronLeft color="#FFF" size={28} />
             </TouchableOpacity>
@@ -742,8 +742,6 @@ export const LivePlayerScreen = () => {
               style={mStyles.speedButton}
               onPress={cyclePlaybackSpeed}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={`Change playback speed, currently ${playbackRate}x`}
             >
               <FastForward color="#FFF" size={16} />
               <Text style={mStyles.speedButtonText}>{playbackRate}x</Text>

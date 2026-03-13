@@ -11,8 +11,14 @@ module.exports = {
   module: {
     rules: [
       {
+        test: /\.m?js$/,
+        resolve: {
+          fullySpecified: false,
+        },
+      },
+      {
         test: /\.(js|jsx|ts|tsx|mjs)$/,
-        exclude: /node_modules\/(?!(react-native-vector-icons|react-native-video|react-native-svg|lucide-react-native|@react-native-async-storage|@react-navigation|react-native-screens|react-native-safe-area-context|zustand|m3u8-parser)\/).*/,
+        exclude: /node_modules\/(?!(react-native-vector-icons|react-native-video|react-native-svg|lucide-react-native|@react-native-async-storage|@react-navigation|react-native-screens|react-native-safe-area-context|zustand|m3u8-parser|react-native-file-access)\/).*/,
         use: {
           loader: 'babel-loader',
           options: {
