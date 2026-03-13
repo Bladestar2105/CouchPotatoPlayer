@@ -488,6 +488,8 @@ export const SettingsScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
           hasTVPreferredFocus
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <ArrowLeft color="#FFF" size={24} />
           <Text style={styles.backButtonText}>Back</Text>
@@ -559,7 +561,12 @@ export const SettingsScreen = () => {
                     {provider.name} {activeConfig?.id === provider.id ? '(Active)' : ''}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.providerDeleteBtn} onPress={() => handleDeleteProvider(provider.id)}>
+                  <TouchableOpacity
+                    style={styles.providerDeleteBtn}
+                    onPress={() => handleDeleteProvider(provider.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete provider ${provider.name}`}
+                  >
                   <Text style={styles.providerDeleteText}>Delete</Text>
                 </TouchableOpacity>
               </View>

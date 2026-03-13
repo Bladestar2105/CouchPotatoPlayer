@@ -115,7 +115,13 @@ export const MediaInfoScreen = () => {
             ) : (
               <View style={mStyles.coverPlaceholder} />
             )}
-            <TouchableOpacity style={mStyles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={mStyles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
               <ChevronLeft color="#FFF" size={24} />
             </TouchableOpacity>
             {/* Gradient overlay at bottom of cover */}
@@ -137,7 +143,13 @@ export const MediaInfoScreen = () => {
                 <Play color="#FFF" size={20} fill="#FFF" />
                 <Text style={mStyles.playButtonText}>Play</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={mStyles.favButtonMedia} onPress={toggleFavorite} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={mStyles.favButtonMedia}
+                onPress={toggleFavorite}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={isFav ? "Remove from favorites" : "Add to favorites"}
+              >
                 <Heart size={22} color={isFav ? '#FF453A' : '#FFF'} fill={isFav ? '#FF453A' : 'none'} />
               </TouchableOpacity>
             </View>
@@ -157,7 +169,12 @@ export const MediaInfoScreen = () => {
   // ── TV Layout (original) ───────────────────────────────────────
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+      >
         <ArrowLeft color="#FFF" size={24} />
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>

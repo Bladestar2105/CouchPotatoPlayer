@@ -494,6 +494,8 @@ export const HomeScreen = () => {
             style={mobileStyles.favButton}
             onPress={() => toggleFavorite(item)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={isFav ? t('home.removeFromFavorites') || "Remove from favorites" : t('home.addToFavorites') || "Add to favorites"}
           >
             <Heart size={20} color={isFav ? '#FF453A' : '#555'} fill={isFav ? '#FF453A' : 'none'} />
           </TouchableOpacity>
@@ -522,6 +524,8 @@ export const HomeScreen = () => {
             style={mobileStyles.gridFavButton}
             onPress={() => toggleFavorite(item)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={isFav ? t('home.removeFromFavorites') || "Remove from favorites" : t('home.addToFavorites') || "Add to favorites"}
           >
             <Heart size={16} color={isFav ? '#FF453A' : '#FFF'} fill={isFav ? '#FF453A' : 'none'} />
           </TouchableOpacity>
