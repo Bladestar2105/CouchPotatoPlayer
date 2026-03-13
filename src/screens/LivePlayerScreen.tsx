@@ -729,6 +729,8 @@ export const LivePlayerScreen = () => {
               style={mStyles.topBackButton}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <ChevronLeft color="#FFF" size={28} />
             </TouchableOpacity>
@@ -740,6 +742,8 @@ export const LivePlayerScreen = () => {
               style={mStyles.speedButton}
               onPress={cyclePlaybackSpeed}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Change playback speed, currently ${playbackRate}x`}
             >
               <FastForward color="#FFF" size={16} />
               <Text style={mStyles.speedButtonText}>{playbackRate}x</Text>
