@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacit
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Video from 'react-native-video';
+import { isWeb } from '../utils/platform';
+import VideoPlayerWeb from '../components/VideoPlayerWeb';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
@@ -655,6 +657,30 @@ export const LivePlayerScreen = () => {
           videoAdaptable={streamingSettings.videoQuality === 'auto'}
           isAutoPlay={true}
           {...(playerConfig.maxBitRate > 0 ? { maxBitRate: playerConfig.maxBitRate } : {})}
+        />
+      ) : isWeb ? (
+        <VideoPlayerWeb
+          ref={videoRef as any}
+          source={videoSource}
+          style={styles.videoPlayer}
+          resizeMode="contain"
+          rate={type !== 'live' ? playbackRate : 1.0}
+          volume={volume}
+          paused={paused}
+          controls={false}
+          onLoadStart={() => setLoading(true)}
+          onLoad={handleVideoLoad}
+          onError={(e) => {
+            handleStreamError(e);
+          }}
+          onProgress={handleProgress}
+          onBuffer={({ isBuffering: buf }: { isBuffering: boolean }) => {
+            setIsBuffering(buf);
+            if (buf && !loading) setLoading(true);
+            else if (!buf && loading) setLoading(false);
+          }}
+          onBandwidthUpdate={({ bitrate }: { bitrate: number }) => setVideoMeta((prev: any) => ({ ...prev, bitrate }))}
+          progressUpdateInterval={1000}
         />
       ) : (
         <Video
