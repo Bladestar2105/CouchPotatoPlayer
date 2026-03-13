@@ -29,7 +29,7 @@ const generateRoomId = (): string => {
 
   try {
     // Attempt to use secure random generation
-    const cryptoObj = typeof globalThis !== 'undefined' ? (globalThis.crypto || (globalThis as any).crypto) : null;
+    const cryptoObj = typeof globalThis !== 'undefined' ? ((globalThis as any).crypto || null) : null;
     if (cryptoObj && cryptoObj.getRandomValues) {
       const array = new Uint8Array(6);
       cryptoObj.getRandomValues(array);

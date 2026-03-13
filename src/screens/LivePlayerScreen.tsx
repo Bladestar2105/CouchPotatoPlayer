@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, BackHandler, ActivityIndicator, TouchableOpacit
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Video from 'react-native-video';
+import { isWeb } from '../utils/platform';
+import VideoPlayerWeb from '../components/VideoPlayerWeb';
 import { RootStackParamList } from '../../App';
 import { useAppStore } from '../store';
 import { XtreamService } from '../services/xtream';
@@ -504,6 +506,51 @@ export const LivePlayerScreen = () => {
     return ch?.epg_channel_id || ch?.stream_id?.toString();
   }, [type, currentChannelIndex, channels]);
 
+  // ── Keyboard shortcut handlers (web) ──
+  const handlePlayPause = useCallback(() => {
+    setPaused(prev => !prev);
+  }, []);
+
+  const handleMute = useCallback(() => {
+    setVolume(prev => prev > 0 ? 0 : 1.0);
+  }, []);
+
+  const handleVolumeUp = useCallback(() => {
+    setVolume(prev => Math.min(1, prev + 0.1));
+  }, []);
+
+  const handleVolumeDown = useCallback(() => {
+    setVolume(prev => Math.max(0, prev - 0.1));
+  }, []);
+
+  const handleFullscreen = useCallback(() => {
+    if (typeof globalThis !== 'undefined' && (globalThis as any).document) {
+      const doc = (globalThis as any).document;
+      const el = doc.documentElement;
+      if (!doc.fullscreenElement) {
+        el.requestFullscreen?.();
+      } else {
+        doc.exitFullscreen?.();
+      }
+    }
+  }, []);
+
+  const handleSpeedUp = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
+    });
+  }, [type, SPEED_OPTIONS]);
+
+  const handleSpeedDown = useCallback(() => {
+    if (type === 'live') return;
+    setPlaybackRate(prev => {
+      const currentIdx = SPEED_OPTIONS.indexOf(prev);
+      return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
+    });
+  }, [type, SPEED_OPTIONS]);
+
   // ── Resume dialog screen ──
   if (showResumeDialog) {
     return (
@@ -551,51 +598,6 @@ export const LivePlayerScreen = () => {
     uri: streamUrl,
     ...(Platform.OS !== 'web' ? { type: optimalExtension === 'm3u8' ? 'm3u8' : undefined } : {}),
   };
-
-  // ── Keyboard shortcut handlers (web) ──
-  const handlePlayPause = useCallback(() => {
-    setPaused(prev => !prev);
-  }, []);
-
-  const handleMute = useCallback(() => {
-    setVolume(prev => prev > 0 ? 0 : 1.0);
-  }, []);
-
-  const handleVolumeUp = useCallback(() => {
-    setVolume(prev => Math.min(1, prev + 0.1));
-  }, []);
-
-  const handleVolumeDown = useCallback(() => {
-    setVolume(prev => Math.max(0, prev - 0.1));
-  }, []);
-
-  const handleFullscreen = useCallback(() => {
-    if (typeof globalThis !== 'undefined' && (globalThis as any).document) {
-      const doc = (globalThis as any).document;
-      const el = doc.documentElement;
-      if (!doc.fullscreenElement) {
-        el.requestFullscreen?.();
-      } else {
-        doc.exitFullscreen?.();
-      }
-    }
-  }, []);
-
-  const handleSpeedUp = useCallback(() => {
-    if (type === 'live') return;
-    setPlaybackRate(prev => {
-      const currentIdx = SPEED_OPTIONS.indexOf(prev);
-      return currentIdx < SPEED_OPTIONS.length - 1 ? SPEED_OPTIONS[currentIdx + 1] : prev;
-    });
-  }, [type, SPEED_OPTIONS]);
-
-  const handleSpeedDown = useCallback(() => {
-    if (type === 'live') return;
-    setPlaybackRate(prev => {
-      const currentIdx = SPEED_OPTIONS.indexOf(prev);
-      return currentIdx > 0 ? SPEED_OPTIONS[currentIdx - 1] : prev;
-    });
-  }, [type, SPEED_OPTIONS]);
 
   return (
     <KeyboardShortcuts
@@ -655,6 +657,30 @@ export const LivePlayerScreen = () => {
           videoAdaptable={streamingSettings.videoQuality === 'auto'}
           isAutoPlay={true}
           {...(playerConfig.maxBitRate > 0 ? { maxBitRate: playerConfig.maxBitRate } : {})}
+        />
+      ) : isWeb ? (
+        <VideoPlayerWeb
+          ref={videoRef as any}
+          source={videoSource}
+          style={styles.videoPlayer}
+          resizeMode="contain"
+          rate={type !== 'live' ? playbackRate : 1.0}
+          volume={volume}
+          paused={paused}
+          controls={false}
+          onLoadStart={() => setLoading(true)}
+          onLoad={handleVideoLoad}
+          onError={(e) => {
+            handleStreamError(e);
+          }}
+          onProgress={handleProgress}
+          onBuffer={({ isBuffering: buf }: { isBuffering: boolean }) => {
+            setIsBuffering(buf);
+            if (buf && !loading) setLoading(true);
+            else if (!buf && loading) setLoading(false);
+          }}
+          onBandwidthUpdate={({ bitrate }: { bitrate: number }) => setVideoMeta((prev: any) => ({ ...prev, bitrate }))}
+          progressUpdateInterval={1000}
         />
       ) : (
         <Video
