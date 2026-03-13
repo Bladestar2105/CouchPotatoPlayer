@@ -31,13 +31,7 @@ def shared_pods(config)
 end
 
 target 'CouchPotatoPlayer' do
-  platform :tvos, min_ios_version_supported
-  config = use_native_modules!
-  shared_pods(config)
-end
-
-target 'CouchPotatoPlayer-iOS' do
-  platform :ios, min_ios_version_supported
+  platform :tvos, '18.0'
   config = use_native_modules!
   shared_pods(config)
 end
