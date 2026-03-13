@@ -76,28 +76,57 @@ function extractServerOrigin(proxyUrl: string): string | null {
 }
 
 /**
- * Rewrite segment/playlist URLs that HLS.js resolves.
- * The IPTV server returns manifests with absolute paths like
- * "/live/segment/..." which the browser resolves against itself.
- * We need to route them through our /proxy/ middleware instead.
+ * Get the current browser origin for URL comparison.
  */
-function rewriteUrl(url: string, serverOrigin: string | null): string {
+function getBrowserOrigin(): string {
+  try {
+    return (globalThis as any).location?.origin || '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Rewrite segment/playlist URLs that HLS.js resolves.
+ *
+ * CRITICAL: By the time xhrSetup fires, the browser has ALREADY resolved
+ * relative/absolute paths against the current page origin. So a segment
+ * URL "/live/segment/..." in the M3U8 manifest arrives as:
+ *   "https://browser-host.com/live/segment/..."
+ *
+ * We need to detect URLs that were resolved against the browser origin
+ * and re-route them through the proxy to the actual IPTV server.
+ */
+function rewriteUrl(url: string, serverOrigin: string | null, browserOrigin: string): string {
   if (!serverOrigin) return url;
 
-  // Already proxied — leave it alone
-  if (url.startsWith('/proxy/')) return url;
+  // Already going through our proxy — leave it alone
+  if (url.includes('/proxy/')) return url;
 
-  // Absolute URL to the IPTV server — wrap in proxy
+  // URL was resolved against the browser origin by HLS.js
+  // e.g. "https://00i7a.app.super.myninja.ai/live/segment/..."
+  // Replace browser origin with IPTV server origin and proxy it
+  if (browserOrigin && url.startsWith(browserOrigin)) {
+    const path = url.slice(browserOrigin.length); // e.g. "/live/segment/..."
+    return `/proxy/${serverOrigin}${path}`;
+  }
+
+  // Absolute URL pointing to the IPTV server — wrap in proxy
+  if (url.startsWith(serverOrigin)) {
+    return `/proxy/${url}`;
+  }
+
+  // Any other absolute URL — wrap in proxy
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return `/proxy/${url}`;
   }
 
-  // Absolute path from the IPTV server (e.g. /live/segment/...)
+  // Absolute path (e.g. /live/segment/...)
   if (url.startsWith('/')) {
     return `/proxy/${serverOrigin}${url}`;
   }
 
-  // Relative path — shouldn't happen with HLS but handle it
+  // Relative path
   return `/proxy/${serverOrigin}/${url}`;
 }
 
@@ -190,6 +219,7 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
 
     // Extract the IPTV server origin for URL rewriting
     const serverOrigin = extractServerOrigin(uri);
+    const browserOrigin = getBrowserOrigin();
 
     if (needsHls(uri) && Hls.isSupported()) {
       const hls = new Hls({
@@ -204,9 +234,12 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
         levelLoadingMaxRetry: 6,
         fragLoadingMaxRetry: 6,
         // Rewrite all URLs through our proxy so that segment/playlist
-        // requests from the IPTV server don't hit the browser origin
+        // requests from the IPTV server don't hit the browser origin.
+        // By the time xhrSetup fires, HLS.js has already resolved relative
+        // URLs against the browser's location.origin, so we need to detect
+        // and replace that with the actual IPTV server origin.
         xhrSetup: (xhr: any, urlToLoad: string) => {
-          const rewritten = rewriteUrl(urlToLoad, serverOrigin);
+          const rewritten = rewriteUrl(urlToLoad, serverOrigin, browserOrigin);
           if (rewritten !== urlToLoad) {
             xhr.open('GET', rewritten, true);
           }
