@@ -6,7 +6,7 @@ import React
 @objc(RNKSPlayerView)
 class RNKSPlayerView: UIView {
 
-    private var playerView: IOSVideoPlayerView!
+    private var playerView: KSPlayer.IOSVideoPlayerView!
     private var url: URL?
     private var hasConfiguredOptions = false
 
@@ -66,7 +66,7 @@ class RNKSPlayerView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         configureGlobalOptions()
-        playerView = IOSVideoPlayerView()
+        playerView = KSPlayer.IOSVideoPlayerView()
         addSubview(playerView)
         playerView.delegate = self
     }
@@ -89,11 +89,11 @@ class RNKSPlayerView: UIView {
 
     private func configureGlobalOptions() {
         // Use FFmpeg-based player as primary (better codec support for IPTV)
-        if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? MediaPlayerProtocol.Type {
+        if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? KSPlayer.MediaPlayerProtocol.Type {
             KSPlayer.KSOptions.firstPlayerType = mePlayer
         }
         // Fallback to AVPlayer for standard formats
-        KSPlayer.KSOptions.secondPlayerType = KSAVPlayer.self
+        KSPlayer.KSOptions.secondPlayerType = KSPlayer.KSAVPlayer.self
     }
 
     private func applyOptions() {
@@ -107,7 +107,7 @@ class RNKSPlayerView: UIView {
         onLoadStart?([:])
 
         // Create options for this specific stream
-        let options = KSOptions()
+        let options = KSPlayer.KSOptions()
         options.preferredForwardBufferDuration = preferredForwardBufferDuration
         options.maxBufferDuration = maxBufferDuration
         options.isSecondOpen = isSecondOpen
@@ -121,7 +121,7 @@ class RNKSPlayerView: UIView {
             options.isSecondOpen = true
         }
         
-        let resource = KSPlayerResource(url: url, options: options)
+        let resource = KSPlayer.KSPlayerResource(url: url, options: options)
         playerView.set(resource: resource)
         if isAutoPlay {
             playerView.play()
@@ -131,8 +131,8 @@ class RNKSPlayerView: UIView {
 
 // ── Player Delegate ─────────────────────────────────────────────────
 
-extension RNKSPlayerView: PlayerViewDelegate {
-    func playerView(stateDidChange state: KSPlayerState) {
+extension RNKSPlayerView: KSPlayer.PlayerViewDelegate {
+    func playerView(stateDidChange state: KSPlayer.KSPlayerState) {
         switch state {
         case .readyToPlay:
             onLoad?([:])
