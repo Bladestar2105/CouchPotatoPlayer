@@ -18,6 +18,7 @@ import { showToast } from '../components/Toast';
 import { PlayerGestures } from '../components/PlayerGestures';
 import { GestureControls } from '../components/GestureControls';
 import { PlayerStats } from '../components/PlayerStats';
+import { StreamHealthMonitor } from '../components/StreamHealthMonitor';
 import { shareStream } from '../utils/shareStream';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts';
 
@@ -940,15 +941,20 @@ export const LivePlayerScreen = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Player stats overlay */}
-      <PlayerStats
+      {/* Stream health monitor overlay (replaces basic PlayerStats) */}
+      <StreamHealthMonitor
         visible={showStats}
-        streamUrl={streamUrl}
-        videoData={videoMeta}
-        bufferHealth={{ isBuffering }}
-        currentTime={currentTime}
-        duration={currentDuration}
-        playbackRate={playbackRate}
+        data={{
+          bitrate: videoMeta?.bitrate || 0,
+          bufferHealth: isBuffering ? 0 : 10,
+          droppedFrames: 0,
+          currentTime,
+          duration: currentDuration,
+          resolution: videoMeta?.naturalSize ? { width: videoMeta.naturalSize.width, height: videoMeta.naturalSize.height } : undefined,
+          isLive: type === 'live',
+          connectionType: isWeb ? 'proxy' : 'direct',
+        }}
+        compact={isMobile}
       />
 
       {/* Auto-play next episode prompt */}

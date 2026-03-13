@@ -1,18 +1,25 @@
-# CouchPotatoPlayer - Fix/Restore Functionality
+# CouchPotatoPlayer - Feature Enhancement Todo
 
-## Bug Fixes (Branch: fix/restore-functionality)
+## Wave 1: Integration of New Components
+- [x] Create imageProxy utility (proxies HTTP image URLs on web)
+- [x] Create ProfileManager component
+- [x] Create StreamHealthMonitor component  
+- [x] Create TMDB metadata service
+- [x] Update ChannelLogo, HomeScreen, SearchScreen, MediaInfoScreen with imageProxy
+- [x] TypeScript check + Webpack build pass
+- [x] Commit and push Wave 1 files
 
-- [x] WatchParty.tsx: Fix TS7017 globalThis.crypto error → `(globalThis as any).crypto`
-- [x] webpack.config.js: Add dynamic proxy middleware for `/proxy/*` routes (CORS bypass for web)
-- [x] webpack.config.js: Add `webpack.DefinePlugin` for `__DEV__` global
-- [x] LivePlayerScreen.tsx: Move 7 useCallback hooks before early returns (React Rules of Hooks)
+## Wave 2: Wire Components into App
+- [ ] Integrate TMDB enrichment into MediaInfoScreen (show posters, ratings, descriptions from TMDB)
+- [ ] Integrate StreamHealthMonitor into LivePlayerScreen (replace/enhance PlayerStats)
+- [ ] Add TMDB hero banner to HomeScreen (trending movies section)
+- [ ] Add Theme picker + Language picker to SettingsScreen (currently missing)
+- [ ] TypeScript check + build verify
+- [ ] Commit and push Wave 2
 
-## Verification
-
-- [x] TypeScript compilation: 0 errors
-- [x] Webpack production build: 0 errors (only size warnings)
-- [x] Webpack dev server: running on port 8090, compiled successfully
-- [x] Proxy test: `/proxy/https://httpbin.org/get` returns 200
-- [x] No hooks-after-early-return violations in entire codebase
-- [x] Comprehensive code health check: all passed
-- [x] All 4 commits pushed to `fix/restore-functionality` branch
+## Wave 3: UI/UX Polish & TV Optimization
+- [ ] Improve HomeScreen with hero banner carousel for featured/trending content
+- [ ] Add keyboard/remote navigation improvements for TV
+- [ ] Add image caching/prefetch for smoother scrolling
+- [ ] Final TypeScript + build check
+- [ ] Commit and push Wave 3

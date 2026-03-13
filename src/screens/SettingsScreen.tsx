@@ -160,7 +160,7 @@ export const SettingsScreen = () => {
           {success ? <Text style={mStyles.success}>{success}</Text> : null}
 
           {/* Main menu */}
-          {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && !streamingQuality && !streamingBuffer && !streamingAdvanced && (
+          {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && !streamingQuality && !streamingBuffer && !streamingAdvanced && !showThemePicker && !showLangPicker && (
             <View style={mStyles.section}>
               <Text style={mStyles.sectionTitle}>General</Text>
 
@@ -173,6 +173,24 @@ export const SettingsScreen = () => {
                 <Text style={mStyles.menuItemText}>Update Interval</Text>
                 <View style={mStyles.menuItemRight}>
                   <Text style={mStyles.menuItemValue}>{updateIntervalHours}h</Text>
+                  <ChevronRight size={18} color="#666" />
+                </View>
+              </TouchableOpacity>
+
+              <Text style={[mStyles.sectionTitle, { marginTop: 24 }]}>Appearance</Text>
+
+              <TouchableOpacity style={mStyles.menuItem} onPress={() => setShowThemePicker(true)} activeOpacity={0.7}>
+                <Text style={mStyles.menuItemText}>Theme</Text>
+                <View style={mStyles.menuItemRight}>
+                  <Text style={mStyles.menuItemValue}>{themeOptions.find(t => t.value === themeMode)?.emoji} {themeOptions.find(t => t.value === themeMode)?.label}</Text>
+                  <ChevronRight size={18} color="#666" />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={mStyles.menuItem} onPress={() => setShowLangPicker(true)} activeOpacity={0.7}>
+                <Text style={mStyles.menuItemText}>Language</Text>
+                <View style={mStyles.menuItemRight}>
+                  <Text style={mStyles.menuItemValue}>{supportedLanguages.find(l => l.code === currentLang)?.flag} {supportedLanguages.find(l => l.code === currentLang)?.label}</Text>
                   <ChevronRight size={18} color="#666" />
                 </View>
               </TouchableOpacity>
@@ -318,6 +336,60 @@ export const SettingsScreen = () => {
 
               <TouchableOpacity style={mStyles.cancelBtn} onPress={() => setStreamingAdvanced(false)} activeOpacity={0.7}>
                 <Text style={mStyles.cancelBtnText}>Zurück</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Theme picker */}
+          {showThemePicker && (
+            <View style={mStyles.section}>
+              <Text style={mStyles.sectionTitle}>Choose Theme</Text>
+              {themeOptions.map((theme) => (
+                <TouchableOpacity
+                  key={theme.value}
+                  style={[mStyles.menuItem, themeMode === theme.value && mStyles.menuItemSelected]}
+                  onPress={() => {
+                    setThemeMode(theme.value);
+                    setShowThemePicker(false);
+                    setSuccess(`Theme: ${theme.emoji} ${theme.label}`);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={mStyles.menuItemText}>{theme.emoji} {theme.label}</Text>
+                    <Text style={mStyles.menuItemDesc}>{theme.description}</Text>
+                  </View>
+                  {themeMode === theme.value && <Text style={mStyles.checkmark}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={mStyles.cancelBtn} onPress={() => setShowThemePicker(false)} activeOpacity={0.7}>
+                <Text style={mStyles.cancelBtnText}>Back</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Language picker */}
+          {showLangPicker && (
+            <View style={mStyles.section}>
+              <Text style={mStyles.sectionTitle}>Choose Language</Text>
+              {supportedLanguages.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[mStyles.menuItem, currentLang === lang.code && mStyles.menuItemSelected]}
+                  onPress={() => {
+                    i18n.changeLanguage(lang.code);
+                    setCurrentLang(lang.code);
+                    setShowLangPicker(false);
+                    setSuccess(`Language: ${lang.flag} ${lang.label}`);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={mStyles.menuItemText}>{lang.flag} {lang.label}</Text>
+                  {currentLang === lang.code && <Text style={mStyles.checkmark}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={mStyles.cancelBtn} onPress={() => setShowLangPicker(false)} activeOpacity={0.7}>
+                <Text style={mStyles.cancelBtnText}>Back</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -501,7 +573,7 @@ export const SettingsScreen = () => {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {success ? <Text style={styles.success}>{success}</Text> : null}
 
-        {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && !streamingQuality && !streamingBuffer && !streamingAdvanced && (
+        {!unlockAdult && !changingPin && !managingProviders && !intervalSetting && !streamingQuality && !streamingBuffer && !streamingAdvanced && !showThemePicker && !showLangPicker && (
           <>
             <TouchableOpacity style={styles.menuItem} onPress={() => setManagingProviders(true)}>
               <Text style={styles.menuItemText}>Manage Providers</Text>
@@ -509,6 +581,14 @@ export const SettingsScreen = () => {
             <TouchableOpacity style={styles.menuItem} onPress={() => setIntervalSetting(true)}>
               <Text style={styles.menuItemText}>Update Interval ({updateIntervalHours}h)</Text>
             </TouchableOpacity>
+            <Text style={[styles.subtitle, { marginTop: 20 }]}>Appearance</Text>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setShowThemePicker(true)}>
+              <Text style={styles.menuItemText}>Theme: {themeOptions.find(t => t.value === themeMode)?.emoji} {themeOptions.find(t => t.value === themeMode)?.label}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setShowLangPicker(true)}>
+              <Text style={styles.menuItemText}>Language: {supportedLanguages.find(l => l.code === currentLang)?.flag} {supportedLanguages.find(l => l.code === currentLang)?.label}</Text>
+            </TouchableOpacity>
+            <Text style={[styles.subtitle, { marginTop: 20 }]}>Privacy</Text>
             <TouchableOpacity style={styles.menuItem} onPress={handleToggleAdult}>
               <Text style={styles.menuItemText}>
                 {showAdult ? 'Hide Adult Categories' : 'Show Adult Categories'}
@@ -528,6 +608,53 @@ export const SettingsScreen = () => {
               <Text style={styles.menuItemText}>Advanced Settings</Text>
             </TouchableOpacity>
           </>
+        )}
+
+        {/* TV: Theme picker */}
+        {showThemePicker && (
+          <View>
+            <Text style={styles.subtitle}>Select Theme:</Text>
+            {themeOptions.map((theme) => (
+              <TouchableOpacity
+                key={theme.value}
+                style={[styles.menuItem, themeMode === theme.value && styles.menuItemSelected]}
+                onPress={() => {
+                  setThemeMode(theme.value);
+                  setShowThemePicker(false);
+                  setSuccess(`Theme: ${theme.emoji} ${theme.label}`);
+                }}
+              >
+                <Text style={styles.menuItemText}>{theme.emoji} {theme.label} — {theme.description}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowThemePicker(false)}>
+              <Text style={styles.cancelButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* TV: Language picker */}
+        {showLangPicker && (
+          <View>
+            <Text style={styles.subtitle}>Select Language:</Text>
+            {supportedLanguages.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[styles.menuItem, currentLang === lang.code && styles.menuItemSelected]}
+                onPress={() => {
+                  i18n.changeLanguage(lang.code);
+                  setCurrentLang(lang.code);
+                  setShowLangPicker(false);
+                  setSuccess(`Language: ${lang.flag} ${lang.label}`);
+                }}
+              >
+                <Text style={styles.menuItemText}>{lang.flag} {lang.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowLangPicker(false)}>
+              <Text style={styles.cancelButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {intervalSetting && (
