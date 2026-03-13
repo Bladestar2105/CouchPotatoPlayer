@@ -136,8 +136,9 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
         switch state {
         case .readyToPlay:
             onLoad?([:])
-        case .error(let error):
-            onError?(["error": error.localizedDescription])
+        case .error:
+            // The exact error is typically delivered in playerController(finish:)
+            onError?(["error": "Playback error"])
         case .buffering:
             onBuffer?(["isBuffering": true])
         case .bufferFinished:
