@@ -66,7 +66,7 @@ class RNKSPlayerView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         configureGlobalOptions()
-        playerView = IOSVideoPlayerView()
+        playerView = KSPlayer.IOSVideoPlayerView()
         addSubview(playerView)
         playerView.delegate = self
     }
@@ -131,8 +131,8 @@ class RNKSPlayerView: UIView {
 
 // ── Player Delegate ─────────────────────────────────────────────────
 
-extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
-    func playerController(state: KSPlayer.KSPlayerState) {
+extension RNKSPlayerView: KSPlayer.PlayerViewDelegate {
+    func playerView(stateDidChange state: KSPlayer.KSPlayerState) {
         switch state {
         case .readyToPlay:
             onLoad?([:])
@@ -147,15 +147,15 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
         }
     }
 
-    func playerController(currentTime: TimeInterval, totalTime: TimeInterval) {}
+    func playerView(currentTime: TimeInterval, totalTime: TimeInterval) {}
     
-    func playerController(finish error: Error?) {
+    func playerView(finish error: Error?) {
         if let err = error {
             onError?(["error": err.localizedDescription])
         }
     }
     
-    func playerController(bufferedCount: Int, consumeTime: TimeInterval) {
+    func playerView(bufferedCount: Int, consumeTime: TimeInterval) {
         // bufferedCount == 0 means first time loading
         if bufferedCount == 0 {
             onBuffer?(["isBuffering": true])
