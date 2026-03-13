@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Share, Platform, Clipboard } from 'react-native';
-import { Users, Link, Copy, Play, Pause, X, Radio } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Share, Platform } from 'react-native';
+import { Users, Link, X, Radio } from 'lucide-react-native';
 import { showToast } from './Toast';
 import { isMobile } from '../utils/platform';
 
@@ -22,10 +22,28 @@ interface PartyState {
   isActive: boolean;
 }
 
-// Simple room ID generator
+// Cryptographically secure room ID generator
 const generateRoomId = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let result = '';
+
+  try {
+    // Attempt to use secure random generation
+    const cryptoObj = typeof globalThis !== 'undefined' ? (globalThis.crypto || (globalThis as any).crypto) : null;
+    if (cryptoObj && cryptoObj.getRandomValues) {
+      const array = new Uint8Array(6);
+      cryptoObj.getRandomValues(array);
+      for (let i = 0; i < 6; i++) {
+        // chars length is exactly 32 (2^5), so modulo doesn't introduce bias
+        result += chars.charAt(array[i] % chars.length);
+      }
+      return result;
+    }
+  } catch {
+    // Fallback in case of unexpected errors
+  }
+
+  // Fallback to Math.random() for environments without Crypto API
   for (let i = 0; i < 6; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -34,12 +52,12 @@ const generateRoomId = (): string => {
 
 export const WatchParty: React.FC<WatchPartyProps> = ({
   channelName,
-  channelId,
-  type,
+  channelId: _channelId,
+  type: _type,
   currentTime,
-  isPlaying,
-  onSeek,
-  onTogglePlay,
+  isPlaying: _isPlaying,
+  onSeek: _onSeek,
+  onTogglePlay: _onTogglePlay,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [party, setParty] = useState<PartyState | null>(null);
@@ -92,7 +110,7 @@ export const WatchParty: React.FC<WatchPartyProps> = ({
       } else {
         await Share.share({ message, title: 'Watch Party Invite' });
       }
-    } catch (e) {
+    } catch {
       showToast('Could not share', 'error');
     }
   }, [party, channelName]);
