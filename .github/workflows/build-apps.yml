@@ -92,7 +92,6 @@ jobs:
               -scheme CouchPotatoPlayer \
               -configuration Release \
               -sdk iphoneos \
-              -destination 'generic/platform=iOS' \
               -derivedDataPath ios/build/iOS \
               TARGETED_DEVICE_FAMILY="1,2" \
               SUPPORTED_PLATFORMS="iphoneos iphonesimulator" \
@@ -107,7 +106,6 @@ jobs:
               -scheme CouchPotatoPlayer \
               -configuration Release \
               -sdk iphoneos \
-              -destination 'generic/platform=iOS' \
               -derivedDataPath ios/build/iOS \
               TARGETED_DEVICE_FAMILY="1,2" \
               SUPPORTED_PLATFORMS="iphoneos iphonesimulator" \
