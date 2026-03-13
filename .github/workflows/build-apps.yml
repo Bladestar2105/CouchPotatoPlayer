@@ -99,8 +99,7 @@ jobs:
               IPHONEOS_DEPLOYMENT_TARGET="18.0" \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              | tail -50
+              CODE_SIGN_IDENTITY=""
           else
             xcodebuild -project ios/CouchPotatoPlayer.xcodeproj \
               -scheme CouchPotatoPlayer \
@@ -113,8 +112,7 @@ jobs:
               IPHONEOS_DEPLOYMENT_TARGET="18.0" \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              | tail -50
+              CODE_SIGN_IDENTITY=""
           fi
       - name: Package iOS Build
         run: |
@@ -140,8 +138,7 @@ jobs:
               -derivedDataPath ios/build/tvOS \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              | tail -50
+              CODE_SIGN_IDENTITY=""
           else
             xcodebuild -project ios/CouchPotatoPlayer.xcodeproj \
               -scheme CouchPotatoPlayer \
@@ -151,8 +148,7 @@ jobs:
               -derivedDataPath ios/build/tvOS \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              | tail -50
+              CODE_SIGN_IDENTITY=""
           fi
       - name: Package tvOS Build
         run: |
