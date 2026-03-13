@@ -223,16 +223,43 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
 
     if (needsHls(uri) && Hls.isSupported()) {
       const hls = new Hls({
+        // ── Performance: use Web Worker for demuxing ──
         enableWorker: true,
-        lowLatencyMode: true,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        maxBufferHole: 0.5,
-        liveSyncDuration: 3,
-        liveMaxLatencyDuration: 10,
-        manifestLoadingMaxRetry: 6,
-        levelLoadingMaxRetry: 6,
-        fragLoadingMaxRetry: 6,
+
+        // ── Disable low-latency mode for stable IPTV playback ──
+        // Low-latency mode aggressively flushes buffers which causes
+        // constant rebuffering on IPTV streams routed through a proxy.
+        lowLatencyMode: false,
+
+        // ── Buffer configuration for smooth playback ──
+        // Keep a large buffer ahead to prevent rebuffering
+        maxBufferLength: 60,           // buffer up to 60s ahead
+        maxMaxBufferLength: 120,       // allow up to 120s in good conditions
+        maxBufferSize: 60 * 1000000,   // 60 MB max buffer size
+        maxBufferHole: 1.0,            // tolerate 1s gaps in buffer
+
+        // ── Live stream settings ──
+        liveSyncDurationCount: 3,      // sync to 3 segments behind live edge
+        liveMaxLatencyDurationCount: 6, // allow up to 6 segments latency
+        liveDurationInfinity: true,     // treat live streams as infinite
+
+        // ── Aggressive retry for unreliable IPTV connections ──
+        manifestLoadingMaxRetry: 10,
+        manifestLoadingRetryDelay: 1000,
+        levelLoadingMaxRetry: 10,
+        levelLoadingRetryDelay: 1000,
+        fragLoadingMaxRetry: 10,
+        fragLoadingRetryDelay: 1000,
+
+        // ── Start at lowest quality then auto-switch up ──
+        startLevel: -1,                // auto-select initial level
+        abrEwmaDefaultEstimate: 500000, // start with 500kbps estimate
+
+        // ── Loading timeouts ──
+        manifestLoadingTimeOut: 15000,
+        levelLoadingTimeOut: 15000,
+        fragLoadingTimeOut: 30000,
+
         // Rewrite all URLs through our proxy so that segment/playlist
         // requests from the IPTV server don't hit the browser origin.
         // By the time xhrSetup fires, HLS.js has already resolved relative
@@ -257,17 +284,39 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
         fireOnLoad(video);
       });
 
+      // Track recovery attempts to avoid infinite loops
+      let networkRecoveryAttempts = 0;
+      let mediaRecoveryAttempts = 0;
+      const MAX_RECOVERY_ATTEMPTS = 5;
+
       hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
-        console.warn('[HLS Error]', data.type, data.details, data.fatal);
+        // Only log fatal errors or first occurrence of non-fatal
+        if (data.fatal) {
+          console.warn('[HLS Fatal]', data.type, data.details);
+        }
+
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log('[HLS] Attempting network recovery...');
-              hls.startLoad();
+              if (networkRecoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
+                networkRecoveryAttempts++;
+                console.log(`[HLS] Network recovery attempt ${networkRecoveryAttempts}/${MAX_RECOVERY_ATTEMPTS}...`);
+                // Wait a bit before retrying to let the connection stabilize
+                setTimeout(() => hls.startLoad(), 1000);
+              } else {
+                onError?.({ error: { code: -1, domain: 'HLS', localizedDescription: data.details } });
+                hls.destroy();
+              }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log('[HLS] Attempting media recovery...');
-              hls.recoverMediaError();
+              if (mediaRecoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
+                mediaRecoveryAttempts++;
+                console.log(`[HLS] Media recovery attempt ${mediaRecoveryAttempts}/${MAX_RECOVERY_ATTEMPTS}...`);
+                hls.recoverMediaError();
+              } else {
+                onError?.({ error: { code: -1, domain: 'HLS', localizedDescription: data.details } });
+                hls.destroy();
+              }
               break;
             default:
               onError?.({ error: { code: -1, domain: 'HLS', localizedDescription: data.details } });
@@ -275,6 +324,12 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
               break;
           }
         }
+      });
+
+      // Reset recovery counters on successful fragment load
+      hls.on(Hls.Events.FRAG_LOADED, () => {
+        networkRecoveryAttempts = 0;
+        mediaRecoveryAttempts = 0;
       });
 
       hls.on(Hls.Events.FRAG_BUFFERED, (_event: any, data: any) => {
