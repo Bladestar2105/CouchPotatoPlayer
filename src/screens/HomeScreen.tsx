@@ -18,6 +18,7 @@ import {
 } from '../services/xmltv';
 import { Category, LiveChannel, ParsedProgram, RecentlyWatchedItem, FavoriteItem } from '../types/iptv';
 import { Tv, PlaySquare, FileVideo, LayoutList, Search, Settings, Clock, Heart, Play } from 'lucide-react-native';
+import { proxyImageUrl } from '../utils/imageProxy';
 import { useTranslation } from 'react-i18next';
 import { isTV, isMobile, adaptiveValue, gridColumns } from '../utils/platform';
 import { getEpgKey, getCurrentProgram } from '../utils/epg';
@@ -513,7 +514,7 @@ export const HomeScreen = () => {
         <View style={mobileStyles.gridCardImage}>
           {(item.stream_icon || item.cover) ? (
             <Image
-              source={{ uri: item.stream_icon || item.cover }}
+              source={{ uri: proxyImageUrl(item.stream_icon || item.cover) }}
               style={mobileStyles.gridCardImg}
               resizeMode="cover"
             />
@@ -552,7 +553,7 @@ export const HomeScreen = () => {
         <View style={tvStyles.channelImageContainer}>
           {(item.stream_icon || item.cover) ? (
             <Image
-              source={{ uri: item.stream_icon || item.cover }}
+              source={{ uri: proxyImageUrl(item.stream_icon || item.cover) }}
               style={tvStyles.channelIcon}
               resizeMode="contain"
               defaultSource={require('../../assets/images/placeholder.png')}
@@ -598,7 +599,7 @@ export const HomeScreen = () => {
           <View style={tvStyles.channelListImageContainer}>
             {(item.stream_icon || item.cover) ? (
               <Image
-                source={{ uri: item.stream_icon || item.cover }}
+                source={{ uri: proxyImageUrl(item.stream_icon || item.cover) }}
                 style={tvStyles.channelListIcon}
                 resizeMode="contain"
                 defaultSource={require('../../assets/images/placeholder.png')}
@@ -738,7 +739,7 @@ export const HomeScreen = () => {
                     >
                       <View style={mobileStyles.homeCardImage}>
                         {fav.icon ? (
-                          <Image source={{ uri: fav.icon }} style={mobileStyles.homeCardImg} resizeMode="cover" />
+                          <Image source={{ uri: proxyImageUrl(fav.icon) }} style={mobileStyles.homeCardImg} resizeMode="cover" />
                         ) : (
                           <View style={mobileStyles.homeCardPlaceholder}>
                             <Text style={mobileStyles.homeCardInitial}>{fav.name.charAt(0).toUpperCase()}</Text>
@@ -778,7 +779,7 @@ export const HomeScreen = () => {
                     >
                       <View style={mobileStyles.homeCardImage}>
                         {recent.icon ? (
-                          <Image source={{ uri: recent.icon }} style={mobileStyles.homeCardImg} resizeMode="cover" />
+                          <Image source={{ uri: proxyImageUrl(recent.icon) }} style={mobileStyles.homeCardImg} resizeMode="cover" />
                         ) : (
                           <View style={mobileStyles.homeCardPlaceholder}>
                             <Text style={mobileStyles.homeCardInitial}>{recent.name.charAt(0).toUpperCase()}</Text>

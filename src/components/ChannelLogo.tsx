@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { proxyImageUrl } from '../utils/imageProxy';
 
 interface ChannelLogoProps {
   uri?: string;
@@ -39,10 +40,13 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
 
-  if (uri && !imgError) {
+  // Proxy the image URL on web to avoid Mixed Content / CORS issues
+  const proxiedUri = useMemo(() => proxyImageUrl(uri), [uri]);
+
+  if (proxiedUri && !imgError) {
     return (
       <Image
-        source={{ uri }}
+        source={{ uri: proxiedUri }}
         style={[styles.image, { width: size, height: size, borderRadius }]}
         onError={() => setImgError(true)}
         resizeMode="contain"

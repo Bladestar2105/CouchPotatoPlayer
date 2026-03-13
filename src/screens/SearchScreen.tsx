@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, Search, Tv, Clock, X } from 'lucide-react-native';
+import { proxyImageUrl } from '../utils/imageProxy';
 import { ChannelLogo } from '../components/ChannelLogo';
 import { useAppStore } from '../store';
 import { LiveChannel } from '../types/iptv';
@@ -132,7 +133,7 @@ export const SearchScreen = () => {
           <View style={mStyles.channelImageContainer}>
             {(item.stream_icon || item.cover) ? (
               <Image
-                source={{ uri: item.stream_icon || item.cover }}
+                source={{ uri: proxyImageUrl(item.stream_icon || item.cover) }}
                 style={mStyles.channelIcon}
                 resizeMode="cover"
               />
@@ -163,7 +164,7 @@ export const SearchScreen = () => {
         <View style={styles.channelImageContainer}>
           {(item.stream_icon || item.cover) ? (
             <Image
-              source={{ uri: item.stream_icon || item.cover }}
+              source={{ uri: proxyImageUrl(item.stream_icon || item.cover) }}
               style={styles.channelIcon}
               resizeMode="contain"
             />

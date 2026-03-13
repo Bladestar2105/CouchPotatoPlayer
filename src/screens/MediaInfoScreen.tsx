@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { isTV, isMobile } from '../utils/platform';
 import { showToast } from '../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { proxyImageUrl } from '../utils/imageProxy';
 import { FavoriteItem } from '../types/iptv';
 
 type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
@@ -111,7 +112,7 @@ export const MediaInfoScreen = () => {
           {/* Header with back button over cover image */}
           <View style={mStyles.coverContainer}>
             {displayCover ? (
-              <Image source={{ uri: displayCover }} style={mStyles.coverImage} resizeMode="cover" />
+              <Image source={{ uri: proxyImageUrl(displayCover) }} style={mStyles.coverImage} resizeMode="cover" />
             ) : (
               <View style={mStyles.coverPlaceholder} />
             )}
@@ -181,7 +182,7 @@ export const MediaInfoScreen = () => {
 
       <View style={styles.content}>
         {displayCover ? (
-          <Image source={{ uri: displayCover }} style={styles.cover} resizeMode="contain" />
+          <Image source={{ uri: proxyImageUrl(displayCover) }} style={styles.cover} resizeMode="contain" />
         ) : (
           <View style={styles.placeholderCover} />
         )}
