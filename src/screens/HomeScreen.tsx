@@ -26,6 +26,8 @@ import { ChannelLogo } from '../components/ChannelLogo';
 import { ChannelListSkeleton, GridSkeleton, HorizontalRowSkeleton } from '../components/SkeletonLoader';
 import { showToast } from '../components/Toast';
 import { ProviderSwitcher } from '../components/ProviderSwitcher';
+import { TMDBService, TMDBSearchResult } from '../services/tmdb';
+import { prefetchChannelImages } from '../utils/imageCache';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -60,6 +62,8 @@ export const HomeScreen = () => {
   const [lastFetchedTab, setLastFetchedTab] = useState<'live' | 'vod' | 'series' | null>(null);
   const [numColumns, setNumColumns] = useState(gridColumns());
   const [refreshing, setRefreshing] = useState(false);
+  const [trendingItems, setTrendingItems] = useState<TMDBSearchResult[]>([]);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   // Listen for dimension changes (rotation)
   useEffect(() => {
@@ -68,6 +72,32 @@ export const HomeScreen = () => {
     });
     return () => sub?.remove();
   }, []);
+
+  // Fetch TMDB trending content for hero banner
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const tmdb = new TMDBService({ apiKey: '0fd7a8764e6522629a3b7e78c452c348', language: 'de-DE' });
+        const results = await tmdb.getTrending('all', 'week');
+        if (results.length > 0) {
+          setTrendingItems(results.slice(0, 8));
+        }
+      } catch (err) {
+        // Trending is optional — don't block the app
+        console.log('TMDB trending fetch skipped:', err);
+      }
+    };
+    fetchTrending();
+  }, []);
+
+  // Cycle hero banner every 6 seconds
+  useEffect(() => {
+    if (trendingItems.length <= 1) return;
+    const timer = setInterval(() => {
+      setHeroIndex(prev => (prev + 1) % trendingItems.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [trendingItems.length]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -359,6 +389,13 @@ export const HomeScreen = () => {
       ? channels.filter(c => c.category_id === selectedCategoryId)
       : channels;
   }, [config?.type, channels, selectedCategoryId]);
+
+  // Prefetch channel images for smooth scrolling
+  useEffect(() => {
+    if (displayedChannels.length > 0) {
+      prefetchChannelImages(displayedChannels.slice(0, 30));
+    }
+  }, [displayedChannels]);
 
   // ─── TV-specific state ──────────────────────────────────────────
   const [focusedCategoryId, setFocusedCategoryId] = useState<string | null>(null);
@@ -718,6 +755,45 @@ export const HomeScreen = () => {
               />
             }
           >
+            {/* TMDB Trending Hero Banner */}
+            {trendingItems.length > 0 && (
+              <View style={mobileStyles.heroBanner}>
+                {trendingItems[heroIndex]?.backdropUrl && (
+                  <Image
+                    source={{ uri: proxyImageUrl(trendingItems[heroIndex].backdropUrl!) }}
+                    style={mobileStyles.heroImage}
+                    resizeMode="cover"
+                  />
+                )}
+                <View style={mobileStyles.heroOverlay} />
+                <View style={mobileStyles.heroContent}>
+                  <Text style={mobileStyles.heroLabel}>🔥 Trending</Text>
+                  <Text style={mobileStyles.heroTitle} numberOfLines={2}>
+                    {trendingItems[heroIndex]?.title}
+                  </Text>
+                  {trendingItems[heroIndex]?.genres?.length > 0 && (
+                    <Text style={mobileStyles.heroGenres} numberOfLines={1}>
+                      {trendingItems[heroIndex].genres.slice(0, 3).join(' • ')}
+                    </Text>
+                  )}
+                  {trendingItems[heroIndex]?.rating > 0 && (
+                    <Text style={mobileStyles.heroRating}>
+                      ⭐ {trendingItems[heroIndex].rating.toFixed(1)}
+                    </Text>
+                  )}
+                </View>
+                {/* Dot indicators */}
+                <View style={mobileStyles.heroDots}>
+                  {trendingItems.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[mobileStyles.heroDot, i === heroIndex && mobileStyles.heroDotActive]}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Favorites Row */}
             {favorites.length > 0 && (
               <View style={mobileStyles.homeSection}>
@@ -962,10 +1038,105 @@ export const HomeScreen = () => {
       {/* 3. Main Content */}
       <View style={tvStyles.mainContent}>
         {!selectedCategoryId ? (
-          <View style={sharedStyles.centerContainer}>
-            <Clock size={64} color="#444" style={tvStyles.recentlyWatchedIcon} />
-            <Text style={tvStyles.recentlyWatchedTitle}>{t('home.recentlyWatched')}</Text>
-            <Text style={tvStyles.emptyText}>{t('home.nothingToSeeHere')}</Text>
+          <View style={{ flex: 1, padding: 20 }}>
+            {/* TV Hero Banner — Trending */}
+            {trendingItems.length > 0 && (
+              <View style={{ width: '100%', height: 280, borderRadius: 16, overflow: 'hidden', marginBottom: 24, backgroundColor: '#1C1C1E', position: 'relative' }}>
+                {trendingItems[heroIndex]?.backdropUrl && (
+                  <Image
+                    source={{ uri: proxyImageUrl(trendingItems[heroIndex].backdropUrl!) }}
+                    style={{ width: '100%', height: '100%', position: 'absolute' }}
+                    resizeMode="cover"
+                  />
+                )}
+                <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '75%', backgroundColor: 'rgba(0,0,0,0.5)' }} />
+                <View style={{ position: 'absolute', bottom: 30, left: 30, right: 30 }}>
+                  <Text style={{ color: '#FF9500', fontSize: 14, fontWeight: 'bold', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>🔥 Trending this week</Text>
+                  <Text style={{ color: '#FFF', fontSize: 32, fontWeight: 'bold', marginBottom: 6 }} numberOfLines={1}>
+                    {trendingItems[heroIndex]?.title}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                    {trendingItems[heroIndex]?.rating > 0 && (
+                      <Text style={{ color: '#FFD700', fontSize: 16, fontWeight: 'bold' }}>⭐ {trendingItems[heroIndex].rating.toFixed(1)}</Text>
+                    )}
+                    {trendingItems[heroIndex]?.genres?.length > 0 && (
+                      <Text style={{ color: '#CCC', fontSize: 14 }}>{trendingItems[heroIndex].genres.slice(0, 3).join(' • ')}</Text>
+                    )}
+                    {trendingItems[heroIndex]?.releaseDate && (
+                      <Text style={{ color: '#888', fontSize: 14 }}>{trendingItems[heroIndex].releaseDate.substring(0, 4)}</Text>
+                    )}
+                  </View>
+                </View>
+                {/* Dot indicators */}
+                <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                  {trendingItems.map((_, i) => (
+                    <View key={i} style={{ width: i === heroIndex ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === heroIndex ? '#FFF' : 'rgba(255,255,255,0.35)' }} />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Recently Watched / Favorites */}
+            {recentlyWatched.length > 0 || favorites.length > 0 ? (
+              <View>
+                {favorites.length > 0 && (
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>❤️ Favorites</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                      {favorites.slice(0, 10).map((fav) => (
+                        <TouchableOpacity
+                          key={`tv-fav-${fav.id}`}
+                          style={{ width: 140 }}
+                          onPress={() => handleFavoritePress(fav)}
+                        >
+                          <View style={{ width: 140, height: 80, borderRadius: 10, backgroundColor: '#2C2C2E', overflow: 'hidden' }}>
+                            {fav.icon ? (
+                              <Image source={{ uri: proxyImageUrl(fav.icon) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                            ) : (
+                              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Text style={{ color: '#555', fontSize: 24, fontWeight: 'bold' }}>{(fav.name || '?')[0]}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={{ color: '#CCC', fontSize: 12, marginTop: 4 }} numberOfLines={1}>{fav.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+                {recentlyWatched.length > 0 && (
+                  <View>
+                    <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>🕐 {t('home.recentlyWatched')}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                      {recentlyWatched.slice(0, 10).map((recent) => (
+                        <TouchableOpacity
+                          key={`tv-recent-${recent.id}`}
+                          style={{ width: 140 }}
+                          onPress={() => handleRecentPress(recent)}
+                        >
+                          <View style={{ width: 140, height: 80, borderRadius: 10, backgroundColor: '#2C2C2E', overflow: 'hidden' }}>
+                            {recent.icon ? (
+                              <Image source={{ uri: proxyImageUrl(recent.icon) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                            ) : (
+                              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Text style={{ color: '#555', fontSize: 24, fontWeight: 'bold' }}>{(recent.name || '?')[0]}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={{ color: '#CCC', fontSize: 12, marginTop: 4 }} numberOfLines={1}>{recent.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={sharedStyles.centerContainer}>
+                <Clock size={64} color="#444" style={tvStyles.recentlyWatchedIcon} />
+                <Text style={tvStyles.recentlyWatchedTitle}>{t('home.recentlyWatched')}</Text>
+                <Text style={tvStyles.emptyText}>{t('home.nothingToSeeHere')}</Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={tvStyles.channelsContainer}>
@@ -1207,6 +1378,82 @@ const mobileStyles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  // ── Hero Banner ──
+  heroBanner: {
+    width: '100%',
+    height: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+    backgroundColor: '#1C1C1E',
+    position: 'relative',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  heroOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '70%',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 28,
+    left: 16,
+    right: 16,
+  },
+  heroLabel: {
+    color: '#FF9500',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  heroTitle: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroGenres: {
+    color: '#CCC',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  heroRating: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  heroDots: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  heroDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  heroDotActive: {
+    backgroundColor: '#FFF',
+    width: 18,
+    borderRadius: 3,
   },
   horizontalListContent: {
     paddingHorizontal: 16,

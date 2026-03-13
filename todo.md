@@ -10,15 +10,14 @@
 - [x] Commit and push Wave 1 files
 
 ## Wave 2: Wire Components into App
-- [ ] Integrate TMDB enrichment into MediaInfoScreen (show posters, ratings, descriptions from TMDB)
-- [ ] Integrate StreamHealthMonitor into LivePlayerScreen (replace/enhance PlayerStats)
-- [ ] Add TMDB hero banner to HomeScreen (trending movies section)
-- [ ] Add Theme picker + Language picker to SettingsScreen (currently missing)
-- [ ] TypeScript check + build verify
-- [ ] Commit and push Wave 2
+- [x] Integrate TMDB enrichment into MediaInfoScreen (show posters, ratings, descriptions from TMDB)
+- [x] Integrate StreamHealthMonitor into LivePlayerScreen (replace/enhance PlayerStats)
+- [x] Add Theme picker + Language picker to SettingsScreen
+- [x] TypeScript check + build verify
+- [x] Commit and push Wave 2
 
 ## Wave 3: UI/UX Polish & TV Optimization
-- [ ] Improve HomeScreen with hero banner carousel for featured/trending content
+- [ ] Improve HomeScreen with TMDB trending hero banner carousel
 - [ ] Add keyboard/remote navigation improvements for TV
 - [ ] Add image caching/prefetch for smoother scrolling
 - [ ] Final TypeScript + build check
