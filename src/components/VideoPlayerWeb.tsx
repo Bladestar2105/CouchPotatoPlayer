@@ -58,6 +58,49 @@ export interface VideoPlayerWebRef {
   resume: () => void;
 }
 
+/**
+ * Extract the IPTV server origin from a proxied URL.
+ * e.g. "/proxy/http://server:port/live/user/pass/123.ts"
+ *   -> "http://server:port"
+ */
+function extractServerOrigin(proxyUrl: string): string | null {
+  const prefix = '/proxy/';
+  if (!proxyUrl.startsWith(prefix)) return null;
+  const actualUrl = proxyUrl.slice(prefix.length);
+  try {
+    const parsed = new URL(actualUrl);
+    return parsed.origin; // e.g. "http://server:port"
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rewrite segment/playlist URLs that HLS.js resolves.
+ * The IPTV server returns manifests with absolute paths like
+ * "/live/segment/..." which the browser resolves against itself.
+ * We need to route them through our /proxy/ middleware instead.
+ */
+function rewriteUrl(url: string, serverOrigin: string | null): string {
+  if (!serverOrigin) return url;
+
+  // Already proxied — leave it alone
+  if (url.startsWith('/proxy/')) return url;
+
+  // Absolute URL to the IPTV server — wrap in proxy
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return `/proxy/${url}`;
+  }
+
+  // Absolute path from the IPTV server (e.g. /live/segment/...)
+  if (url.startsWith('/')) {
+    return `/proxy/${serverOrigin}${url}`;
+  }
+
+  // Relative path — shouldn't happen with HLS but handle it
+  return `/proxy/${serverOrigin}/${url}`;
+}
+
 const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props, ref) => {
   const {
     source,
@@ -106,11 +149,8 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
   // Determine if URL needs HLS.js
   const needsHls = useCallback((url: string): boolean => {
     const lower = url.toLowerCase();
-    // HLS manifests
     if (lower.includes('.m3u8')) return true;
-    // MPEG-TS streams
     if (/\/\d+\.(ts)(\?.*)?$/i.test(lower)) return true;
-    // Xtream live/VOD/series URL patterns
     if (lower.includes('/live/') || lower.includes('/movie/') || lower.includes('/series/')) return true;
     return false;
   }, []);
@@ -148,8 +188,10 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
     cleanupHls();
     setIsReady(false);
 
+    // Extract the IPTV server origin for URL rewriting
+    const serverOrigin = extractServerOrigin(uri);
+
     if (needsHls(uri) && Hls.isSupported()) {
-      // Use HLS.js for streaming content
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
@@ -161,6 +203,14 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
         manifestLoadingMaxRetry: 6,
         levelLoadingMaxRetry: 6,
         fragLoadingMaxRetry: 6,
+        // Rewrite all URLs through our proxy so that segment/playlist
+        // requests from the IPTV server don't hit the browser origin
+        xhrSetup: (xhr: any, urlToLoad: string) => {
+          const rewritten = rewriteUrl(urlToLoad, serverOrigin);
+          if (rewritten !== urlToLoad) {
+            xhr.open('GET', rewritten, true);
+          }
+        },
       });
 
       hls.loadSource(uri);
@@ -207,7 +257,7 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
       });
 
       hlsRef.current = hls;
-    } else if (video.canPlayType && video.canPlayType('application/vnd.apple.mpegurl')) {
+    } else if (videoRef.current?.canPlayType && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
       // Safari has native HLS support
       video.src = uri;
       const onMetadata = () => {
@@ -343,12 +393,7 @@ const VideoPlayerWeb = forwardRef<VideoPlayerWebRef, VideoPlayerWebProps>((props
     };
   }, [cleanupHls]);
 
-  // Use createElement directly to avoid JSX type issues with <video> in RN context
-  const createElement = (globalThis as any).document?.createElement
-    ? React.createElement
-    : React.createElement;
-
-  return createElement('video', {
+  return React.createElement('video', {
     ref: videoRef,
     controls: controls,
     playsInline: true,
