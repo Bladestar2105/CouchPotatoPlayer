@@ -1,0 +1,14 @@
+--- local_modules/react-native-ksplayer/ios/RNKSPlayerView.swift
++++ local_modules/react-native-ksplayer/ios/RNKSPlayerView.swift
+@@ -89,16 +89,16 @@
+
+     private func configureGlobalOptions() {
+         // Use FFmpeg-based player as primary (better codec support for IPTV)
+         if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? MediaPlayerProtocol.Type {
+-            KSOptions.firstPlayerType = mePlayer
++            KSPlayer.KSOptions.firstPlayerType = mePlayer
+         }
+         // Fallback to AVPlayer for standard formats
+-        KSOptions.secondPlayerType = KSAVPlayer.self
++        KSPlayer.KSOptions.secondPlayerType = KSAVPlayer.self
+     }

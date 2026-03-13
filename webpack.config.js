@@ -91,8 +91,8 @@ module.exports = {
         };
 
         // Remove browser-specific headers that cause issues
-        delete options.headers['origin'];
-        delete options.headers['referer'];
+        delete options.headers.origin;
+        delete options.headers.referer;
         delete options.headers['accept-encoding'];
 
         const proxyReq = http.request(options, (proxyRes) => {

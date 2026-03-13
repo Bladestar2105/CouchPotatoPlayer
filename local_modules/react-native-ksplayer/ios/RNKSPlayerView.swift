@@ -30,32 +30,32 @@ class RNKSPlayerView: UIView {
 
     /// Buffer duration in seconds (minimum forward buffer)
     @objc var preferredForwardBufferDuration: Double = 10.0 {
-        didSet { applyOptions() }
+        didSet { setupPlayer() }
     }
 
     /// Maximum buffer duration in seconds
     @objc var maxBufferDuration: Double = 30.0 {
-        didSet { applyOptions() }
+        didSet { setupPlayer() }
     }
 
     /// Enable hardware decoding (default: true)
     @objc var hardwareDecode: Bool = true {
-        didSet { applyOptions() }
+        didSet { setupPlayer() }
     }
 
     /// Enable fast second open for quick channel switching
     @objc var isSecondOpen: Bool = true {
-        didSet { applyOptions() }
+        didSet { setupPlayer() }
     }
 
     /// Enable adaptive bitrate (auto quality switching for HLS)
     @objc var videoAdaptable: Bool = true {
-        didSet { applyOptions() }
+        didSet { setupPlayer() }
     }
 
     /// Enable auto play
     @objc var isAutoPlay: Bool = true {
-        didSet { applyOptions() }
+        didSet { setupPlayer() }
     }
 
     /// Max bitrate limit (0 = unlimited)
@@ -89,30 +89,21 @@ class RNKSPlayerView: UIView {
 
     private func configureGlobalOptions() {
         // Use FFmpeg-based player as primary (better codec support for IPTV)
-        KSOptions.firstPlayerType = KSMEPlayer.self
+        if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? MediaPlayerProtocol.Type {
+            KSPlayer.KSOptions.firstPlayerType = mePlayer
+        }
         // Fallback to AVPlayer for standard formats
-        KSOptions.secondPlayerType = KSAVPlayer.self
-        // Enable hardware decoding globally
-        KSOptions.hardwareDecode = true
-        // Enable fast channel switching
-        KSOptions.isSecondOpen = true
-        // Auto play after loading
-        KSOptions.isAutoPlay = true
+        KSPlayer.KSOptions.secondPlayerType = KSAVPlayer.self
     }
 
     private func applyOptions() {
-        // Global options that affect all new player instances
-        KSOptions.hardwareDecode = hardwareDecode
-        KSOptions.isSecondOpen = isSecondOpen
-        KSOptions.isAutoPlay = isAutoPlay
-        KSOptions.preferredForwardBufferDuration = preferredForwardBufferDuration
-        KSOptions.maxBufferDuration = maxBufferDuration
+        // We will apply instance specific options in setupPlayer() instead
+        // to avoid Swift 6 strict concurrency errors on static properties.
     }
 
     private func setupPlayer() {
         guard let url = url else { return }
         
-        applyOptions()
         onLoadStart?([:])
 
         // Create options for this specific stream
@@ -120,7 +111,7 @@ class RNKSPlayerView: UIView {
         options.preferredForwardBufferDuration = preferredForwardBufferDuration
         options.maxBufferDuration = maxBufferDuration
         options.isSecondOpen = isSecondOpen
-        options.isAutoPlay = true
+        options.isAutoPlay = isAutoPlay
         options.videoAdaptable = videoAdaptable
         options.hardwareDecode = hardwareDecode
         
@@ -132,7 +123,9 @@ class RNKSPlayerView: UIView {
         
         let resource = KSPlayerResource(url: url, options: options)
         playerView.set(resource: resource)
-        playerView.play()
+        if isAutoPlay {
+            playerView.play()
+        }
     }
 }
 
