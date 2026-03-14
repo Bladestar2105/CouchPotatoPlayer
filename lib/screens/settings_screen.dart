@@ -2,10 +2,185 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/settings_provider.dart';
+import '../models/iptv.dart';
 import 'welcome_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  IconData _getIconData(String? iconName) {
+    switch (iconName) {
+      case 'tv': return Icons.tv;
+      case 'movie': return Icons.movie;
+      case 'star': return Icons.star;
+      case 'public': return Icons.public;
+      case 'dns': return Icons.dns;
+      case 'live_tv': return Icons.live_tv;
+      case 'sports_soccer': return Icons.sports_soccer;
+      case 'music_note': return Icons.music_note;
+      case 'child_care': return Icons.child_care;
+      case 'business': return Icons.business;
+      default: return Icons.dns;
+    }
+  }
+
+  Future<void> _showProviderDialog(BuildContext context, {PlayerConfig? existingProvider}) async {
+    final nameController = TextEditingController(text: existingProvider?.name ?? '');
+    final serverUrlController = TextEditingController(text: existingProvider?.serverUrl ?? '');
+    final usernameController = TextEditingController(text: existingProvider?.username ?? '');
+    final passwordController = TextEditingController(text: existingProvider?.password ?? '');
+    String selectedType = existingProvider?.type ?? 'xtream';
+    String selectedIcon = existingProvider?.icon ?? 'dns';
+    bool loading = false;
+    String error = '';
+
+    final predefinedIcons = [
+      'tv', 'movie', 'star', 'public', 'dns', 'live_tv', 'sports_soccer', 'music_note', 'child_care', 'business'
+    ];
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1C1C1E),
+              title: Text(existingProvider == null ? 'Add Provider' : 'Edit Provider', style: const TextStyle(color: Colors.white)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (existingProvider == null)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: RadioListTile<String>(
+                              title: const Text('Xtream', style: TextStyle(color: Colors.white, fontSize: 14)),
+                              value: 'xtream',
+                              groupValue: selectedType,
+                              onChanged: (val) => setStateDialog(() => selectedType = val!),
+                              activeColor: Colors.blue,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          Expanded(
+                            child: RadioListTile<String>(
+                              title: const Text('M3U', style: TextStyle(color: Colors.white, fontSize: 14)),
+                              value: 'm3u',
+                              groupValue: selectedType,
+                              onChanged: (val) => setStateDialog(() => selectedType = val!),
+                              activeColor: Colors.blue,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    TextField(
+                      controller: nameController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Name', labelStyle: TextStyle(color: Colors.grey)),
+                    ),
+                    TextField(
+                      controller: serverUrlController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Server URL', labelStyle: TextStyle(color: Colors.grey)),
+                    ),
+                    if (selectedType == 'xtream') ...[
+                      TextField(
+                        controller: usernameController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(labelText: 'Username', labelStyle: TextStyle(color: Colors.grey)),
+                      ),
+                      TextField(
+                        controller: passwordController,
+                        style: const TextStyle(color: Colors.white),
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Password', labelStyle: TextStyle(color: Colors.grey)),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Select Icon:', style: TextStyle(color: Colors.grey)),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: predefinedIcons.map((iconName) {
+                        return GestureDetector(
+                          onTap: () => setStateDialog(() => selectedIcon = iconName),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: selectedIcon == iconName ? Colors.blue.withValues(alpha: 0.3) : Colors.transparent,
+                              border: Border.all(color: selectedIcon == iconName ? Colors.blue : Colors.grey),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(_getIconData(iconName), color: Colors.white),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    if (error.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(error, style: const TextStyle(color: Colors.red)),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: loading ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: loading ? null : () async {
+                    if (nameController.text.isEmpty || serverUrlController.text.isEmpty ||
+                        (selectedType == 'xtream' && (usernameController.text.isEmpty || passwordController.text.isEmpty))) {
+                      setStateDialog(() => error = 'Please fill all fields');
+                      return;
+                    }
+
+                    setStateDialog(() { loading = true; error = ''; });
+
+                    final newConfig = PlayerConfig(
+                      id: existingProvider?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+                      name: nameController.text.trim(),
+                      type: selectedType,
+                      serverUrl: serverUrlController.text.trim(),
+                      username: usernameController.text.trim(),
+                      password: passwordController.text.trim(),
+                      epgUrl: existingProvider?.epgUrl,
+                      icon: selectedIcon,
+                    );
+
+                    final appProvider = Provider.of<AppProvider>(context, listen: false);
+                    await appProvider.addProvider(newConfig);
+
+                    if (appProvider.config?.id == newConfig.id) {
+                       await appProvider.setConfig(newConfig);
+                    }
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: loading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save', style: TextStyle(color: Colors.blue)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,15 +196,75 @@ class SettingsScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
-              if (provider.config != null)
-                ListTile(
-                  tileColor: const Color(0xFF1C1C1E),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  title: const Text('Current Provider', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  subtitle: Text(provider.config!.name, style: const TextStyle(color: Colors.grey)),
-                  trailing: const Icon(Icons.dns, color: Colors.blue),
+              const Padding(
+                padding: EdgeInsets.only(left: 8, bottom: 8),
+                child: Text('Providers', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C1E),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              const SizedBox(height: 16),
+                child: Column(
+                  children: [
+                    ...provider.providers.map((p) {
+                      final isCurrent = provider.config?.id == p.id;
+                      return ListTile(
+                        leading: Icon(_getIconData(p.icon), color: isCurrent ? Colors.blue : Colors.grey),
+                        title: Text(p.name, style: TextStyle(color: isCurrent ? Colors.white : Colors.grey[300], fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal)),
+                        subtitle: Text(p.type.toUpperCase(), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                              onPressed: () => _showProviderDialog(context, existingProvider: p),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (c) => AlertDialog(
+                                    backgroundColor: const Color(0xFF2C2C2E),
+                                    title: const Text('Delete Provider', style: TextStyle(color: Colors.white)),
+                                    content: Text('Are you sure you want to delete ${p.name}?', style: const TextStyle(color: Colors.grey)),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+                                      TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true && context.mounted) {
+                                  await provider.removeProvider(p.id);
+                                  if (provider.providers.isEmpty && context.mounted) {
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                                      (route) => false,
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    if (provider.providers.length < 10)
+                      ListTile(
+                        leading: const Icon(Icons.add, color: Colors.blue),
+                        title: const Text('Add Provider', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                        onTap: () => _showProviderDialog(context),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Padding(
+                padding: EdgeInsets.only(left: 8, bottom: 8),
+                child: Text('General', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
               ListTile(
                 tileColor: const Color(0xFF1C1C1E),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
