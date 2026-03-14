@@ -66,6 +66,11 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
       );
       controller = VideoController(player!);
 
+      // Force stream to be seekable (especially needed for some MP4/VOD streams)
+      if (player?.platform is NativePlayer) {
+        (player?.platform as NativePlayer).setProperty('force-seekable', 'yes');
+      }
+
       player?.stream.position.listen((pos) {
         _lastPosition = pos.inMilliseconds;
       });
