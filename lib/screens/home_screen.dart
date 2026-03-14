@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late int baseTime;
   Timer? _timer;
   late final LinkedScrollControllerGroup _linkedScrollControllerGroup;
-  final ScrollController _epgScrollController = ScrollController();
+  late final ScrollController _headerScrollController;
 
   @override
   void initState() {
@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     baseTime = DateTime(now.year, now.month, now.day, now.hour).millisecondsSinceEpoch ~/ 1000;
 
     _linkedScrollControllerGroup = LinkedScrollControllerGroup();
+    _headerScrollController = _linkedScrollControllerGroup.addAndGet();
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
         final currentNow = DateTime.now();
@@ -102,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _epgScrollController.dispose();
+    _headerScrollController.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -231,7 +232,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLiveList(AppProvider provider) {
-    final headerScrollController = _linkedScrollControllerGroup.addAndGet();
     final bool isTvMode = isTV(context);
     final double channelColWidth = isTvMode ? 300 : MediaQuery.of(context).size.width * 0.35;
 
@@ -253,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 40,
                 color: const Color(0xFF151515),
                 child: ListView.builder(
-                  controller: headerScrollController,
+                  controller: _headerScrollController,
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
                   itemCount: 24, // 24 hours from now
@@ -807,49 +807,104 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  IconData _getIconData(String? iconName) {
+    switch (iconName) {
+      case 'tv': return Icons.tv;
+      case 'movie': return Icons.movie;
+      case 'star': return Icons.star;
+      case 'public': return Icons.public;
+      case 'dns': return Icons.dns;
+      case 'live_tv': return Icons.live_tv;
+      case 'sports_soccer': return Icons.sports_soccer;
+      case 'music_note': return Icons.music_note;
+      case 'child_care': return Icons.child_care;
+      case 'business': return Icons.business;
+      default: return Icons.dns;
+    }
+  }
+
   Widget _buildSidebar(double sidebarWidth) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       width: sidebarWidth,
-      child: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: ['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
-                final isSelected = activeTab == tab;
-                final localizations = AppLocalizations.of(context);
-                String label = tab == 'live' ? (localizations?.live ?? 'Live')
-                             : (tab == 'vod' ? (localizations?.vod ?? 'Movies')
-                             : (tab == 'series' ? (localizations?.series ?? 'Series')
-                             : (tab == 'recents' ? (localizations?.recents ?? 'Recents')
-                             : (tab == 'settings' ? (localizations?.settings ?? 'Settings')
-                             : (localizations?.favorites ?? 'Favorites')))));
-                IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : (tab == 'settings' ? Icons.settings : Icons.favorite))));
+      child: Consumer<AppProvider>(
+        builder: (context, provider, child) {
+          return Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  children: [
+                    ...['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
+                      final isSelected = activeTab == tab;
+                      final localizations = AppLocalizations.of(context);
+                      String label = tab == 'live' ? (localizations?.live ?? 'Live')
+                                   : (tab == 'vod' ? (localizations?.vod ?? 'Movies')
+                                   : (tab == 'series' ? (localizations?.series ?? 'Series')
+                                   : (tab == 'recents' ? (localizations?.recents ?? 'Recents')
+                                   : (tab == 'settings' ? (localizations?.settings ?? 'Settings')
+                                   : (localizations?.favorites ?? 'Favorites')))));
+                      IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : (tab == 'settings' ? Icons.settings : Icons.favorite))));
 
-                return ListTile(
-                  selected: isSelected,
-                  selectedTileColor: Colors.blue.withOpacity(0.3),
-                  leading: Icon(icon, color: isSelected ? Colors.white : Colors.grey),
-                  title: sidebarWidth >= 120 ? Text(
-                    label,
-                    style: TextStyle(color: isSelected ? Colors.white : Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ) : null,
-                  onTap: () {
-                    if (tab == 'settings') {
-                      Navigator.pushNamed(context, '/settings');
-                      return;
-                    }
-                    setState(() => activeTab = tab);
-                    _loadData();
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-        ],
+                      return ListTile(
+                        selected: isSelected,
+                        selectedTileColor: Colors.blue.withValues(alpha: 0.3),
+                        leading: Icon(icon, color: isSelected ? Colors.white : Colors.grey),
+                        title: sidebarWidth >= 120 ? Text(
+                          label,
+                          style: TextStyle(color: isSelected ? Colors.white : Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ) : null,
+                        onTap: () {
+                          if (tab == 'settings') {
+                            Navigator.pushNamed(context, '/settings');
+                            return;
+                          }
+                          setState(() => activeTab = tab);
+                          _loadData();
+                        },
+                      );
+                    }).toList(),
+                    const Divider(color: Color(0xFF2C2C2E), height: 32),
+                    if (sidebarWidth >= 120)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('Providers', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ...provider.providers.map((p) {
+                      final isCurrentProvider = provider.config?.id == p.id;
+                      return ListTile(
+                        selected: isCurrentProvider,
+                        selectedTileColor: Colors.white.withValues(alpha: 0.1),
+                        leading: Icon(_getIconData(p.icon), color: isCurrentProvider ? Colors.white : Colors.grey),
+                        title: sidebarWidth >= 120 ? Text(
+                          p.name,
+                          style: TextStyle(color: isCurrentProvider ? Colors.white : Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ) : null,
+                        onTap: () async {
+                          if (!isCurrentProvider) {
+                            await provider.setConfig(p);
+                            if (mounted) {
+                              setState(() {
+                                // Default to live when switching provider to reset view nicely
+                                activeTab = 'live';
+                              });
+                              _loadData();
+                              _checkAndLoadEpg();
+                            }
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1126,10 +1181,10 @@ class _LiveChannelRowState extends State<_LiveChannelRow> {
                             return Positioned(
                               left: left,
                               width: width - 2, // 2px margin between blocks
-                              top: 12,
-                              bottom: 12,
+                              top: 8,
+                              bottom: 8,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: isCurrent ? Colors.blue.withValues(alpha: 0.3) : const Color(0xFF2C2C2E),
                                   borderRadius: BorderRadius.circular(4),
@@ -1144,15 +1199,16 @@ class _LiveChannelRowState extends State<_LiveChannelRow> {
                                       style: TextStyle(
                                         color: isCurrent ? Colors.white : Colors.grey[300],
                                         fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                                        fontSize: 13,
+                                        fontSize: 12,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    const SizedBox(height: 2),
                                     Text(
                                       "${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).minute.toString().padLeft(2, '0')} - ${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).minute.toString().padLeft(2, '0')}",
-                                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),

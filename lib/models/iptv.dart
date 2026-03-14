@@ -6,6 +6,7 @@ class PlayerConfig {
   final String username;
   final String password;
   final String? epgUrl;
+  final String? icon;
 
   PlayerConfig({
     required this.id,
@@ -15,6 +16,7 @@ class PlayerConfig {
     required this.username,
     this.password = '',
     this.epgUrl,
+    this.icon,
   });
 
   factory PlayerConfig.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class PlayerConfig {
       username: json['username'] ?? '',
       password: json['password'] ?? '',
       epgUrl: json['epgUrl'],
+      icon: json['icon'],
     );
   }
 
@@ -38,6 +41,7 @@ class PlayerConfig {
       'username': username,
       'password': password,
       'epgUrl': epgUrl,
+      'icon': icon,
     };
   }
 }
