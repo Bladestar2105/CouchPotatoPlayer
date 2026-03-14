@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platf
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { ChannelLogo } from './ChannelLogo';
 import { isMobile, isTV } from '../utils/platform';
+import { findProgramsInRange } from '../services/xmltv';
 
 interface EpgProgram {
   title: string;
@@ -156,8 +157,7 @@ export const EpgGrid: React.FC<EpgGridProps> = ({
             <ScrollView showsVerticalScrollIndicator={false}>
               {channels.map((ch) => (
                 <View key={`row-${ch.id}`} style={styles.programRow}>
-                  {ch.programs
-                    .filter((p) => p.end > timeStart && p.start < timeEnd)
+                  {findProgramsInRange(ch.programs, timeStart, timeEnd)
                     .map((prog, idx) => {
                       const startClamped = Math.max(prog.start, timeStart);
                       const endClamped = Math.min(prog.end, timeEnd);
