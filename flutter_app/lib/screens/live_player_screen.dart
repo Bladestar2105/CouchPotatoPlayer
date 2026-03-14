@@ -4,6 +4,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/xtream_service.dart';
+import '../models/iptv.dart';
 
 class LivePlayerScreen extends StatefulWidget {
   final String channelName;
@@ -26,6 +27,8 @@ class LivePlayerScreen extends StatefulWidget {
 class _LivePlayerScreenState extends State<LivePlayerScreen> {
   Player? player;
   VideoController? controller;
+  int _lastPosition = 0;
+  int _duration = 0;
 
   @override
   void initState() {
@@ -54,16 +57,45 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
       player = Player();
       controller = VideoController(player!);
 
+      player?.stream.position.listen((pos) {
+        _lastPosition = pos.inMilliseconds;
+      });
+
+      player?.stream.duration.listen((dur) {
+        _duration = dur.inMilliseconds;
+      });
+
       // Load stream
       player?.open(Media(streamUrl));
 
       // Trigger a rebuild
       setState(() {});
     }
+
+    _saveToRecentlyWatched();
+  }
+
+  void _saveToRecentlyWatched() {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    provider.addRecentlyWatched(RecentlyWatchedItem(
+      id: widget.streamId.toString(),
+      type: widget.type,
+      name: widget.channelName,
+      extension: widget.extension,
+      lastWatchedAt: DateTime.now().millisecondsSinceEpoch,
+    ));
   }
 
   @override
   void dispose() {
+    if (player != null && (widget.type == 'vod' || widget.type == 'series')) {
+       final provider = Provider.of<AppProvider>(context, listen: false);
+       provider.updatePlaybackPosition(
+         widget.streamId.toString(),
+         _lastPosition,
+         duration: _duration > 0 ? _duration : null,
+       );
+    }
     player?.dispose();
     super.dispose();
   }

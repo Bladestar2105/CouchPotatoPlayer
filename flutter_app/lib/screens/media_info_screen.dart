@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/app_provider.dart';
 import '../services/xtream_service.dart';
+import '../models/iptv.dart';
 import 'live_player_screen.dart';
 
 class MediaInfoScreen extends StatefulWidget {
@@ -133,6 +134,17 @@ class _MediaInfoScreenState extends State<MediaInfoScreen> {
                                        ext = firstEpisode['container_extension'] ?? 'mp4';
                                      }
                                   }
+
+                                  // Update recently watched list with this item when play is clicked
+                                  final provider = Provider.of<AppProvider>(context, listen: false);
+                                  provider.addRecentlyWatched(RecentlyWatchedItem(
+                                    id: widget.id.toString(),
+                                    type: widget.type,
+                                    name: widget.title,
+                                    icon: widget.cover,
+                                    extension: ext,
+                                    lastWatchedAt: DateTime.now().millisecondsSinceEpoch,
+                                  ));
 
                                   Navigator.push(
                                     context,
