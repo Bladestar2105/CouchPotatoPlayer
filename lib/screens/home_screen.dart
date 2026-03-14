@@ -12,11 +12,10 @@ import '../utils/epg.dart';
 import '../l10n/app_localizations.dart';
 import 'live_player_screen.dart';
 import 'media_info_screen.dart';
-import 'epg_screen.dart';
 import '../utils/platform.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -178,80 +177,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildTabBar() {
-    return Container(
-      color: const Color(0xFF1C1C1E),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: ['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
-          if (tab == 'settings') {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.search, color: Colors.grey),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/search');
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.settings, color: Colors.grey),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/settings');
-                  },
-                ),
-              ],
-            );
-          }
-
-          final isSelected = activeTab == tab;
-
-          final localizations = AppLocalizations.of(context);
-          String label = tab == 'live' ? (localizations?.live ?? 'Live')
-                       : (tab == 'vod' ? (localizations?.vod ?? 'Movies')
-                       : (tab == 'series' ? (localizations?.series ?? 'Series')
-                       : (tab == 'recents' ? (localizations?.recents ?? 'Recents')
-                       : (localizations?.favorites ?? 'Favorites'))));
-
-          IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : Icons.favorite)));
-
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() => activeTab = tab);
-                _loadData();
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.blue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: isSelected ? Colors.white : Colors.grey, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList().cast<Widget>(),
-      ),
-    );
-  }
-
   Widget _buildCategories(AppProvider provider, {bool vertical = false}) {
     if (activeTab == 'favorites' || activeTab == 'recents') return const SizedBox.shrink();
 
@@ -286,6 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           );
@@ -1060,11 +987,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildSidebar() {
-    final bool isTvMode = isTV(context);
-    final double sidebarWidth = isTvMode ? 150 : MediaQuery.of(context).size.width * 0.15;
-
-    return SizedBox(
+  Widget _buildSidebar(double sidebarWidth) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       width: sidebarWidth,
       child: Column(
         children: [
@@ -1085,7 +1011,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   selected: isSelected,
                   selectedTileColor: Colors.blue.withOpacity(0.3),
                   leading: Icon(icon, color: isSelected ? Colors.white : Colors.grey),
-                  title: sidebarWidth >= 120 ? Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis) : null,
+                  title: sidebarWidth >= 120 ? Text(
+                    label,
+                    style: TextStyle(color: isSelected ? Colors.white : Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ) : null,
                   onTap: () {
                     if (tab == 'settings') {
                       Navigator.pushNamed(context, '/settings');
@@ -1105,19 +1036,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The user requested to make the 3-column layout apply to all platforms
     final bool isTvMode = isTV(context);
-    final double categoryWidth = isTvMode ? 250 : MediaQuery.of(context).size.width * 0.25;
+    final bool isCategorySelected = selectedCategoryId != null;
+
+    // Determine Sidebar Width dynamically to collapse when navigating deeper
+    final double expandedSidebarWidth = isTvMode ? 150 : MediaQuery.of(context).size.width * 0.15;
+    final double collapsedSidebarWidth = isTvMode ? 90 : 85;
+    final double sidebarWidth = isCategorySelected ? collapsedSidebarWidth : expandedSidebarWidth;
+
+    // Determine Category Column Width dynamically to collapse when navigating deeper
+    final double expandedCategoryWidth = isTvMode ? 250 : MediaQuery.of(context).size.width * 0.25;
+    final double collapsedCategoryWidth = isTvMode ? 180 : MediaQuery.of(context).size.width * 0.18;
+    final double categoryWidth = isCategorySelected ? collapsedCategoryWidth : expandedCategoryWidth;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
       body: SafeArea(
         child: Row(
           children: [
-            _buildSidebar(),
+            _buildSidebar(sidebarWidth),
             Container(width: 1, color: const Color(0xFF2C2C2E)),
             if (activeTab == 'live') ...[
-              SizedBox(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
                 width: categoryWidth,
                 child: Consumer<AppProvider>(
                   builder: (context, provider, child) {
