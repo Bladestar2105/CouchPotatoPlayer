@@ -54,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Load EPG if empty
     if (appProvider.epgData.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Loading EPG Data... Please wait.'),
@@ -357,198 +358,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 final epgKey = getEpgKey(chan);
                 final programs = provider.epgData[epgKey] ?? [];
                 final isLocked = provider.isChannelLocked(chan.stream_id.toString());
-                final rowScrollController = _linkedScrollControllerGroup.addAndGet();
-
-                return SizedBox(
-                  height: 80,
-                  child: Row(
-                    children: [
-                      // Channel info (Fixed left column)
-                            GestureDetector(
-                              onTap: () async {
-                                if (chan.stream_id != null) {
-                                  if (isLocked) {
-                                    final unlocked = await _promptPin(provider);
-                                    if (!unlocked) return;
-                                    if (!mounted) return;
-                                  }
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => LivePlayerScreen(
-                                        channelName: chan.name,
-                                        streamId: chan.stream_id!,
-                                        extension: 'm3u8',
-                                        type: 'live',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Container(
-                                width: channelColWidth,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF0F0F0F), // Background to avoid transparent overlaps
-                                  border: Border(
-                                    bottom: BorderSide(color: Color(0xFF2C2C2E), width: 1),
-                                    right: BorderSide(color: Color(0xFF2C2C2E), width: 1),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 48,
-                                      height: 48,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF2C2C2E),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          chan.stream_icon != null && chan.stream_icon!.isNotEmpty
-                                              ? CachedNetworkImage(
-                                                  imageUrl: chan.stream_icon!,
-                                                  fit: BoxFit.cover,
-                                                  errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
-                                                )
-                                              : const Icon(Icons.tv, color: Colors.grey),
-                                          if (isLocked)
-                                            Container(
-                                              color: Colors.black54,
-                                              child: const Icon(Icons.lock, color: Colors.white, size: 24),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        chan.name,
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (channelColWidth >= 200) ...[
-                                      IconButton(
-                                        icon: Icon(
-                                          isFav ? Icons.favorite : Icons.favorite_border,
-                                          color: isFav ? Colors.red : Colors.grey,
-                                          size: 20,
-                                        ),
-                                        onPressed: () {
-                                          if (isFav) {
-                                            provider.removeFavorite(chan.stream_id.toString());
-                                          } else {
-                                            provider.addFavorite(iptv.FavoriteItem(
-                                              id: chan.stream_id.toString(),
-                                              type: 'live',
-                                              name: chan.name,
-                                              icon: chan.stream_icon,
-                                              categoryId: chan.category_id,
-                                              addedAt: DateTime.now().millisecondsSinceEpoch,
-                                            ));
-                                          }
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: Icon(
-                                          isLocked ? Icons.lock : Icons.lock_open,
-                                          color: isLocked ? Colors.red : Colors.grey,
-                                          size: 20,
-                                        ),
-                                        onPressed: () async {
-                                          if (isLocked) {
-                                            final unlocked = await _promptPin(provider);
-                                            if (unlocked) {
-                                              provider.unlockChannel(chan.stream_id.toString());
-                                            }
-                                          } else {
-                                            if (provider.pin == null || provider.pin!.isEmpty) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Please set up a PIN in Settings first')),
-                                              );
-                                              return;
-                                            }
-                                            provider.lockChannel(chan.stream_id.toString());
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // EPG Timeline Row (Right side scrolling content)
-                            Expanded(
-                              child: Container(
-                                height: 80,
-                                decoration: const BoxDecoration(
-                                  border: Border(bottom: BorderSide(color: Color(0xFF2C2C2E), width: 1)),
-                                ),
-                                child: ListView.builder(
-                                  controller: rowScrollController,
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const ClampingScrollPhysics(),
-                                  itemCount: programs.isEmpty ? 1 : programs.length,
-                                  itemBuilder: (context, progIndex) {
-                                    if (programs.isEmpty) {
-                                      return Container(
-                                        width: 24 * 200.0, // Match the total length of timeline header
-                                        alignment: Alignment.centerLeft,
-                                        padding: const EdgeInsets.only(left: 16),
-                                        child: const Text("No EPG Data", style: TextStyle(color: Colors.grey)),
-                                      );
-                                    }
-
-                                    final prog = programs[progIndex];
-                                    // Calculate width based on duration (e.g. 1 hour = 200px)
-                                    final durationMins = (prog.end - prog.start) / 60;
-                                    final width = (durationMins * (200 / 60)).clamp(50.0, 1000.0);
-
-                                    final isCurrent = nowTime >= prog.start && nowTime <= prog.end;
-
-                                    return Container(
-                                      width: width,
-                                      margin: const EdgeInsets.only(right: 2, top: 12, bottom: 12),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: isCurrent ? Colors.blue.withOpacity(0.3) : const Color(0xFF2C2C2E),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: isCurrent ? Border.all(color: Colors.blue, width: 1) : null,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            prog.title_raw,
-                                            style: TextStyle(
-                                              color: isCurrent ? Colors.white : Colors.grey[300],
-                                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                                              fontSize: 13,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).minute.toString().padLeft(2, '0')} - ${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).minute.toString().padLeft(2, '0')}",
-                                            style: const TextStyle(color: Colors.grey, fontSize: 11),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                return _LiveChannelRow(
+                  chan: chan, provider: provider, isFav: isFav, isLocked: isLocked, programs: programs, channelColWidth: channelColWidth, nowTime: nowTime, promptPin: _promptPin, linkedScrollControllerGroup: _linkedScrollControllerGroup,
+                );
               },
             ),
           ),
@@ -1146,6 +958,244 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LiveChannelRow extends StatefulWidget {
+  final LiveChannel chan;
+  final AppProvider provider;
+  final bool isFav;
+  final bool isLocked;
+  final List<ParsedProgram> programs;
+  final double channelColWidth;
+  final int nowTime;
+  final Future<bool> Function(AppProvider provider) promptPin;
+  final LinkedScrollControllerGroup linkedScrollControllerGroup;
+
+  const _LiveChannelRow({
+    Key? key,
+    required this.chan,
+    required this.provider,
+    required this.isFav,
+    required this.isLocked,
+    required this.programs,
+    required this.channelColWidth,
+    required this.nowTime,
+    required this.promptPin,
+    required this.linkedScrollControllerGroup,
+  }) : super(key: key);
+
+  @override
+  State<_LiveChannelRow> createState() => _LiveChannelRowState();
+}
+
+class _LiveChannelRowState extends State<_LiveChannelRow> {
+  late ScrollController _rowScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rowScrollController = widget.linkedScrollControllerGroup.addAndGet();
+  }
+
+  @override
+  void dispose() {
+    _rowScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 80,
+      child: Row(
+        children: [
+          // Channel info (Fixed left column)
+          GestureDetector(
+            onTap: () async {
+              if (widget.chan.stream_id != null) {
+                if (widget.isLocked) {
+                  final unlocked = await widget.promptPin(widget.provider);
+                  if (!unlocked) return;
+                  if (!mounted) return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LivePlayerScreen(
+                      channelName: widget.chan.name,
+                      streamId: widget.chan.stream_id!,
+                      extension: 'm3u8',
+                      type: 'live',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: Container(
+              width: widget.channelColWidth,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF0F0F0F), // Background to avoid transparent overlaps
+                border: Border(
+                  bottom: BorderSide(color: Color(0xFF2C2C2E), width: 1),
+                  right: BorderSide(color: Color(0xFF2C2C2E), width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C2C2E),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        widget.chan.stream_icon != null && widget.chan.stream_icon!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: widget.chan.stream_icon!,
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
+                              )
+                            : const Icon(Icons.tv, color: Colors.grey),
+                        if (widget.isLocked)
+                          Container(
+                            color: Colors.black54,
+                            child: const Icon(Icons.lock, color: Colors.white, size: 24),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.chan.name,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (widget.channelColWidth >= 200) ...[
+                    IconButton(
+                      icon: Icon(
+                        widget.isFav ? Icons.favorite : Icons.favorite_border,
+                        color: widget.isFav ? Colors.red : Colors.grey,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        if (widget.isFav) {
+                          widget.provider.removeFavorite(widget.chan.stream_id.toString());
+                        } else {
+                          widget.provider.addFavorite(iptv.FavoriteItem(
+                            id: widget.chan.stream_id.toString(),
+                            type: 'live',
+                            name: widget.chan.name,
+                            icon: widget.chan.stream_icon,
+                            categoryId: widget.chan.category_id,
+                            addedAt: DateTime.now().millisecondsSinceEpoch,
+                          ));
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        widget.isLocked ? Icons.lock : Icons.lock_open,
+                        color: widget.isLocked ? Colors.red : Colors.grey,
+                        size: 20,
+                      ),
+                      onPressed: () async {
+                        if (widget.isLocked) {
+                          final unlocked = await widget.promptPin(widget.provider);
+                          if (unlocked) {
+                            widget.provider.unlockChannel(widget.chan.stream_id.toString());
+                          }
+                        } else {
+                          if (widget.provider.pin == null || widget.provider.pin!.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please set up a PIN in Settings first')),
+                            );
+                            return;
+                          }
+                          widget.provider.lockChannel(widget.chan.stream_id.toString());
+                        }
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          // EPG Timeline Row (Right side scrolling content)
+          Expanded(
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0xFF2C2C2E), width: 1)),
+              ),
+              child: ListView.builder(
+                controller: _rowScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                itemCount: widget.programs.isEmpty ? 1 : widget.programs.length,
+                itemBuilder: (context, progIndex) {
+                  if (widget.programs.isEmpty) {
+                    return Container(
+                      width: 24 * 200.0, // Match the total length of timeline header
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.only(left: 16),
+                      child: const Text("No EPG Data", style: TextStyle(color: Colors.grey)),
+                    );
+                  }
+
+                  final prog = widget.programs[progIndex];
+                  // Calculate width based on duration (e.g. 1 hour = 200px)
+                  final durationMins = (prog.end - prog.start) / 60;
+                  final width = (durationMins * (200 / 60)).clamp(50.0, 1000.0);
+
+                  final isCurrent = widget.nowTime >= prog.start && widget.nowTime <= prog.end;
+
+                  return Container(
+                    width: width,
+                    margin: const EdgeInsets.only(right: 2, top: 12, bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isCurrent ? Colors.blue.withOpacity(0.3) : const Color(0xFF2C2C2E),
+                      borderRadius: BorderRadius.circular(4),
+                      border: isCurrent ? Border.all(color: Colors.blue, width: 1) : null,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          prog.title_raw,
+                          style: TextStyle(
+                            color: isCurrent ? Colors.white : Colors.grey[300],
+                            fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).minute.toString().padLeft(2, '0')} - ${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).minute.toString().padLeft(2, '0')}",
+                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
