@@ -10,7 +10,7 @@ class RNKSPlayerView: UIView {
     private var url: URL?
     private var hasConfiguredOptions = false
 
-    // ── React Native Props ──────────────────────────────────────────
+    // ── React Native Props ──────────────────────────────────────
 
     @objc var source: NSDictionary? {
         didSet {
@@ -61,7 +61,7 @@ class RNKSPlayerView: UIView {
     /// Max bitrate limit (0 = unlimited)
     @objc var maxBitRate: Double = 0
 
-    // ── Lifecycle ───────────────────────────────────────────────────
+    // ── Lifecycle ───────────────────────────────────────────────
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -85,20 +85,22 @@ class RNKSPlayerView: UIView {
         super.removeFromSuperview()
     }
 
-    // ── Configuration ───────────────────────────────────────────────
+    // ── Configuration ───────────────────────────────────────────
 
     private func configureGlobalOptions() {
-        // Use FFmpeg-based player as primary (better codec support for IPTV)
-        if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? MediaPlayerProtocol.Type {
-            KSPlayer.KSOptions.firstPlayerType = mePlayer
-        }
-        // Fallback to AVPlayer for standard formats
-        KSPlayer.KSOptions.secondPlayerType = KSAVPlayer.self
-    }
+        // Use FFmpeg-based player as primary (better codec support for IPTV).
+        // With static libraries, types are in the global namespace — no module prefix.
+        // Try both qualified (framework) and unqualified (static lib) class names.
+        let mePlayer: MediaPlayerProtocol.Type? =
+            (NSClassFromString("KSMEPlayer") as? MediaPlayerProtocol.Type) ??
+            (NSClassFromString("KSPlayer.KSMEPlayer") as? MediaPlayerProtocol.Type)
 
-    private func applyOptions() {
-        // We will apply instance specific options in setupPlayer() instead
-        // to avoid Swift 6 strict concurrency errors on static properties.
+        if let mePlayer = mePlayer {
+            KSOptions.firstPlayerType = mePlayer
+        }
+
+        // Fallback to AVPlayer for standard formats
+        KSOptions.secondPlayerType = KSAVPlayer.self
     }
 
     private func setupPlayer() {
@@ -129,7 +131,7 @@ class RNKSPlayerView: UIView {
     }
 }
 
-// ── Player Delegate ─────────────────────────────────────────────────
+// ── Player Delegate ─────────────────────────────────────────────
 
 extension RNKSPlayerView: PlayerViewDelegate {
     func playerView(stateDidChange state: KSPlayerState) {
