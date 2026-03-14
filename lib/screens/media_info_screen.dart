@@ -101,7 +101,7 @@ class _MediaInfoScreenState extends State<MediaInfoScreen> {
                               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                             const SizedBox(height: 10),
-                            if (mediaInfo?['info']?['plot'] != null)
+                            if (mediaInfo != null && mediaInfo!['info'] is Map && mediaInfo!['info']['plot'] != null)
                               Text(
                                 mediaInfo!['info']['plot'],
                                 style: const TextStyle(fontSize: 14, color: Colors.grey),
