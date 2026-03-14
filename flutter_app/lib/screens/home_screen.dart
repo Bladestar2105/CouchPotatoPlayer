@@ -9,6 +9,8 @@ import '../models/iptv.dart' hide Category;
 import '../utils/epg.dart';
 import 'live_player_screen.dart';
 import 'media_info_screen.dart';
+import 'epg_screen.dart';
+import '../utils/platform.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -261,6 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
 
+          final isLocked = provider.isChannelLocked(chan.stream_id.toString());
+
           return ListTile(
             leading: Container(
               width: 48,
@@ -269,13 +273,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: const Color(0xFF2C2C2E),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: chan.stream_icon != null && chan.stream_icon!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: chan.stream_icon!,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
-                    )
-                  : const Icon(Icons.tv, color: Colors.grey),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  chan.stream_icon != null && chan.stream_icon!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: chan.stream_icon!,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
+                        )
+                      : const Icon(Icons.tv, color: Colors.grey),
+                  if (isLocked)
+                    Container(
+                      color: Colors.black54,
+                      child: const Icon(Icons.lock, color: Colors.white, size: 24),
+                    ),
+                ],
+              ),
             ),
             title: Text(
               chan.name,
@@ -309,28 +323,74 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ],
             ) : null,
-            trailing: IconButton(
-              icon: Icon(
-                isFav ? Icons.favorite : Icons.favorite_border,
-                color: isFav ? Colors.red : Colors.grey,
-              ),
-              onPressed: () {
-                if (isFav) {
-                  provider.removeFavorite(chan.stream_id.toString());
-                } else {
-                  provider.addFavorite(iptv.FavoriteItem(
-                    id: chan.stream_id.toString(),
-                    type: 'live',
-                    name: chan.name,
-                    icon: chan.stream_icon,
-                    categoryId: chan.category_id,
-                    addedAt: DateTime.now().millisecondsSinceEpoch,
-                  ));
-                }
-              },
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.list_alt, color: Colors.grey),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EpgScreen(
+                          channelId: epgKey,
+                          channelName: chan.name,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: Icon(
+                    isFav ? Icons.favorite : Icons.favorite_border,
+                    color: isFav ? Colors.red : Colors.grey,
+                  ),
+                  onPressed: () {
+                    if (isFav) {
+                      provider.removeFavorite(chan.stream_id.toString());
+                    } else {
+                      provider.addFavorite(iptv.FavoriteItem(
+                        id: chan.stream_id.toString(),
+                        type: 'live',
+                        name: chan.name,
+                        icon: chan.stream_icon,
+                        categoryId: chan.category_id,
+                        addedAt: DateTime.now().millisecondsSinceEpoch,
+                      ));
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: Icon(
+                    isLocked ? Icons.lock : Icons.lock_open,
+                    color: isLocked ? Colors.red : Colors.grey,
+                  ),
+                  onPressed: () async {
+                    if (isLocked) {
+                      final unlocked = await _promptPin(provider);
+                      if (unlocked) {
+                        provider.unlockChannel(chan.stream_id.toString());
+                      }
+                    } else {
+                      if (provider.pin == null || provider.pin!.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please set up a PIN in Settings first')),
+                        );
+                        return;
+                      }
+                      provider.lockChannel(chan.stream_id.toString());
+                    }
+                  },
+                ),
+              ],
             ),
-            onTap: () {
+            onTap: () async {
               if (chan.stream_id != null) {
+                if (isLocked) {
+                  final unlocked = await _promptPin(provider);
+                  if (!unlocked) return;
+                  if (!mounted) return;
+                }
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -350,7 +410,55 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<bool> _promptPin(AppProvider provider) async {
+    if (provider.pin == null || provider.pin!.isEmpty) return true;
+
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1C1C1E),
+          title: const Text('Enter PIN', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            obscureText: true,
+            maxLength: 4,
+            style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 8),
+            textAlign: TextAlign.center,
+            decoration: const InputDecoration(
+              counterText: '',
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
+            ),
+            onChanged: (value) {
+              if (value.length == 4) {
+                if (value == provider.pin) {
+                  Navigator.pop(context, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Incorrect PIN')),
+                  );
+                  Navigator.pop(context, false);
+                }
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
+
   Widget _buildGrid(AppProvider provider) {
+    final bool isTvMode = isTV(context);
+
     return RefreshIndicator(
       onRefresh: () async {
         if (selectedCategoryId != null) {
@@ -359,8 +467,8 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: GridView.builder(
         padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: isTvMode ? 6 : 3,
           childAspectRatio: 2 / 3,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
@@ -372,10 +480,16 @@ class _HomeScreenState extends State<HomeScreen> {
           final name = chan.name.isNotEmpty ? chan.name : chan.title ?? 'Unknown';
           final id = (activeTab == 'series' ? chan.series_id : chan.stream_id)?.toString() ?? '';
           final isFav = provider.isFavorite(id);
+          final isLocked = provider.isChannelLocked(id);
 
           return GestureDetector(
-            onTap: () {
+            onTap: () async {
                if (id.isNotEmpty) {
+                 if (isLocked) {
+                   final unlocked = await _promptPin(provider);
+                   if (!unlocked) return;
+                   if (!mounted) return;
+                 }
                  Navigator.push(
                    context,
                    MaterialPageRoute(
@@ -425,36 +539,80 @@ class _HomeScreenState extends State<HomeScreen> {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.black54,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                          color: isFav ? Colors.red : Colors.white,
-                          size: 20,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              isLocked ? Icons.lock : Icons.lock_open,
+                              color: isLocked ? Colors.red : Colors.white,
+                              size: 20,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () async {
+                              if (isLocked) {
+                                final unlocked = await _promptPin(provider);
+                                if (unlocked) {
+                                  provider.unlockChannel(id);
+                                }
+                              } else {
+                                if (provider.pin == null || provider.pin!.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please set up a PIN in Settings first')),
+                                  );
+                                  return;
+                                }
+                                provider.lockChannel(id);
+                              }
+                            },
+                          ),
                         ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          if (isFav) {
-                            provider.removeFavorite(id);
-                          } else {
-                            provider.addFavorite(iptv.FavoriteItem(
-                              id: id,
-                              type: activeTab,
-                              name: name,
-                              icon: imageUrl,
-                              categoryId: chan.category_id,
-                              addedAt: DateTime.now().millisecondsSinceEpoch,
-                            ));
-                          }
-                        },
-                      ),
+                        const SizedBox(width: 4),
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              color: isFav ? Colors.red : Colors.white,
+                              size: 20,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              if (isFav) {
+                                provider.removeFavorite(id);
+                              } else {
+                                provider.addFavorite(iptv.FavoriteItem(
+                                  id: id,
+                                  type: activeTab,
+                                  name: name,
+                                  icon: imageUrl,
+                                  categoryId: chan.category_id,
+                                  addedAt: DateTime.now().millisecondsSinceEpoch,
+                                ));
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  if (isLocked)
+                    Container(
+                      color: Colors.black54,
+                      child: const Center(
+                        child: Icon(Icons.lock, color: Colors.white, size: 48),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -476,10 +634,12 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final bool isTvMode = isTV(context);
+
     return GridView.builder(
       padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isTvMode ? 6 : 3,
         childAspectRatio: 2 / 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
@@ -590,10 +750,12 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final bool isTvMode = isTV(context);
+
     return GridView.builder(
       padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isTvMode ? 6 : 3,
         childAspectRatio: 2 / 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
@@ -753,10 +915,65 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isTvMode = isTV(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
       body: SafeArea(
-        child: Column(
+        top: !isTvMode,
+        child: isTvMode ? Row(
+          children: [
+            // Simple sidebar for TV
+            SizedBox(
+              width: 150,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      children: ['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
+                        final isSelected = activeTab == tab;
+                        String label = tab == 'live' ? 'Live' : (tab == 'vod' ? 'Movies' : (tab == 'series' ? 'Series' : (tab == 'recents' ? 'Recents' : (tab == 'settings' ? 'Settings' : 'Favorites'))));
+                        IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : (tab == 'settings' ? Icons.settings : Icons.favorite))));
+
+                        return ListTile(
+                          selected: isSelected,
+                          selectedTileColor: Colors.blue.withOpacity(0.3),
+                          leading: Icon(icon, color: isSelected ? Colors.white : Colors.grey),
+                          title: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey)),
+                          onTap: () {
+                            if (tab == 'settings') {
+                              Navigator.pushNamed(context, '/settings');
+                              return;
+                            }
+                            setState(() => activeTab = tab);
+                            _loadData();
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(width: 1, color: const Color(0xFF2C2C2E)),
+            Expanded(
+              child: Column(
+                children: [
+                  Consumer<AppProvider>(
+                    builder: (context, provider, child) {
+                      return _buildCategories(provider);
+                    },
+                  ),
+                  Consumer<AppProvider>(
+                    builder: (context, provider, child) {
+                      return _buildContent(provider);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ) : Column(
           children: [
             _buildTabBar(),
             Consumer<AppProvider>(

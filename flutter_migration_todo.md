@@ -29,7 +29,7 @@
 - [x] **Parental Control / PIN**:
   - [x] Implement `PinSetupScreen`.
   - [x] Filter `adult=1` categories unless unlocked.
-  - [ ] Channel Locking (`lockedChannels`).
+  - [x] Channel Locking (`lockedChannels`).
 - [ ] **Streaming Settings**: Buffer sizes, video qualities, player engine toggles (if supported).
 
 ### 3. UI/UX: Home Screen (Mobile)
@@ -39,13 +39,13 @@
 - [ ] **Provider Switcher**: Quick-switch dropdown if the user has multiple saved Xtream/M3U providers.
 
 ### 4. UI/UX: Home Screen (TV Layout)
-- [ ] **Platform Detection**: Detect TV vs Mobile (e.g., via screen width or Platform OS).
-- [ ] **Sidebar Navigation**: Implement the focused, D-Pad friendly sidebar for TV.
+- [x] **Platform Detection**: Detect TV vs Mobile (e.g., via screen width or Platform OS).
+- [x] **Sidebar Navigation**: Implement the focused, D-Pad friendly sidebar for TV.
 - [ ] **Live TV Timeline**: Implement the 6-hour horizontally scrolling EPG timeline for the Live TV view.
 - [ ] **D-Pad Focus Management**: Ensure all grid cards and list items are focusable and correctly styled when hovered via TV remote.
 
 ### 5. Media Player & EPG Views
-- [ ] **Full EPG Screen**: Implement `EpgScreen` to show a full grid or list of upcoming programs for a specific channel.
+- [x] **Full EPG Screen**: Implement `EpgScreen` to show a full grid or list of upcoming programs for a specific channel.
 - [ ] **Player Overlays**: Add custom UI controls to the `media_kit` player (Channel Name, Next/Prev Channel, Audio/Subtitle track selection).
 
 ### 6. Misc
