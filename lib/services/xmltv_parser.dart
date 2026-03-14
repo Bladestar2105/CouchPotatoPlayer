@@ -35,12 +35,11 @@ class XMLTVParser {
           final descNode = p.findElements('desc').firstOrNull;
 
           result.add(ParsedProgram(
-            start: startMs,
-            end: stopMs,
+            start: startMs ~/ 1000,
+            end: stopMs ~/ 1000,
             title_raw: titleNode?.innerText ?? 'Unknown Title',
             description_raw: descNode?.innerText ?? '',
-            // We use the channelId directly to group them later, so let's temporarily stash it in start_formatted or create a wrapper.
-            // Alternatively, return a tuple or map, but for simplicity we'll just parse them and group by channelId
+            start_formatted: channelId, // temporarily store channelId in start_formatted to group later
           ));
         }
         return result;
@@ -49,6 +48,31 @@ class XMLTVParser {
       print('XMLTV Parse Error: $e');
     }
     return [];
+  }
+
+  Future<Map<String, List<ParsedProgram>>> getGroupedEpg() async {
+    final programs = await fetchAndParseEPG();
+    Map<String, List<ParsedProgram>> grouped = {};
+    for (var p in programs) {
+      final channelId = p.start_formatted ?? '';
+      if (channelId.isNotEmpty) {
+        if (!grouped.containsKey(channelId)) {
+          grouped[channelId] = [];
+        }
+        // clear the temporary channel id
+        grouped[channelId]!.add(ParsedProgram(
+          start: p.start,
+          end: p.end,
+          title_raw: p.title_raw,
+          description_raw: p.description_raw,
+        ));
+      }
+    }
+    // Sort each list by start time
+    grouped.forEach((key, list) {
+      list.sort((a, b) => a.start.compareTo(b.start));
+    });
+    return grouped;
   }
 
   int? parseXmltvDate(String dateString) {

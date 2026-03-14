@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/app_provider.dart';
 import '../services/xtream_service.dart';
+import '../services/xmltv_parser.dart';
 import 'dart:async';
+import 'package:linked_scroll_controller/linked_scroll_controller.dart';
 import '../models/iptv.dart' as iptv;
 import '../models/iptv.dart' hide Category;
 import '../utils/epg.dart';
@@ -26,10 +28,13 @@ class _HomeScreenState extends State<HomeScreen> {
   bool loading = false;
   int nowTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
   Timer? _timer;
+  late final LinkedScrollControllerGroup _linkedScrollControllerGroup;
+  final ScrollController _epgScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _linkedScrollControllerGroup = LinkedScrollControllerGroup();
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -38,12 +43,58 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndLoadEpg();
       _loadData();
     });
   }
 
+  Future<void> _checkAndLoadEpg() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    if (appProvider.config == null || appProvider.config!.type != 'xtream') return;
+
+    // Load EPG if empty
+    if (appProvider.epgData.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Loading EPG Data... Please wait.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      try {
+        final xtream = XtreamService(appProvider.config!);
+        final epgUrl = xtream.getXmltvUrl();
+        final parser = XMLTVParser(epgUrl);
+        final groupedEpg = await parser.getGroupedEpg();
+
+        if (groupedEpg.isNotEmpty) {
+          await appProvider.setEpgData(groupedEpg);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('EPG Data loaded successfully.'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Error loading EPG on startup: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to load EPG Data.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _epgScrollController.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -201,18 +252,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategories(AppProvider provider) {
+  Widget _buildCategories(AppProvider provider, {bool vertical = false}) {
     if (activeTab == 'favorites' || activeTab == 'recents') return const SizedBox.shrink();
 
     if (loading && provider.categories.isEmpty) {
-      return const SizedBox(height: 52, child: Center(child: CircularProgressIndicator()));
+      return SizedBox(height: vertical ? null : 52, child: const Center(child: CircularProgressIndicator()));
     }
 
     return Container(
-      height: 52,
+      height: vertical ? double.infinity : 52,
       color: const Color(0xFF151515),
       child: ListView.builder(
-        scrollDirection: Axis.horizontal,
+        scrollDirection: vertical ? Axis.vertical : Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         itemCount: provider.categories.length,
         itemBuilder: (context, index) {
@@ -222,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return GestureDetector(
             onTap: () => _loadChannels(cat.category_id),
             child: Container(
-              margin: const EdgeInsets.only(right: 8),
+              margin: vertical ? const EdgeInsets.only(bottom: 8) : const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected ? Colors.blue : const Color(0xFF2C2C2E),
@@ -244,177 +295,265 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLiveList(AppProvider provider) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        if (selectedCategoryId != null) {
-          await _loadChannels(selectedCategoryId!);
-        }
-      },
-      child: ListView.builder(
-        itemCount: provider.channels.length,
-        itemBuilder: (context, index) {
-          final chan = provider.channels[index];
-          final isFav = provider.isFavorite(chan.stream_id.toString());
+    final headerScrollController = _linkedScrollControllerGroup.addAndGet();
+    final bool isTvMode = isTV(context);
+    final double channelColWidth = isTvMode ? 300 : MediaQuery.of(context).size.width * 0.35;
 
-          final epgKey = getEpgKey(chan);
-          final programs = provider.epgData[epgKey] ?? [];
-          final currentProgIndex = findCurrentProgramIndex(programs, nowTime);
-          final currentProg = currentProgIndex != -1 ? programs[currentProgIndex] : null;
-          final nextProg = (currentProgIndex != -1 && currentProgIndex + 1 < programs.length) ? programs[currentProgIndex + 1] : null;
-
-          double progress = 0.0;
-          if (currentProg != null) {
-            final total = currentProg.end - currentProg.start;
-            final elapsed = nowTime - currentProg.start;
-            if (total > 0) {
-              progress = (elapsed / total).clamp(0.0, 1.0);
-            }
-          }
-
-          final isLocked = provider.isChannelLocked(chan.stream_id.toString());
-
-          return ListTile(
-            leading: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2E),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  chan.stream_icon != null && chan.stream_icon!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: chan.stream_icon!,
-                          fit: BoxFit.cover,
-                          errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
-                        )
-                      : const Icon(Icons.tv, color: Colors.grey),
-                  if (isLocked)
-                    Container(
-                      color: Colors.black54,
-                      child: const Icon(Icons.lock, color: Colors.white, size: 24),
-                    ),
-                ],
-              ),
+    return Column(
+      children: [
+        // EPG Timeline Header
+        Row(
+          children: [
+            Container(
+              width: channelColWidth,
+              height: 40,
+              color: const Color(0xFF151515),
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: const Text('Channels', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
             ),
-            title: Text(
-              chan.name,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-            subtitle: currentProg != null ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  currentProg.title_raw,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: const Color(0xFF2C2C2E),
-                  color: Colors.blue,
-                  minHeight: 2,
-                ),
-                if (nextProg != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Next: ${nextProg.title_raw}',
-                    style: const TextStyle(color: Colors.white54, fontSize: 10),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ) : null,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.list_alt, color: Colors.grey),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EpgScreen(
-                          channelId: epgKey,
-                          channelName: chan.name,
-                        ),
+            Expanded(
+              child: Container(
+                height: 40,
+                color: const Color(0xFF151515),
+                child: ListView.builder(
+                  controller: headerScrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  itemCount: 24, // 24 hours from now
+                  itemBuilder: (context, index) {
+                    final time = DateTime.now().subtract(Duration(minutes: DateTime.now().minute, seconds: DateTime.now().second)).add(Duration(hours: index));
+                    return Container(
+                      width: 200, // Fixed width per hour block
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.only(left: 8),
+                      decoration: const BoxDecoration(
+                        border: Border(left: BorderSide(color: Color(0xFF2C2C2E), width: 0.5)),
+                      ),
+                      child: Text(
+                        "${time.hour.toString().padLeft(2, '0')}:00",
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     );
                   },
                 ),
-                IconButton(
-                  icon: Icon(
-                    isFav ? Icons.favorite : Icons.favorite_border,
-                    color: isFav ? Colors.red : Colors.grey,
-                  ),
-                  onPressed: () {
-                    if (isFav) {
-                      provider.removeFavorite(chan.stream_id.toString());
-                    } else {
-                      provider.addFavorite(iptv.FavoriteItem(
-                        id: chan.stream_id.toString(),
-                        type: 'live',
-                        name: chan.name,
-                        icon: chan.stream_icon,
-                        categoryId: chan.category_id,
-                        addedAt: DateTime.now().millisecondsSinceEpoch,
-                      ));
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: Icon(
-                    isLocked ? Icons.lock : Icons.lock_open,
-                    color: isLocked ? Colors.red : Colors.grey,
-                  ),
-                  onPressed: () async {
-                    if (isLocked) {
-                      final unlocked = await _promptPin(provider);
-                      if (unlocked) {
-                        provider.unlockChannel(chan.stream_id.toString());
-                      }
-                    } else {
-                      if (provider.pin == null || provider.pin!.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please set up a PIN in Settings first')),
-                        );
-                        return;
-                      }
-                      provider.lockChannel(chan.stream_id.toString());
-                    }
-                  },
-                ),
-              ],
+              ),
             ),
-            onTap: () async {
-              if (chan.stream_id != null) {
-                if (isLocked) {
-                  final unlocked = await _promptPin(provider);
-                  if (!unlocked) return;
-                  if (!mounted) return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => LivePlayerScreen(
-                      channelName: chan.name,
-                      streamId: chan.stream_id!,
-                      extension: 'm3u8',
-                      type: 'live',
-                    ),
-                  ),
-                );
+          ],
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              if (selectedCategoryId != null) {
+                await _loadChannels(selectedCategoryId!);
               }
             },
-          );
-        },
-      ),
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: provider.channels.length,
+              itemBuilder: (context, index) {
+                final chan = provider.channels[index];
+                final isFav = provider.isFavorite(chan.stream_id.toString());
+                final epgKey = getEpgKey(chan);
+                final programs = provider.epgData[epgKey] ?? [];
+                final isLocked = provider.isChannelLocked(chan.stream_id.toString());
+                final rowScrollController = _linkedScrollControllerGroup.addAndGet();
+
+                return SizedBox(
+                  height: 80,
+                  child: Row(
+                    children: [
+                      // Channel info (Fixed left column)
+                            GestureDetector(
+                              onTap: () async {
+                                if (chan.stream_id != null) {
+                                  if (isLocked) {
+                                    final unlocked = await _promptPin(provider);
+                                    if (!unlocked) return;
+                                    if (!mounted) return;
+                                  }
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => LivePlayerScreen(
+                                        channelName: chan.name,
+                                        streamId: chan.stream_id!,
+                                        extension: 'm3u8',
+                                        type: 'live',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                width: channelColWidth,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF0F0F0F), // Background to avoid transparent overlaps
+                                  border: Border(
+                                    bottom: BorderSide(color: Color(0xFF2C2C2E), width: 1),
+                                    right: BorderSide(color: Color(0xFF2C2C2E), width: 1),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF2C2C2E),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          chan.stream_icon != null && chan.stream_icon!.isNotEmpty
+                                              ? CachedNetworkImage(
+                                                  imageUrl: chan.stream_icon!,
+                                                  fit: BoxFit.cover,
+                                                  errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
+                                                )
+                                              : const Icon(Icons.tv, color: Colors.grey),
+                                          if (isLocked)
+                                            Container(
+                                              color: Colors.black54,
+                                              child: const Icon(Icons.lock, color: Colors.white, size: 24),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        chan.name,
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (channelColWidth >= 200) ...[
+                                      IconButton(
+                                        icon: Icon(
+                                          isFav ? Icons.favorite : Icons.favorite_border,
+                                          color: isFav ? Colors.red : Colors.grey,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          if (isFav) {
+                                            provider.removeFavorite(chan.stream_id.toString());
+                                          } else {
+                                            provider.addFavorite(iptv.FavoriteItem(
+                                              id: chan.stream_id.toString(),
+                                              type: 'live',
+                                              name: chan.name,
+                                              icon: chan.stream_icon,
+                                              categoryId: chan.category_id,
+                                              addedAt: DateTime.now().millisecondsSinceEpoch,
+                                            ));
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          isLocked ? Icons.lock : Icons.lock_open,
+                                          color: isLocked ? Colors.red : Colors.grey,
+                                          size: 20,
+                                        ),
+                                        onPressed: () async {
+                                          if (isLocked) {
+                                            final unlocked = await _promptPin(provider);
+                                            if (unlocked) {
+                                              provider.unlockChannel(chan.stream_id.toString());
+                                            }
+                                          } else {
+                                            if (provider.pin == null || provider.pin!.isEmpty) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Please set up a PIN in Settings first')),
+                                              );
+                                              return;
+                                            }
+                                            provider.lockChannel(chan.stream_id.toString());
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // EPG Timeline Row (Right side scrolling content)
+                            Expanded(
+                              child: Container(
+                                height: 80,
+                                decoration: const BoxDecoration(
+                                  border: Border(bottom: BorderSide(color: Color(0xFF2C2C2E), width: 1)),
+                                ),
+                                child: ListView.builder(
+                                  controller: rowScrollController,
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const ClampingScrollPhysics(),
+                                  itemCount: programs.isEmpty ? 1 : programs.length,
+                                  itemBuilder: (context, progIndex) {
+                                    if (programs.isEmpty) {
+                                      return Container(
+                                        width: 24 * 200.0, // Match the total length of timeline header
+                                        alignment: Alignment.centerLeft,
+                                        padding: const EdgeInsets.only(left: 16),
+                                        child: const Text("No EPG Data", style: TextStyle(color: Colors.grey)),
+                                      );
+                                    }
+
+                                    final prog = programs[progIndex];
+                                    // Calculate width based on duration (e.g. 1 hour = 200px)
+                                    final durationMins = (prog.end - prog.start) / 60;
+                                    final width = (durationMins * (200 / 60)).clamp(50.0, 1000.0);
+
+                                    final isCurrent = nowTime >= prog.start && nowTime <= prog.end;
+
+                                    return Container(
+                                      width: width,
+                                      margin: const EdgeInsets.only(right: 2, top: 12, bottom: 12),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isCurrent ? Colors.blue.withOpacity(0.3) : const Color(0xFF2C2C2E),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: isCurrent ? Border.all(color: Colors.blue, width: 1) : null,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            prog.title_raw,
+                                            style: TextStyle(
+                                              color: isCurrent ? Colors.white : Colors.grey[300],
+                                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                              fontSize: 13,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).minute.toString().padLeft(2, '0')} - ${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).minute.toString().padLeft(2, '0')}",
+                                            style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -921,63 +1060,82 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _buildSidebar() {
+    final bool isTvMode = isTV(context);
+    final double sidebarWidth = isTvMode ? 150 : MediaQuery.of(context).size.width * 0.15;
+
+    return SizedBox(
+      width: sidebarWidth,
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              children: ['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
+                final isSelected = activeTab == tab;
+                final localizations = AppLocalizations.of(context);
+                String label = tab == 'live' ? (localizations?.live ?? 'Live')
+                             : (tab == 'vod' ? (localizations?.vod ?? 'Movies')
+                             : (tab == 'series' ? (localizations?.series ?? 'Series')
+                             : (tab == 'recents' ? (localizations?.recents ?? 'Recents')
+                             : (tab == 'settings' ? (localizations?.settings ?? 'Settings')
+                             : (localizations?.favorites ?? 'Favorites')))));
+                IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : (tab == 'settings' ? Icons.settings : Icons.favorite))));
+
+                return ListTile(
+                  selected: isSelected,
+                  selectedTileColor: Colors.blue.withOpacity(0.3),
+                  leading: Icon(icon, color: isSelected ? Colors.white : Colors.grey),
+                  title: sidebarWidth >= 120 ? Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis) : null,
+                  onTap: () {
+                    if (tab == 'settings') {
+                      Navigator.pushNamed(context, '/settings');
+                      return;
+                    }
+                    setState(() => activeTab = tab);
+                    _loadData();
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // The user requested to make the 3-column layout apply to all platforms
     final bool isTvMode = isTV(context);
+    final double categoryWidth = isTvMode ? 250 : MediaQuery.of(context).size.width * 0.25;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
       body: SafeArea(
-        top: !isTvMode,
-        child: isTvMode ? Row(
+        child: Row(
           children: [
-            // Simple sidebar for TV
-            SizedBox(
-              width: 150,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      children: ['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
-                        final isSelected = activeTab == tab;
-                        final localizations = AppLocalizations.of(context);
-                        String label = tab == 'live' ? (localizations?.live ?? 'Live')
-                                     : (tab == 'vod' ? (localizations?.vod ?? 'Movies')
-                                     : (tab == 'series' ? (localizations?.series ?? 'Series')
-                                     : (tab == 'recents' ? (localizations?.recents ?? 'Recents')
-                                     : (tab == 'settings' ? (localizations?.settings ?? 'Settings')
-                                     : (localizations?.favorites ?? 'Favorites')))));
-                        IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : (tab == 'settings' ? Icons.settings : Icons.favorite))));
-
-                        return ListTile(
-                          selected: isSelected,
-                          selectedTileColor: Colors.blue.withOpacity(0.3),
-                          leading: Icon(icon, color: isSelected ? Colors.white : Colors.grey),
-                          title: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey)),
-                          onTap: () {
-                            if (tab == 'settings') {
-                              Navigator.pushNamed(context, '/settings');
-                              return;
-                            }
-                            setState(() => activeTab = tab);
-                            _loadData();
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildSidebar(),
             Container(width: 1, color: const Color(0xFF2C2C2E)),
+            if (activeTab == 'live') ...[
+              SizedBox(
+                width: categoryWidth,
+                child: Consumer<AppProvider>(
+                  builder: (context, provider, child) {
+                    return _buildCategories(provider, vertical: true);
+                  },
+                ),
+              ),
+              Container(width: 1, color: const Color(0xFF2C2C2E)),
+            ],
             Expanded(
               child: Column(
                 children: [
-                  Consumer<AppProvider>(
-                    builder: (context, provider, child) {
-                      return _buildCategories(provider);
-                    },
-                  ),
+                  if (activeTab != 'live')
+                    Consumer<AppProvider>(
+                      builder: (context, provider, child) {
+                        return _buildCategories(provider, vertical: false);
+                      },
+                    ),
                   Consumer<AppProvider>(
                     builder: (context, provider, child) {
                       return _buildContent(provider);
@@ -985,24 +1143,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ) : Column(
-          children: [
-            _buildTabBar(),
-            Consumer<AppProvider>(
-              builder: (context, provider, child) {
-                return Column(
-                  children: [
-                    _buildCategories(provider),
-                  ],
-                );
-              },
-            ),
-            Consumer<AppProvider>(
-              builder: (context, provider, child) {
-                return _buildContent(provider);
-              },
             ),
           ],
         ),

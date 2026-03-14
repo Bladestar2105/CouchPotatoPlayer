@@ -60,7 +60,8 @@ class Category {
       category_id: json['category_id'].toString(),
       category_name: json['category_name'].toString(),
       parent_id: json['parent_id'] != null ? int.tryParse(json['parent_id'].toString()) : null,
-      adult: json['adult'] != null ? int.tryParse(json['adult'].toString()) : null,
+      adult: (json['is_adult'] != null ? int.tryParse(json['is_adult'].toString()) : null) ??
+             (json['adult'] != null ? int.tryParse(json['adult'].toString()) : null),
     );
   }
 
