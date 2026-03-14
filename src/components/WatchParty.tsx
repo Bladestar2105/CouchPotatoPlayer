@@ -132,7 +132,12 @@ export const WatchParty: React.FC<WatchPartyProps> = ({
     <>
       {/* Party indicator badge */}
       {party?.isActive && (
-        <TouchableOpacity style={styles.partyBadge} onPress={() => setShowModal(true)}>
+        <TouchableOpacity
+          style={styles.partyBadge}
+          onPress={() => setShowModal(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Watch Party active with ${party.viewers} viewers. Open Watch Party modal`}
+        >
           <Users color="#FF2D55" size={14} />
           <Text style={styles.partyBadgeText}>{party.viewers}</Text>
           <View style={styles.partyPulse} />
@@ -144,6 +149,8 @@ export const WatchParty: React.FC<WatchPartyProps> = ({
         style={styles.triggerButton}
         onPress={() => setShowModal(true)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={party?.isActive ? `Watch Party active with ${party.viewers} viewers` : 'Start or join a Watch Party'}
       >
         <Users color={party?.isActive ? '#FF2D55' : '#FFF'} size={20} />
         <Text style={[styles.triggerText, party?.isActive && { color: '#FF2D55' }]}>
@@ -163,7 +170,11 @@ export const WatchParty: React.FC<WatchPartyProps> = ({
             <View style={styles.modalHeader}>
               <Users color="#FF2D55" size={24} />
               <Text style={styles.modalTitle}>Watch Party</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
+              <TouchableOpacity
+                onPress={() => setShowModal(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close Watch Party modal"
+              >
                 <X color="#999" size={22} />
               </TouchableOpacity>
             </View>
@@ -176,7 +187,12 @@ export const WatchParty: React.FC<WatchPartyProps> = ({
                 </Text>
 
                 {/* Create Party */}
-                <TouchableOpacity style={styles.createButton} onPress={createParty}>
+                <TouchableOpacity
+                  style={styles.createButton}
+                  onPress={createParty}
+                  accessibilityRole="button"
+                  accessibilityLabel="Create a new Watch Party"
+                >
                   <Radio color="#FFF" size={20} />
                   <Text style={styles.createButtonText}>Create Watch Party</Text>
                 </TouchableOpacity>
@@ -198,6 +214,9 @@ export const WatchParty: React.FC<WatchPartyProps> = ({
                       style={[styles.joinButton, joinCode.length < 4 && styles.joinButtonDisabled]}
                       onPress={joinParty}
                       disabled={joinCode.length < 4}
+                      accessibilityRole="button"
+                      accessibilityLabel="Join Watch Party"
+                      accessibilityState={{ disabled: joinCode.length < 4 }}
                     >
                       <Text style={styles.joinButtonText}>Join</Text>
                     </TouchableOpacity>
@@ -231,13 +250,23 @@ export const WatchParty: React.FC<WatchPartyProps> = ({
                 </View>
 
                 {/* Share button */}
-                <TouchableOpacity style={styles.shareButton} onPress={sharePartyLink}>
+                <TouchableOpacity
+                  style={styles.shareButton}
+                  onPress={sharePartyLink}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share Watch Party invite link"
+                >
                   <Link color="#FFF" size={18} />
                   <Text style={styles.shareButtonText}>Share Invite</Text>
                 </TouchableOpacity>
 
                 {/* Leave button */}
-                <TouchableOpacity style={styles.leaveButton} onPress={leaveParty}>
+                <TouchableOpacity
+                  style={styles.leaveButton}
+                  onPress={leaveParty}
+                  accessibilityRole="button"
+                  accessibilityLabel={party.isHost ? 'End Watch Party' : 'Leave Watch Party'}
+                >
                   <Text style={styles.leaveButtonText}>
                     {party.isHost ? 'End Party' : 'Leave Party'}
                   </Text>
