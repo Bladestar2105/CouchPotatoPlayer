@@ -1,9 +1,8 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { XMLParser } from 'fast-xml-parser';
-import { ParsedProgram } from '../types/iptv';
 
-export function findCurrentProgramIndex(epg: ParsedProgram[], nowMs: number): number {
+export function findCurrentProgramIndex<T extends { start: number; end: number }>(epg: T[], nowMs: number): number {
   let low = 0;
   let high = epg.length - 1;
 
@@ -21,7 +20,7 @@ export function findCurrentProgramIndex(epg: ParsedProgram[], nowMs: number): nu
   return -1;
 }
 
-export function findProgramsInRange(epg: ParsedProgram[], startMs: number, endMs: number): ParsedProgram[] {
+export function findProgramsInRange<T extends { start: number; end: number }>(epg: T[], startMs: number, endMs: number): T[] {
   if (epg.length === 0) return [];
 
   // Find first index where p.end > startMs

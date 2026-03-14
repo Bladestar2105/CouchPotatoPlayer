@@ -5,13 +5,13 @@ import React
 @objc(RNKSPlayerView)
 public class RNKSPlayerView: UIView {
 
-    private var playerView: IOSVideoPlayerView!
+    private var playerView: KSPlayer.IOSVideoPlayerView!
     private var url: URL?
     private var hasConfiguredOptions = false
 
-    // ── React Native Props ──────────────────────────────────────────
+    // ── React Native Props ──────────────────────────────────────
 
-    @objc var source: NSDictionary? {
+    @objc public var source: NSDictionary? {
         didSet {
             if let uri = source?["uri"] as? String, let newUrl = URL(string: uri) {
                 if url != newUrl {
@@ -22,50 +22,50 @@ public class RNKSPlayerView: UIView {
         }
     }
 
-    @objc var onLoadStart: RCTDirectEventBlock?
-    @objc var onLoad: RCTDirectEventBlock?
-    @objc var onError: RCTDirectEventBlock?
-    @objc var onBuffer: RCTDirectEventBlock?
+    @objc public var onLoadStart: RCTDirectEventBlock?
+    @objc public var onLoad: RCTDirectEventBlock?
+    @objc public var onError: RCTDirectEventBlock?
+    @objc public var onBuffer: RCTDirectEventBlock?
 
     /// Buffer duration in seconds (minimum forward buffer)
-    @objc var preferredForwardBufferDuration: Double = 10.0 {
+    @objc public var preferredForwardBufferDuration: Double = 10.0 {
         didSet { setupPlayer() }
     }
 
     /// Maximum buffer duration in seconds
-    @objc var maxBufferDuration: Double = 30.0 {
+    @objc public var maxBufferDuration: Double = 30.0 {
         didSet { setupPlayer() }
     }
 
     /// Enable hardware decoding (default: true)
-    @objc var hardwareDecode: Bool = true {
+    @objc public var hardwareDecode: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable fast second open for quick channel switching
-    @objc var isSecondOpen: Bool = true {
+    @objc public var isSecondOpen: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable adaptive bitrate (auto quality switching for HLS)
-    @objc var videoAdaptable: Bool = true {
+    @objc public var videoAdaptable: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable auto play
-    @objc var isAutoPlay: Bool = true {
+    @objc public var isAutoPlay: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Max bitrate limit (0 = unlimited)
-    @objc var maxBitRate: Double = 0
+    @objc public var maxBitRate: Double = 0
 
-    // ── Lifecycle ───────────────────────────────────────────────────
+    // ── Lifecycle ───────────────────────────────────────────────
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
         configureGlobalOptions()
-        playerView = IOSVideoPlayerView()
+        playerView = KSPlayer.IOSVideoPlayerView()
         addSubview(playerView)
         playerView.delegate = self
     }
@@ -84,7 +84,7 @@ public class RNKSPlayerView: UIView {
         super.removeFromSuperview()
     }
 
-    // ── Configuration ───────────────────────────────────────────────
+    // ── Configuration ───────────────────────────────────────────
 
     private func configureGlobalOptions() {
         // Use FFmpeg-based player as primary (better codec support for IPTV)
@@ -105,9 +105,8 @@ public class RNKSPlayerView: UIView {
         KSOptions.secondPlayerType = KSAVPlayer.self
     }
 
-    private func applyOptions() {
-        // We will apply instance specific options in setupPlayer() instead
-        // to avoid Swift 6 strict concurrency errors on static properties.
+        // Fallback to AVPlayer for standard formats
+        KSOptions.secondPlayerType = KSAVPlayer.self
     }
 
     private func setupPlayer() {
@@ -116,11 +115,10 @@ public class RNKSPlayerView: UIView {
         onLoadStart?([:])
 
         // Create options for this specific stream
-        let options = KSOptions()
+        let options = KSPlayer.KSOptions()
         options.preferredForwardBufferDuration = preferredForwardBufferDuration
         options.maxBufferDuration = maxBufferDuration
         options.isSecondOpen = isSecondOpen
-        options.isAutoPlay = isAutoPlay
         options.videoAdaptable = videoAdaptable
         options.hardwareDecode = hardwareDecode
         
@@ -130,7 +128,7 @@ public class RNKSPlayerView: UIView {
             options.isSecondOpen = true
         }
         
-        let resource = KSPlayerResource(url: url, options: options)
+        let resource = KSPlayer.KSPlayerResource(url: url, options: options)
         playerView.set(resource: resource)
         if isAutoPlay {
             playerView.play()
@@ -138,7 +136,7 @@ public class RNKSPlayerView: UIView {
     }
 }
 
-// ── Player Delegate ─────────────────────────────────────────────────
+// ── Player Delegate ─────────────────────────────────────────────
 
 extension RNKSPlayerView: PlayerControllerDelegate {
     public func playerController(state: KSPlayerState) {

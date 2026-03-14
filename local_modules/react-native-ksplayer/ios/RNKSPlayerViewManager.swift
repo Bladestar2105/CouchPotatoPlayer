@@ -2,13 +2,14 @@ import Foundation
 import React
 
 @objc(RNKSPlayerViewManager)
-class RNKSPlayerViewManager: RCTViewManager {
+public class RNKSPlayerViewManager: RCTViewManager {
 
-  override func view() -> UIView! {
+  public override func view() -> UIView! {
     return RNKSPlayerView()
   }
 
-  override static func requiresMainQueueSetup() -> Bool {
+  @objc
+  public override class func requiresMainQueueSetup() -> Bool {
     return true
   }
 }
