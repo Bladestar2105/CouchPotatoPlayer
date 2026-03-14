@@ -518,12 +518,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFavoritesGrid(AppProvider provider) {
     if (provider.favorites.isEmpty) {
-      return const Expanded(
-        child: Center(
-          child: Text(
-            'No favorites added yet.',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
+      return const Center(
+        child: Text(
+          'No favorites added yet.',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
     }
@@ -634,12 +632,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRecentsGrid(AppProvider provider) {
     if (provider.recentlyWatched.isEmpty) {
-      return const Expanded(
-        child: Center(
-          child: Text(
-            'No recently watched items.',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
+      return const Center(
+        child: Text(
+          'No recently watched items.',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
     }
@@ -768,42 +764,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildContent(AppProvider provider) {
     if (activeTab == 'favorites') {
-      return Expanded(child: _buildFavoritesGrid(provider));
+      return _buildFavoritesGrid(provider);
     }
     if (activeTab == 'recents') {
-      return Expanded(child: _buildRecentsGrid(provider));
+      return _buildRecentsGrid(provider);
     }
 
     if (loading && provider.channels.isEmpty) {
-      return const Expanded(child: Center(child: CircularProgressIndicator()));
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (selectedCategoryId == null) {
-      return const Expanded(
-        child: Center(
-          child: Text(
-            'Select a category to view items',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
+      return const Center(
+        child: Text(
+          'Select a category to view items',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
     }
 
     if (provider.channels.isEmpty) {
-       return const Expanded(
-        child: Center(
-          child: Text(
-            'No items found in this category',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
+       return const Center(
+        child: Text(
+          'No items found in this category',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
     }
 
     if (activeTab == 'live') {
-      return Expanded(child: _buildLiveList(provider));
+      return _buildLiveList(provider);
     } else {
-      return Expanded(child: _buildGrid(provider));
+      return _buildGrid(provider);
     }
   }
 
@@ -898,10 +890,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         return _buildCategories(provider, vertical: false);
                       },
                     ),
-                  Consumer<AppProvider>(
-                    builder: (context, provider, child) {
-                      return _buildContent(provider);
-                    },
+                  Expanded(
+                    child: Consumer<AppProvider>(
+                      builder: (context, provider, child) {
+                        return _buildContent(provider);
+                      },
+                    ),
                   ),
                 ],
               ),
