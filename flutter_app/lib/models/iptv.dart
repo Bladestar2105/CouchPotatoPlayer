@@ -221,3 +221,111 @@ class ParsedProgram {
     };
   }
 }
+
+class FavoriteItem {
+  final String id; // string representation of stream_id or series_id
+  final String type; // 'live', 'vod', 'series'
+  final String name;
+  final String? icon;
+  final String? categoryId;
+  final int addedAt;
+
+  FavoriteItem({
+    required this.id,
+    required this.type,
+    required this.name,
+    this.icon,
+    this.categoryId,
+    required this.addedAt,
+  });
+
+  factory FavoriteItem.fromJson(Map<String, dynamic> json) {
+    return FavoriteItem(
+      id: json['id'].toString(),
+      type: json['type'],
+      name: json['name'],
+      icon: json['icon'],
+      categoryId: json['categoryId']?.toString(),
+      addedAt: json['addedAt'] ?? DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type,
+      'name': name,
+      'icon': icon,
+      'categoryId': categoryId,
+      'addedAt': addedAt,
+    };
+  }
+}
+
+class RecentlyWatchedItem {
+  final String id;
+  final String type; // 'live', 'vod', 'series'
+  final String name;
+  final String? icon;
+  final String? extension;
+  final String? directSource;
+  final int lastWatchedAt;
+  final int? position;
+  final int? duration;
+  final int? episodeId;
+  final String? episodeName;
+  final int? seasonNumber;
+  final int? episodeNumber;
+
+  RecentlyWatchedItem({
+    required this.id,
+    required this.type,
+    required this.name,
+    this.icon,
+    this.extension,
+    this.directSource,
+    required this.lastWatchedAt,
+    this.position,
+    this.duration,
+    this.episodeId,
+    this.episodeName,
+    this.seasonNumber,
+    this.episodeNumber,
+  });
+
+  factory RecentlyWatchedItem.fromJson(Map<String, dynamic> json) {
+    return RecentlyWatchedItem(
+      id: json['id'].toString(),
+      type: json['type'],
+      name: json['name'],
+      icon: json['icon'],
+      extension: json['extension'],
+      directSource: json['directSource'],
+      lastWatchedAt: json['lastWatchedAt'] ?? DateTime.now().millisecondsSinceEpoch,
+      position: json['position'],
+      duration: json['duration'],
+      episodeId: json['episodeId'],
+      episodeName: json['episodeName'],
+      seasonNumber: json['seasonNumber'],
+      episodeNumber: json['episodeNumber'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type,
+      'name': name,
+      'icon': icon,
+      'extension': extension,
+      'directSource': directSource,
+      'lastWatchedAt': lastWatchedAt,
+      'position': position,
+      'duration': duration,
+      'episodeId': episodeId,
+      'episodeName': episodeName,
+      'seasonNumber': seasonNumber,
+      'episodeNumber': episodeNumber,
+    };
+  }
+}

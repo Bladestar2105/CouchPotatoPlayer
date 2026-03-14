@@ -19,6 +19,8 @@ class AppProvider extends ChangeNotifier {
   bool isDiskDataLoaded = false;
   String themeMode = 'dark';
   List<String> lockedChannels = [];
+  List<iptv.FavoriteItem> favorites = [];
+  List<iptv.RecentlyWatchedItem> recentlyWatched = [];
 
   final StorageService _storageService = StorageService();
 
@@ -48,6 +50,18 @@ class AppProvider extends ChangeNotifier {
     final lockedStr = prefs.getString('lockedChannels');
     if (lockedStr != null) {
       lockedChannels = List<String>.from(json.decode(lockedStr));
+    }
+
+    final favsStr = prefs.getString('favorites');
+    if (favsStr != null) {
+      final List<dynamic> fList = json.decode(favsStr);
+      favorites = fList.map((e) => iptv.FavoriteItem.fromJson(e)).toList();
+    }
+
+    final recentsStr = prefs.getString('recentlyWatched');
+    if (recentsStr != null) {
+      final List<dynamic> rList = json.decode(recentsStr);
+      recentlyWatched = rList.map((e) => iptv.RecentlyWatchedItem.fromJson(e)).toList();
     }
 
     // Load large data from disk
@@ -165,5 +179,117 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('lastEpgUpdate', time);
     notifyListeners();
+  }
+
+  // --- Favorites ---
+  Future<void> addFavorite(iptv.FavoriteItem item) async {
+    if (favorites.any((f) => f.id == item.id && f.type == item.type)) return;
+    favorites.insert(0, item);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('favorites', json.encode(favorites.map((f) => f.toJson()).toList()));
+    notifyListeners();
+  }
+
+  Future<void> removeFavorite(String id) async {
+    favorites.removeWhere((f) => f.id == id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('favorites', json.encode(favorites.map((f) => f.toJson()).toList()));
+    notifyListeners();
+  }
+
+  bool isFavorite(String id) {
+    return favorites.any((f) => f.id == id);
+  }
+
+  // --- Recently Watched ---
+  Future<void> addRecentlyWatched(iptv.RecentlyWatchedItem item) async {
+    recentlyWatched.removeWhere((r) => r.id == item.id && r.type == item.type);
+    recentlyWatched.insert(0, item);
+    if (recentlyWatched.length > 50) {
+      recentlyWatched = recentlyWatched.sublist(0, 50);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('recentlyWatched', json.encode(recentlyWatched.map((r) => r.toJson()).toList()));
+    notifyListeners();
+  }
+
+  Future<void> updatePlaybackPosition(String id, int position, {int? duration}) async {
+    final index = recentlyWatched.indexWhere((r) => r.id == id);
+    if (index >= 0) {
+      final item = recentlyWatched[index];
+      recentlyWatched[index] = iptv.RecentlyWatchedItem(
+        id: item.id,
+        type: item.type,
+        name: item.name,
+        icon: item.icon,
+        extension: item.extension,
+        directSource: item.directSource,
+        lastWatchedAt: DateTime.now().millisecondsSinceEpoch,
+        position: position,
+        duration: duration ?? item.duration,
+        episodeId: item.episodeId,
+        episodeName: item.episodeName,
+        seasonNumber: item.seasonNumber,
+        episodeNumber: item.episodeNumber,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('recentlyWatched', json.encode(recentlyWatched.map((r) => r.toJson()).toList()));
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeRecentlyWatched(String id) async {
+    recentlyWatched.removeWhere((r) => r.id == id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('recentlyWatched', json.encode(recentlyWatched.map((r) => r.toJson()).toList()));
+    notifyListeners();
+  }
+
+  Future<void> clearRecentlyWatched() async {
+    recentlyWatched.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('recentlyWatched');
+    notifyListeners();
+  }
+
+  // --- Parental Control / PIN ---
+  Future<void> setPin(String? newPin) async {
+    pin = newPin;
+    final prefs = await SharedPreferences.getInstance();
+    if (newPin == null) {
+      await prefs.remove('pin');
+    } else {
+      await prefs.setString('pin', newPin);
+    }
+    notifyListeners();
+  }
+
+  Future<void> setShowAdult(bool show) async {
+    showAdult = show;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('showAdult', show);
+    notifyListeners();
+  }
+
+  Future<void> lockChannel(String id) async {
+    if (!lockedChannels.contains(id)) {
+      lockedChannels.add(id);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('lockedChannels', json.encode(lockedChannels));
+      notifyListeners();
+    }
+  }
+
+  Future<void> unlockChannel(String id) async {
+    if (lockedChannels.contains(id)) {
+      lockedChannels.remove(id);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('lockedChannels', json.encode(lockedChannels));
+      notifyListeners();
+    }
+  }
+
+  bool isChannelLocked(String id) {
+    return lockedChannels.contains(id);
   }
 }
