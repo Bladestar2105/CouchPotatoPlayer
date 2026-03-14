@@ -2,6 +2,8 @@
 
 set -e
 
+cd "$(dirname "$0")/.."
+
 if [ "$1" == "ios" ]; then
   if [[ ! -d ./tvos ]] && [[ -d ./_ios ]] && [[ -d ./ios ]]; then
     echo "switching to 'ios' "
