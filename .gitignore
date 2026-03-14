@@ -77,3 +77,6 @@ yarn-error.log
 # Web build output
 dist/
 web.log
+
+# Standardized on npm — prevent pnpm lock file
+pnpm-lock.yaml

@@ -1,24 +1,18 @@
-# CouchPotatoPlayer - Feature Enhancement Todo
+# CouchPotatoPlayer - Fix Build Issues
 
-## Wave 1: Integration of New Components
-- [x] Create imageProxy utility (proxies HTTP image URLs on web)
-- [x] Create ProfileManager component
-- [x] Create StreamHealthMonitor component  
-- [x] Create TMDB metadata service
-- [x] Update ChannelLogo, HomeScreen, SearchScreen, MediaInfoScreen with imageProxy
-- [x] TypeScript check + Webpack build pass
-- [x] Commit and push Wave 1 files
+## Fix 1: Standardize package manager (pnpm vs npm)
+- [ ] Remove pnpm-lock.yaml, standardize on npm
+- [ ] Update build-apps.yml to use npm consistently
 
-## Wave 2: Wire Components into App
-- [x] Integrate TMDB enrichment into MediaInfoScreen (show posters, ratings, descriptions from TMDB)
-- [x] Integrate StreamHealthMonitor into LivePlayerScreen (replace/enhance PlayerStats)
-- [x] Add Theme picker + Language picker to SettingsScreen
-- [x] TypeScript check + build verify
-- [x] Commit and push Wave 2
+## Fix 2: xcodebuild piped to tail loses exit codes
+- [ ] Remove `| tail -50` from xcodebuild commands
+- [ ] Use `tee` or xcpretty instead to preserve exit codes
 
-## Wave 3: UI/UX Polish & TV Optimization
-- [ ] Improve HomeScreen with TMDB trending hero banner carousel
-- [ ] Add keyboard/remote navigation improvements for TV
-- [ ] Add image caching/prefetch for smoother scrolling
-- [ ] Final TypeScript + build check
-- [ ] Commit and push Wave 3
+## Fix 3: KSPlayer namespace prefixes broken (static library)
+- [ ] Remove `KSPlayer.` namespace prefixes from Swift code
+- [ ] Fix NSClassFromString to use unqualified name
+- [ ] Fix KSOptions, KSAVPlayer references
+
+## Final
+- [ ] TypeScript + Webpack build check
+- [ ] Commit and push all fixes

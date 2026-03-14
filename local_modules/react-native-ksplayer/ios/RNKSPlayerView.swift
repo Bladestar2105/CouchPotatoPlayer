@@ -10,7 +10,7 @@ public class RNKSPlayerView: UIView {
     private var url: URL?
     private var hasConfiguredOptions = false
 
-    // ── React Native Props ──────────────────────────────────────────
+    // ── React Native Props ──────────────────────────────────────
 
     @objc public var source: NSDictionary? {
         didSet {
@@ -61,7 +61,7 @@ public class RNKSPlayerView: UIView {
     /// Max bitrate limit (0 = unlimited)
     @objc public var maxBitRate: Double = 0
 
-    // ── Lifecycle ───────────────────────────────────────────────────
+    // ── Lifecycle ───────────────────────────────────────────────
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -85,7 +85,7 @@ public class RNKSPlayerView: UIView {
         super.removeFromSuperview()
     }
 
-    // ── Configuration ───────────────────────────────────────────────
+    // ── Configuration ───────────────────────────────────────────
 
     private func configureGlobalOptions() {
         // Use FFmpeg-based player as primary (better codec support for IPTV)
@@ -96,9 +96,8 @@ public class RNKSPlayerView: UIView {
         KSPlayer.KSOptions.secondPlayerType = KSPlayer.KSAVPlayer.self
     }
 
-    private func applyOptions() {
-        // We will apply instance specific options in setupPlayer() instead
-        // to avoid Swift 6 strict concurrency errors on static properties.
+        // Fallback to AVPlayer for standard formats
+        KSOptions.secondPlayerType = KSAVPlayer.self
     }
 
     private func setupPlayer() {
@@ -128,7 +127,7 @@ public class RNKSPlayerView: UIView {
     }
 }
 
-// ── Player Delegate ─────────────────────────────────────────────────
+// ── Player Delegate ─────────────────────────────────────────────
 
 extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
     public func playerController(state: KSPlayerState) {
