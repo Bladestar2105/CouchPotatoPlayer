@@ -1,6 +1,5 @@
 import Foundation
 import UIKit
-import KSPlayer
 import React
 
 @objc(RNKSPlayerView)
@@ -89,11 +88,21 @@ public class RNKSPlayerView: UIView {
 
     private func configureGlobalOptions() {
         // Use FFmpeg-based player as primary (better codec support for IPTV)
-        if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? KSPlayer.MediaPlayerProtocol.Type {
-            KSPlayer.KSOptions.firstPlayerType = mePlayer
+        // Check for the class under the module namespace where it's compiled,
+        // or just reference the type directly if it's available because it's now embedded in the same module.
+        // In Swift, since KSMEPlayer is compiled directly with this code, we can use the type directly!
+        #if canImport(FFmpegKit)
+        KSOptions.firstPlayerType = KSMEPlayer.self
+        #else
+        if let mePlayer = NSClassFromString("KSMEPlayer") as? MediaPlayerProtocol.Type {
+            KSOptions.firstPlayerType = mePlayer
+        } else if let mePlayer = NSClassFromString("react_native_ksplayer.KSMEPlayer") as? MediaPlayerProtocol.Type {
+            KSOptions.firstPlayerType = mePlayer
         }
+        #endif
+
         // Fallback to AVPlayer for standard formats
-        KSPlayer.KSOptions.secondPlayerType = KSPlayer.KSAVPlayer.self
+        KSOptions.secondPlayerType = KSAVPlayer.self
     }
 
         // Fallback to AVPlayer for standard formats
@@ -129,14 +138,14 @@ public class RNKSPlayerView: UIView {
 
 // ── Player Delegate ─────────────────────────────────────────────
 
-extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
+extension RNKSPlayerView: PlayerControllerDelegate {
     public func playerController(state: KSPlayerState) {
         switch state {
         case .readyToPlay:
             onLoad?([:])
         case .error:
-            // The exact error is typically delivered in playerController(finish:)
-            onError?(["error": "Playback error"])
+            // KSPlayerState.error does not have an associated value
+            onError?(["error": "KSPlayer encountered an error"])
         case .buffering:
             onBuffer?(["isBuffering": true])
         case .bufferFinished:
@@ -148,7 +157,7 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
 
     public func playerController(currentTime: TimeInterval, totalTime: TimeInterval) {}
     
-    public func playerController(finish error: Swift.Error?) {
+    public func playerController(finish error: Error?) {
         if let err = error {
             onError?(["error": err.localizedDescription])
         }
@@ -161,8 +170,9 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
         }
     }
 
-    // Required stubs for PlayerControllerDelegate
     public func playerController(maskShow: Bool) {}
+
     public func playerController(action: PlayerButtonType) {}
+
     public func playerController(seek: TimeInterval) {}
 }

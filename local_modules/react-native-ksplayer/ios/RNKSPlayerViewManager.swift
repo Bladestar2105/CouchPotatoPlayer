@@ -1,6 +1,5 @@
 import Foundation
 import React
-import KSPlayer
 
 @objc(RNKSPlayerViewManager)
 public class RNKSPlayerViewManager: RCTViewManager {
