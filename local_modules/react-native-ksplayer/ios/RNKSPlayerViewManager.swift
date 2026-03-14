@@ -3,13 +3,13 @@ import React
 import KSPlayer
 
 @objc(RNKSPlayerViewManager)
-class RNKSPlayerViewManager: RCTViewManager {
+public class RNKSPlayerViewManager: RCTViewManager {
 
-  override func view() -> UIView! {
+  public override func view() -> UIView! {
     return RNKSPlayerView()
   }
 
-  override static func requiresMainQueueSetup() -> Bool {
+  public override static func requiresMainQueueSetup() -> Bool {
     return true
   }
 }

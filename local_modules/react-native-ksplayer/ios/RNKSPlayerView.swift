@@ -12,7 +12,7 @@ public class RNKSPlayerView: UIView {
 
     // ── React Native Props ──────────────────────────────────────────
 
-    @objc var source: NSDictionary? {
+    @objc public var source: NSDictionary? {
         didSet {
             if let uri = source?["uri"] as? String, let newUrl = URL(string: uri) {
                 if url != newUrl {
@@ -23,43 +23,43 @@ public class RNKSPlayerView: UIView {
         }
     }
 
-    @objc var onLoadStart: RCTDirectEventBlock?
-    @objc var onLoad: RCTDirectEventBlock?
-    @objc var onError: RCTDirectEventBlock?
-    @objc var onBuffer: RCTDirectEventBlock?
+    @objc public var onLoadStart: RCTDirectEventBlock?
+    @objc public var onLoad: RCTDirectEventBlock?
+    @objc public var onError: RCTDirectEventBlock?
+    @objc public var onBuffer: RCTDirectEventBlock?
 
     /// Buffer duration in seconds (minimum forward buffer)
-    @objc var preferredForwardBufferDuration: Double = 10.0 {
+    @objc public var preferredForwardBufferDuration: Double = 10.0 {
         didSet { setupPlayer() }
     }
 
     /// Maximum buffer duration in seconds
-    @objc var maxBufferDuration: Double = 30.0 {
+    @objc public var maxBufferDuration: Double = 30.0 {
         didSet { setupPlayer() }
     }
 
     /// Enable hardware decoding (default: true)
-    @objc var hardwareDecode: Bool = true {
+    @objc public var hardwareDecode: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable fast second open for quick channel switching
-    @objc var isSecondOpen: Bool = true {
+    @objc public var isSecondOpen: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable adaptive bitrate (auto quality switching for HLS)
-    @objc var videoAdaptable: Bool = true {
+    @objc public var videoAdaptable: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable auto play
-    @objc var isAutoPlay: Bool = true {
+    @objc public var isAutoPlay: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Max bitrate limit (0 = unlimited)
-    @objc var maxBitRate: Double = 0
+    @objc public var maxBitRate: Double = 0
 
     // ── Lifecycle ───────────────────────────────────────────────────
 
@@ -75,12 +75,12 @@ public class RNKSPlayerView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         playerView.frame = bounds
     }
 
-    override func removeFromSuperview() {
+    public override func removeFromSuperview() {
         playerView.resetPlayer()
         super.removeFromSuperview()
     }
