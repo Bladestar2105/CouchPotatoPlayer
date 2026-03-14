@@ -10,12 +10,17 @@
 
 set -x
 
+# Ensure script is always run from the project root
+cd "$(dirname "$0")/.."
+
 #added all scripts here to run appletv locally from one script
 
 ENGINE_TYPE=${1:-debug_sim_arm64}
 
-# set your own path to custom engine here
-export FLUTTER_LOCAL_ENGINE=out
+# set your own path to custom engine here.
+# Assuming the 'out' directory is downloaded to the project root,
+# FLUTTER_LOCAL_ENGINE should be the absolute path to the project root.
+export FLUTTER_LOCAL_ENGINE="$PWD"
 
 if [ -d "_ios" ]; then
 sh scripts/switch_target.sh ios
@@ -37,7 +42,7 @@ flutter pub get
 
 pod install
 
-sh ../scripts/copy_framework.sh $ENGINE_TYPE $FLUTTER_LOCAL_ENGINE
+sh ../scripts/copy_framework.sh $ENGINE_TYPE "$FLUTTER_LOCAL_ENGINE"
 
 #add local engine in xcode project
 sed -i "" "s#FLUTTER_LOCAL_ENGINE[[:space:]]=[[:space:]].*;#FLUTTER_LOCAL_ENGINE = \"${FLUTTER_LOCAL_ENGINE}\";#g" Runner.xcodeproj/project.pbxproj
