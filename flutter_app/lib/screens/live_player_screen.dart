@@ -3,6 +3,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/xtream_service.dart';
 import '../models/iptv.dart';
 
@@ -54,7 +55,15 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
     }
 
     if (player == null) {
-      player = Player();
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+      player = Player(
+        configuration: PlayerConfiguration(
+          bufferSize: settings.bufferSize * 1024 * 1024,
+          // MediaKit handles decoder switching internally or via options usually.
+          // For now, bufferSize is definitely configurable.
+        ),
+      );
       controller = VideoController(player!);
 
       player?.stream.position.listen((pos) {

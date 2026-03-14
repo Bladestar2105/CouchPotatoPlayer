@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../providers/settings_provider.dart';
 import 'welcome_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -40,6 +41,58 @@ class SettingsScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
+              ListTile(
+                tileColor: const Color(0xFF1C1C1E),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                title: const Text('Theme Mode', style: TextStyle(color: Colors.white)),
+                subtitle: Text(provider.themeMode, style: const TextStyle(color: Colors.grey)),
+                trailing: DropdownButton<String>(
+                  value: provider.themeMode,
+                  dropdownColor: const Color(0xFF2C2C2E),
+                  underline: const SizedBox(),
+                  style: const TextStyle(color: Colors.white),
+                  items: const [
+                    DropdownMenuItem(value: 'dark', child: Text('Dark')),
+                    DropdownMenuItem(value: 'oled', child: Text('OLED Black')),
+                    DropdownMenuItem(value: 'light', child: Text('Light')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) provider.setThemeMode(val);
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Consumer<SettingsProvider>(
+                builder: (context, settings, child) {
+                  return Column(
+                    children: [
+                      ListTile(
+                        tileColor: const Color(0xFF1C1C1E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        title: const Text('Streaming Buffer Size', style: TextStyle(color: Colors.white)),
+                        subtitle: Text('${settings.bufferSize} MB', style: const TextStyle(color: Colors.grey)),
+                        trailing: DropdownButton<int>(
+                          value: settings.bufferSize,
+                          dropdownColor: const Color(0xFF2C2C2E),
+                          underline: const SizedBox(),
+                          style: const TextStyle(color: Colors.white),
+                          items: const [
+                            DropdownMenuItem(value: 8, child: Text('8 MB')),
+                            DropdownMenuItem(value: 16, child: Text('16 MB')),
+                            DropdownMenuItem(value: 32, child: Text('32 MB')),
+                            DropdownMenuItem(value: 64, child: Text('64 MB')),
+                            DropdownMenuItem(value: 128, child: Text('128 MB')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) settings.setBufferSize(val);
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
+              ),
               if (provider.pin != null) ...[
                 ListTile(
                   tileColor: const Color(0xFF1C1C1E),
