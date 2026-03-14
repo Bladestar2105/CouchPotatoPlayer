@@ -17,16 +17,35 @@ jobs:
         with:
           channel: 'stable'
       - name: Install Dependencies
-        working-directory: ./flutter_app
         run: flutter pub get
       - name: Build Web
-        working-directory: ./flutter_app
         run: flutter build web --release
       - name: Upload Web Build
         uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: flutter_app/build/web
+          path: build/web
+
+  # ── Docker Build (Flutter Web) ─────────────────────────────────
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: build-web
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Web Build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+      - name: Build Docker Image
+        run: docker build -t couchpotatoplayer-web .
+      - name: Save Docker Image
+        run: docker save couchpotatoplayer-web > couchpotatoplayer-web.tar
+      - name: Upload Docker Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: couchpotatoplayer-web-docker
+          path: couchpotatoplayer-web.tar
 
   # ── Android Build (Flutter) ────────────────────────────────────
   build-android:
@@ -43,16 +62,14 @@ jobs:
         with:
           channel: 'stable'
       - name: Install Dependencies
-        working-directory: ./flutter_app
         run: flutter pub get
       - name: Build APK
-        working-directory: ./flutter_app
         run: flutter build apk --release
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release.apk
-          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
 
   # ── iOS Build (Flutter) ────────────────────────────────────────
   build-ios:
@@ -64,14 +81,11 @@ jobs:
         with:
           channel: 'stable'
       - name: Install Dependencies
-        working-directory: ./flutter_app
         run: flutter pub get
       - name: Build iOS (No Codesign)
-        working-directory: ./flutter_app
         run: flutter build ios --release --no-codesign
       - name: Package iOS App
-        working-directory: ./flutter_app
-        run: tar -czf ../ios-build.tar.gz build/ios/iphoneos/Runner.app
+        run: tar -czf ios-build.tar.gz build/ios/iphoneos/Runner.app
       - name: Upload iOS Build
         uses: actions/upload-artifact@v4
         with:
