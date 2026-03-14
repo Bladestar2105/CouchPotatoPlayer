@@ -25,7 +25,7 @@
 
 ### 2. State Features
 - [x] **Favorites System**: Allow users to add/remove streams/VODs to favorites (`addFavorite`, `removeFavorite`) and display them on the Home screen.
-- [ ] **Recently Watched**: Track playback positions for VODs and last-watched timestamps for Live TV. Show "Continue Watching" row.
+- [x] **Recently Watched**: Track playback positions for VODs and last-watched timestamps for Live TV. Show "Continue Watching" row.
 - [x] **Parental Control / PIN**:
   - [x] Implement `PinSetupScreen`.
   - [x] Filter `adult=1` categories unless unlocked.
@@ -33,7 +33,7 @@
 - [ ] **Streaming Settings**: Buffer sizes, video qualities, player engine toggles (if supported).
 
 ### 3. UI/UX: Home Screen (Mobile)
-- [ ] **EPG Progress Bars**: Parse EPG data for the active channel list and display the "Now Playing" title + progress bar under live channels.
+- [x] **EPG Progress Bars**: Parse EPG data for the active channel list and display the "Now Playing" title + progress bar under live channels.
 - [ ] **Hero Banner**: Implement the auto-cycling TMDB "Trending" carousel at the top of the Home Screen.
 - [x] **Pull-to-Refresh**: Implement `RefreshIndicator` to force an Xtream update.
 - [ ] **Provider Switcher**: Quick-switch dropdown if the user has multiple saved Xtream/M3U providers.

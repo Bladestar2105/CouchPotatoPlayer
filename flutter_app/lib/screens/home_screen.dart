@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/app_provider.dart';
 import '../services/xtream_service.dart';
+import 'dart:async';
 import '../models/iptv.dart' as iptv;
 import '../models/iptv.dart' hide Category;
+import '../utils/epg.dart';
 import 'live_player_screen.dart';
 import 'media_info_screen.dart';
 
@@ -19,13 +21,28 @@ class _HomeScreenState extends State<HomeScreen> {
   String activeTab = 'live';
   String? selectedCategoryId;
   bool loading = false;
+  int nowTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          nowTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        });
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -112,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
       color: const Color(0xFF1C1C1E),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
-        children: ['live', 'vod', 'series', 'favorites', 'settings'].map((tab) {
+        children: ['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
           if (tab == 'settings') {
             return Row(
               mainAxisSize: MainAxisSize.min,
@@ -134,8 +151,8 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final isSelected = activeTab == tab;
-          String label = tab == 'live' ? 'Live' : (tab == 'vod' ? 'Movies' : (tab == 'series' ? 'Series' : 'Favorites'));
-          IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : Icons.favorite));
+          String label = tab == 'live' ? 'Live' : (tab == 'vod' ? 'Movies' : (tab == 'series' ? 'Series' : (tab == 'recents' ? 'Recents' : 'Favorites')));
+          IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : Icons.favorite)));
 
           return Expanded(
             child: GestureDetector(
@@ -175,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategories(AppProvider provider) {
-    if (activeTab == 'favorites') return const SizedBox.shrink();
+    if (activeTab == 'favorites' || activeTab == 'recents') return const SizedBox.shrink();
 
     if (loading && provider.categories.isEmpty) {
       return const SizedBox(height: 52, child: Center(child: CircularProgressIndicator()));
@@ -228,6 +245,22 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, index) {
           final chan = provider.channels[index];
           final isFav = provider.isFavorite(chan.stream_id.toString());
+
+          final epgKey = getEpgKey(chan);
+          final programs = provider.epgData[epgKey] ?? [];
+          final currentProgIndex = findCurrentProgramIndex(programs, nowTime);
+          final currentProg = currentProgIndex != -1 ? programs[currentProgIndex] : null;
+          final nextProg = (currentProgIndex != -1 && currentProgIndex + 1 < programs.length) ? programs[currentProgIndex + 1] : null;
+
+          double progress = 0.0;
+          if (currentProg != null) {
+            final total = currentProg.end - currentProg.start;
+            final elapsed = nowTime - currentProg.start;
+            if (total > 0) {
+              progress = (elapsed / total).clamp(0.0, 1.0);
+            }
+          }
+
           return ListTile(
             leading: Container(
               width: 48,
@@ -248,6 +281,34 @@ class _HomeScreenState extends State<HomeScreen> {
               chan.name,
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
+            subtitle: currentProg != null ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  currentProg.title_raw,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: const Color(0xFF2C2C2E),
+                  color: Colors.blue,
+                  minHeight: 2,
+                ),
+                if (nextProg != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Next: ${nextProg.title_raw}',
+                    style: const TextStyle(color: Colors.white54, fontSize: 10),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ) : null,
             trailing: IconButton(
               icon: Icon(
                 isFav ? Icons.favorite : Icons.favorite_border,
@@ -517,9 +578,144 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
+  Widget _buildRecentsGrid(AppProvider provider) {
+    if (provider.recentlyWatched.isEmpty) {
+      return const Expanded(
+        child: Center(
+          child: Text(
+            'No recently watched items.',
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 2 / 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: provider.recentlyWatched.length,
+      itemBuilder: (context, index) {
+        final recent = provider.recentlyWatched[index];
+        final imageUrl = recent.icon;
+        final name = recent.name;
+
+        double progress = 0;
+        if (recent.position != null && recent.duration != null && recent.duration! > 0) {
+          progress = (recent.position! / recent.duration!).clamp(0.0, 1.0);
+        }
+
+        return GestureDetector(
+          onTap: () {
+            if (recent.type == 'live') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LivePlayerScreen(
+                    channelName: name,
+                    streamId: int.tryParse(recent.id) ?? 0,
+                    extension: recent.extension ?? 'm3u8',
+                    type: 'live',
+                  ),
+                ),
+              );
+            } else {
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(
+                   builder: (_) => MediaInfoScreen(
+                     id: int.tryParse(recent.id) ?? 0,
+                     type: recent.type,
+                     title: name,
+                     cover: imageUrl,
+                     extension: recent.extension ?? 'mp4',
+                   ),
+                 ),
+               );
+            }
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                imageUrl != null && imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Icon(recent.type == 'live' ? Icons.tv : Icons.movie, color: Colors.grey, size: 32),
+                      )
+                    : Icon(recent.type == 'live' ? Icons.tv : Icons.movie, color: Colors.grey, size: 32),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    color: Colors.black54,
+                    padding: const EdgeInsets.all(4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                        if (progress > 0) ...[
+                          const SizedBox(height: 4),
+                          LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.white24,
+                            color: Colors.blue,
+                            minHeight: 2,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        provider.removeRecentlyWatched(recent.id);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildContent(AppProvider provider) {
     if (activeTab == 'favorites') {
       return Expanded(child: _buildFavoritesGrid(provider));
+    }
+    if (activeTab == 'recents') {
+      return Expanded(child: _buildRecentsGrid(provider));
     }
 
     if (loading && provider.channels.isEmpty) {
