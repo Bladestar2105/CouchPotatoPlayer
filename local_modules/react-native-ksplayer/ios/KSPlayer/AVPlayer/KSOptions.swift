@@ -345,7 +345,12 @@ open class KSOptions {
             return
         }
         if let dynamicRange = isDovi ? .dolbyVision : formatDescription?.dynamicRange {
-            displayManager.preferredDisplayCriteria = AVDisplayCriteria(refreshRate: refreshRate, videoDynamicRange: dynamicRange.rawValue)
+            if displayManager.responds(to: NSSelectorFromString("setPreferredDisplayCriteria:")) {
+                if AVDisplayCriteria.instancesRespond(to: NSSelectorFromString("initWithRefreshRate:videoDynamicRange:")) {
+                    let criteria = AVDisplayCriteria.perform(NSSelectorFromString("initWithRefreshRate:videoDynamicRange:"), with: refreshRate, with: dynamicRange.rawValue)?.takeUnretainedValue() as? AVDisplayCriteria
+                    displayManager.preferredDisplayCriteria = criteria
+                }
+            }
         }
         #endif
     }
