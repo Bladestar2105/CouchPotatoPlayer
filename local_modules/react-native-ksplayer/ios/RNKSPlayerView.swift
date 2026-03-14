@@ -111,7 +111,6 @@ public class RNKSPlayerView: UIView {
         options.preferredForwardBufferDuration = preferredForwardBufferDuration
         options.maxBufferDuration = maxBufferDuration
         options.isSecondOpen = isSecondOpen
-        options.isAutoPlay = isAutoPlay
         options.videoAdaptable = videoAdaptable
         options.hardwareDecode = hardwareDecode
         
