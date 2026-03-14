@@ -271,6 +271,13 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setThemeMode(String mode) async {
+    themeMode = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('themeMode', mode);
+    notifyListeners();
+  }
+
   Future<void> lockChannel(String id) async {
     if (!lockedChannels.contains(id)) {
       lockedChannels.add(id);

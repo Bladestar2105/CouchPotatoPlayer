@@ -1,0 +1,13 @@
+{
+  "@@locale": "en",
+  "appTitle": "CouchPotatoPlayer",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "live": "Live",
+  "vod": "Movies",
+  "series": "Series",
+  "favorites": "Favorites",
+  "recents": "Recents",
+  "settings": "Settings"
+}

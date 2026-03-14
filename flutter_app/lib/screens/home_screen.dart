@@ -7,6 +7,7 @@ import 'dart:async';
 import '../models/iptv.dart' as iptv;
 import '../models/iptv.dart' hide Category;
 import '../utils/epg.dart';
+import '../l10n/app_localizations.dart';
 import 'live_player_screen.dart';
 import 'media_info_screen.dart';
 import 'epg_screen.dart';
@@ -153,7 +154,14 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final isSelected = activeTab == tab;
-          String label = tab == 'live' ? 'Live' : (tab == 'vod' ? 'Movies' : (tab == 'series' ? 'Series' : (tab == 'recents' ? 'Recents' : 'Favorites')));
+
+          final localizations = AppLocalizations.of(context);
+          String label = tab == 'live' ? (localizations?.live ?? 'Live')
+                       : (tab == 'vod' ? (localizations?.vod ?? 'Movies')
+                       : (tab == 'series' ? (localizations?.series ?? 'Series')
+                       : (tab == 'recents' ? (localizations?.recents ?? 'Recents')
+                       : (localizations?.favorites ?? 'Favorites'))));
+
           IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : Icons.favorite)));
 
           return Expanded(
@@ -932,7 +940,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: ListView(
                       children: ['live', 'vod', 'series', 'favorites', 'recents', 'settings'].map((tab) {
                         final isSelected = activeTab == tab;
-                        String label = tab == 'live' ? 'Live' : (tab == 'vod' ? 'Movies' : (tab == 'series' ? 'Series' : (tab == 'recents' ? 'Recents' : (tab == 'settings' ? 'Settings' : 'Favorites'))));
+                        final localizations = AppLocalizations.of(context);
+                        String label = tab == 'live' ? (localizations?.live ?? 'Live')
+                                     : (tab == 'vod' ? (localizations?.vod ?? 'Movies')
+                                     : (tab == 'series' ? (localizations?.series ?? 'Series')
+                                     : (tab == 'recents' ? (localizations?.recents ?? 'Recents')
+                                     : (tab == 'settings' ? (localizations?.settings ?? 'Settings')
+                                     : (localizations?.favorites ?? 'Favorites')))));
                         IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : (tab == 'recents' ? Icons.history : (tab == 'settings' ? Icons.settings : Icons.favorite))));
 
                         return ListTile(
