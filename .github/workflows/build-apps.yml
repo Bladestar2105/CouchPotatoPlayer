@@ -99,8 +99,7 @@ jobs:
               IPHONEOS_DEPLOYMENT_TARGET="18.0" \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              2>&1 | tee ios/build/ios-build.log
+              CODE_SIGN_IDENTITY=""
           else
             xcodebuild -project ios/CouchPotatoPlayer.xcodeproj \
               -scheme CouchPotatoPlayer \
@@ -113,8 +112,7 @@ jobs:
               IPHONEOS_DEPLOYMENT_TARGET="18.0" \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              2>&1 | tee ios/build/ios-build.log
+              CODE_SIGN_IDENTITY=""
           fi
       - name: Upload iOS Build Log
         uses: actions/upload-artifact@v4
@@ -146,8 +144,7 @@ jobs:
               -derivedDataPath ios/build/tvOS \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              2>&1 | tee ios/build/tvos-build.log
+              CODE_SIGN_IDENTITY=""
           else
             xcodebuild -project ios/CouchPotatoPlayer.xcodeproj \
               -scheme CouchPotatoPlayer \
@@ -157,8 +154,7 @@ jobs:
               -derivedDataPath ios/build/tvOS \
               clean build \
               CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              2>&1 | tee ios/build/tvos-build.log
+              CODE_SIGN_IDENTITY=""
           fi
       - name: Upload tvOS Build Log
         uses: actions/upload-artifact@v4

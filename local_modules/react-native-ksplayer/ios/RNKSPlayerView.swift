@@ -4,15 +4,15 @@ import KSPlayer
 import React
 
 @objc(RNKSPlayerView)
-class RNKSPlayerView: UIView {
+public class RNKSPlayerView: UIView {
 
-    private var playerView: IOSVideoPlayerView!
+    private var playerView: KSPlayer.IOSVideoPlayerView!
     private var url: URL?
     private var hasConfiguredOptions = false
 
     // ── React Native Props ──────────────────────────────────────
 
-    @objc var source: NSDictionary? {
+    @objc public var source: NSDictionary? {
         didSet {
             if let uri = source?["uri"] as? String, let newUrl = URL(string: uri) {
                 if url != newUrl {
@@ -23,64 +23,64 @@ class RNKSPlayerView: UIView {
         }
     }
 
-    @objc var onLoadStart: RCTDirectEventBlock?
-    @objc var onLoad: RCTDirectEventBlock?
-    @objc var onError: RCTDirectEventBlock?
-    @objc var onBuffer: RCTDirectEventBlock?
+    @objc public var onLoadStart: RCTDirectEventBlock?
+    @objc public var onLoad: RCTDirectEventBlock?
+    @objc public var onError: RCTDirectEventBlock?
+    @objc public var onBuffer: RCTDirectEventBlock?
 
     /// Buffer duration in seconds (minimum forward buffer)
-    @objc var preferredForwardBufferDuration: Double = 10.0 {
+    @objc public var preferredForwardBufferDuration: Double = 10.0 {
         didSet { setupPlayer() }
     }
 
     /// Maximum buffer duration in seconds
-    @objc var maxBufferDuration: Double = 30.0 {
+    @objc public var maxBufferDuration: Double = 30.0 {
         didSet { setupPlayer() }
     }
 
     /// Enable hardware decoding (default: true)
-    @objc var hardwareDecode: Bool = true {
+    @objc public var hardwareDecode: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable fast second open for quick channel switching
-    @objc var isSecondOpen: Bool = true {
+    @objc public var isSecondOpen: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable adaptive bitrate (auto quality switching for HLS)
-    @objc var videoAdaptable: Bool = true {
+    @objc public var videoAdaptable: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Enable auto play
-    @objc var isAutoPlay: Bool = true {
+    @objc public var isAutoPlay: Bool = true {
         didSet { setupPlayer() }
     }
 
     /// Max bitrate limit (0 = unlimited)
-    @objc var maxBitRate: Double = 0
+    @objc public var maxBitRate: Double = 0
 
     // ── Lifecycle ───────────────────────────────────────────────
 
-    override init(frame: CGRect) {
+    public override init(frame: CGRect) {
         super.init(frame: frame)
         configureGlobalOptions()
-        playerView = IOSVideoPlayerView()
+        playerView = KSPlayer.IOSVideoPlayerView()
         addSubview(playerView)
         playerView.delegate = self
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         playerView.frame = bounds
     }
 
-    override func removeFromSuperview() {
+    public override func removeFromSuperview() {
         playerView.resetPlayer()
         super.removeFromSuperview()
     }
@@ -88,16 +88,13 @@ class RNKSPlayerView: UIView {
     // ── Configuration ───────────────────────────────────────────
 
     private func configureGlobalOptions() {
-        // Use FFmpeg-based player as primary (better codec support for IPTV).
-        // With static libraries, types are in the global namespace — no module prefix.
-        // Try both qualified (framework) and unqualified (static lib) class names.
-        let mePlayer: MediaPlayerProtocol.Type? =
-            (NSClassFromString("KSMEPlayer") as? MediaPlayerProtocol.Type) ??
-            (NSClassFromString("KSPlayer.KSMEPlayer") as? MediaPlayerProtocol.Type)
-
-        if let mePlayer = mePlayer {
-            KSOptions.firstPlayerType = mePlayer
+        // Use FFmpeg-based player as primary (better codec support for IPTV)
+        if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? KSPlayer.MediaPlayerProtocol.Type {
+            KSPlayer.KSOptions.firstPlayerType = mePlayer
         }
+        // Fallback to AVPlayer for standard formats
+        KSPlayer.KSOptions.secondPlayerType = KSPlayer.KSAVPlayer.self
+    }
 
         // Fallback to AVPlayer for standard formats
         KSOptions.secondPlayerType = KSAVPlayer.self
@@ -109,11 +106,10 @@ class RNKSPlayerView: UIView {
         onLoadStart?([:])
 
         // Create options for this specific stream
-        let options = KSOptions()
+        let options = KSPlayer.KSOptions()
         options.preferredForwardBufferDuration = preferredForwardBufferDuration
         options.maxBufferDuration = maxBufferDuration
         options.isSecondOpen = isSecondOpen
-        options.isAutoPlay = isAutoPlay
         options.videoAdaptable = videoAdaptable
         options.hardwareDecode = hardwareDecode
         
@@ -123,7 +119,7 @@ class RNKSPlayerView: UIView {
             options.isSecondOpen = true
         }
         
-        let resource = KSPlayerResource(url: url, options: options)
+        let resource = KSPlayer.KSPlayerResource(url: url, options: options)
         playerView.set(resource: resource)
         if isAutoPlay {
             playerView.play()
@@ -133,13 +129,14 @@ class RNKSPlayerView: UIView {
 
 // ── Player Delegate ─────────────────────────────────────────────
 
-extension RNKSPlayerView: PlayerViewDelegate {
-    func playerView(stateDidChange state: KSPlayerState) {
+extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
+    public func playerController(state: KSPlayerState) {
         switch state {
         case .readyToPlay:
             onLoad?([:])
-        case .error(let error):
-            onError?(["error": error.localizedDescription])
+        case .error:
+            // The exact error is typically delivered in playerController(finish:)
+            onError?(["error": "Playback error"])
         case .buffering:
             onBuffer?(["isBuffering": true])
         case .bufferFinished:
@@ -149,18 +146,23 @@ extension RNKSPlayerView: PlayerViewDelegate {
         }
     }
 
-    func playerView(currentTime: TimeInterval, totalTime: TimeInterval) {}
+    public func playerController(currentTime: TimeInterval, totalTime: TimeInterval) {}
     
-    func playerView(finish error: Error?) {
+    public func playerController(finish error: Swift.Error?) {
         if let err = error {
             onError?(["error": err.localizedDescription])
         }
     }
     
-    func playerView(bufferedCount: Int, consumeTime: TimeInterval) {
+    public func playerController(bufferedCount: Int, consumeTime: TimeInterval) {
         // bufferedCount == 0 means first time loading
         if bufferedCount == 0 {
             onBuffer?(["isBuffering": true])
         }
     }
+
+    // Required stubs for PlayerControllerDelegate
+    public func playerController(maskShow: Bool) {}
+    public func playerController(action: PlayerButtonType) {}
+    public func playerController(seek: TimeInterval) {}
 }
