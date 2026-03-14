@@ -35,6 +35,8 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  patch_pods_for_tvos(installer)
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
@@ -55,6 +57,53 @@ post_install do |installer|
       if config.build_settings["ENABLE_BITCODE"]
         config.build_settings["ENABLE_BITCODE"] = "NO"
       end
+    end
+  end
+end
+def patch_pods_for_tvos(installer)
+  pods_dir = installer.pods_project.path.dirname
+
+  # Patch Pigeon generated files across all pods
+  Dir.glob(File.join(pods_dir, '**/*.swift')).each do |file|
+    content = File.read(file)
+    if content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
+      patched_content = content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
+      if patched_content != content
+        puts "Patching pigeon OS check in #{file}"
+        File.write(file, patched_content)
+      end
+    end
+  end
+
+  # Patch URLLaunchSession.swift
+  Dir.glob(File.join(pods_dir, '**/URLLaunchSession.swift')).each do |file|
+    content = File.read(file)
+    if !content.start_with?("#if os(iOS)")
+      puts "Patching URLLaunchSession.swift in #{file}"
+      File.write(file, "#if os(iOS)\n" + content + "\n#endif\n")
+    end
+  end
+
+  # Patch URLLauncherPlugin.swift
+  Dir.glob(File.join(pods_dir, '**/URLLauncherPlugin.swift')).each do |file|
+    content = File.read(file)
+    patched_content = content
+
+    # Optional variable currentSession
+    if patched_content.include?("private var currentSession: URLLaunchSession?") && !patched_content.include?("#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif")
+      patched_content = patched_content.gsub("private var currentSession: URLLaunchSession?", "#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif")
+    end
+
+    # Wrap openUrlInSafariViewController and closeSafariViewController
+    if patched_content.include?("func openUrlInSafariViewController") && !patched_content.include?("#if os(iOS)\n  func openUrlInSafariViewController")
+      pattern = /func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \}/
+      replacement = "#if os(iOS)\n  \\0\n#else\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.noUI))\n  }\n  func closeSafariViewController() {}\n#endif"
+      patched_content = patched_content.gsub(pattern, replacement)
+    end
+
+    if patched_content != content
+      puts "Patching URLLauncherPlugin.swift in #{file}"
+      File.write(file, patched_content)
     end
   end
 end
