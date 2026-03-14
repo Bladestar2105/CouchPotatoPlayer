@@ -91,3 +91,36 @@ jobs:
         with:
           name: ios-build.tar.gz
           path: ios-build.tar.gz
+
+  # ── tvOS Build (Flutter) ───────────────────────────────────────
+  build-tvos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.24.1'
+      - name: Download Custom Engine
+        run: |
+          mkdir -p out
+          curl -L -o out/host_release_arm64.zip https://github.com/DenisovAV/flutter_tv/releases/download/3.24.1/host_release_arm64.zip
+          curl -L -o out/ios_release.zip https://github.com/DenisovAV/flutter_tv/releases/download/3.24.1/ios_release.zip
+          unzip -q out/host_release_arm64.zip -d out/
+          unzip -q out/ios_release.zip -d out/
+      - name: Switch Target to tvOS
+        run: sh scripts/switch_target.sh tvos
+      - name: Install Dependencies
+        run: flutter pub get
+      - name: Build tvOS App (No Codesign)
+        run: flutter build ios --release --no-codesign
+        env:
+          FLUTTER_LOCAL_ENGINE: out/ios_release
+      - name: Package tvOS App
+        run: tar -czf tvos-build.tar.gz build/ios/iphoneos/Runner.app
+      - name: Upload tvOS Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvos-build.tar.gz
+          path: tvos-build.tar.gz
