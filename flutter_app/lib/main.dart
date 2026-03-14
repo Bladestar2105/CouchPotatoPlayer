@@ -7,6 +7,7 @@ import 'screens/home_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/search_screen.dart';
+import 'package:flutter/services.dart';
 import 'screens/pin_setup_screen.dart';
 
 void main() async {
@@ -33,23 +34,28 @@ class CouchPotatoPlayerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
-        return MaterialApp(
-          title: 'CouchPotatoPlayer',
-          theme: ThemeData(
-            brightness: Brightness.dark,
-            primaryColor: Colors.blue,
-            scaffoldBackgroundColor: const Color(0xFF0F0F0F),
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-          ),
-          initialRoute: provider.config == null ? '/' : '/home',
-          routes: {
-            '/': (context) => const WelcomeScreen(),
-            '/home': (context) => const HomeScreen(),
-            '/settings': (context) => const SettingsScreen(),
-            '/search': (context) => const SearchScreen(),
-            '/pin_setup': (context) => const PinSetupScreen(),
+        return Shortcuts(
+          shortcuts: <ShortcutActivator, Intent>{
+            const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
           },
-          debugShowCheckedModeBanner: false,
+          child: MaterialApp(
+            title: 'CouchPotatoPlayer',
+            theme: ThemeData(
+              brightness: Brightness.dark,
+              primaryColor: Colors.blue,
+              scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+              visualDensity: VisualDensity.adaptivePlatformDensity,
+            ),
+            initialRoute: provider.config == null ? '/' : '/home',
+            routes: {
+              '/': (context) => const WelcomeScreen(),
+              '/home': (context) => const HomeScreen(),
+              '/settings': (context) => const SettingsScreen(),
+              '/search': (context) => const SearchScreen(),
+              '/pin_setup': (context) => const PinSetupScreen(),
+            },
+            debugShowCheckedModeBanner: false,
+          ),
         );
       },
     );
