@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? selectedCategoryId;
   bool loading = false;
   int nowTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+  late int baseTime;
   Timer? _timer;
   late final LinkedScrollControllerGroup _linkedScrollControllerGroup;
   final ScrollController _epgScrollController = ScrollController();
@@ -33,11 +34,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+
+    final now = DateTime.now();
+    baseTime = DateTime(now.year, now.month, now.day, now.hour).millisecondsSinceEpoch ~/ 1000;
+
     _linkedScrollControllerGroup = LinkedScrollControllerGroup();
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
+        final currentNow = DateTime.now();
+        final currentBaseTime = DateTime(currentNow.year, currentNow.month, currentNow.day, currentNow.hour).millisecondsSinceEpoch ~/ 1000;
         setState(() {
-          nowTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          nowTime = currentNow.millisecondsSinceEpoch ~/ 1000;
+          baseTime = currentBaseTime;
         });
       }
     });
@@ -250,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   physics: const ClampingScrollPhysics(),
                   itemCount: 24, // 24 hours from now
                   itemBuilder: (context, index) {
-                    final time = DateTime.now().subtract(Duration(minutes: DateTime.now().minute, seconds: DateTime.now().second)).add(Duration(hours: index));
+                    final time = DateTime.fromMillisecondsSinceEpoch((baseTime + index * 3600) * 1000);
                     return Container(
                       width: 200, // Fixed width per hour block
                       alignment: Alignment.centerLeft,
@@ -286,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final programs = provider.epgData[epgKey] ?? [];
                 final isLocked = provider.isChannelLocked(chan.stream_id.toString());
                 return _LiveChannelRow(
-                  chan: chan, provider: provider, isFav: isFav, isLocked: isLocked, programs: programs, channelColWidth: channelColWidth, nowTime: nowTime, promptPin: _promptPin, linkedScrollControllerGroup: _linkedScrollControllerGroup,
+                  chan: chan, provider: provider, isFav: isFav, isLocked: isLocked, programs: programs, channelColWidth: channelColWidth, nowTime: nowTime, baseTime: baseTime, promptPin: _promptPin, linkedScrollControllerGroup: _linkedScrollControllerGroup,
                 );
               },
             ),
@@ -913,6 +921,7 @@ class _LiveChannelRow extends StatefulWidget {
   final List<ParsedProgram> programs;
   final double channelColWidth;
   final int nowTime;
+  final int baseTime;
   final Future<bool> Function(AppProvider provider) promptPin;
   final LinkedScrollControllerGroup linkedScrollControllerGroup;
 
@@ -925,6 +934,7 @@ class _LiveChannelRow extends StatefulWidget {
     required this.programs,
     required this.channelColWidth,
     required this.nowTime,
+    required this.baseTime,
     required this.promptPin,
     required this.linkedScrollControllerGroup,
   }) : super(key: key);
@@ -1080,60 +1090,77 @@ class _LiveChannelRowState extends State<_LiveChannelRow> {
               decoration: const BoxDecoration(
                 border: Border(bottom: BorderSide(color: Color(0xFF2C2C2E), width: 1)),
               ),
-              child: ListView.builder(
+              child: SingleChildScrollView(
                 controller: _rowScrollController,
                 scrollDirection: Axis.horizontal,
                 physics: const ClampingScrollPhysics(),
-                itemCount: widget.programs.isEmpty ? 1 : widget.programs.length,
-                itemBuilder: (context, progIndex) {
-                  if (widget.programs.isEmpty) {
-                    return Container(
-                      width: 24 * 200.0, // Match the total length of timeline header
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.only(left: 16),
-                      child: const Text("No EPG Data", style: TextStyle(color: Colors.grey)),
-                    );
-                  }
+                child: SizedBox(
+                  width: 24 * 200.0, // Match the total length of timeline header
+                  child: widget.programs.isEmpty
+                      ? Container(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.only(left: 16),
+                          child: const Text("No EPG Data", style: TextStyle(color: Colors.grey)),
+                        )
+                      : Stack(
+                          children: widget.programs.map((prog) {
+                            final double timelineEndTime = widget.baseTime + (24 * 3600.0);
 
-                  final prog = widget.programs[progIndex];
-                  // Calculate width based on duration (e.g. 1 hour = 200px)
-                  final durationMins = (prog.end - prog.start) / 60;
-                  final width = (durationMins * (200 / 60)).clamp(50.0, 1000.0);
+                            // Skip programs completely outside the 24-hour timeline window
+                            if (prog.end <= widget.baseTime || prog.start >= timelineEndTime) {
+                              return const SizedBox.shrink();
+                            }
 
-                  final isCurrent = widget.nowTime >= prog.start && widget.nowTime <= prog.end;
+                            // Calculate start and end offsets clamped to the 24-hour window
+                            final startSecondsOffset = (prog.start < widget.baseTime ? widget.baseTime : prog.start) - widget.baseTime;
+                            final endSecondsOffset = (prog.end > timelineEndTime ? timelineEndTime : prog.end) - widget.baseTime;
 
-                  return Container(
-                    width: width,
-                    margin: const EdgeInsets.only(right: 2, top: 12, bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isCurrent ? Colors.blue.withOpacity(0.3) : const Color(0xFF2C2C2E),
-                      borderRadius: BorderRadius.circular(4),
-                      border: isCurrent ? Border.all(color: Colors.blue, width: 1) : null,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          prog.title_raw,
-                          style: TextStyle(
-                            color: isCurrent ? Colors.white : Colors.grey[300],
-                            fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                            final left = (startSecondsOffset / 3600.0) * 200.0;
+                            final width = ((endSecondsOffset - startSecondsOffset) / 3600.0) * 200.0;
+
+                            // Don't draw if width is negligible
+                            if (width <= 0) return const SizedBox.shrink();
+
+                            final isCurrent = widget.nowTime >= prog.start && widget.nowTime < prog.end;
+
+                            return Positioned(
+                              left: left,
+                              width: width - 2, // 2px margin between blocks
+                              top: 12,
+                              bottom: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isCurrent ? Colors.blue.withValues(alpha: 0.3) : const Color(0xFF2C2C2E),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: isCurrent ? Border.all(color: Colors.blue, width: 1) : null,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      prog.title_raw,
+                                      style: TextStyle(
+                                        color: isCurrent ? Colors.white : Colors.grey[300],
+                                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: 13,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).minute.toString().padLeft(2, '0')} - ${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).minute.toString().padLeft(2, '0')}",
+                                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.start * 1000).minute.toString().padLeft(2, '0')} - ${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(prog.end * 1000).minute.toString().padLeft(2, '0')}",
-                          style: const TextStyle(color: Colors.grey, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                ),
               ),
             ),
           ),
