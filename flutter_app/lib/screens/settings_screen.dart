@@ -32,17 +32,69 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 tileColor: const Color(0xFF1C1C1E),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                title: const Text('Show Adult Content', style: TextStyle(color: Colors.white)),
-                trailing: Switch(
-                  value: provider.showAdult,
-                  activeThumbColor: Colors.blue,
-                  onChanged: (value) {
-                    // Temporarily local update, a full appProvider method should persist it.
-                    // For now, toggle visually (or let's add it fully to the provider).
-                  },
-                ),
+                title: const Text('Parental Control PIN', style: TextStyle(color: Colors.white)),
+                subtitle: Text(provider.pin != null ? 'PIN is set' : 'No PIN set', style: const TextStyle(color: Colors.grey)),
+                trailing: const Icon(Icons.lock, color: Colors.blue),
+                onTap: () {
+                  Navigator.pushNamed(context, '/pin_setup');
+                },
               ),
               const SizedBox(height: 16),
+              if (provider.pin != null) ...[
+                ListTile(
+                  tileColor: const Color(0xFF1C1C1E),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  title: const Text('Show Adult Content', style: TextStyle(color: Colors.white)),
+                  trailing: Switch(
+                    value: provider.showAdult,
+                    activeThumbColor: Colors.blue,
+                    onChanged: (value) async {
+                      if (value) {
+                        // Request PIN
+                        String? enteredPin = await showDialog<String>(
+                          context: context,
+                          builder: (dialogContext) {
+                            final pinController = TextEditingController();
+                            return AlertDialog(
+                              backgroundColor: const Color(0xFF2C2C2E),
+                              title: const Text('Enter PIN', style: TextStyle(color: Colors.white)),
+                              content: TextField(
+                                controller: pinController,
+                                obscureText: true,
+                                keyboardType: TextInputType.number,
+                                maxLength: 4,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: const InputDecoration(counterText: ''),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext, pinController.text),
+                                  child: const Text('Submit', style: TextStyle(color: Colors.blue)),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+
+                        if (!context.mounted) return;
+
+                        if (enteredPin == provider.pin) {
+                          await provider.setShowAdult(true);
+                        } else if (enteredPin != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Incorrect PIN')));
+                        }
+                      } else {
+                        await provider.setShowAdult(false);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               ListTile(
                 tileColor: const Color(0xFF1C1C1E),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

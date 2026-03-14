@@ -6,6 +6,8 @@ import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/search_screen.dart';
+import 'screens/pin_setup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +46,8 @@ class CouchPotatoPlayerApp extends StatelessWidget {
             '/': (context) => const WelcomeScreen(),
             '/home': (context) => const HomeScreen(),
             '/settings': (context) => const SettingsScreen(),
+            '/search': (context) => const SearchScreen(),
+            '/pin_setup': (context) => const PinSetupScreen(),
           },
           debugShowCheckedModeBanner: false,
         );

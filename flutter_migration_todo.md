@@ -24,18 +24,18 @@
 - [ ] **TMDB Service Integration**: Fetch trending movies/shows for the Home screen hero banner.
 
 ### 2. State Features
-- [ ] **Favorites System**: Allow users to add/remove streams/VODs to favorites (`addFavorite`, `removeFavorite`) and display them on the Home screen.
+- [x] **Favorites System**: Allow users to add/remove streams/VODs to favorites (`addFavorite`, `removeFavorite`) and display them on the Home screen.
 - [ ] **Recently Watched**: Track playback positions for VODs and last-watched timestamps for Live TV. Show "Continue Watching" row.
-- [ ] **Parental Control / PIN**:
-  - [ ] Implement `PinSetupScreen`.
-  - [ ] Filter `adult=1` categories unless unlocked.
+- [x] **Parental Control / PIN**:
+  - [x] Implement `PinSetupScreen`.
+  - [x] Filter `adult=1` categories unless unlocked.
   - [ ] Channel Locking (`lockedChannels`).
 - [ ] **Streaming Settings**: Buffer sizes, video qualities, player engine toggles (if supported).
 
 ### 3. UI/UX: Home Screen (Mobile)
 - [ ] **EPG Progress Bars**: Parse EPG data for the active channel list and display the "Now Playing" title + progress bar under live channels.
 - [ ] **Hero Banner**: Implement the auto-cycling TMDB "Trending" carousel at the top of the Home Screen.
-- [ ] **Pull-to-Refresh**: Implement `RefreshIndicator` to force an Xtream update.
+- [x] **Pull-to-Refresh**: Implement `RefreshIndicator` to force an Xtream update.
 - [ ] **Provider Switcher**: Quick-switch dropdown if the user has multiple saved Xtream/M3U providers.
 
 ### 4. UI/UX: Home Screen (TV Layout)
@@ -49,6 +49,6 @@
 - [ ] **Player Overlays**: Add custom UI controls to the `media_kit` player (Channel Name, Next/Prev Channel, Audio/Subtitle track selection).
 
 ### 6. Misc
-- [ ] **Search Screen**: Implement `SearchScreen` to search across Live, VOD, and Series.
+- [x] **Search Screen**: Implement `SearchScreen` to search across Live, VOD, and Series.
 - [ ] **Internationalization (i18n)**: Migrate the `react-i18next` translations to Flutter (`flutter_localizations`).
 - [ ] **Theming**: Fully migrate the color palette and typography from `src/utils/theme.ts`.

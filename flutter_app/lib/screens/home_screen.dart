@@ -32,6 +32,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final appProvider = Provider.of<AppProvider>(context, listen: false);
     if (appProvider.config == null || appProvider.config!.type != 'xtream') return;
 
+    if (activeTab == 'favorites') {
+      setState(() {
+        selectedCategoryId = null;
+        loading = false;
+      });
+      return;
+    }
+
     setState(() {
       loading = true;
       selectedCategoryId = null;
@@ -49,13 +57,20 @@ class _HomeScreenState extends State<HomeScreen> {
         cats = await xtream.getLiveCategories();
       }
 
+      // Filter adult categories if not showing adult content
+      if (!appProvider.showAdult) {
+        cats = cats.where((c) => c.adult != 1).toList();
+      }
+
       await appProvider.setCategories(cats);
     } catch (e) {
       debugPrint('Error loading categories: $e');
     } finally {
-      setState(() {
-        loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
     }
   }
 
@@ -84,9 +99,11 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       debugPrint('Error loading channels: $e');
     } finally {
-      setState(() {
-        loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
     }
   }
 
@@ -95,19 +112,30 @@ class _HomeScreenState extends State<HomeScreen> {
       color: const Color(0xFF1C1C1E),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
-        children: ['live', 'vod', 'series', 'settings'].map((tab) {
+        children: ['live', 'vod', 'series', 'favorites', 'settings'].map((tab) {
           if (tab == 'settings') {
-            return IconButton(
-              icon: const Icon(Icons.settings, color: Colors.grey),
-              onPressed: () {
-                Navigator.pushNamed(context, '/settings');
-              },
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.search, color: Colors.grey),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/search');
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings, color: Colors.grey),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/settings');
+                  },
+                ),
+              ],
             );
           }
 
           final isSelected = activeTab == tab;
-          String label = tab == 'live' ? 'Live' : (tab == 'vod' ? 'Movies' : 'Series');
-          IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : Icons.list);
+          String label = tab == 'live' ? 'Live' : (tab == 'vod' ? 'Movies' : (tab == 'series' ? 'Series' : 'Favorites'));
+          IconData icon = tab == 'live' ? Icons.tv : (tab == 'vod' ? Icons.movie : (tab == 'series' ? Icons.list : Icons.favorite));
 
           return Expanded(
             child: GestureDetector(
@@ -134,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -146,6 +175,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategories(AppProvider provider) {
+    if (activeTab == 'favorites') return const SizedBox.shrink();
+
     if (loading && provider.categories.isEmpty) {
       return const SizedBox(height: 52, child: Center(child: CircularProgressIndicator()));
     }
@@ -186,51 +217,204 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLiveList(AppProvider provider) {
-    return ListView.builder(
-      itemCount: provider.channels.length,
-      itemBuilder: (context, index) {
-        final chan = provider.channels[index];
-        return ListTile(
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2E),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: chan.stream_icon != null && chan.stream_icon!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: chan.stream_icon!,
-                    fit: BoxFit.cover,
-                    errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
-                  )
-                : const Icon(Icons.tv, color: Colors.grey),
-          ),
-          title: Text(
-            chan.name,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          onTap: () {
-            if (chan.stream_id != null) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LivePlayerScreen(
-                    channelName: chan.name,
-                    streamId: chan.stream_id!,
-                    extension: 'm3u8',
-                    type: 'live',
-                  ),
-                ),
-              );
-            }
-          },
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        if (selectedCategoryId != null) {
+          await _loadChannels(selectedCategoryId!);
+        }
       },
+      child: ListView.builder(
+        itemCount: provider.channels.length,
+        itemBuilder: (context, index) {
+          final chan = provider.channels[index];
+          final isFav = provider.isFavorite(chan.stream_id.toString());
+          return ListTile(
+            leading: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C2C2E),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: chan.stream_icon != null && chan.stream_icon!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: chan.stream_icon!,
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => const Icon(Icons.tv, color: Colors.grey),
+                    )
+                  : const Icon(Icons.tv, color: Colors.grey),
+            ),
+            title: Text(
+              chan.name,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            trailing: IconButton(
+              icon: Icon(
+                isFav ? Icons.favorite : Icons.favorite_border,
+                color: isFav ? Colors.red : Colors.grey,
+              ),
+              onPressed: () {
+                if (isFav) {
+                  provider.removeFavorite(chan.stream_id.toString());
+                } else {
+                  provider.addFavorite(iptv.FavoriteItem(
+                    id: chan.stream_id.toString(),
+                    type: 'live',
+                    name: chan.name,
+                    icon: chan.stream_icon,
+                    categoryId: chan.category_id,
+                    addedAt: DateTime.now().millisecondsSinceEpoch,
+                  ));
+                }
+              },
+            ),
+            onTap: () {
+              if (chan.stream_id != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LivePlayerScreen(
+                      channelName: chan.name,
+                      streamId: chan.stream_id!,
+                      extension: 'm3u8',
+                      type: 'live',
+                    ),
+                  ),
+                );
+              }
+            },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildGrid(AppProvider provider) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        if (selectedCategoryId != null) {
+          await _loadChannels(selectedCategoryId!);
+        }
+      },
+      child: GridView.builder(
+        padding: const EdgeInsets.all(12),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          childAspectRatio: 2 / 3,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+        ),
+        itemCount: provider.channels.length,
+        itemBuilder: (context, index) {
+          final chan = provider.channels[index];
+          final imageUrl = chan.stream_icon ?? chan.cover;
+          final name = chan.name.isNotEmpty ? chan.name : chan.title ?? 'Unknown';
+          final id = (activeTab == 'series' ? chan.series_id : chan.stream_id)?.toString() ?? '';
+          final isFav = provider.isFavorite(id);
+
+          return GestureDetector(
+            onTap: () {
+               if (id.isNotEmpty) {
+                 Navigator.push(
+                   context,
+                   MaterialPageRoute(
+                     builder: (_) => MediaInfoScreen(
+                       id: int.parse(id),
+                       type: activeTab,
+                       title: name,
+                       cover: imageUrl,
+                       extension: chan.container_extension ?? 'mp4',
+                     ),
+                   ),
+                 );
+               }
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1E),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  imageUrl != null && imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const Icon(Icons.movie, color: Colors.grey, size: 32),
+                        )
+                      : const Icon(Icons.movie, color: Colors.grey, size: 32),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      color: Colors.black54,
+                      padding: const EdgeInsets.all(4),
+                      child: Text(
+                        name,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          isFav ? Icons.favorite : Icons.favorite_border,
+                          color: isFav ? Colors.red : Colors.white,
+                          size: 20,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          if (isFav) {
+                            provider.removeFavorite(id);
+                          } else {
+                            provider.addFavorite(iptv.FavoriteItem(
+                              id: id,
+                              type: activeTab,
+                              name: name,
+                              icon: imageUrl,
+                              categoryId: chan.category_id,
+                              addedAt: DateTime.now().millisecondsSinceEpoch,
+                            ));
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFavoritesGrid(AppProvider provider) {
+    if (provider.favorites.isEmpty) {
+      return const Expanded(
+        child: Center(
+          child: Text(
+            'No favorites added yet.',
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -239,29 +423,40 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
-      itemCount: provider.channels.length,
+      itemCount: provider.favorites.length,
       itemBuilder: (context, index) {
-        final chan = provider.channels[index];
-        final imageUrl = chan.stream_icon ?? chan.cover;
-        final name = chan.name.isNotEmpty ? chan.name : chan.title ?? 'Unknown';
+        final fav = provider.favorites[index];
+        final imageUrl = fav.icon;
+        final name = fav.name;
 
         return GestureDetector(
           onTap: () {
-             final id = activeTab == 'series' ? chan.series_id : chan.stream_id;
-             if (id != null) {
+            if (fav.type == 'live') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LivePlayerScreen(
+                    channelName: name,
+                    streamId: int.tryParse(fav.id) ?? 0,
+                    extension: 'm3u8',
+                    type: 'live',
+                  ),
+                ),
+              );
+            } else {
                Navigator.push(
                  context,
                  MaterialPageRoute(
                    builder: (_) => MediaInfoScreen(
-                     id: id,
-                     type: activeTab,
+                     id: int.tryParse(fav.id) ?? 0,
+                     type: fav.type,
                      title: name,
                      cover: imageUrl,
-                     extension: chan.container_extension ?? 'mp4',
+                     extension: 'mp4',
                    ),
                  ),
                );
-             }
+            }
           },
           child: Container(
             decoration: BoxDecoration(
@@ -276,9 +471,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? CachedNetworkImage(
                         imageUrl: imageUrl,
                         fit: BoxFit.cover,
-                        errorWidget: (context, url, error) => const Icon(Icons.movie, color: Colors.grey, size: 32),
+                        errorWidget: (context, url, error) => Icon(fav.type == 'live' ? Icons.tv : Icons.movie, color: Colors.grey, size: 32),
                       )
-                    : const Icon(Icons.movie, color: Colors.grey, size: 32),
+                    : Icon(fav.type == 'live' ? Icons.tv : Icons.movie, color: Colors.grey, size: 32),
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -295,6 +490,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.favorite, color: Colors.red, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        provider.removeFavorite(fav.id);
+                      },
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -303,7 +516,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+
   Widget _buildContent(AppProvider provider) {
+    if (activeTab == 'favorites') {
+      return Expanded(child: _buildFavoritesGrid(provider));
+    }
+
     if (loading && provider.channels.isEmpty) {
       return const Expanded(child: Center(child: CircularProgressIndicator()));
     }
