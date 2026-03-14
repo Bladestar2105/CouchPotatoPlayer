@@ -4,7 +4,7 @@ import KSPlayer
 import React
 
 @objc(RNKSPlayerView)
-class RNKSPlayerView: UIView {
+public class RNKSPlayerView: UIView {
 
     private var playerView: KSPlayer.IOSVideoPlayerView!
     private var url: URL?
@@ -63,7 +63,7 @@ class RNKSPlayerView: UIView {
 
     // ── Lifecycle ───────────────────────────────────────────────────
 
-    override init(frame: CGRect) {
+    public override init(frame: CGRect) {
         super.init(frame: frame)
         configureGlobalOptions()
         playerView = KSPlayer.IOSVideoPlayerView()
@@ -71,7 +71,7 @@ class RNKSPlayerView: UIView {
         playerView.delegate = self
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -132,7 +132,7 @@ class RNKSPlayerView: UIView {
 // ── Player Delegate ─────────────────────────────────────────────────
 
 extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
-    func playerController(state: KSPlayer.KSPlayerState) {
+    public func playerController(state: KSPlayer.KSPlayerState) {
         switch state {
         case .readyToPlay:
             onLoad?([:])
@@ -148,15 +148,15 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
         }
     }
 
-    func playerController(currentTime: TimeInterval, totalTime: TimeInterval) {}
+    public func playerController(currentTime: TimeInterval, totalTime: TimeInterval) {}
     
-    func playerController(finish error: Error?) {
+    public func playerController(finish error: Error?) {
         if let err = error {
             onError?(["error": err.localizedDescription])
         }
     }
     
-    func playerController(bufferedCount: Int, consumeTime: TimeInterval) {
+    public func playerController(bufferedCount: Int, consumeTime: TimeInterval) {
         // bufferedCount == 0 means first time loading
         if bufferedCount == 0 {
             onBuffer?(["isBuffering": true])
@@ -164,7 +164,7 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
     }
 
     // Required stubs for PlayerControllerDelegate
-    func playerController(maskShow: Bool) {}
-    func playerController(action: KSPlayer.PlayerButtonType) {}
-    func playerController(seek: TimeInterval) {}
+    public func playerController(maskShow: Bool) {}
+    public func playerController(action: KSPlayer.PlayerButtonType) {}
+    public func playerController(seek: TimeInterval) {}
 }
