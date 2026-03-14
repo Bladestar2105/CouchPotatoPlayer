@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/settings_provider.dart';
@@ -67,8 +68,8 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
       controller = VideoController(player!);
 
       // Force stream to be seekable (especially needed for some MP4/VOD streams)
-      if (player?.platform is NativePlayer) {
-        (player?.platform as NativePlayer).setProperty('force-seekable', 'yes');
+      if (!kIsWeb && player?.platform is NativePlayer) {
+        (player?.platform as dynamic).setProperty('force-seekable', 'yes');
       }
 
       player?.stream.position.listen((pos) {

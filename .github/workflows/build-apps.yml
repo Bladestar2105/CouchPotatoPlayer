@@ -94,6 +94,7 @@ jobs:
 
   # ── tvOS Build (Flutter) ───────────────────────────────────────
   build-tvos:
+    if: false # Disabled due to upstream engine releases being deleted from GitHub and moved to Google Drive (which breaks automated CI downloads without an API key)
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
