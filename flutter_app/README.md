@@ -1,4 +1,4 @@
-# couch_potato_player
+# CouchPotatoPlayer
 
 A new Flutter project.
 
