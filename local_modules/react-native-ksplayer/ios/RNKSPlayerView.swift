@@ -172,9 +172,9 @@ extension RNKSPlayerView: PlayerControllerDelegate {
         }
     }
 
-    public func playerController(maskShow isHidden: Bool) {}
+    public func playerController(maskShow: Bool) {}
 
-    public func playerController(action type: PlayerButtonType) {}
+    public func playerController(action: PlayerButtonType) {}
 
-    public func playerController(seek time: TimeInterval) {}
+    public func playerController(seek: TimeInterval) {}
 }
