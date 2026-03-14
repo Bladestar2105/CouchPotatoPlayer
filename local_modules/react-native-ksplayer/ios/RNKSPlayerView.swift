@@ -1,10 +1,9 @@
 import Foundation
 import UIKit
-import KSPlayer
 import React
 
 @objc(RNKSPlayerView)
-class RNKSPlayerView: UIView {
+public class RNKSPlayerView: UIView {
 
     private var playerView: IOSVideoPlayerView!
     private var url: URL?
@@ -63,7 +62,7 @@ class RNKSPlayerView: UIView {
 
     // ── Lifecycle ───────────────────────────────────────────────────
 
-    override init(frame: CGRect) {
+    public override init(frame: CGRect) {
         super.init(frame: frame)
         configureGlobalOptions()
         playerView = IOSVideoPlayerView()
@@ -71,16 +70,16 @@ class RNKSPlayerView: UIView {
         playerView.delegate = self
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         playerView.frame = bounds
     }
 
-    override func removeFromSuperview() {
+    public override func removeFromSuperview() {
         playerView.resetPlayer()
         super.removeFromSuperview()
     }
@@ -89,11 +88,21 @@ class RNKSPlayerView: UIView {
 
     private func configureGlobalOptions() {
         // Use FFmpeg-based player as primary (better codec support for IPTV)
-        if let mePlayer = NSClassFromString("KSPlayer.KSMEPlayer") as? MediaPlayerProtocol.Type {
-            KSPlayer.KSOptions.firstPlayerType = mePlayer
+        // Check for the class under the module namespace where it's compiled,
+        // or just reference the type directly if it's available because it's now embedded in the same module.
+        // In Swift, since KSMEPlayer is compiled directly with this code, we can use the type directly!
+        #if canImport(FFmpegKit)
+        KSOptions.firstPlayerType = KSMEPlayer.self
+        #else
+        if let mePlayer = NSClassFromString("KSMEPlayer") as? MediaPlayerProtocol.Type {
+            KSOptions.firstPlayerType = mePlayer
+        } else if let mePlayer = NSClassFromString("react_native_ksplayer.KSMEPlayer") as? MediaPlayerProtocol.Type {
+            KSOptions.firstPlayerType = mePlayer
         }
+        #endif
+
         // Fallback to AVPlayer for standard formats
-        KSPlayer.KSOptions.secondPlayerType = KSAVPlayer.self
+        KSOptions.secondPlayerType = KSAVPlayer.self
     }
 
     private func applyOptions() {
@@ -131,13 +140,14 @@ class RNKSPlayerView: UIView {
 
 // ── Player Delegate ─────────────────────────────────────────────────
 
-extension RNKSPlayerView: PlayerViewDelegate {
-    func playerView(stateDidChange state: KSPlayerState) {
+extension RNKSPlayerView: PlayerControllerDelegate {
+    public func playerController(state: KSPlayerState) {
         switch state {
         case .readyToPlay:
             onLoad?([:])
-        case .error(let error):
-            onError?(["error": error.localizedDescription])
+        case .error:
+            // KSPlayerState.error does not have an associated value
+            onError?(["error": "KSPlayer encountered an error"])
         case .buffering:
             onBuffer?(["isBuffering": true])
         case .bufferFinished:
@@ -147,18 +157,24 @@ extension RNKSPlayerView: PlayerViewDelegate {
         }
     }
 
-    func playerView(currentTime: TimeInterval, totalTime: TimeInterval) {}
+    public func playerController(currentTime: TimeInterval, totalTime: TimeInterval) {}
     
-    func playerView(finish error: Error?) {
+    public func playerController(finish error: Error?) {
         if let err = error {
             onError?(["error": err.localizedDescription])
         }
     }
     
-    func playerView(bufferedCount: Int, consumeTime: TimeInterval) {
+    public func playerController(bufferedCount: Int, consumeTime: TimeInterval) {
         // bufferedCount == 0 means first time loading
         if bufferedCount == 0 {
             onBuffer?(["isBuffering": true])
         }
     }
+
+    public func playerController(maskShow isHidden: Bool) {}
+
+    public func playerController(action type: PlayerButtonType) {}
+
+    public func playerController(seek time: TimeInterval) {}
 }

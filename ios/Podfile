@@ -16,8 +16,6 @@ end
 source 'https://github.com/CocoaPods/Specs.git'
 
 def shared_pods(config)
-  pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git'
-  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :modular_headers => true
   pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :tag => '6.1.3', :modular_headers => true
   pod 'Libass', :git => 'https://github.com/kingslay/FFmpegKit.git', :tag => '6.1.3'
   pod 'Libmpv', :git => 'https://github.com/kingslay/FFmpegKit.git', :tag => '6.1.3'

@@ -10,7 +10,12 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => "13.0", :tvos => "13.0" }
   s.source       = { :git => "https://github.com/react-native-ksplayer.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/**/*.{h,m,mm,swift}"
+  s.source_files = "ios/**/*.{h,m,mm,swift,c,cpp,metal}"
   s.dependency "React-Core"
-  s.dependency "KSPlayer"
+
+  # External dependencies for KSPlayer functionality
+  s.dependency "FFmpegKit"
+  s.dependency "Libass"
+  s.dependency "Libmpv"
+  s.dependency "OpenSSL"
 end
