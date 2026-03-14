@@ -9,7 +9,8 @@ public class RNKSPlayerViewManager: RCTViewManager {
     return RNKSPlayerView()
   }
 
-  public override static func requiresMainQueueSetup() -> Bool {
+  @objc
+  public override class func requiresMainQueueSetup() -> Bool {
     return true
   }
 }

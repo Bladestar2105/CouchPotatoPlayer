@@ -131,7 +131,7 @@ public class RNKSPlayerView: UIView {
 // ── Player Delegate ─────────────────────────────────────────────────
 
 extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
-    public func playerController(state: KSPlayer.KSPlayerState) {
+    public func playerController(state: KSPlayerState) {
         switch state {
         case .readyToPlay:
             onLoad?([:])
@@ -149,7 +149,7 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
 
     public func playerController(currentTime: TimeInterval, totalTime: TimeInterval) {}
     
-    public func playerController(finish error: Error?) {
+    public func playerController(finish error: Swift.Error?) {
         if let err = error {
             onError?(["error": err.localizedDescription])
         }
@@ -164,6 +164,6 @@ extension RNKSPlayerView: KSPlayer.PlayerControllerDelegate {
 
     // Required stubs for PlayerControllerDelegate
     public func playerController(maskShow: Bool) {}
-    public func playerController(action: KSPlayer.PlayerButtonType) {}
+    public func playerController(action: PlayerButtonType) {}
     public func playerController(seek: TimeInterval) {}
 }
