@@ -101,7 +101,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.24.1'
+          flutter-version: '3.35.7'
       - name: Download Custom Engine
         run: |
           mkdir -p out
