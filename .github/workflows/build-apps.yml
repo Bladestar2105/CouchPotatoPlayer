@@ -101,7 +101,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.24.1'
+          flutter-version: '3.35.7'
       - name: Download Custom Engine
         run: |
           mkdir -p out
@@ -109,16 +109,30 @@ jobs:
           curl -L -o out/ios_release.zip https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download
           unzip -q out/host_release_arm64.zip -d out/
           unzip -q out/ios_release.zip -d out/
+      - name: Generate Boilerplate
+        run: flutter build ios --config-only --no-codesign
+        env:
+          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
       - name: Switch Target to tvOS
         run: sh scripts/switch_target.sh tvos
+      - name: Copy xcconfig and sh
+        run: |
+          cp _ios/Flutter/Generated.xcconfig ios/Flutter/
+          cp _ios/Flutter/flutter_export_environment.sh ios/Flutter/
       - name: Install Dependencies
         run: flutter pub get
+      - name: Pod Install
+        run: |
+          cd ios
+          pod install
       - name: Build tvOS App (No Codesign)
-        run: flutter build ios --release --no-codesign
+        run: |
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
         env:
-          FLUTTER_LOCAL_ENGINE: out/ios_release
+          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
       - name: Package tvOS App
-        run: tar -czf tvos-build.tar.gz build/ios/iphoneos/Runner.app
+        run: tar -czf tvos-build.tar.gz build/ios/Release-appletvos/Runner.app
       - name: Upload tvOS Build
         uses: actions/upload-artifact@v4
         with:
