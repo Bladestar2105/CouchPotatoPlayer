@@ -103,7 +103,7 @@ def patch_pods_for_tvos(installer)
     # Wrap openUrlInSafariViewController and closeSafariViewController
     if patched_content.include?("func openUrlInSafariViewController") && !patched_content.include?("#if os(iOS)\n  func openUrlInSafariViewController")
       pattern = /func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \}/
-      replacement = "#if os(iOS)\n  \\0\n#else\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.noUI))\n  }\n  func closeSafariViewController() {}\n#endif"
+      replacement = "#if os(iOS)\n  \\0\n#else\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
       patched_content = patched_content.gsub(pattern, replacement)
     end
 
