@@ -68,7 +68,7 @@ end
 def patch_pods_for_tvos(installer)
   pods_dir = installer.pods_project.path.dirname
   symlinks_dir = File.expand_path(File.join(pods_dir, '..', '.symlinks', 'plugins'))
-
+  
   # Resolve symlinks so Dir.glob works properly
   real_symlink_paths = []
   if Dir.exist?(symlinks_dir)
@@ -102,6 +102,8 @@ def patch_pods_for_tvos(installer)
       patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
     elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#endif")
       patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
+    elsif patched_content.include?("import Flutter") && !patched_content.include?("#if os(tvOS)") && !patched_content.include?("#if os(iOS)")
+      patched_content = patched_content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
     end
     if patched_content.include?("binaryMessenger: messenger") && !patched_content.include?("binaryMessenger: messenger()")
       patched_content = patched_content.gsub("binaryMessenger: messenger", "binaryMessenger: messenger()")
