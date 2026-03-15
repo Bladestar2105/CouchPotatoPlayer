@@ -121,6 +121,8 @@ jobs:
           cp _ios/Flutter/flutter_export_environment.sh ios/Flutter/
       - name: Install Dependencies
         run: flutter pub get
+      - name: Patch pub-cache for tvOS
+        run: ruby scripts/patch_tvos_pods.rb
       - name: Pod Install
         run: |
           cd ios
