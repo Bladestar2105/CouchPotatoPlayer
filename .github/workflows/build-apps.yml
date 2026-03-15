@@ -128,7 +128,7 @@ jobs:
       - name: Build tvOS App (No Codesign)
         run: |
           cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' SYMROOT="${{ github.workspace }}/build/ios"
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
         env:
           FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
       - name: Package tvOS App
