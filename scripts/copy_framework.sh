@@ -7,20 +7,20 @@
 # Exit on error
 set -e
 
-if [ "$2" == "" ]; then
+if [ "$2" = "" ]; then
 	echo "Error: FLUTTER_LOCAL_ENGINE is not specified"
 	break
 fi
 
 FLUTTER_LOCAL_ENGINE=$2
 
-if [ "$1" == "release" ]; then
+if [ "$1" = "release" ]; then
 	echo "Coping Flutter.framework (release)..."
 	DEVICE_TOOLS=$FLUTTER_LOCAL_ENGINE/out/ios_release/clang_arm64
-elif [[ "$1" == "debug_sim" ]] ; then
+elif [ "$1" = "debug_sim" ] ; then
 	echo "Coping Flutter.framework (debug-simulator)..."
 	DEVICE_TOOLS=$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt/clang_x64
-elif [[ "$1" == "debug_sim_arm64" ]] ; then
+elif [ "$1" = "debug_sim_arm64" ] ; then
 	echo "Coping Flutter.framework (debug-simulator-arm64)..."
 	DEVICE_TOOLS=$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt_arm64/clang_arm64
 else

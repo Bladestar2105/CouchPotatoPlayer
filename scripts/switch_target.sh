@@ -4,8 +4,8 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-if [ "$1" == "ios" ]; then
-  if [[ ! -d ./tvos ]] && [[ -d ./_ios ]] && [[ -d ./ios ]]; then
+if [ "$1" = "ios" ]; then
+  if [ ! -d ./tvos ] && [ -d ./_ios ] && [ -d ./ios ]; then
     echo "switching to 'ios' "
     mv ./ios ./tvos
     mv ./_ios ./ios
@@ -14,8 +14,8 @@ if [ "$1" == "ios" ]; then
     exit 1
   fi
 
-elif [[ "$1" == "tvos" ]] ; then
-  if [[ ! -d ./_ios ]] && [[ -d ./tvos ]] && [[ -d ./ios ]]; then
+elif [ "$1" = "tvos" ] ; then
+  if [ ! -d ./_ios ] && [ -d ./tvos ] && [ -d ./ios ]; then
     echo "switching to 'tvos' "
     mv ./ios ./_ios
     mv ./tvos ./ios
