@@ -23,6 +23,17 @@ def flutter_root
   raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
 end
 
+def flutter_framework_dir
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  if File.exist?(generated_xcode_build_settings_path)
+    File.foreach(generated_xcode_build_settings_path) do |line|
+      matches = line.match(/FLUTTER_FRAMEWORK_DIR\=(.*)/)
+      return matches[1].strip if matches
+    end
+  end
+  nil
+end
+
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
 flutter_ios_podfile_setup
@@ -41,11 +52,15 @@ post_install do |installer|
     config.build_settings["ENABLE_USER_SCRIPT_SANDBOXING"] = "NO"
   end
 
+  fw_dir = flutter_framework_dir
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       # set framework search path
-      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = "\"#{File.expand_path("..", $PROJECT_DIR)}/ios/Flutter\" $(inherited)"
+      paths = "\"#{File.expand_path("..", $PROJECT_DIR)}/ios/Flutter\""
+      paths += " \"#{fw_dir}\"" if fw_dir
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = "#{paths} $(inherited)"
       config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
       config.build_settings["TVOS_DEPLOYMENT_TARGET"] = "15.0"
       # convert ios to tvos target
@@ -68,7 +83,7 @@ end
 def patch_pods_for_tvos(installer)
   pods_dir = installer.pods_project.path.dirname
   symlinks_dir = File.expand_path(File.join(pods_dir, '..', '.symlinks', 'plugins'))
-  
+
   # Resolve symlinks so Dir.glob works properly
   real_symlink_paths = []
   if Dir.exist?(symlinks_dir)
@@ -82,7 +97,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Helper to get all swift files
-  def get_all_swift_files(pods_dir, real_symlink_paths, file_pattern)
+  get_all_swift_files = ->(file_pattern) do
     files = Dir.glob(File.join(pods_dir, "**/#{file_pattern}"))
     real_symlink_paths.each do |real_path|
       files += Dir.glob(File.join(real_path, "**/#{file_pattern}"))
@@ -91,7 +106,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch Pigeon generated files across all pods
-  get_all_swift_files(pods_dir, real_symlink_paths, '*.swift').each do |file|
+  get_all_swift_files.call('*.swift').each do |file|
     content = File.read(file)
     patched_content = content
     if patched_content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
@@ -102,8 +117,6 @@ def patch_pods_for_tvos(installer)
       patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
     elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#endif")
       patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
-    elsif patched_content.include?("import Flutter") && !patched_content.include?("#if os(tvOS)") && !patched_content.include?("#if os(iOS)")
-      patched_content = patched_content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
     end
     if patched_content.include?("binaryMessenger: messenger") && !patched_content.include?("binaryMessenger: messenger()")
       patched_content = patched_content.gsub("binaryMessenger: messenger", "binaryMessenger: messenger()")
@@ -115,7 +128,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch URLLaunchSession.swift
-  get_all_swift_files(pods_dir, real_symlink_paths, 'URLLaunchSession.swift').each do |file|
+  get_all_swift_files.call('URLLaunchSession.swift').each do |file|
     content = File.read(file)
     if !content.start_with?("#if os(iOS)")
       puts "Patching URLLaunchSession.swift in #{file}"
@@ -124,7 +137,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch URLLauncherPlugin.swift
-  get_all_swift_files(pods_dir, real_symlink_paths, 'URLLauncherPlugin.swift').each do |file|
+  get_all_swift_files.call('URLLauncherPlugin.swift').each do |file|
     content = File.read(file)
     patched_content = content
 
@@ -147,7 +160,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch media_kit_video for tvOS
-  get_all_swift_files(pods_dir, real_symlink_paths, 'VideoOutput.swift').each do |file|
+  get_all_swift_files.call('VideoOutput.swift').each do |file|
     content = File.read(file)
     if content.include?("import Flutter") && !content.include?("#if os(tvOS)")
       patched_content = content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
