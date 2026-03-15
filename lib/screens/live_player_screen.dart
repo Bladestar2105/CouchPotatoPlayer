@@ -131,6 +131,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
               top: 10,
               left: 10,
               child: IconButton(
+                tooltip: 'Back',
                 icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
                 onPressed: () => Navigator.of(context).pop(),
               ),

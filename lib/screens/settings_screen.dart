@@ -217,10 +217,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
+                              tooltip: 'Edit provider',
                               icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
                               onPressed: () => _showProviderDialog(context, existingProvider: p),
                             ),
                             IconButton(
+                              tooltip: 'Delete provider',
                               icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
                               onPressed: () async {
                                 final confirm = await showDialog<bool>(
