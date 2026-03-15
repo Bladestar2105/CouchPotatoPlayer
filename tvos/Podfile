@@ -45,7 +45,9 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       # set framework search path
-      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + "#{File.expand_path('..', $PROJECT_DIR)}/ios/Flutter" + '" $(inherited)'
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+      config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
       config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
       config.build_settings["TVOS_DEPLOYMENT_TARGET"] = "15.0"
       # convert ios to tvos target
@@ -286,6 +288,157 @@ def patch_pods_for_tvos(installer)
     if patched != content
       puts "Patching VideoOutput.swift: #{file}"
       File.write(file, patched)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 7: Patch Package.swift files to add tvOS platform support
+  # All iOS-only SPM packages fail ScanDependencies when built for tvOS
+  # because they don't declare tvOS in their platforms array.
+  # ---------------------------------------------------------------------------
+  def collect_package_swift_files(search_dirs)
+    files = []
+    search_dirs.each do |dir|
+      files += Dir.glob(File.join(dir, "**/Package.swift"))
+    end
+    files.select { |f| f.include?("/ios/") }.uniq
+  end
+
+  collect_package_swift_files(search_dirs).each do |file|
+    content = File.read(file)
+    next if content.include?("tvOS")
+    patched = content
+
+    # Add .tvOS("15.0") to the platforms array, handling various indent/comma styles:
+    # Style A: .iOS("x.x")\n    ]          (no trailing comma)
+    # Style B: .iOS("x.x"),\n    ]         (trailing comma before closing bracket)
+    if patched.include?(".iOS(") && !patched.include?(".tvOS(")
+      # Style A: no trailing comma - add comma + tvOS before ]
+      patched = patched.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n(\s*)\])/) do |_match|
+        ios_line = $1
+        rest = $2
+        indent = $3
+        ios_line + ",\n" + indent + ".tvOS(&quot;15.0&quot;)" + rest
+      end
+    end
+
+    if patched != content
+      puts "Patching Package.swift for tvOS: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 8: wakelock_plus Objective-C files
+  # WakelockPlusPlugin.h/m uses #import <Flutter/Flutter.h> (needs tvOS guard)
+  # WakelockPlusPlugin.m uses isIdleTimerDisabled which is iOS-only on tvOS
+  # UIApplication+idleTimerLock uses method swizzling (iOS-only)
+  # messages.g.m uses #import <Flutter/Flutter.h> without tvOS guard
+  # ---------------------------------------------------------------------------
+
+  # Helper: collect ObjC files
+  def collect_objc_files(search_dirs, pattern)
+    files = []
+    search_dirs.each do |dir|
+      files += Dir.glob(File.join(dir, "**", pattern))
+    end
+    files.uniq
+  end
+
+  # Patch WakelockPlusPlugin.h - replace bare Flutter import with guarded one
+  collect_objc_files(search_dirs, 'WakelockPlusPlugin.h').each do |file|
+    content = File.read(file)
+    patched = content
+    if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
+      patched = patched.gsub(
+        "#import <Flutter/Flutter.h>",
+        "#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+      # Actually just keep it - Flutter framework is available on tvOS too via custom engine
+      # The real fix is messages.g.m and WakelockPlusPlugin.m
+    end
+  end
+
+  # Patch messages.g.m - fix Flutter import for tvOS
+  collect_objc_files(search_dirs, 'messages.g.m').each do |file|
+    next unless file.include?("wakelock_plus")
+    content = File.read(file)
+    patched = content
+    # Replace the macOS/iOS guard with one that also covers tvOS
+    if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
+      patched = patched.gsub(
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+      # This is actually fine - #else covers both iOS and tvOS
+    end
+    if patched != content
+      puts "Patching wakelock_plus messages.g.m: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # Patch WakelockPlusPlugin.m - wrap iOS-only APIs in TARGET_OS_IOS guard
+  collect_objc_files(search_dirs, 'WakelockPlusPlugin.m').each do |file|
+    content = File.read(file)
+    next if content.include?("TARGET_OS_TV")
+    patched = content
+
+    # Wrap the entire implementation in TARGET_OS_IOS guard and provide tvOS stub
+    if patched.include?("@implementation WakelockPlusPlugin") && !patched.include?("TARGET_OS_TV")
+      tvos_stub = <<~OBJC
+
+        #if TARGET_OS_TV
+        // tvOS stub - wakelock is not supported on tvOS
+        @implementation WakelockPlusPlugin
+        + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+          WakelockPlusPlugin* instance = [[WakelockPlusPlugin alloc] init];
+          SetUpWAKELOCKPLUSWakelockPlusApi(registrar.messenger, instance);
+        }
+        - (void)toggleMsg:(WAKELOCKPLUSToggleMessage*)input error:(FlutterError**)error {
+          // No-op on tvOS
+        }
+        - (WAKELOCKPLUSIsEnabledMessage*)isEnabledWithError:(FlutterError* __autoreleasing *)error {
+          WAKELOCKPLUSIsEnabledMessage* result = [[WAKELOCKPLUSIsEnabledMessage alloc] init];
+          result.enabled = @NO;
+          return result;
+        }
+        @end
+        #else
+      OBJC
+
+      # Find the start of @implementation WakelockPlusPlugin
+      impl_start = patched.index("@implementation WakelockPlusPlugin")
+      # Find the matching @end
+      end_pos = patched.index("\n@end", impl_start)
+      if end_pos
+        end_pos_after = end_pos + "\n@end".length
+        original_impl = patched[impl_start..end_pos_after-1]
+        patched = patched.sub(original_impl, tvos_stub + original_impl + "\n#endif")
+      end
+    end
+
+    if patched != content
+      puts "Patching WakelockPlusPlugin.m: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # Patch UIApplication+idleTimerLock.m - wrap in TARGET_OS_IOS guard
+  collect_objc_files(search_dirs, 'UIApplication+idleTimerLock.m').each do |file|
+    content = File.read(file)
+    unless content.start_with?("#if TARGET_OS_IOS") || content.include?("TARGET_OS_TV")
+      puts "Patching UIApplication+idleTimerLock.m: #{file}"
+      File.write(file, "#if !TARGET_OS_TV\n" + content + "\n#endif\n")
+    end
+  end
+
+  # Patch UIApplication+idleTimerLock.h - wrap in TARGET_OS_IOS guard
+  collect_objc_files(search_dirs, 'UIApplication+idleTimerLock.h').each do |file|
+    content = File.read(file)
+    unless content.include?("TARGET_OS_TV")
+      puts "Patching UIApplication+idleTimerLock.h: #{file}"
+      File.write(file, "#if !TARGET_OS_TV\n" + content + "\n#endif\n")
     end
   end
 end
