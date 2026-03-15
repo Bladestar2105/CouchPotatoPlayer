@@ -226,4 +226,26 @@ collect_files('WakelockPlusPlugin.m').each do |file|
   end
 end
 
+# ---------------------------------------------------------------------------
+# 9. media_kit_video VideoOutput.swift
+# Uses #if canImport(Flutter) which should work, but may need UIKit on tvOS
+# ---------------------------------------------------------------------------
+collect_files('VideoOutput.swift').each do |file|
+  content = File.read(file)
+  patched = content
+
+  if patched.include?("#if canImport(Flutter)\n  import Flutter") && !patched.include?("os(tvOS)")
+    patched = patched.gsub(
+      "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif",
+      "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif\n#if os(tvOS)\nimport UIKit\n#endif"
+    )
+  end
+
+  if patched != content
+    puts "Patching VideoOutput.swift: #{file}"
+    File.write(file, patched)
+    patch_count += 1
+  end
+end
+
 puts "\nDone. Applied #{patch_count} patches."
