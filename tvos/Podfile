@@ -91,35 +91,52 @@ def patch_pods_for_tvos(installer)
     files
   end
 
-  # Patch Pigeon generated files across all pods
+  # Patch all Swift files to handle Flutter import for tvOS
   get_all_swift_files(pods_dir, real_symlink_paths, '*.swift').each do |file|
+    next if file.include?('Pods/')  # Skip generated Pods files
+    
     content = File.read(file)
     patched_content = content
-    if patched_content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
-      patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
-    elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#elseif os(macOS)")
-      patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
-    elsif patched_content.include?("#if os(iOS)\n  import Flutter\n#endif")
-      patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
-    elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#endif")
-      patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
-    elsif patched_content.include?("import Flutter") && !patched_content.include?("#if os(tvOS)") && !patched_content.include?("#if os(iOS)")
+    
+    # Check if this file has Flutter import issues
+    has_flutter_import = content.include?('import Flutter')
+    has_tvos_condition = content.include?('os(tvOS)') || content.include?('tvOS')
+    has_ios_condition = content.include?('os(iOS)')
+    
+    # Case 1: #if os(iOS) || os(tvOS) import Flutter
+    if content.include?('#if os(iOS)') && content.include?('import Flutter')
+      if patched_content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
+        patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
+      elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#elseif os(macOS)")
+        patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
+      elsif patched_content.include?("#if os(iOS)\n  import Flutter\n#endif")
+        patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
+      elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#endif")
+        patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
+    end
+    
+    # Case 2: Plain "import Flutter" without any conditions
+    if has_flutter_import && !has_tvos_condition && !has_ios_condition
+      # Add tvOS-specific UIKit import after Flutter
       patched_content = patched_content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
     end
+    
+    # Fix binaryMessenger calls
     if patched_content.include?("binaryMessenger: messenger") && !patched_content.include?("binaryMessenger: messenger()")
       patched_content = patched_content.gsub("binaryMessenger: messenger", "binaryMessenger: messenger()")
     end
+    
     if patched_content != content
-      puts "Patching pigeon generated file #{file}"
+      puts "Patching Swift file for tvOS: #{file}"
       File.write(file, patched_content)
     end
   end
 
-  # Patch URLLaunchSession.swift
+  # Patch URLLaunchSession.swift - wrap entire file in iOS guard
   get_all_swift_files(pods_dir, real_symlink_paths, 'URLLaunchSession.swift').each do |file|
     content = File.read(file)
     if !content.start_with?("#if os(iOS)")
-      puts "Patching URLLaunchSession.swift in #{file}"
+      puts "Patching URLLaunchSession.swift: #{file}"
       File.write(file, "#if os(iOS)\n" + content + "\n#endif\n")
     end
   end
@@ -129,12 +146,12 @@ def patch_pods_for_tvos(installer)
     content = File.read(file)
     patched_content = content
 
-    # Optional variable currentSession
+    # Guard currentSession variable
     if patched_content.include?("private var currentSession: URLLaunchSession?") && !patched_content.include?("#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif")
       patched_content = patched_content.gsub("private var currentSession: URLLaunchSession?", "#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif")
     end
 
-    # Wrap openUrlInSafariViewController and closeSafariViewController
+    # Guard SafariViewController methods
     if patched_content.include?("func openUrlInSafariViewController") && !patched_content.include?("#if os(iOS)\n  func openUrlInSafariViewController")
       pattern = /func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \}/
       replacement = "#if os(iOS)\n  \\0\n#else\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
@@ -142,18 +159,18 @@ def patch_pods_for_tvos(installer)
     end
 
     if patched_content != content
-      puts "Patching URLLauncherPlugin.swift in #{file}"
+      puts "Patching URLLauncherPlugin.swift: #{file}"
       File.write(file, patched_content)
     end
   end
 
-  # Patch media_kit_video for tvOS
+  # Patch VideoOutput.swift for media_kit_video
   get_all_swift_files(pods_dir, real_symlink_paths, 'VideoOutput.swift').each do |file|
     content = File.read(file)
-    if content.include?("import Flutter") && !content.include?("#if os(tvOS)")
+    if content.include?("import Flutter") && !content.include?("os(tvOS)")
       patched_content = content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
       if patched_content != content
-        puts "Patching VideoOutput.swift in #{file}"
+        puts "Patching VideoOutput.swift: #{file}"
         File.write(file, patched_content)
       end
     end
