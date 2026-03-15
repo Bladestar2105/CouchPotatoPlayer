@@ -117,13 +117,15 @@ jobs:
         run: sh scripts/switch_target.sh tvos
       - name: Build tvOS App (No Codesign)
         run: |
+          cp _ios/Flutter/Generated.xcconfig ios/Flutter/Generated.xcconfig || true
+          cp _ios/Flutter/flutter_export_environment.sh ios/Flutter/flutter_export_environment.sh || true
           cd ios
           pod install
-          sh ../scripts/copy_framework.sh release "${{ github.workspace }}"
-          sed -i "" "s#FLUTTER_LOCAL_ENGINE[[:space:]]=[[:space:]].*;#FLUTTER_LOCAL_ENGINE = \"${{ github.workspace }}\";#g" Runner.xcodeproj/project.pbxproj
+          sh ../scripts/copy_framework.sh release "${{ github.workspace }}/out/ios_release"
+          sed -i "" "s#FLUTTER_LOCAL_ENGINE[[:space:]]=[[:space:]].*;#FLUTTER_LOCAL_ENGINE = \"${{ github.workspace }}/out/ios_release\";#g" Runner.xcodeproj/project.pbxproj
           xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' -allowProvisioningUpdates CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
         env:
-          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}
+          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
       - name: Package tvOS App
         run: tar -czf tvos-build.tar.gz build/ios/Release-appletvos/Runner.app
       - name: Upload tvOS Build
