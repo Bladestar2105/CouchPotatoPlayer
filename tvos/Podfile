@@ -81,6 +81,22 @@ def patch_pods_for_tvos(installer)
     end
   end
 
+  # Patch shared_preferences_foundation for tvOS / Swift 6 strict checking
+  (Dir.glob(File.join(pods_dir, '**/SharedPreferencesPlugin.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/SharedPreferencesPlugin.swift'))).each do |file|
+    content = File.read(file)
+    patched_content = content
+    if patched_content.include?("LegacyUserDefaultsApiSetup.setUp(binaryMessenger: messenger, api: instance)")
+      patched_content = patched_content.gsub("LegacyUserDefaultsApiSetup.setUp(binaryMessenger: messenger, api: instance)", "LegacyUserDefaultsApiSetup.setUp(binaryMessenger: messenger(), api: instance)")
+    end
+    if patched_content.include?("UserDefaultsApiSetup.setUp(binaryMessenger: messenger, api: instance)")
+      patched_content = patched_content.gsub("UserDefaultsApiSetup.setUp(binaryMessenger: messenger, api: instance)", "UserDefaultsApiSetup.setUp(binaryMessenger: messenger(), api: instance)")
+    end
+    if patched_content != content
+      puts "Patching SharedPreferencesPlugin.swift in #{file}"
+      File.write(file, patched_content)
+    end
+  end
+
   # Patch URLLaunchSession.swift
   (Dir.glob(File.join(pods_dir, '**/URLLaunchSession.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/URLLaunchSession.swift'))).each do |file|
     content = File.read(file)
