@@ -105,8 +105,8 @@ jobs:
       - name: Download Custom Engine
         run: |
           mkdir -p out
-          curl -L -o out/host_release_arm64.zip https://github.com/DenisovAV/flutter_tv/releases/download/3.24.1/host_release_arm64.zip
-          curl -L -o out/ios_release.zip https://github.com/DenisovAV/flutter_tv/releases/download/3.24.1/ios_release.zip
+          curl -L -o out/host_release_arm64.zip https://oc.bw.tech/s/utLzZGcszpqvX5a/download
+          curl -L -o out/ios_release.zip https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download
           unzip -q out/host_release_arm64.zip -d out/
           unzip -q out/ios_release.zip -d out/
       - name: Switch Target to tvOS

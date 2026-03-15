@@ -112,4 +112,16 @@ def patch_pods_for_tvos(installer)
       File.write(file, patched_content)
     end
   end
+
+  # Patch media_kit_video for tvOS
+  (Dir.glob(File.join(pods_dir, '**/VideoOutput.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/VideoOutput.swift'))).each do |file|
+    content = File.read(file)
+    if content.include?("import Flutter") && !content.include?("#if os(tvOS)")
+      patched_content = content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
+      if patched_content != content
+        puts "Patching VideoOutput.swift in #{file}"
+        File.write(file, patched_content)
+      end
+    end
+  end
 end
