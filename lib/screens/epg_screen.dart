@@ -257,6 +257,7 @@ class _EpgScreenState extends State<EpgScreen> {
               child: Row(
                 children: [
                   IconButton(
+                    tooltip: 'Back',
                     icon: Icon(
                       Icons.chevron_left,
                       color: Colors.white,

@@ -442,6 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
+                            tooltip: isLocked ? 'Unlock channel' : 'Lock channel',
                             icon: Icon(
                               isLocked ? Icons.lock : Icons.lock_open,
                               color: isLocked ? Colors.red : Colors.white,
@@ -474,6 +475,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
+                            tooltip: isFav ? 'Remove from favorites' : 'Add to favorites',
                             icon: Icon(
                               isFav ? Icons.favorite : Icons.favorite_border,
                               color: isFav ? Colors.red : Colors.white,
@@ -612,6 +614,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
+                      tooltip: 'Remove from favorites',
                       icon: const Icon(Icons.favorite, color: Colors.red, size: 20),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -745,6 +748,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
+                      tooltip: 'Remove from recents',
                       icon: const Icon(Icons.close, color: Colors.white, size: 20),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1083,6 +1087,7 @@ class _LiveChannelRowState extends State<_LiveChannelRow> {
                   ),
                   if (widget.channelColWidth >= 200) ...[
                     IconButton(
+                      tooltip: widget.isFav ? 'Remove from favorites' : 'Add to favorites',
                       icon: Icon(
                         widget.isFav ? Icons.favorite : Icons.favorite_border,
                         color: widget.isFav ? Colors.red : Colors.grey,
@@ -1104,6 +1109,7 @@ class _LiveChannelRowState extends State<_LiveChannelRow> {
                       },
                     ),
                     IconButton(
+                      tooltip: widget.isLocked ? 'Unlock channel' : 'Lock channel',
                       icon: Icon(
                         widget.isLocked ? Icons.lock : Icons.lock_open,
                         color: widget.isLocked ? Colors.red : Colors.grey,
