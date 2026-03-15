@@ -123,11 +123,11 @@ jobs:
         run: flutter pub get
       - name: Pod Install
         run: |
-          cd tvos
+          cd ios
           pod install
       - name: Build tvOS App (No Codesign)
         run: |
-          cd tvos
+          cd ios
           xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' SYMROOT="${{ github.workspace }}/build/ios"
         env:
           FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
