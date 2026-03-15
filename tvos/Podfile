@@ -113,6 +113,18 @@ def patch_pods_for_tvos(installer)
     end
   end
 
+  # Patch path_provider_foundation for tvOS / Swift 6 strict checking
+  (Dir.glob(File.join(pods_dir, '**/PathProviderPlugin.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/PathProviderPlugin.swift'))).each do |file|
+    content = File.read(file)
+    if content.include?("PathProviderApiSetup.setUp(binaryMessenger: messenger, api: instance)")
+      patched_content = content.gsub("PathProviderApiSetup.setUp(binaryMessenger: messenger, api: instance)", "PathProviderApiSetup.setUp(binaryMessenger: messenger(), api: instance)")
+      if patched_content != content
+        puts "Patching PathProviderPlugin.swift in #{file}"
+        File.write(file, patched_content)
+      end
+    end
+  end
+
   # Patch media_kit_video for tvOS
   (Dir.glob(File.join(pods_dir, '**/VideoOutput.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/VideoOutput.swift'))).each do |file|
     content = File.read(file)
