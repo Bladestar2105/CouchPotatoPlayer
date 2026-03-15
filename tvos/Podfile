@@ -69,19 +69,8 @@ def patch_pods_for_tvos(installer)
   pods_dir = installer.pods_project.path.dirname
   symlinks_dir = File.expand_path(File.join(pods_dir, '..', '.symlinks', 'plugins'))
 
-  # Resolve symlinks manually to gather all swift files from plugins
-  plugin_swift_files = []
-  if Dir.exist?(symlinks_dir)
-    Dir.glob(File.join(symlinks_dir, '*')).each do |plugin_dir|
-      if File.directory?(plugin_dir)
-        real_plugin_dir = File.realpath(plugin_dir)
-        plugin_swift_files.concat(Dir.glob(File.join(real_plugin_dir, '**/*.swift')))
-      end
-    end
-  end
-
   # Patch Pigeon generated files across all pods
-  (Dir.glob(File.join(pods_dir, '**/*.swift')) + plugin_swift_files).each do |file|
+  (Dir.glob(File.join(pods_dir, '**/*.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/*.swift'))).each do |file|
     content = File.read(file)
     patched_content = content
     if patched_content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
@@ -99,7 +88,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch URLLaunchSession.swift
-  (Dir.glob(File.join(pods_dir, '**/URLLaunchSession.swift')) + plugin_swift_files.select { |f| f.end_with?('URLLaunchSession.swift') }).each do |file|
+  (Dir.glob(File.join(pods_dir, '**/URLLaunchSession.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/URLLaunchSession.swift'))).each do |file|
     content = File.read(file)
     if !content.start_with?("#if os(iOS)")
       puts "Patching URLLaunchSession.swift in #{file}"
@@ -108,7 +97,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch URLLauncherPlugin.swift
-  (Dir.glob(File.join(pods_dir, '**/URLLauncherPlugin.swift')) + plugin_swift_files.select { |f| f.end_with?('URLLauncherPlugin.swift') }).each do |file|
+  (Dir.glob(File.join(pods_dir, '**/URLLauncherPlugin.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/URLLauncherPlugin.swift'))).each do |file|
     content = File.read(file)
     patched_content = content
 
@@ -131,7 +120,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch media_kit_video for tvOS
-  (Dir.glob(File.join(pods_dir, '**/VideoOutput.swift')) + plugin_swift_files.select { |f| f.end_with?('VideoOutput.swift') }).each do |file|
+  (Dir.glob(File.join(pods_dir, '**/VideoOutput.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/VideoOutput.swift'))).each do |file|
     content = File.read(file)
     if content.include?("import Flutter") && !content.include?("#if os(tvOS)")
       patched_content = content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
