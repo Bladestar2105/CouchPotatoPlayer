@@ -62,9 +62,10 @@ post_install do |installer|
 end
 def patch_pods_for_tvos(installer)
   pods_dir = installer.pods_project.path.dirname
+  symlinks_dir = File.expand_path(File.join(pods_dir, '..', '.symlinks', 'plugins'))
 
   # Patch Pigeon generated files across all pods
-  Dir.glob(File.join(pods_dir, '**/*.swift')).each do |file|
+  (Dir.glob(File.join(pods_dir, '**/*.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/*.swift'))).each do |file|
     content = File.read(file)
     if content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
       patched_content = content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
@@ -76,7 +77,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch URLLaunchSession.swift
-  Dir.glob(File.join(pods_dir, '**/URLLaunchSession.swift')).each do |file|
+  (Dir.glob(File.join(pods_dir, '**/URLLaunchSession.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/URLLaunchSession.swift'))).each do |file|
     content = File.read(file)
     if !content.start_with?("#if os(iOS)")
       puts "Patching URLLaunchSession.swift in #{file}"
@@ -85,7 +86,7 @@ def patch_pods_for_tvos(installer)
   end
 
   # Patch URLLauncherPlugin.swift
-  Dir.glob(File.join(pods_dir, '**/URLLauncherPlugin.swift')).each do |file|
+  (Dir.glob(File.join(pods_dir, '**/URLLauncherPlugin.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/URLLauncherPlugin.swift'))).each do |file|
     content = File.read(file)
     patched_content = content
 
