@@ -109,16 +109,23 @@ jobs:
           curl -L -o out/ios_release.zip https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download
           unzip -q out/host_release_arm64.zip -d out/
           unzip -q out/ios_release.zip -d out/
+      - name: Prepare iOS build
+        run: |
+          flutter pub get
+          flutter build ios --config-only
       - name: Switch Target to tvOS
         run: sh scripts/switch_target.sh tvos
-      - name: Install Dependencies
-        run: flutter pub get
       - name: Build tvOS App (No Codesign)
-        run: flutter build ios --release --no-codesign
+        run: |
+          cd ios
+          pod install
+          sh ../scripts/copy_framework.sh release "${{ github.workspace }}"
+          sed -i "" "s#FLUTTER_LOCAL_ENGINE[[:space:]]=[[:space:]].*;#FLUTTER_LOCAL_ENGINE = \"${{ github.workspace }}\";#g" Runner.xcodeproj/project.pbxproj
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' -allowProvisioningUpdates CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
         env:
-          FLUTTER_LOCAL_ENGINE: out/ios_release
+          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}
       - name: Package tvOS App
-        run: tar -czf tvos-build.tar.gz build/ios/iphoneos/Runner.app
+        run: tar -czf tvos-build.tar.gz build/ios/Release-appletvos/Runner.app
       - name: Upload tvOS Build
         uses: actions/upload-artifact@v4
         with:
