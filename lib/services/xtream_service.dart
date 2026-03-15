@@ -62,7 +62,7 @@ class XtreamService {
       }
     } catch (e) {
       debugPrint('Xtream Auth Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to authenticate');
     }
   }
 
@@ -76,7 +76,7 @@ class XtreamService {
       return [];
     } catch (e) {
       debugPrint('Xtream Get Categories Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to load categories');
     }
   }
 
@@ -91,7 +91,7 @@ class XtreamService {
       return [];
     } catch (e) {
       debugPrint('Xtream Get Streams Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to load streams');
     }
   }
 
@@ -105,7 +105,7 @@ class XtreamService {
       return [];
     } catch (e) {
       debugPrint('Xtream Get VOD Categories Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to load VOD categories');
     }
   }
 
@@ -120,7 +120,7 @@ class XtreamService {
       return [];
     } catch (e) {
       debugPrint('Xtream Get VOD Streams Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to load VOD streams');
     }
   }
 
@@ -134,7 +134,7 @@ class XtreamService {
       return [];
     } catch (e) {
       debugPrint('Xtream Get Series Categories Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to load Series categories');
     }
   }
 
@@ -149,7 +149,7 @@ class XtreamService {
       return [];
     } catch (e) {
       debugPrint('Xtream Get Series Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to load Series');
     }
   }
 
@@ -162,7 +162,7 @@ class XtreamService {
       throw Exception('Failed to get VOD info');
     } catch (e) {
       debugPrint('Xtream Get VOD Info Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to get VOD info');
     }
   }
 
@@ -175,7 +175,7 @@ class XtreamService {
       throw Exception('Failed to get Series info');
     } catch (e) {
       debugPrint('Xtream Get Series Info Error: $e');
-      throw Exception(e.toString());
+      throw Exception('Failed to get Series info');
     }
   }
 
