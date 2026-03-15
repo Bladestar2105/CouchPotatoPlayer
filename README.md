@@ -1,40 +1,113 @@
-# XJ_Player: A React Native IPTV Player (HELP WANTED!)
+# Super XJ Player: A React Native IPTV Player
 
 ![Project Header Image](./assets/images/header.jpg)
 
-This is an open-source IPTV player for iOS and Android, built with React Native and Expo.
-
-The project is in the early stages of development and is currently **unstable**. We are actively looking for collaborators to help us fix a critical bug, implement new features, and build a powerful, community-driven media player.
+This is an open-source IPTV player for iOS, tvOS, Android, Android TV, and Web built with React Native and Expo.
 
 ---
 
-## 🚩 The Critical Bug (Priority #1)
+## 🏗 Architecture & Limitations
 
-The app is currently **unusable** due to a silent crash that blocks all development.
+**IMPORTANT: EXPO GO IS NOT SUPPORTED**
 
-**How to Replicate:**
-1.  Launch the app.
-2.  Add a new M3U profile (using a valid M3U URL).
-3.  Click the "Load" button for that profile.
-4.  The terminal shows `LOG Chargement du profil: [Profile Name]`...
-5.  ...and then the Metro server **immediately stops (`› Stopped server`)** without any error message.
+This project relies on native video player libraries (e.g., `react-native-vlc-media-player`, `react-native-video`) to handle complex streaming protocols (like Xtream codes) and codecs that the standard Expo `av` package struggles with.
 
-**What We Suspect:**
-This silent crash is likely caused by one of these two issues:
+Because of these native code dependencies, **you cannot run this project using the standard Expo Go app.**
 
-1.  **A bug in the M3U parser:** The parser in `context/IPTVContext.tsx` (the `parseM3U` function) might be failing silently when it tries to parse the M3U file, crashing the whole server.
-2.  **A "Require Cycle":** The logs sometimes show `WARN Require cycle: components/VideoPlayer.tsx`. This cache bug might be putting the app in an unstable state, causing it to crash on load.
+You must build a **Custom Development Client** (Prebuild) for your target device or simulator.
 
-We need help debugging this parser or fixing the cache/cycle issue. **The project is blocked until this is fixed.**
+---
+
+## 🛠 Prerequisites
+
+Before compiling the app for any platform, ensure your local development environment is set up:
+
+*   **Node.js**: LTS version (18+ recommended).
+*   **Expo CLI**: Installed via `npm install -g expo-cli`.
+*   **Git**: For version control.
+
+### iOS / Apple TV (tvOS) Specific Prerequisites (macOS Only)
+*   **Xcode**: Installed via the Mac App Store.
+*   **CocoaPods**: Installed via `sudo gem install cocoapods` or Homebrew.
+*   **Watchman**: Installed via `brew install watchman`.
+
+### Android / Android TV Specific Prerequisites
+*   **Android Studio**: Installed with the Android SDK and SDK Command-line Tools.
+*   **Java Development Kit (JDK)**: JDK 17 is recommended.
+*   **Android Emulators**: Create a standard mobile emulator and an Android TV emulator in the Android Studio Device Manager.
+
+---
+
+## 🚀 Getting Started & Compilation
+
+We have provided convenient npm scripts to quickly build and launch the app on your preferred simulator.
+
+### 1. First-Time Setup
+
+Clone the repository and install the dependencies:
+
+```bash
+git clone https://github.com/xjapan007/XJ_Player.git
+cd XJ_Player
+npm install
+```
+
+### 2. Building for Simulators (Local Compilation)
+
+These commands will use Expo Prebuild to generate the native `/ios` and `/android` directories, compile the native code locally, and launch the custom dev client on your simulator.
+
+**iOS Simulator (Mobile/Tablet)**
+```bash
+npm run build:ios-sim
+# Alternatively: npx expo run:ios
+```
+
+**Android Emulator (Mobile/Tablet)**
+```bash
+# Ensure your Android emulator is running in Android Studio first
+npm run build:android-sim
+# Alternatively: npx expo run:android
+```
+
+**Apple TV (tvOS) Simulator**
+```bash
+npm run build:tvos-sim
+# Note: For full, native tvOS support, React Native projects often require the `react-native-tvos` fork. Ensure your environment is configured for tvOS targets in Xcode if compilation fails.
+```
+
+**Android TV Emulator**
+```bash
+# Ensure your Android TV emulator is running in Android Studio first
+npm run build:android-tv-sim
+```
+
+**Web (Development & Production)**
+To start the development server for the web:
+```bash
+npm run build:web
+# Alternatively: npx expo start --web
+```
+To export a production-ready static web bundle:
+```bash
+npx expo export -p web
+```
+
+### 3. Building with EAS (Expo Application Services)
+
+If you do not have Xcode or Android Studio installed locally, you can use Expo's cloud build servers to generate a dev client.
+
+1.  Log in to Expo: `npx expo login`
+2.  Build for iOS Simulator: `eas build --profile development --platform ios --type simulator`
+3.  Build for Android Emulator: `eas build --profile development --platform android`
+4.  Once EAS finishes, download the generated `.tar.gz` (iOS) or `.apk` (Android) and drag-and-drop it onto your running simulator. Start the local server with `npx expo start --dev-client`.
 
 ---
 
 ## 🚀 Feature Roadmap / To-Do List
 
-Once the crash is fixed, here is what we need to build. Help on any of these items is welcome!
+We are actively developing this player. Help on any of these items is welcome!
 
 ### Core API & Parsers
-* `[ ]` **Fix M3U Parser:** Make the current `parseM3U` function robust and error-proof.
 * `[ ]` **Implement Xtream Codes API:**
     * Add "Xtream Codes" as a profile type in the `PlaylistManager`.
     * Create a service (`xtreamService.ts`) to handle the login (Server, User, Pass).
@@ -46,10 +119,10 @@ Once the crash is fixed, here is what we need to build. Help on any of these ite
     * Parse the Stalker JSON-RPC responses for channels.
 * `[ ]` **Implement EPG Parser:**
     * Fetch the `epg_url` provided by the M3U or Xtream API.
-    * Parse the `XMLTV` data (likely needs an `xml2js` library).
+    * Parse the `XMLTV` data using `fast-xml-parser` (already in package.json).
     * Store and display EPG data (current/next program) for channels.
-* `[ ]` **Handle HTTP Headers:**
-    * Allow users to add custom HTTP `User-Agent` and `Referer` headers for streams that require them.
+* `[ ]` **Video Player Consolidation:**
+    * Standardize the video playback architecture. Evaluate `expo-video`, `react-native-video`, and `react-native-vlc-media-player` to determine the single best dependency for broad codec and streaming protocol support.
 
 ### UI / UX
 * `[ ]` **Implement Tabbed Navigation:** On the `HomeScreen`, replace the single `ChannelList` with a Tab Navigator to show:
@@ -59,56 +132,12 @@ Once the crash is fixed, here is what we need to build. Help on any of these ite
 * `[ ]` **Create `MovieList` / `SeriesList`:** Create new components to display the lists of movies and series from the context.
 * `[ ]` **Profile Editing:** Add an "Edit" button next to "Delete" in the `PlaylistManager`.
 
-### Bug Fixes
-* `[ ]` **Investigate `Require cycle` warning:** Find the source of the `WARN Require cycle: components/VideoPlayer.tsx` and refactor to remove it.
-* `[ ]` **Fix Click Issue:** The `onPress` on `ChannelList` items sometimes fails (likely related to the `Require cycle` bug).
-
----
-
-## 🛠️ Getting Started (Development Build - VLC Player)
-
-**IMPORTANT:** This project now uses a native VLC library (`react-native-vlc-media-player`) to fix audio/codec issues. You can **no longer** run this project with the standard Expo Go app.
-
-You must build a custom development client.
-
-### 1. First-Time Setup
-
-1.  Clone this repository:
-    ```bash
-    git clone [https://github.com/xjapan007/XJ_Player.git](https://github.com/xjapan007/XJ_Player.git)
-    ```
-2.  Navigate to the project directory:
-    ```bash
-    cd XJ_Player
-    ```
-3.  Install dependencies:
-    ```bash
-    npm install
-    ```
-4.  Log in to your Expo account (you'll need one):
-    ```bash
-    npx expo login
-    ```
-5.  Build the development client for your platform (e.g., Android):
-    ```bash
-    eas build --profile development --platform android
-    ```
-6.  Expo will build an `.apk` file. Download and install it on your device.
-
-### 2. Running the App (Daily)
-
-1.  Start the development server:
-    ```bash
-    npx expo start --dev-client
-    ```
-2.  Scan the QR code with your **new "XJ_Player" app** (not Expo Go).
-
 ---
 
 ## 🤝 How to Contribute
 
 1.  **Fork** this repository.
-2.  Create a new branch (`git checkout -b feature/my-new-feature` or `bugfix/fix-the-crash`).
+2.  Create a new branch (`git checkout -b feature/my-new-feature`).
 3.  Make your changes.
 4.  **Submit a Pull Request** with a clear description of what you've done.
 

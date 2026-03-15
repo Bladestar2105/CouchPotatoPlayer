@@ -6,7 +6,12 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:ios-sim": "./scripts/build_ios_sim.sh",
+    "build:tvos-sim": "./scripts/build_tvos_sim.sh",
+    "build:android-sim": "./scripts/build_android_sim.sh",
+    "build:android-tv-sim": "./scripts/build_android_tv_sim.sh",
+    "build:web": "./scripts/build_web.sh"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.6",
