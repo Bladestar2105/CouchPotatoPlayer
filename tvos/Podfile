@@ -103,7 +103,7 @@ def patch_pods_for_tvos(installer)
       patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
     elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#endif")
       patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
-    elsif patched_content.include?("import Flutter") && !patched_content.include?("#if os(tvOS)") && !patched_content.include?("#if os(iOS)")
+    elsif patched_content.include?("import Flutter") && !patched_content.include?("os(tvOS)") && !patched_content.include?("os(iOS)")
       patched_content = patched_content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
     end
     if patched_content.include?("binaryMessenger: messenger") && !patched_content.include?("binaryMessenger: messenger()")
@@ -150,7 +150,7 @@ def patch_pods_for_tvos(installer)
   # Patch media_kit_video for tvOS
   get_all_swift_files(pods_dir, real_symlink_paths, 'VideoOutput.swift').each do |file|
     content = File.read(file)
-    if content.include?("import Flutter") && !content.include?("#if os(tvOS)")
+    if content.include?("import Flutter") && !content.include?("os(tvOS)")
       patched_content = content.gsub("import Flutter", "import Flutter\n#if os(tvOS)\nimport UIKit\n#endif")
       if patched_content != content
         puts "Patching VideoOutput.swift in #{file}"
