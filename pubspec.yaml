@@ -40,7 +40,7 @@ dependencies:
   provider: ^6.1.5+1
   shared_preferences: ^2.5.4
   http: ^1.6.0
-  xml: ^6.6.1
+  xml: ">=6.5.0 <7.0.0"
   path_provider: ^2.1.5
   cached_network_image: ^3.4.1
   url_launcher: ">=6.3.0 <7.0.0"
