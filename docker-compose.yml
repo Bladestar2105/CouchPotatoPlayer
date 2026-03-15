@@ -1,8 +1,0 @@
-services:
-  couchpotatoplayer:
-    image: ghcr.io/bladestar2105/couchpotatoplayer:latest
-    container_name: couchpotatoplayer
-    pull_policy: always
-    ports:
-      - "8080:80"
-    restart: unless-stopped
