@@ -72,12 +72,18 @@ def patch_pods_for_tvos(installer)
   # Patch Pigeon generated files across all pods
   (Dir.glob(File.join(pods_dir, '**/*.swift')) + Dir.glob(File.join(symlinks_dir, '*/**/*.swift'))).each do |file|
     content = File.read(file)
-    if content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
-      patched_content = content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
-      if patched_content != content
-        puts "Patching pigeon OS check in #{file}"
-        File.write(file, patched_content)
-      end
+    patched_content = content
+    if patched_content.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)")
+      patched_content = patched_content.gsub("#if os(iOS)\n  import Flutter", "#if os(iOS) || os(tvOS)\n  import Flutter")
+    elsif patched_content.include?("#if os(iOS)\nimport Flutter\n#elseif os(macOS)")
+      patched_content = patched_content.gsub("#if os(iOS)\nimport Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter")
+    end
+    if patched_content.include?("binaryMessenger: messenger") && !patched_content.include?("binaryMessenger: messenger()")
+      patched_content = patched_content.gsub("binaryMessenger: messenger", "binaryMessenger: messenger()")
+    end
+    if patched_content != content
+      puts "Patching pigeon generated file #{file}"
+      File.write(file, patched_content)
     end
   end
 
@@ -103,7 +109,7 @@ def patch_pods_for_tvos(installer)
     # Wrap openUrlInSafariViewController and closeSafariViewController
     if patched_content.include?("func openUrlInSafariViewController") && !patched_content.include?("#if os(iOS)\n  func openUrlInSafariViewController")
       pattern = /func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \}/
-      replacement = "#if os(iOS)\n  \\0\n#else\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.noUI))\n  }\n  func closeSafariViewController() {}\n#endif"
+      replacement = "#if os(iOS)\n  \\0\n#else\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
       patched_content = patched_content.gsub(pattern, replacement)
     end
 
