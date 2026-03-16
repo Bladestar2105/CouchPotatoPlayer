@@ -381,8 +381,12 @@ collect_files('WakelockPlusPlugin.m').each do |file|
   content = File.read(file)
   next if content.include?('TARGET_OS_TV')
   
+  # Extract the import statements from the original file to reuse them
+  import_lines = content.lines.select { |l| l.strip.start_with?('#import') || l.strip.start_with?('@import') }.join
+  
   # Wrap the entire original content with #if !TARGET_OS_TV
-  patched = "#if !TARGET_OS_TV\n" + content + "\n#else\n// tvOS stub - wakelock not supported\n#import <Flutter/Flutter.h>\n@interface WakelockPlusPlugin : NSObject <WAKELOCKPLUSWakelockPlusApi>\n@end\n@implementation WakelockPlusPlugin\n+ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {\n  WakelockPlusPlugin* instance = [[WakelockPlusPlugin alloc] init];\n  SetUpWAKELOCKPLUSWakelockPlusApi(registrar.messenger, instance);\n}\n- (void)toggleMsg:(WAKELOCKPLUSToggleMessage*)input error:(FlutterError**)error {\n  // No-op on tvOS\n}\n- (WAKELOCKPLUSIsEnabledMessage*)isEnabledWithError:(FlutterError* __autoreleasing *)error {\n  WAKELOCKPLUSIsEnabledMessage* result = [[WAKELOCKPLUSIsEnabledMessage alloc] init];\n  result.enabled = @NO;\n  return result;\n}\n@end\n#endif\n"
+  # For tvOS, use @import Flutter; which works with module imports
+  patched = "#if !TARGET_OS_TV\n" + content + "\n#else\n// tvOS stub - wakelock not supported\n@import Flutter;\n@interface WakelockPlusPlugin : NSObject <WAKELOCKPLUSWakelockPlusApi>\n@end\n@implementation WakelockPlusPlugin\n+ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {\n  WakelockPlusPlugin* instance = [[WakelockPlusPlugin alloc] init];\n  SetUpWAKELOCKPLUSWakelockPlusApi(registrar.messenger, instance);\n}\n- (void)toggleMsg:(WAKELOCKPLUSToggleMessage*)input error:(FlutterError**)error {\n  // No-op on tvOS\n}\n- (WAKELOCKPLUSIsEnabledMessage*)isEnabledWithError:(FlutterError* __autoreleasing *)error {\n  WAKELOCKPLUSIsEnabledMessage* result = [[WAKELOCKPLUSIsEnabledMessage alloc] init];\n  result.enabled = @NO;\n  return result;\n}\n@end\n#endif\n"
 
   puts "Patching WakelockPlusPlugin.m: #{file}"
   File.write(file, patched)
