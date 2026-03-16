@@ -132,9 +132,11 @@ BuildAppDebug() {
   cp -R "${OUTDIR}/"{App.framework,Flutter.framework} "$TARGET_BUILD_DIR"
 
   echo " └─Sign"
-  if [[ "$debug_sim" != "true" ]]; then
+  if [[ "$debug_sim" != "true" && -n "${EXPANDED_CODE_SIGN_IDENTITY}" ]]; then
     codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${TARGET_BUILD_DIR}/App.framework/App"
     codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${TARGET_BUILD_DIR}/Flutter.framework/Flutter"
+  else
+    echo " └─Skipping code signing (no identity configured or simulator build)"
   fi
 
   echo " └─Done"
@@ -223,9 +225,13 @@ BuildAppRelease() {
   echo "copy frameworks"
   cp -R "${OUTDIR}/"{App.framework,Flutter.framework} "$BUILT_PRODUCTS_DIR"
 
-  # Sign the binaries we moved.
-  codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${BUILT_PRODUCTS_DIR}/App.framework/App"
-  codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${BUILT_PRODUCTS_DIR}/Flutter.framework/Flutter"
+  # Sign the binaries we moved (only if code signing is configured).
+  if [[ -n "${EXPANDED_CODE_SIGN_IDENTITY}" ]]; then
+    codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${BUILT_PRODUCTS_DIR}/App.framework/App"
+    codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${BUILT_PRODUCTS_DIR}/Flutter.framework/Flutter"
+  else
+    echo " └─Skipping code signing (no identity configured)"
+  fi
 
   echo " └─Done"
 
