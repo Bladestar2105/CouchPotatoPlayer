@@ -1,0 +1,44 @@
+Wait! `path_provider_foundation` failed in the SECOND CI run.
+In the FIRST CI run, it failed with the SAME `error: no such module 'Flutter'`.
+In the SECOND CI run, I used the NEW regex `patched = patched.gsub(/(#if\s+os\(iOS\))(\s+import\s+Flutter\b)/, '\1 || os(tvOS)\2')`.
+BUT wait! Did I update BOTH scripts or ONLY ONE?
+I only updated `tvos/Podfile`!
+I DID NOT update `scripts/patch_tvos_pods.rb`!
+Does `scripts/patch_tvos_pods.rb` still have the old regex?
+```ruby
+  # Pattern A: 2-space indent with #error
+  error_a = '#if os(iOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" +
+            '  import FlutterMacOS' + "\n" + '#else' + "\n" + '  #error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
+```
+Yes!
+And does `.github/workflows/build-apps.yml` run `scripts/patch_tvos_pods.rb`?
+YES! `ruby scripts/patch_tvos_pods.rb`.
+If `scripts/patch_tvos_pods.rb` FAILS to patch the file because it has CRLF...
+THEN `pod install` runs!
+And then the `post_install` hook runs!
+And in the `post_install` hook, I DO patch the file with my NEW regex!
+```ruby
+    # Replace "#if os(iOS)" with "#if os(iOS) || os(tvOS)" where "import Flutter" is present
+    patched = patched.gsub(/(#if\s+os\(iOS\))(\s+import\s+Flutter\b)/, '\1 || os(tvOS)\2')
+```
+So it DOES get patched!
+The fact that it is patched twice or the first one fails doesn't matter. By the time Xcode builds, the file IS patched.
+And the fact that it throws `error: no such module 'Flutter'` at line 10 MEANS the file WAS patched, because if it was NOT patched, `os(tvOS)` would NOT be there, `import Flutter` would NOT be active, and it would throw `#error` at line 14 instead!
+
+Wait. IF `os(tvOS)` IS THERE, AND IT THROWS `no such module 'Flutter'`, THEN THE MODULE IS TRULY MISSING OR INACCESSIBLE.
+BUT `url_launcher_ios` FOUND IT!
+Why?
+Is it possible `url_launcher_ios` was using a CACHED `.xcconfig` or a DIFFERENT build configuration?!
+No, it's the exact same build!
+Is it possible `path_provider_foundation` has a `Package.swift` that overrides CocoaPods?
+No, `xcodebuild` uses CocoaPods projects.
+
+Wait... let's look at `path_provider_foundation-project-headers.hmap`.
+Maybe `url_launcher_ios` has an Objective-C part that imports `<Flutter/Flutter.h>` into the module map?
+No.
+
+What if `path_provider_foundation` depends on another module that CANNOT be found, but it says `Flutter` because it's the first import? No.
+
+Let's do a google search for `"error: no such module 'Flutter'" CocoaPods tvOS path_provider_foundation`.
+No, that's too specific.
+Why would ONE plugin find `Flutter` but NOT ANOTHER?!

@@ -1,0 +1,104 @@
+Let's check the command line for `path_provider_foundation` vs `url_launcher_ios` again.
+Is it possible `url_launcher_ios` doesn't build because it was ALREADY built? No, it's a clean build.
+Wait... what if `path_provider_foundation` uses SPM while `url_launcher_ios` is built differently?
+But they BOTH have `SwiftCompile normal arm64 Compiling\...`!
+Let's look at `media_kit_video` command line:
+`-Xcc -I/Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/media_kit_video/include -Xcc -I/Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`
+Notice the `-Xcc -I.../ios/Flutter`!
+
+Wait, `path_provider_foundation` and `media_kit_video` failed.
+Why did `shared_preferences_foundation` NOT fail?
+Wait, if you look at the `failed` summary:
+```
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'Flutter' from project 'Pods')
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'shared_preferences_foundation' from project 'Pods')
+```
+Wait, `shared_preferences_foundation` IS in the failed summary notes but it doesn't say `CompileSwift failed` for it?
+Actually, `xcodebuild` stops building dependent targets when one fails!
+Wait! Does `Runner` depend on ALL of these?
+Yes. Xcode builds them in parallel. If `path_provider_foundation` fails, Xcode will CANCEL the other tasks or just wait for them to finish.
+Since `shared_preferences_foundation` and `url_launcher_ios` started compiling BEFORE `path_provider_foundation` failed, they might have FINISHED successfully!
+If they finished successfully, THEY FOUND `Flutter`!
+If they found `Flutter`, then `path_provider_foundation` MUST BE ABLE TO FIND `Flutter`!
+So WHY did `path_provider_foundation` fail to find `Flutter`?!
+
+Could it be that the modulemap for `Flutter` is somehow locked or inaccessible?
+Or... could `path_provider_foundation` have been built for a different target SDK?
+`-target arm64-apple-tvos15.0 -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.5.sdk`
+It matches exactly!
+
+What if the `no such module 'Flutter'` error is ACTUALLY coming from another file, but Swiftcompiler attributes it to `messages.g.swift:10:10`?
+No, Swift compiler is very precise about line numbers for `import`.
+
+Let's check if the `tvos/Podfile` script actually applied the patch to ALL files!
+Wait. Look at `test_dl/url_launcher/ios/url_launcher_ios/Sources/url_launcher_ios/URLLaunchSession.swift` in `test_crlf7.rb` output:
+```swift
+#if os(iOS)
+import Flutter
+import SafariServices
+```
+Wait! `URLLaunchSession.swift` has `import Flutter` inside `#if os(iOS)`!
+But my regex DID NOT patch it!
+Why didn't my regex patch it?
+Because `URLLaunchSession.swift` DOES NOT have `import FlutterMacOS`!
+It just has:
+```swift
+import Flutter
+import SafariServices
+```
+Wait... NO! The file actually has:
+```swift
+import Flutter
+import SafariServices
+```
+WITHOUT any platform guard!
+Let's check `test_crlf7.rb` output again:
+```
+====== test_dl/url_launcher/ios/url_launcher_ios/Sources/url_launcher_ios/URLLaunchSession.swift
+// Copyright 2013 The Flutter Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+import Flutter
+import SafariServices
+```
+Yes! It's a BARE `import Flutter`!
+But wait, `tvos/Podfile` has:
+```ruby
+  # PATCH 2: URLLaunchSession.swift
+  # Uses SafariServices (SFSafariViewController) which is iOS-only.
+  # Wrap the entire file in #if os(iOS) ... #endif
+  # ---------------------------------------------------------------------------
+  collect_swift_files(search_dirs, 'URLLaunchSession.swift').each do |file|
+    content = File.read(file)
+    unless content.start_with?("#if os(iOS)")
+      puts "Patching URLLaunchSession.swift: #{file}"
+      File.write(file, "#if os(iOS)\n" + content + "\n#endif\n")
+    end
+  end
+```
+So `tvos/Podfile` wraps the ENTIRE `URLLaunchSession.swift` in `#if os(iOS)`!
+Since it's wrapped in `#if os(iOS)`, and `os(iOS)` is FALSE on tvOS, the `import Flutter` inside it is NOT COMPILED!
+So it doesn't cause `no such module Flutter`!
+
+What about `URLLauncherPlugin.swift`?
+```swift
+import Flutter
+import UIKit
+
+public final class URLLauncherPlugin: NSObject, FlutterPlugin, UrlLauncherApi {
+```
+It ALSO has a bare `import Flutter`!
+Wait, did my regex patch it?
+Let's look at `tvos/Podfile`:
+```ruby
+    # Replace imports at top: "import Flutter\nimport UIKit" with platform-guarded version
+    patched = patched.gsub(
+      "import Flutter\nimport UIKit",
+      "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
+    )
+```
+Yes! It patches it to `#if os(iOS) ... #elseif os(tvOS) \n import Flutter`!
+Wait, if it patches it to `#elseif os(tvOS) \n import Flutter`, then `import Flutter` IS ACTIVE!
+If `import Flutter` IS ACTIVE in `URLLauncherPlugin.swift`, and it COMPILED SUCCESSFULLY, then `Flutter` module MUST EXIST!
+If `Flutter` module EXISTS, WHY DOES `path_provider_foundation/messages.g.swift` FAIL TO FIND IT?!

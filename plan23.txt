@@ -1,0 +1,93 @@
+It has EXACTLY the same `#if os(iOS)` structure as `path_provider_foundation`!
+If `shared_preferences_foundation` succeeded (which it did, as there's no failure for it), and `path_provider_foundation` failed, then the problem is NOT the patch! The patch is working perfectly.
+
+Wait, why did `shared_preferences_foundation` succeed but `path_provider_foundation` fail?
+Could it be `shared_preferences_foundation` and `url_launcher_ios` use `tvOS` in their `Podspec` or `Package.swift`?
+Wait! `scripts/patch_tvos_pods.rb` PATCHES `Package.swift` FOR SPM-STYLE PODS!
+```ruby
+  # Add .tvOS("15.0") to the platforms array...
+```
+Does `path_provider_foundation` have a `Package.swift`?
+Let's check `test_dl/darwin/path_provider_foundation.podspec` again.
+It sets `s.source_files = 'path_provider_foundation/Sources/path_provider_foundation/**/*.swift'`.
+And CocoaPods compiles it AS A COCOAPOD! Not an SPM package!
+Because we are using CocoaPods, `Package.swift` is completely ignored by the build!
+
+Wait! Could `path_provider_foundation` have an Objective-C dependency?
+Let's check `path_provider_foundation` dependencies in its `pubspec.yaml` or `podspec`.
+It just says `s.ios.dependency 'Flutter'`.
+Is there ANY OTHER DIFFERENCE?
+Wait! Look at `tvos/Podfile`:
+```ruby
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # set framework search path
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+This is applied to ALL TARGETS in `Pods.xcodeproj`.
+Wait! CocoaPods generates a DIFFERENT `.xcconfig` for each target!
+And since it generates `FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*] = .../Flutter`, that might be the ONLY place `Flutter` is referenced for linking?
+But `FRAMEWORK_SEARCH_PATHS` doesn't link the framework. It just adds it to search paths.
+If `-F .../ios/Flutter` is in the compile command, `swift-frontend` CAN FIND THE MODULE!
+
+If `swift-frontend` CAN FIND the module, why does it throw `no such module 'Flutter'`?
+Because the `Flutter.framework` DOES NOT CONTAIN `arm64` architecture for `tvos`?!
+Wait! If `Flutter.framework` didn't contain `arm64` for `tvos`, then `url_launcher_ios` WOULD HAVE FAILED TOO!
+But `url_launcher_ios` succeeded!
+
+Wait, let's search the GitHub Actions logs for `url_launcher_ios`.
+Did it ACTUALLY succeed, or did the output just get truncated?
+```
+SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift ... (in target 'url_launcher_ios' from project 'Pods')
+CompileSwift normal arm64 (in target 'url_launcher_ios' from project 'Pods')
+```
+If `url_launcher_ios` failed, it would say `Command SwiftCompile failed`.
+It didn't. So `url_launcher_ios` SUCCEEDED.
+
+Wait... what if `path_provider_foundation` uses a Swift version that the module is incompatible with?
+`-swift-version 5` is used by both.
+
+Wait! I see it!
+Look at the logs for `url_launcher_ios`:
+```
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'url_launcher_ios' from project 'Pods')
+```
+Look at the `failed commands`:
+```
+The following build commands failed:
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'Flutter' from project 'Pods')
+	SwiftCompile normal arm64 Compiling\ messages.g.swift,\ PathProviderPlugin.swift ...
+```
+Wait! `note: Disabling previews...` is NOT an error! It's a note!
+The only ERRORS are:
+`SwiftCompile normal arm64 Compiling\ messages.g.swift,\ PathProviderPlugin.swift`
+`CompileSwift normal arm64 (in target 'path_provider_foundation' from project 'Pods')`
+`SwiftCompile normal arm64 Compiling\ MediaKitVideoPlugin.swift,\ ... (in target 'media_kit_video' from project 'Pods')`
+
+Why did `media_kit_video` fail?
+Did `media_kit_video` fail with `no such module 'Flutter'`?
+Let's check `scripts/patch_tvos_pods.rb` for `media_kit_video`:
+```ruby
+  collect_swift_files(search_dirs, 'VideoOutput.swift').each do |file|
+    content = File.read(file)
+    patched = content
+
+    if patched.include?("#if canImport(Flutter)\n  import Flutter") && !patched.include?("os(tvOS)")
+      patched = patched.gsub(
+        "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif",
+        "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif\n#if os(tvOS)\nimport UIKit\n#endif"
+      )
+    end
+```
+Wait! The patch for `media_kit_video` adds `#if os(tvOS) \n import UIKit`!
+It DOES NOT add `import Flutter`!
+Wait! Does `media_kit_video` NEED `import Flutter`?
+It has `#if canImport(Flutter) \n import Flutter`.
+On tvOS, `canImport(Flutter)` is FALSE!
+Why? Because `Flutter` is an iOS framework?
+NO! If `-F .../ios/Flutter` is there, `canImport(Flutter)` SHOULD BE TRUE!
+But if `canImport(Flutter)` is false, then `Flutter` is NOT IMPORTED!
+If `Flutter` is not imported, it doesn't fail with `no such module 'Flutter'`, but it fails with some other syntax error because `FlutterPlugin` is undefined!
+Wait! Is `canImport(Flutter)` TRUE or FALSE on tvOS with the engine framework?

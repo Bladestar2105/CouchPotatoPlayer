@@ -1,0 +1,37 @@
+Ah! According to Swift Evolution SE-0294 or similar, `os(iOS)` includes iOS, but not tvOS! tvOS is `os(tvOS)`.
+Wait, what if `path_provider_foundation/messages.g.swift` has ALREADY been patched by someone else?
+Wait! In `path_provider_foundation-2.5.1`, what if the code looks like this:
+```swift
+#if os(iOS) || os(tvOS)
+  import Flutter
+#elseif os(macOS)
+```
+Wait! `path_provider_foundation-2.5.1` is the official package!
+What if Pigeon v26 ALREADY includes `|| os(tvOS)`?
+Let's check the file we downloaded earlier from `pub.dev`!
+`cat test_dl/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift | head -n 25`
+Wait, look at `test_crlf5.rb` from earlier where I checked what it was!
+```
+import Foundation
+
+#if os(iOS)
+  import Flutter
+#elseif os(macOS)
+```
+No, the file downloaded from pub.dev has `#if os(iOS)` only!
+So if it was NOT patched, it WOULD fail with `#error("Unsupported platform.")`.
+But the CI log shows it failing with `no such module 'Flutter'`.
+Is it possible the FIRST regex DID patch it?!
+Let's check the FIRST regex!
+```ruby
+    # Pattern C: 2-space indent with only iOS guard (no macOS)
+    if patched.include?("#if os(iOS)\n  import Flutter\n#endif") && !patched.include?("os(tvOS)")
+```
+Wait, the FIRST regex script had:
+```ruby
+    # Pattern A: 2-space indent with macOS elseif and #error else
+    error_str_a = '#if os(iOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + '  import FlutterMacOS' + "\n" + '#else' + "\n" + '  #error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
+```
+If `messages.g.swift` has `\n`, `test_crlf4.rb` output `false` because `\n` doesn't match `\r\n`.
+Wait... if the file had `\n`, `error_str_a` WOULD HAVE MATCHED IT!
+Does the file from `pub.dev` have `\n` or `\r\n`?

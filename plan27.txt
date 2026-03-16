@@ -1,0 +1,80 @@
+Wait! `path_provider_foundation` and `media_kit_video` failed!
+What if `Flutter.framework` is NOT IN `ios/Flutter`?!
+But `tvos/Podfile` specifically adds `-F .../ios/Flutter`!
+And `url_launcher_ios` compiled successfully!
+Wait. If `url_launcher_ios` compiled successfully, it means `Flutter.framework` IS IN `ios/Flutter`!
+
+Is it possible that `path_provider_foundation` failed to find `Flutter` because the compiler was executed BEFORE `Flutter.framework` was copied to `ios/Flutter`?
+No, `Flutter.framework` is ALREADY IN `ios/Flutter` BEFORE `pod install`!
+The GitHub Actions workflow does:
+```yaml
+      - name: Switch Engine for tvOS
+        run: |
+          scripts/switch_target.sh tvos
+          export FLUTTER_LOCAL_ENGINE=${{ github.workspace }}/out/ios_release
+```
+Wait! `scripts/switch_target.sh tvos` MOVES `tvos` to `ios`!
+Where is `Flutter.framework`?
+It is NOT in `ios/Flutter`!
+It is in `out/ios_release`!
+Wait! The GitHub Action says:
+```yaml
+        run: |
+          cp _ios/Flutter/Generated.xcconfig ios/Flutter/
+          cp _ios/Flutter/flutter_export_environment.sh ios/Flutter/
+```
+It copies `.xcconfig` and `.sh` to `ios/Flutter/`.
+IT DOES NOT COPY `Flutter.framework` TO `ios/Flutter/`!
+Where is `Flutter.framework`?
+In `out/ios_release`!
+
+If `Flutter.framework` is in `out/ios_release`, AND NOT IN `ios/Flutter/`, HOW DID ANY MODULE COMPILE?!
+Wait. CocoaPods uses `Flutter.framework` from `ios/Flutter/`?
+No! `pod 'Flutter'` uses the path from `.xcconfig`!
+In `ios/Flutter/Generated.xcconfig`:
+```
+FLUTTER_ROOT=...
+```
+Wait! How does `url_launcher_ios` find `Flutter.framework`?
+CocoaPods uses `pod 'Flutter'` which relies on `flutter_install_all_ios_pods`!
+`flutter_install_all_ios_pods` reads `.xcconfig` to find the path!
+Wait! If `flutter_install_all_ios_pods` reads `.xcconfig`, it gets `FLUTTER_LOCAL_ENGINE`?!
+No, `FLUTTER_LOCAL_ENGINE` is an ENV VAR!
+If `FLUTTER_LOCAL_ENGINE` is set, `flutter_install_all_ios_pods` configures CocoaPods to use the engine from `out/ios_release/Flutter.xcframework`!
+So CocoaPods adds `-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/out/ios_release` to the `Pods` targets!
+Wait! If CocoaPods adds `-F .../out/ios_release` to the Pods targets...
+Let's check `path_provider_foundation` command line again!
+```
+-I /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+Wait! IT ONLY HAS `-F .../ios/Flutter`!
+IT DOES NOT HAVE `-F .../out/ios_release`!
+Why doesn't it have `-F .../out/ios_release`?!
+Because `tvos/Podfile` MANUALLY OVERRIDES `FRAMEWORK_SEARCH_PATHS`!!
+```ruby
+      # set framework search path
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+Ah!! `tvos/Podfile` hardcodes `-F .../ios/Flutter`!
+BUT `Flutter.framework` is NOT in `ios/Flutter`!
+`Flutter.framework` is in `out/ios_release`!
+Wait, but if it is in `out/ios_release`, then `$(inherited)` should have included it!
+Did `$(inherited)` include it?
+Let's look at the command line again!
+`-F .../Release-appletvos/path_provider_foundation -F .../ios/Flutter`
+NO! IT DID NOT INCLUDE IT!
+Why did `$(inherited)` NOT include it?!
+Because `FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]` was used by CocoaPods for iOS dependencies!
+Since `path_provider_foundation` uses `s.ios.dependency 'Flutter'`, CocoaPods wraps the inherited search paths in `[sdk=iphoneos*]`!
+When we build for `appletvos`, `[sdk=iphoneos*]` is IGNORED!
+So `$(inherited)` is EMPTY for `Flutter.framework`!
+
+WHAT ABOUT `url_launcher_ios`?!
+`url_launcher_ios` uses `s.dependency 'Flutter'` (without `.ios.`)!
+So CocoaPods puts its inherited search paths in `FRAMEWORK_SEARCH_PATHS` WITHOUT `[sdk=iphoneos*]`!
+So `$(inherited)` FOR `url_launcher_ios` INCLUDES `-F .../out/ios_release`!
+THAT'S WHY `url_launcher_ios` COMPILED SUCCESSFULLY, AND `path_provider_foundation` FAILED!!!
+
+Oh my god!
+I FINALLY FOUND IT!

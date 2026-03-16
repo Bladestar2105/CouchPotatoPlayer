@@ -1,0 +1,12 @@
+Wait, the workflow does NOT use `actions/cache` for `pub-cache`. The runners are fresh environments each time!
+So it's NOT a caching issue.
+
+Let's look at `.github/workflows/build-apps.yml` again:
+```yaml
+      - name: Patch pub-cache for tvOS
+        run: ruby scripts/patch_tvos_pods.rb
+```
+Wait! The workflow calls `scripts/patch_tvos_pods.rb` BEFORE `pod install`!
+BUT my patch was in `tvos/Podfile`'s `post_install` hook!
+Does `scripts/patch_tvos_pods.rb` ALREADY patch these files?!
+Let's check `scripts/patch_tvos_pods.rb`!

@@ -1,0 +1,58 @@
+Look at `url_launcher_ios` module compilation again!
+```
+SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift /Users/runner/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6/ios/url_launcher_ios/Sources/url_launcher_ios/Launcher.swift ... (in target 'url_launcher_ios' from project 'Pods')
+```
+Wait! `url_launcher_ios` succeeded... or did it?
+I KEEP SAYING "url_launcher_ios succeeded".
+BUT DID IT?!
+The log ONLY says:
+`CompileSwift normal arm64 (in target 'url_launcher_ios' from project 'Pods')`
+Where is the `Command SwiftCompile failed` for `url_launcher_ios`?
+It is NOT THERE.
+Where is it in the `The following build commands failed:` summary?
+It is NOT THERE.
+Therefore, `url_launcher_ios` SUCCEEDED!
+
+But wait, why would `url_launcher_ios` succeed?
+Does `url_launcher_ios` use a different `Flutter.framework`? No.
+Does it use different arguments? Let's check `url_launcher_ios` command line!
+Wait, the `xcodebuild` output doesn't log the command line arguments on SUCCESS!
+It ONLY logs the `Failed frontend command` for FAILED commands!
+Ah!!!!
+If `url_launcher_ios` succeeded, we DON'T SEE the arguments that made it succeed!
+BUT we DO see the arguments for `path_provider_foundation` because it failed!
+So maybe the arguments ARE DIFFERENT!
+Why would they be different?!
+Look at `url_launcher_ios.podspec` vs `path_provider_foundation.podspec`.
+`url_launcher_ios.podspec` has:
+```ruby
+  s.xcconfig = {
+      'LIBRARY_SEARCH_PATHS' => '$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)/ $(SDKROOT)/usr/lib/swift',
+      'LD_RUNPATH_SEARCH_PATHS' => '/usr/lib/swift',
+  }
+  s.dependency 'Flutter'
+```
+`path_provider_foundation.podspec` has:
+```ruby
+  s.ios.xcconfig = {
+    'LIBRARY_SEARCH_PATHS' => '$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)/ $(SDKROOT)/usr/lib/swift',
+    'LD_RUNPATH_SEARCH_PATHS' => '/usr/lib/swift',
+  }
+  s.ios.dependency 'Flutter'
+```
+Wait! `s.ios.dependency 'Flutter'`
+If `path_provider_foundation` uses `s.ios.dependency 'Flutter'`, and CocoaPods resolves it... does CocoaPods add `-F .../Flutter` to `FRAMEWORK_SEARCH_PATHS`?
+YES, but it might wrap it in `[sdk=iphoneos*]` in the generated `Pods-Runner-path_provider_foundation.xcconfig` file!
+Wait! If it is wrapped in `[sdk=iphoneos*]`, then `FRAMEWORK_SEARCH_PATHS` for `appletvos` WILL BE EMPTY (except for what `tvos/Podfile` added)!
+BUT `tvos/Podfile` DID add `-F .../ios/Flutter` to `path_provider_foundation`!
+Is it possible `Flutter.framework` REQUIRES `DEFINES_MODULE` to be `YES`?
+No, `Flutter` is precompiled.
+
+Wait... what if `path_provider_foundation` DOES NOT DEPEND on `Flutter` when `SUPPORTED_PLATFORMS` is `appletvos`?!
+If CocoaPods evaluates `path_provider_foundation` and sees `s.ios.dependency 'Flutter'`, but the target builds for `appletvos`, DOES XCODE LINK THE FLUTTER FRAMEWORK TO THE COMPILED BINARY?!
+If Xcode DOES NOT link the `Flutter` framework, then the module IS NOT imported!
+Wait! To import a module, `swiftc` only needs the `-F` path. It doesn't need to link it during parsing!
+Wait! The error `no such module 'Flutter'` happens during PARSING/COMPILATION (`SwiftCompile`), not LINKING!
+If `-F .../ios/Flutter` is provided, `swiftc` WILL FIND `Flutter.framework/Modules/module.modulemap`!
+If it finds `module.modulemap`, it loads the module!
+WHY WOULD IT FAIL TO LOAD IT?!

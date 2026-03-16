@@ -1,0 +1,51 @@
+Wait, let's look at `tvos/Podfile`:
+```ruby
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # set framework search path
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+Wait! `config.build_settings['FRAMEWORK_SEARCH_PATHS']` sets the value directly!
+But CocoaPods ALSO generates `.xcconfig` files which get included by the Xcode project via `$(inherited)`.
+If `FRAMEWORK_SEARCH_PATHS` is set in `config.build_settings`, it applies to the target globally!
+Wait, if it applies globally, why does Xcode log show:
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`
+It IS including `-F .../ios/Flutter`!
+So the framework search path IS THERE!
+If the framework search path is there, and it points to the directory containing `Flutter.framework`, then `swiftc` WILL search there.
+Why does `swiftc` STILL say `no such module 'Flutter'`?
+Let's think.
+Is `Flutter.framework` a module? Yes, it contains a `Modules/module.modulemap`.
+Does the `tvOS` SDK reject iOS frameworks?
+If `Flutter.framework` was built for `tvOS`, then it should work for `tvOS`.
+Wait, the memory says: "The GitHub Action uses a custom tvOS engine... switches the target... uses `xcodebuild` with `-destination 'generic/platform=tvOS'`... `FLUTTER_LOCAL_ENGINE` is set".
+Is `url_launcher_ios` able to find `Flutter.framework` and import it? Yes, the log shows it successfully compiled `url_launcher_ios`.
+Is it possible that `path_provider_foundation` is NOT compiling against `Flutter.framework`, but against `FlutterMacOS.framework`?
+Let's check `test_crlf6.rb` output for `path_provider_foundation`.
+Oh! Look at my `messages.g.swift` patch in `test_crlf6.rb`!
+```swift
+#if os(iOS) || os(tvOS)
+  import Flutter
+#elseif os(macOS)
+  import FlutterMacOS
+#endif
+```
+It imported `Flutter`!
+Wait! The GitHub Action failed at `messages.g.swift:10:10`.
+Is it possible the patch DID NOT MATCH?
+Let's check the GitHub action log again!
+```
+/Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift:10:10: error: no such module 'Flutter'
+  import Flutter
+```
+If it had matched, line 9 would be `#if os(iOS) || os(tvOS)`.
+Is it possible it matched, changed line 9, but line 10 is still `import Flutter` and the compiler printed the error on line 10?
+Yes! The compiler prints the error on the line where the `import` is. So line 10 IS `import Flutter`.
+Why would `import Flutter` fail?
+Maybe `path_provider_foundation` has another file, e.g., `PathProviderPlugin.swift`, that uses `import Flutter`?
+Wait. The error is SPECIFICALLY in `messages.g.swift`.
+Why did `messages.g.swift` fail, but `PathProviderPlugin.swift` (which also imports Flutter) NOT print the error?
+Because `messages.g.swift` is the first file compiled or evaluated.
+Wait. Does `path_provider_foundation` have an `import Flutter` in `PathProviderPlugin.swift`? Let's check.

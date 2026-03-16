@@ -1,0 +1,52 @@
+Wait! `shared_preferences_foundation`'s `messages.g.swift` has exactly the same Pigeon generated `#if os(iOS)` block!
+If it compiled successfully, it MUST have found `Flutter.framework`!
+So WHY did `path_provider_foundation` fail to find `Flutter.framework`?
+
+Is it possible that `path_provider_foundation` uses a DIFFERENT Swift version, and `Flutter.framework` is cached for that Swift version?
+Wait! Look at `path_provider_foundation` command line:
+```
+-target arm64-apple-tvos15.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.5.sdk
+```
+Look at `shared_preferences_foundation` command line:
+I don't have it in the log because it SUCCEEDED. The failed frontend command is only printed on error!
+
+Wait! I see the issue now!
+In `tvos/Podfile`:
+```ruby
+  # Add pub cache directory - this is where SPM-style pods compile from
+  pub_cache_dir = File.expand_path('~/.pub-cache/hosted/pub.dev')
+  search_dirs << pub_cache_dir if Dir.exist?(pub_cache_dir)
+```
+Wait! `path_provider_foundation` is in `pub_cache_dir`!
+So my patch script DOES patch it.
+BUT wait! Does it patch ALL files?
+Look at my patch script again:
+```ruby
+  collect_swift_files(search_dirs, '*.swift').each do |file|
+    content = File.read(file)
+    patched = content
+    ...
+```
+Wait! `search_dirs` includes `~/.pub-cache/hosted/pub.dev`.
+This means it iterates over EVERY SINGLE SWIFT FILE IN `~/.pub-cache/hosted/pub.dev/**/*.swift`!
+Wait! It patches ALL OF THEM?!
+Yes! But `pub.dev` has thousands of swift files if there are many plugins!
+Wait, that is fine, it's just regex matching.
+
+Wait, why did `shared_preferences_foundation` succeed but `path_provider_foundation` fail?
+Maybe my regex DID NOT match `path_provider_foundation`?
+BUT I PROVED in `test_crlf4.rb` that the FIRST regex matched `path_provider_foundation` because it returned `true` for `include?(error_str_a)`!
+If `error_str_a` matched, then the FIRST CI run patched it successfully!
+BUT in the SECOND CI run, I changed the regex!
+Did the NEW regex match `path_provider_foundation`?
+Let's look at `test_crlf6.rb`:
+```ruby
+content = File.read("test_dl/darwin/path_provider_foundation/Sources/path_provider_foundation/PathProviderPlugin.swift")
+patched = content.gsub(/(#if\s+os\(iOS\))(\s+import\s+Flutter\b)/, '\1 || os(tvOS)\2')
+```
+Wait, the error was in `messages.g.swift`!
+Let's check `test_crlf5.rb` which tested `messages.g.swift`:
+It matched!
+BUT wait! Is it possible that the file on the CI server was ALREADY MATCHED AND PATCHED from a previous run?!
+YES! The GitHub Actions runner uses a CACHED `~/.pub-cache`?!
+Let's check the workflow file `.github/workflows/build-apps.yml` to see if it caches `~/.pub-cache`!

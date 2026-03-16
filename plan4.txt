@@ -1,0 +1,35 @@
+Wait, let's look at the command line for `path_provider_foundation`:
+```
+/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift ... -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter ...
+```
+And then there's an error message:
+```
+/Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift:10:10: error: no such module 'Flutter'
+```
+Wait. If `url_launcher_ios` passes but `path_provider_foundation` fails, maybe there's a difference in their Podspecs?
+Let's see if `url_launcher_ios` has `Flutter` in its `FRAMEWORK_SEARCH_PATHS`. Yes it does.
+Why would `-F .../ios/Flutter` not be enough for `path_provider_foundation`?
+Is it possible `path_provider_foundation` is missing `-import-underlying-module`? No, it's not a framework dependency issue.
+Wait, let's check the command line for `url_launcher_ios` and `path_provider_foundation` side-by-side.
+In the Xcode log:
+`url_launcher_ios`:
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/url_launcher_ios -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`
+`path_provider_foundation`:
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`
+
+Wait. Maybe it's NOT the compiler command line that's failing. Look at the `Failed frontend command` block!
+```
+Failed frontend command:
+/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c ...
+```
+Wait! Is `Flutter.framework` a static framework?
+`url_launcher_ios` compiled successfully! How can `path_provider_foundation` fail to find `Flutter.framework` if `url_launcher_ios` found it?
+Wait... let's look at the `url_launcher_ios` `SwiftCompile` line.
+```
+SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift /Users/runner/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6/ios/url_launcher_ios/Sources/url_launcher_ios/Launcher.swift /Users/runner/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6/ios/url_launcher_ios/Sources/url_launcher_ios/messages.g.swift /Users/runner/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6/ios/url_launcher_ios/Sources/url_launcher_ios/URLLauncherPlugin.swift /Users/runner/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6/ios/url_launcher_ios/Sources/url_launcher_ios/URLLaunchSession.swift (in target 'url_launcher_ios' from project 'Pods')
+```
+Did it really compile successfully? Yes, it finished.
+Why did `path_provider_foundation` fail?
+Could it be a caching issue or something else?
+What if `path_provider_foundation` is NOT depending on `Flutter` in its `Package.swift`?
+Let's check `path_provider_foundation` in `test_dl` from earlier.

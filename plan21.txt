@@ -1,0 +1,19 @@
+Oh!!! `scripts/patch_tvos_pods.rb` ALSO PATCHES THESE FILES!
+And it's run BEFORE `pod install`!
+Look at `.github/workflows/build-apps.yml`:
+```yaml
+      - name: Patch pub-cache for tvOS
+        run: ruby scripts/patch_tvos_pods.rb
+      - name: Pod Install
+        run: |
+          cd ios
+          pod install
+```
+Since `scripts/patch_tvos_pods.rb` runs BEFORE `pod install`, it ALREADY patches `path_provider_foundation/messages.g.swift` using the OLD string matching logic (`Pattern A, B, C, D, etc`).
+Wait! If it uses the OLD logic, it FAILS to patch the CRLF files!
+But my previous fix ONLY updated `tvos/Podfile`'s `post_install` hook!
+I DID NOT update `scripts/patch_tvos_pods.rb`!
+If `scripts/patch_tvos_pods.rb` FAILS to patch `messages.g.swift`, it remains unpatched!
+THEN `pod install` runs, and its `post_install` hook runs!
+BUT WAIT! If my updated regex in `tvos/Podfile` runs AFTER `scripts/patch_tvos_pods.rb`, WHY didn't it patch it?
+Let's check `tvos/Podfile` again.

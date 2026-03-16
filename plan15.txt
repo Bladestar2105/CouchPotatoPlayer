@@ -1,0 +1,101 @@
+Wait! Let's check the build order and dependencies!
+If `Flutter` is a local pod, it has its own target `Flutter`.
+Does `url_launcher_ios` depend on `Flutter`?
+Yes, `s.dependency 'Flutter'`.
+Does `path_provider_foundation` depend on `Flutter`?
+`s.ios.dependency 'Flutter'`
+Wait, if `path_provider_foundation` depends on `s.ios.dependency 'Flutter'`, and the Podfile evaluates platforms as `appletvos`, CocoaPods might NOT create a target dependency from `path_provider_foundation` to `Flutter` in the Xcode project!
+If there is NO target dependency, Xcode might start building `path_provider_foundation` BEFORE `Flutter` target has finished copying the framework or generating the module map!
+BUT the `Flutter` framework is ALREADY pre-built in `ios/Flutter` because it's the engine!
+Is `Flutter` target actually doing anything?
+Yes, CocoaPods `Flutter` target copies the framework to `BUILT_PRODUCTS_DIR` (e.g. `Build/Products/Release-appletvos/Flutter`).
+Wait! If `Flutter` target copies it there, does `url_launcher_ios` use it from there?
+Let's check `url_launcher_ios` command line:
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/url_launcher_ios -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`
+It does NOT use `BUILT_PRODUCTS_DIR/Flutter`! It uses `.../ios/Flutter` directly!
+So it doesn't matter if `Flutter` target finishes or not, because the framework is already in `ios/Flutter`!
+BUT WAIT!
+If `path_provider_foundation` doesn't have `-F .../ios/Flutter`, it would fail. But it DOES have it!
+Why does it fail then?
+Is there a difference in `-Xcc` arguments?
+Let's check the full `swift-frontend` command line for `path_provider_foundation` from the github actions log:
+```
+-I /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+...
+-Xcc -working-directory -Xcc /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Pods
+...
+-Xcc -I/Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation/include
+-Xcc -I/Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+...
+```
+It has `-F .../ios/Flutter` and `-Xcc -I.../ios/Flutter`.
+
+Why did it fail to find `Flutter`?
+What if the `messages.g.swift` file being compiled is NOT the one I think it is?
+```
+/Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift:10:10: error: no such module 'Flutter'
+```
+Wait, could it be that `Flutter` framework has a `modulemap` that requires something else?
+No, `url_launcher_ios` imported it perfectly!
+If `url_launcher_ios` imported it perfectly, they are compiling against the EXACT SAME framework!
+Why did `url_launcher_ios` succeed but `path_provider_foundation` fail?
+Wait, DID `url_launcher_ios` ACTUALLY COMPILE `import Flutter`?!
+Let's re-read `tvos/Podfile`:
+```ruby
+  collect_swift_files(search_dirs, 'URLLauncherPlugin.swift').each do |file|
+    content = File.read(file)
+    patched = content
+
+    # Replace imports at top: "import Flutter\nimport UIKit" with platform-guarded version
+    patched = patched.gsub(
+      "import Flutter\nimport UIKit",
+      "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
+    )
+```
+Wait! Look at the patch!
+```swift
+#if os(iOS)
+import Flutter
+import UIKit
+#elseif os(tvOS)
+import Flutter
+import UIKit
+#endif
+```
+If `os(tvOS)` is true, it DOES compile `import Flutter`!
+Is it possible `URLLauncherPlugin.swift` failed silently? No, Swift compiler doesn't fail silently.
+Wait! What if `URLLauncherPlugin.swift` NEVER COMPILED `import Flutter`?
+What if `os(tvOS)` is FALSE?!
+If `os(tvOS)` is false, then `#elseif os(tvOS)` block is skipped!
+Wait! Is `os(tvOS)` FALSE when building for `appletvos`?!
+Yes, according to Apple's Swift documentation, the correct platform condition for tvOS is `os(tvOS)`!
+So `os(tvOS)` MUST be true!
+If `os(tvOS)` is true, `import Flutter` IS compiled!
+
+Wait... is there ANY difference between `url_launcher_ios` and `path_provider_foundation` target settings?
+Look at the logs for `url_launcher_ios`:
+```
+-target arm64-apple-tvos15.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.5.sdk
+```
+Look at `path_provider_foundation`:
+```
+-target arm64-apple-tvos15.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.5.sdk
+```
+Exactly the same.
+
+What if `path_provider_foundation` is missing `-Xcc -fmodule-map-file=...` while `url_launcher_ios` has it? No, neither has it.
+
+Wait. Is it possible that `path_provider_foundation`'s `.swift` files were NOT patched because of CRLF again?!
+Yes, `test_crlf4.rb` printed `true`, meaning the FIRST regex script (`error_str_a` string replace) WORKED!
+Wait, NO!
+`test_crlf4.rb` printed `true` for `include?("|| os(tvOS)")` because I used the NEW regex!
+If I used the NEW regex, it successfully patched `messages.g.swift`.
+If it successfully patched it, then `os(tvOS)` is TRUE, and it compiled `import Flutter`.
+And it gave `no such module 'Flutter'`.
+If the regex DID NOT patch it, it would compile `#error("Unsupported platform.")`!
+BUT IT DID NOT THROW `#error`! It threw `no such module 'Flutter'`!
+This proves that the NEW REGEX WORKED AND APPLIED THE PATCH!
+The fact that it threw `no such module 'Flutter'` means the compiler SAW `import Flutter` and tried to resolve it!
+Why couldn't it resolve it?!

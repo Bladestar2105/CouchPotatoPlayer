@@ -1,0 +1,56 @@
+Wait, let's look at `url_launcher_ios` and `shared_preferences_foundation`.
+`url_launcher_ios` works, but `shared_preferences_foundation` and `path_provider_foundation` failed!
+What do `shared_preferences_foundation` and `path_provider_foundation` have in common?
+They are BOTH part of the `packages` repo from flutter, just like `url_launcher_ios`!
+BUT `url_launcher_ios` is `url_launcher_ios-6.3.6`
+`shared_preferences_foundation` is `shared_preferences_foundation-2.5.6`
+`path_provider_foundation` is `path_provider_foundation-2.5.1`
+
+Wait, look at the compiler invocation for `url_launcher_ios` again:
+`SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift ...`
+It compiled it inside `url_launcher_ios.build`.
+
+Wait, the GitHub Action logs:
+```
+SwiftCompile normal arm64 Compiling\ messages.g.swift,\ SharedPreferencesPlugin.swift
+```
+Notice how it failed right after!
+Is there a difference in how CocoaPods configures them?
+Look at `tvos/Podfile`:
+```ruby
+    # Pattern C: 2-space indent with only iOS guard (no macOS)
+    if patched.include?("#if os(iOS)\n  import Flutter\n#endif") && !patched.include?("os(tvOS)")
+```
+Wait! `path_provider_foundation` and `shared_preferences_foundation` BOTH have `.symlinks/plugins/...` directories?
+Wait! In the Xcode output for `path_provider_foundation`:
+```
+-I /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+Look at `media_kit_libs_ios_video`'s `-F` flags:
+```
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/media_kit_libs_ios_video
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/.symlinks/plugins/media_kit_libs_ios_video/ios/Frameworks
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/XCFrameworkIntermediates/media_kit_libs_ios_video
+```
+Wait, if `path_provider_foundation` failed to find `Flutter`, it must mean `Flutter` wasn't found in `-F .../ios/Flutter`!
+But `url_launcher_ios` DID find it? Or did it?
+Wait... DID `url_launcher_ios` actually find it?
+Let's look at the CI logs for `url_launcher_ios`.
+```
+CompileSwift normal arm64 (in target 'url_launcher_ios' from project 'Pods')
+```
+Wait, the `CompileSwift` command for `url_launcher_ios` finished, AND THEN `shared_preferences_foundation` failed!
+Yes, the compilation of `url_launcher_ios` succeeded.
+Why would it succeed while the others fail?
+Is it possible that `url_launcher_ios` includes `<Flutter/Flutter.h>` via objective-c header and doesn't actually use the `Flutter` swift module?
+No, it's a Swift plugin: `import Flutter` is there.
+Wait, if `url_launcher_ios` succeeded, `Flutter` module MUST be available in `.../ios/Flutter`!
+If `Flutter` module is available, why would `path_provider_foundation` fail to find it?!
+Wait! Let's check `path_provider_foundation`'s compilation directory!
+```
+-I /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+```
+Is it possible `path_provider_foundation` has a `Flutter` module or directory inside its own include paths that overrides it? No.

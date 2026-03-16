@@ -1,0 +1,82 @@
+It returned `true`!
+This means `path_provider_foundation` WAS successfully patched by the FIRST CI run, which had the `error_str_a` string replace!
+And the SECOND CI run (my regex fix) ALSO patched it successfully!
+Since it was successfully patched, the compiler saw `#if os(iOS) || os(tvOS)` and `import Flutter`.
+And it errored at line 10 with `no such module 'Flutter'`.
+
+So the problem IS NOT the patch failing to apply! The patch DOES apply successfully!
+The problem IS that `path_provider_foundation` CANNOT find the `Flutter` module during `tvOS` compilation, while `url_launcher_ios` CAN!
+Why can `url_launcher_ios` find it, but `path_provider_foundation` cannot?!
+
+Look closely at the command line for `path_provider_foundation`:
+```
+-I /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+Look closely at the command line for `url_launcher_ios`:
+```
+-I /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/url_launcher_ios
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/url_launcher_ios
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+There is NO DIFFERENCE! Both use `-F .../ios/Flutter`.
+
+If BOTH have `-F .../ios/Flutter`, and `url_launcher_ios` compiles without `no such module Flutter`, BUT `path_provider_foundation` fails with `no such module Flutter`, what is the difference between them?!
+Wait! Look at `media_kit_video`. It ALSO failed!
+```
+SwiftCompile normal arm64 Compiling\ MediaKitVideoPlugin.swift,\ ... (in target 'media_kit_video' from project 'Pods')
+```
+Wait! Could it be that the module map for `Flutter` IS NOT A REAL MODULE?
+If `Flutter.framework` doesn't have a valid module map for tvOS?
+Wait! If `url_launcher_ios` succeeded, why did the others fail?
+Let's check what `url_launcher_ios` imports.
+`url_launcher_ios` imports `Flutter` in `messages.g.swift`, `URLLauncherPlugin.swift`, and `URLLaunchSession.swift`.
+Why did `url_launcher_ios` succeed?!
+Look at `url_launcher_ios.podspec`: `s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }`.
+`path_provider_foundation.podspec` does not.
+But `Flutter` is the framework being IMPORTED, not built!
+Is it possible `url_launcher_ios` DID NOT actually compile successfully?
+Wait. The Xcode log prints:
+```
+SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift ...
+```
+And then immediately prints:
+```
+CompileSwift normal arm64 (in target 'url_launcher_ios' from project 'Pods')
+```
+And then moves on to `shared_preferences_foundation`.
+There is no `Command SwiftCompile failed with a nonzero exit code` for `url_launcher_ios`.
+BUT wait! The GitHub actions log is parallelized!
+```
+-num-threads 3 -o ...
+```
+Could `url_launcher_ios` have FAILED later in the log, but it's mixed up because Xcode builds in parallel?
+Let's check the error summary at the bottom of the Github Action log.
+```
+The following build commands failed:
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'Flutter' from project 'Pods')
+	SwiftCompile normal arm64 Compiling\ messages.g.swift,\ PathProviderPlugin.swift /Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift /Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/PathProviderPlugin.swift (in target 'path_provider_foundation' from project 'Pods')
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'Runner' from project 'Runner')
+	CompileSwift normal arm64 (in target 'path_provider_foundation' from project 'Pods')
+warning: Run script build phase 'Run Script' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'Runner' from project 'Runner')
+	SwiftCompile normal arm64 Compiling\ MediaKitVideoPlugin.swift,\ ... (in target 'media_kit_video' from project 'Pods')
+```
+Wait! `url_launcher_ios` IS NOT IN THE FAILED LIST!
+`shared_preferences_foundation` IS ALSO NOT IN THE FAILED LIST!
+Look!
+```
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ messages.g.swift,\ PathProviderPlugin.swift ... (in target 'path_provider_foundation' from project 'Pods')
+	CompileSwift normal arm64 (in target 'path_provider_foundation' from project 'Pods')
+	SwiftCompile normal arm64 Compiling\ MediaKitVideoPlugin.swift,\ ... (in target 'media_kit_video' from project 'Pods')
+```
+Only `path_provider_foundation` and `media_kit_video` failed!
+Why did `url_launcher_ios` and `shared_preferences_foundation` SUCCEED?
+What is different about `path_provider_foundation` and `media_kit_video`?!
+Wait. `media_kit_video` is a video plugin. It imports `Flutter`.
+`path_provider_foundation` is a path plugin. It imports `Flutter`.
+Why did `path_provider_foundation` fail but `shared_preferences_foundation` succeed?
+Let's check `shared_preferences_foundation` Podspec or command line.
+Is it possible `path_provider_foundation` and `media_kit_video` were compiled BEFORE `Flutter.framework` was generated or something?
+No, Cocoapods handles dependencies.

@@ -1,0 +1,70 @@
+Wait... Is `FLUTTER_LOCAL_ENGINE` the ONLY directory we need to check?
+If it's defined, yes!
+But wait! If `FLUTTER_LOCAL_ENGINE` is set, `flutter_install_all_ios_pods` ALSO uses it to find the engine!
+```ruby
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # set framework search path
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+Wait! `flutter_dir` here is hardcoded to `ios/Flutter`!
+If `FLUTTER_LOCAL_ENGINE` is used, `ios/Flutter` DOES NOT contain `Flutter.xcframework`!
+So ALL targets that rely on this hardcoded `flutter_dir` fail to find `Flutter.xcframework`!
+BUT `url_launcher_ios` FOUND IT.
+Why did `url_launcher_ios` find it?
+Because `url_launcher_ios` uses `s.dependency 'Flutter'` WITHOUT the `.ios.` prefix!
+So CocoaPods automatically adds the Correct `FRAMEWORK_SEARCH_PATHS` (which includes `FLUTTER_LOCAL_ENGINE` because `pod 'Flutter'` resolves to the local engine path in `.xcconfig`) WITHOUT the `[sdk=iphoneos*]` modifier!
+So `url_launcher_ios` got `-F /Users/runner/work/.../out/ios_release` from `$(inherited)`!
+Wait! Let me verify this!
+Let's check the command line for `url_launcher_ios` in the first or second CI log!
+Wait, in `url_launcher_ios`'s command line, I ONLY saw:
+`-F /Users/runner/work/.../build/ios/Release-appletvos/url_launcher_ios -F /Users/runner/work/.../ios/Flutter`
+Where is `-F .../out/ios_release`?!
+Wait! Let's check `media_kit_libs_ios_video`.
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/media_kit_libs_ios_video -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/.symlinks/plugins/media_kit_libs_ios_video/ios/Frameworks -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/XCFrameworkIntermediates/media_kit_libs_ios_video`
+Where is `-F .../out/ios_release`?!
+It's NOT THERE!
+Then HOW did `url_launcher_ios` find `Flutter` if `-F .../out/ios_release` is NOT THERE?!
+Wait! I am guessing `-F .../out/ios_release` is NOT THERE!
+Because if `FLUTTER_LOCAL_ENGINE` is set, `flutter_export_environment.sh` has `FLUTTER_ENGINE=...`
+Where is the engine copied?
+Does `flutter build ios` (or `pod install` using local engine) COPY the engine to `ios/Flutter/Flutter.xcframework`?!
+Let's check `.github/workflows/build-apps.yml` for `FLUTTER_LOCAL_ENGINE` and engine copy!
+```yaml
+      - name: Build tvOS engine
+        run: |
+          ...
+          cp -r src/out/ios_release/Flutter.xcframework ${{ github.workspace }}/out/ios_release/
+```
+So it's copied to `out/ios_release/Flutter.xcframework`.
+Is it EVER copied to `ios/Flutter/Flutter.xcframework`?
+No!
+BUT `tvos/Podfile` has `flutter_install_all_ios_pods`.
+`flutter_install_all_ios_pods` executes `pod 'Flutter', :path => 'Flutter'` or similar?
+NO! In `flutter_tools/bin/podhelper.rb`, `pod 'Flutter'` is pointed to:
+`File.join(flutter_root, 'bin', 'cache', 'artifacts', 'engine', 'ios')` OR if local engine, the local engine path!
+So CocoaPods adds a local pod `Flutter`.
+When CocoaPods adds `Flutter` as a local pod, it copies the framework to `BUILT_PRODUCTS_DIR`?!
+No, `Flutter` podspec has `s.vendored_frameworks = 'Flutter.xcframework'`.
+So CocoaPods copies it to `XCFrameworkIntermediates/Flutter` in the `BUILT_PRODUCTS_DIR`?!
+Yes! CocoaPods copies `Flutter.xcframework` into `XCFrameworkIntermediates/Flutter/Flutter.framework`!
+And `FRAMEWORK_SEARCH_PATHS` will include `-F .../XCFrameworkIntermediates/Flutter`!
+Wait! Let me check the command line for `url_launcher_ios` in the CI logs!
+I DO NOT HAVE IT!
+But I have the command line for `path_provider_foundation`!
+Does it have `-F .../XCFrameworkIntermediates/Flutter`?!
+NO!
+Why does `url_launcher_ios` have `-F .../XCFrameworkIntermediates/Flutter`, but `path_provider_foundation` doesn't?!
+Because `url_launcher_ios` has `s.dependency 'Flutter'`, so CocoaPods generates `FRAMEWORK_SEARCH_PATHS = $(inherited) .../XCFrameworkIntermediates/Flutter`!
+But `path_provider_foundation` has `s.ios.dependency 'Flutter'`, so CocoaPods generates `FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*] = $(inherited) .../XCFrameworkIntermediates/Flutter`!
+AND when building for `appletvos`, Xcode IGNORES the `[sdk=iphoneos*]` variant!
+So `path_provider_foundation` DOES NOT get `-F .../XCFrameworkIntermediates/Flutter`!
+AND `tvos/Podfile` MANUALLY adds `-F .../ios/Flutter` to EVERY target:
+`config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'`
+But `ios/Flutter` IS EMPTY (it only contains `App.framework`, not `Flutter.xcframework`)!
+Because `Flutter.xcframework` is NOT in `ios/Flutter`! It's in `out/ios_release` or `XCFrameworkIntermediates/Flutter`!
+So `-F .../ios/Flutter` is USELESS for finding the engine!
+
+BINGO!

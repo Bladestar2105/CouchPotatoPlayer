@@ -1,0 +1,44 @@
+Wait! Let's check `media_kit_video`.
+Did `media_kit_video` fail with `no such module 'Flutter'`?
+Let's check the GitHub action log for `media_kit_video`:
+```
+SwiftCompile normal arm64 Compiling\ MediaKitVideoPlugin.swift,\ ... (in target 'media_kit_video' from project 'Pods')
+Command SwiftCompile failed with a nonzero exit code
+```
+It DID NOT print `no such module 'Flutter'` in the summary!
+It just said `Command SwiftCompile failed with a nonzero exit code` for `media_kit_video`.
+BUT `path_provider_foundation` DID print:
+`/Users/runner/.../messages.g.swift:10:10: error: no such module 'Flutter'`
+Wait, `path_provider_foundation` specifically printed `no such module 'Flutter'`.
+
+What if the compiler searches for `Flutter.framework` in `-F .../ios/Flutter` and FINDS it, but decides it CANNOT USE IT for `path_provider_foundation`?
+Why would it decide that?!
+Could `Flutter.framework` be an Objective-C framework that requires a bridging header or something?
+No, it has a `modulemap`.
+
+Let's look at the `path_provider_foundation` command line again:
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation`
+Wait! Is it possible that `url_launcher_ios` ALSO failed?
+Let me check the `shared_preferences_foundation` command line:
+```
+SwiftCompile normal arm64 Compiling\ messages.g.swift,\ SharedPreferencesPlugin.swift /Users/runner/.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/darwin/shared_preferences_foundation/Sources/shared_preferences_foundation/messages.g.swift ... (in target 'shared_preferences_foundation' from project 'Pods')
+CompileSwift normal arm64 (in target 'shared_preferences_foundation' from project 'Pods')
+```
+Wait! `shared_preferences_foundation` succeeded!
+Wait... DID IT succeed?
+The log says:
+```
+SwiftCompile normal arm64 Compiling\ messages.g.swift,\ SharedPreferencesPlugin.swift ... (in target 'shared_preferences_foundation' from project 'Pods')
+CompileSwift normal arm64 (in target 'shared_preferences_foundation' from project 'Pods')
+```
+Then right after:
+```
+SwiftCompile normal arm64 Compiling\ messages.g.swift,\ PathProviderPlugin.swift ... (in target 'path_provider_foundation' from project 'Pods')
+Failed frontend command: ...
+```
+And then later:
+```
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'shared_preferences_foundation' from project 'Pods')
+```
+If `shared_preferences_foundation` succeeded, WHY DID IT NOT THROW `no such module 'Flutter'`?
+Let's check `shared_preferences_foundation` source code for `messages.g.swift`.

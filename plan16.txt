@@ -1,0 +1,84 @@
+Look at this compiler flag for `media_kit_libs_ios_video`:
+`-parse-as-library`
+Look at `url_launcher_ios` and `path_provider_foundation`:
+They don't seem to have a difference in `-F` search paths.
+
+What if CocoaPods DID NOT include `-F .../ios/Flutter` correctly?
+Wait, I already checked! The `-F` is there!
+```
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+If `-F` is there, the ONLY reason it would fail to find `Flutter` is if the framework is NOT compatible, or the module map is missing.
+BUT if `url_launcher_ios` succeeded, `Flutter.framework` MUST be compatible and have a module map!
+Is it possible `url_launcher_ios` was using a CACHED version of the module? No.
+
+Wait. Is there a difference in `HEADER_SEARCH_PATHS`?
+In CocoaPods, `HEADER_SEARCH_PATHS` are passed with `-Xcc -I...`.
+In `path_provider_foundation`, we see `-Xcc -I.../ios/Flutter`.
+In `url_launcher_ios`, we see `-Xcc -I.../ios/Flutter`.
+
+What if the `path_provider_foundation` target was compiling an Objective-C file?
+Wait, `messages.g.swift` is a SWIFT file!
+Why would a Swift file say `no such module 'Flutter'` if another Swift file in another target in the SAME BUILD found it?
+
+Let's check the podspecs again.
+`path_provider_foundation` has:
+`s.ios.dependency 'Flutter'`
+`url_launcher_ios` has:
+`s.dependency 'Flutter'`
+
+Wait, CocoaPods `.xcconfig` generates `OTHER_SWIFT_FLAGS`.
+Does CocoaPods pass `-Xcc -fmodule-map-file=...` in `OTHER_SWIFT_FLAGS`?
+Let's check if `url_launcher_ios` has any extra swift flags.
+No.
+
+What if `path_provider_foundation` needs `-D COCOAPODS`? It has it.
+
+Wait! I missed something!
+Look at the `CompileSwift` line for `path_provider_foundation` again:
+```
+Failed frontend command:
+/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift /Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/PathProviderPlugin.swift -emit-module-path ... -target arm64-apple-tvos15.0 ... -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter ...
+```
+What if `import Flutter` is failing because the `Flutter` framework is a **STATIC** framework?
+If `Flutter` is a static framework, `swift-frontend` doesn't load it automatically without the `-import-underlying-module` flag?
+Wait, the command line HAS `-import-underlying-module`!
+`... -debug-info-format=dwarf -dwarf-version=4 -import-underlying-module -module-cache-path ...`
+Yes, it does!
+
+What does `-import-underlying-module` do?
+It tells the Swift compiler to import the Objective-C module of the SAME name as the current target.
+For `path_provider_foundation`, it imports the `path_provider_foundation` Objective-C module.
+For `url_launcher_ios`, it imports the `url_launcher_ios` Objective-C module.
+
+Wait! Does `path_provider_foundation` have an Objective-C part?
+No, it's pure Swift. `url_launcher_ios` is pure Swift.
+
+What if the `tvos/Podfile` post_install script modifies the `.xcconfig` incorrectly?
+Let's look at `tvos/Podfile`:
+```ruby
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+Wait! `FRAMEWORK_SEARCH_PATHS` is set to `"/path/to/ios/Flutter" $(inherited)`.
+But CocoaPods generates the `.xcconfig` file for the Pod.
+If `s.ios.dependency 'Flutter'` is used, CocoaPods might NOT add `Flutter` to `OTHER_LDFLAGS` or `FRAMEWORK_SEARCH_PATHS` in the generated xcconfig for the tvOS platform!
+Because CocoaPods thinks it's building for `appletvos`, but the dependency is `s.ios.dependency`!
+Wait. CocoaPods resolves dependencies BEFORE the post_install hook!
+So it resolves dependencies for `platform :ios`, which means `path_provider_foundation` DOES get the `Flutter` dependency in its `.xcconfig`.
+BUT CocoaPods `.xcconfig` might wrap the settings in `[sdk=iphoneos*]`!
+Let's check if CocoaPods wraps `s.ios` dependencies in `[sdk=iphoneos*]`.
+Yes! CocoaPods 1.10+ wraps platform-specific dependencies in `[sdk=...]` conditionals!
+If CocoaPods writes `FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*] = .../Flutter`, then when Xcode builds for `appletvos`, it IGNORES that line!
+So `$(inherited)` will NOT contain the `Flutter` framework paths!
+Wait! But I just said that `tvos/Podfile` MANUALLY adds `ios/Flutter` to `FRAMEWORK_SEARCH_PATHS`!
+```ruby
+config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+This is added directly to the Xcode project file (`.pbxproj`) via Xcodeproj!
+It overrides the `.xcconfig`'s `FRAMEWORK_SEARCH_PATHS`!
+And since the Xcode log shows `-F .../ios/Flutter`, we PROVED that the Xcode project HAS the search path!
+If the search path is there, the compiler sees it.
+If the compiler sees `-F .../ios/Flutter`, it searches that directory.
+If it searches that directory, it finds `Flutter.framework`!
+So WHY DOES IT SAY "no such module 'Flutter'"?!

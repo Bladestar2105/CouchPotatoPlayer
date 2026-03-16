@@ -1,0 +1,67 @@
+Let's review the `tvos/Podfile` post_install `FRAMEWORK_SEARCH_PATHS` patching logic:
+```ruby
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # set framework search path
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+      config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+This is fine.
+Wait, let's check `FRAMEWORK_SEARCH_PATHS` in the logs for `url_launcher_ios` again.
+Is it exactly identical to `path_provider_foundation`?
+Yes:
+```
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+There's one difference. `url_launcher_ios` HAS `$(inherited)`.
+But why does `path_provider_foundation` fail to find `Flutter`?
+Is there a difference in how the module is compiled?
+Look at `media_kit_video`. It ALSO failed.
+Look at `shared_preferences_foundation`. It ALSO failed!
+Wait! What if they DID NOT fail because of `Flutter`? What if they failed because of `no such module 'Flutter'` being a cascading error from something else?
+NO. `error: no such module 'Flutter'` is a very specific error. It means the module could not be found.
+
+Wait, look at the compiler command for `path_provider_foundation`:
+```
+-I /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+Is there an `-fmodule-map-file` argument? No.
+Wait, if `-F .../ios/Flutter` is there, the compiler checks `.../ios/Flutter/Flutter.framework/Modules/module.modulemap`.
+If that file exists, it loads the module.
+If `Flutter.framework` exists and has `module.modulemap`, why does `url_launcher_ios` find it but `path_provider_foundation` does not?
+Could it be that `url_launcher_ios` does NOT import `Flutter` in `messages.g.swift`?
+Let's check `url_launcher_ios`'s `messages.g.swift` from `test_crlf7.rb` output:
+```swift
+#if os(iOS) || os(tvOS)
+  import Flutter
+#elseif os(macOS)
+```
+It DID import it!
+Did `url_launcher_ios` really compile successfully?
+In the CI log for the FIRST run (which had the string patching):
+```
+SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift
+```
+There were no errors for `url_launcher_ios`.
+Wait, in the FIRST CI run, the regex didn't patch `path_provider_foundation`.
+So `path_provider_foundation` failed with `error: no such module 'Flutter'` ON LINE 10?
+Wait... in the first CI run, did I use the NEW regex or the OLD string replacement?
+In the FIRST CI run (where I used the OLD string replacement), `path_provider_foundation` failed with `no such module 'Flutter'` at line 10.
+Wait! If it was NOT patched, line 10 is `import Flutter` under `#if os(iOS)`.
+But `#if os(iOS)` is FALSE on tvOS!
+If `#if os(iOS)` is false on tvOS, why would the compiler parse `import Flutter` and throw an error?!
+Because the compiler parses the WHOLE file, even the inactive `#if` blocks?
+NO! Swift DOES NOT typecheck inactive `#if` blocks! It only syntax checks them!
+Wait! "no such module 'Flutter'" is a semantic error!
+If it throws "no such module 'Flutter'" at line 10, it means the block IS ACTIVE!
+It means `os(iOS)` IS TRUE!
+Wait, how can `os(iOS)` be true if we are compiling for `appletvos`?
+Is `os(iOS)` actually true for Catalyst or something?
+No! `os(iOS)` is true ONLY on iOS!
+Wait! Let me search Google for "Swift os(iOS) evaluates to true on tvOS".

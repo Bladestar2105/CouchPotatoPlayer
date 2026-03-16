@@ -1,0 +1,52 @@
+If I want to fix this, I just need to explicitly add `BUILT_PRODUCTS_DIR/XCFrameworkIntermediates/Flutter` to `FRAMEWORK_SEARCH_PATHS` in `tvos/Podfile`!
+Wait, is it ALWAYS in `XCFrameworkIntermediates/Flutter`?
+Yes, CocoaPods extracts `.xcframework` dependencies to `XCFrameworkIntermediates/<PodName>` inside the `BUILT_PRODUCTS_DIR`.
+So the framework search path should include:
+`"${BUILT_PRODUCTS_DIR}/XCFrameworkIntermediates/Flutter"`
+
+Wait! What if I just copy `FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]` to `FRAMEWORK_SEARCH_PATHS`?
+In `tvos/Podfile` post_install hook:
+```ruby
+    target.build_configurations.each do |config|
+      # set framework search path
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      xcf_dir = '${BUILT_PRODUCTS_DIR}/XCFrameworkIntermediates/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" "' + xcf_dir + '" $(inherited)'
+      config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" "' + xcf_dir + '" $(inherited)'
+```
+Wait! Is it `${BUILT_PRODUCTS_DIR}/XCFrameworkIntermediates/Flutter` or `${PODS_XCFRAMEWORKS_BUILD_DIR}/Flutter`?
+In CocoaPods, the xcconfig uses `${PODS_XCFRAMEWORKS_BUILD_DIR}`.
+Let me check a generated `.xcconfig` file for `FRAMEWORK_SEARCH_PATHS` involving `XCFrameworkIntermediates`.
+Usually it's `"${PODS_XCFRAMEWORKS_BUILD_DIR}/Flutter"`.
+But wait! If CocoaPods generated `FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]`, I can just read it and copy it to `FRAMEWORK_SEARCH_PATHS`!
+Is it accessible in `config.build_settings`?
+Let's check if `config.build_settings['FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]']` exists.
+Wait, no, the `.xcconfig` is where CocoaPods writes it, NOT the `pbxproj`.
+The `config.build_settings` modifies the `pbxproj`, which overrides or supplements the `.xcconfig`.
+If I add `"${PODS_XCFRAMEWORKS_BUILD_DIR}/Flutter"` to `FRAMEWORK_SEARCH_PATHS` in `pbxproj`, it will search there!
+Let's check the command line for `media_kit_libs_ios_video` again. It has:
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/XCFrameworkIntermediates/media_kit_libs_ios_video`
+This means the `XCFrameworkIntermediates` directory is inside `Release-appletvos`.
+Which is `BUILT_PRODUCTS_DIR`!
+So `${BUILT_PRODUCTS_DIR}/XCFrameworkIntermediates/Flutter` should work!
+Let's verify!
+`PODS_XCFRAMEWORKS_BUILD_DIR` is typically defined as `${BUILD_DIR}/${CONFIGURATION}-${PLATFORM_NAME}/XCFrameworkIntermediates` or similar, which evaluates to `${BUILT_PRODUCTS_DIR}/XCFrameworkIntermediates`.
+
+Wait, what if `Flutter` is NOT an `.xcframework` but a `.framework`?
+When `FLUTTER_LOCAL_ENGINE` is set, `pod 'Flutter'` resolves to the local engine path, which contains `Flutter.xcframework`.
+So CocoaPods WILL extract it to `XCFrameworkIntermediates/Flutter`.
+What if it's a regular `Flutter.framework`?
+Then CocoaPods copies it to `${PODS_CONFIGURATION_BUILD_DIR}/Flutter`.
+Which is `${BUILT_PRODUCTS_DIR}/Flutter`!
+
+If we just add both:
+```ruby
+      flutter_xcf_dir = '${BUILT_PRODUCTS_DIR}/XCFrameworkIntermediates/Flutter'
+      flutter_framework_dir = '${BUILT_PRODUCTS_DIR}/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" "' + flutter_xcf_dir + '" "' + flutter_framework_dir + '" $(inherited)'
+```
+This ensures that whether CocoaPods treats it as an xcframework or a regular framework, the target can find `Flutter.framework`!
+
+Let's double check if `path_provider_foundation` failed ONLY because it couldn't find `Flutter`.
+Yes! `error: no such module 'Flutter'` means `swiftc` couldn't find it.
+If we add those directories to `FRAMEWORK_SEARCH_PATHS`, `swiftc` WILL find it!

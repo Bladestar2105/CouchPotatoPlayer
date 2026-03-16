@@ -1,0 +1,24 @@
+Look at `url_launcher_ios.podspec`:
+`s.xcconfig = { ... }`
+`s.dependency 'Flutter'`
+
+Look at `path_provider_foundation.podspec`:
+`s.ios.dependency 'Flutter'`
+`s.ios.xcconfig = { ... }`
+
+Notice the difference! `url_launcher_ios` has `s.dependency 'Flutter'`, but `path_provider_foundation` has `s.ios.dependency 'Flutter'`!
+AND `url_launcher_ios` has `s.xcconfig` while `path_provider_foundation` has `s.ios.xcconfig`!
+Wait, but CocoaPods was run with `platform :ios` in `Podfile`. So it should treat `s.ios.dependency` exactly the same as `s.dependency` during dependency resolution.
+Why would it make a difference during the Xcode build?
+Wait, does `path_provider_foundation` have an SPM integration instead?
+Look at `url_launcher_ios.podspec`: `s.source_files = 'url_launcher_ios/Sources/**/*.swift'`
+Look at `path_provider_foundation.podspec`: `s.source_files = 'path_provider_foundation/Sources/path_provider_foundation/**/*.swift'`
+
+Wait... does CocoaPods filter xcconfig based on the target OS during the build?
+In the `tvos/Podfile` post_install, we change the `SUPPORTED_PLATFORMS` to `appletvos`.
+Wait! CocoaPods generates a `path_provider_foundation.xcconfig` for the Pods project.
+In this xcconfig, does it wrap `FRAMEWORK_SEARCH_PATHS` in `[sdk=iphoneos*]`?
+If the dependency was added as an `ios` dependency, CocoaPods might write:
+`FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*] = ...`
+If we change `SDKROOT` to `appletvos`, Xcode evaluates `[sdk=iphoneos*]` to false!
+Let's check if CocoaPods generates `[sdk=iphoneos*]` for `s.ios` dependencies!

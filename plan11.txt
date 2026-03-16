@@ -1,0 +1,34 @@
+Okay, `os(iOS)` does NOT evaluate to true on tvOS.
+But wait... if `os(iOS)` is false, then line 10 should NOT be compiled.
+Unless...
+The file `messages.g.swift` has `import Foundation` at line 7, and `#if os(iOS)` at line 9.
+If the first CI run had the OLD string replacements, let's look at `path_provider_foundation`.
+`test_crlf4.rb` output `false` for `include?("|| os(tvOS)")`.
+So the old script DID NOT PATCH `path_provider_foundation`.
+If it did not patch it, the file remained:
+```swift
+#if os(iOS)
+  import Flutter
+#elseif os(macOS)
+  import FlutterMacOS
+#else
+  #error("Unsupported platform.")
+#endif
+```
+If `os(iOS)` is false, it goes to `#elseif os(macOS)`, which is also false.
+Then it goes to `#else` and hits `#error("Unsupported platform.")`.
+But the compiler threw `error: no such module 'Flutter'` at line 10!!!
+Why would it throw an error at line 10 if line 10 is inside `#if os(iOS)`?!
+Wait!
+Is it possible the regex DID PATCH IT in the first CI run?
+Let's check the FIRST CI run log for `tvos/Podfile` script:
+```
+Patching (Flutter import) /Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift
+```
+No, wait! The log of the first CI run didn't show `Patching (Flutter import)` lines for `path_provider_foundation` because `Podfile` didn't find the pattern!
+Wait! If it didn't find the pattern, then it WAS NOT PATCHED!
+If it was not patched, WHY did it fail with `no such module 'Flutter'` at line 10?!
+This is impossible unless `os(iOS)` is TRUE during the build!
+But the target is `arm64-apple-tvos15.0`.
+Could it be that the Swift compiler evaluates `os(iOS)` to TRUE when `-sdk appletvos` is used?
+Let me check Swift documentation for `#if os(iOS)`.

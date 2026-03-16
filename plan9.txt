@@ -1,0 +1,83 @@
+Wait, let's look at `url_launcher_ios.podspec` again:
+`s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }`
+Does `path_provider_foundation.podspec` have `s.pod_target_xcconfig`? No.
+Does it matter?
+
+Wait, what if the `Flutter` framework is NOT a real module?
+If it's a static framework, CocoaPods generates a modulemap.
+But the engine framework in `ios/Flutter/Flutter.xcframework` contains `Modules/module.modulemap` inherently.
+
+Wait, let's look at `tvos/Podfile` patching for `path_provider_foundation`:
+In the github actions log, it says:
+```
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'Flutter' from project 'Pods')
+```
+Wait! `Flutter` IS A TARGET IN THE PODS PROJECT?!
+Why is `Flutter` a target in the `Pods` project?!
+Because `Podfile` uses `flutter_install_all_ios_pods` which adds `Flutter` as a local pod!
+But wait, if `Flutter` is a local pod, its product is `Flutter.framework`?
+No, the engine's `Flutter.framework` is pre-built!
+If `Flutter` is a local pod, CocoaPods creates a target for it to copy the framework.
+BUT wait! If `Flutter` is a target in the `Pods` project, its framework will be built into the `BUILT_PRODUCTS_DIR` (`.../build/ios/Release-appletvos/Flutter`)!
+If `url_launcher_ios` depends on `Flutter`, it adds `-F .../Release-appletvos/Flutter`.
+Let's check the command line for `path_provider_foundation`!
+Does it have `-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/Flutter`?
+Let's check the GitHub action log for `path_provider_foundation`:
+```
+-I /Users/runner/work/.../build/ios/Release-appletvos/path_provider_foundation -F /Users/runner/work/.../build/ios/Release-appletvos/path_provider_foundation -F /Users/runner/work/.../ios/Flutter
+```
+IT DOES NOT HAVE `-F .../Release-appletvos/Flutter`!
+Why doesn't it have it? Because `path_provider_foundation.podspec` uses `s.ios.dependency 'Flutter'`!
+Since `SUPPORTED_PLATFORMS` is changed to `appletvos`, CocoaPods (which evaluated the dependencies for `ios`) might NOT pass the dependency framework search paths correctly if the target OS was altered post-install, OR CocoaPods omitted the `-F` path because it evaluates `[sdk=iphoneos*]` in the `.xcconfig`!
+Let's verify this!
+If CocoaPods generates `.xcconfig` for `path_provider_foundation`, it includes:
+`FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*] = .../Release-appletvos/Flutter`
+But since we build for `appletvos`, that conditional FAILS, so the `-F` is NOT included!
+BUT WAIT! `tvos/Podfile` DOES THIS:
+```ruby
+      flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+```
+So `-F .../ios/Flutter` IS INCLUDED!
+If `-F .../ios/Flutter` is included, and `Flutter.xcframework` or `Flutter.framework` is inside `ios/Flutter`, then `swiftc` SHOULD find it!
+Is `Flutter.framework` inside `ios/Flutter` during the tvOS build?
+Yes! The workflow copies the engine there!
+But wait, does `ios/Flutter/Flutter.framework` contain a valid `Modules/module.modulemap` for tvOS?
+Yes, it's the custom engine built for tvOS!
+Wait... if the engine is built for tvOS, it's an `xcframework` or a `framework`?
+Let's check the memory: "The custom tvOS engine built for Flutter... copy `Generated.xcconfig` and `flutter_export_environment.sh` from `../_ios/Flutter/` to `Flutter/`... `FLUTTER_LOCAL_ENGINE` is set to the absolute path of the local engine output (e.g., `${{ github.workspace }}/out/ios_release`)."
+Wait! If `FLUTTER_LOCAL_ENGINE` is set, `flutter_tools` uses the framework from `out/ios_release`!
+It DOES NOT copy it to `ios/Flutter/Flutter.framework`!
+Ah!!!
+If `FLUTTER_LOCAL_ENGINE` is used, the engine framework is in `out/ios_release`, NOT `ios/Flutter`!
+Wait, but if it's in `out/ios_release`, where does `url_launcher_ios` find it?
+Let's check the GitHub Actions log for `url_launcher_ios`'s command line to see if it has `-F .../out/ios_release`!
+Wait! The log for `url_launcher_ios` has:
+```
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/url_launcher_ios -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+It DOES NOT have `-F .../out/ios_release`!
+Then how did `url_launcher_ios` compile successfully?!
+Wait. Did `url_launcher_ios` compile successfully?
+Look at the logs for `url_launcher_ios` again.
+```
+SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift ... (in target 'url_launcher_ios' from project 'Pods')
+CompileSwift normal arm64 (in target 'url_launcher_ios' from project 'Pods')
+```
+Then right after that:
+```
+SwiftCompile normal arm64 Compiling\ messages.g.swift,\ SharedPreferencesPlugin.swift ... (in target 'shared_preferences_foundation' from project 'Pods')
+CompileSwift normal arm64 (in target 'shared_preferences_foundation' from project 'Pods')
+SwiftCompile normal arm64 Compiling\ messages.g.swift,\ PathProviderPlugin.swift ...
+Failed frontend command:
+```
+Wait. If `url_launcher_ios` succeeded, it MUST have found `Flutter.framework`.
+Where did it find it? In `ios/Flutter`!
+Because CocoaPods DOES copy the engine framework to `ios/Flutter` during `pod install`, OR `flutter build` copies it there!
+Yes, `flutter build ios` copies the engine to `ios/Flutter/Flutter.framework`.
+So `ios/Flutter/Flutter.framework` DOES EXIST!
+Then why does `path_provider_foundation` fail to find it, but `url_launcher_ios` finds it?
+Look at `url_launcher_ios.podspec`: `s.xcconfig = { 'LIBRARY_SEARCH_PATHS' => ... }`
+Look at `path_provider_foundation.podspec`: `s.ios.xcconfig = { ... }`
+Wait! Could the lack of `s.ios.xcconfig` evaluation in tvOS break something else?
+What if `path_provider_foundation` requires a specific Swift version or modulemap? No.

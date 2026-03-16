@@ -1,0 +1,40 @@
+Ah! Look at `tvos/Podfile`:
+```ruby
+  # Add pub cache directory - this is where SPM-style pods compile from
+  pub_cache_dir = File.expand_path('~/.pub-cache/hosted/pub.dev')
+  search_dirs << pub_cache_dir if Dir.exist?(pub_cache_dir)
+```
+In `tvos/Podfile`, it ALSO adds `~/.pub-cache/hosted/pub.dev` to `search_dirs`!
+So `tvos/Podfile` DID patch the files!
+If `tvos/Podfile` patched the files, then `messages.g.swift` WAS PATCHED with `|| os(tvOS)`!
+If it was patched with `|| os(tvOS)`, then `import Flutter` is ACTIVE!
+Then why `no such module 'Flutter'`?!
+BECAUSE `Flutter.framework` is NOT INCLUDED IN THE COMPILER COMMAND FOR THAT TARGET!
+Wait... BUT I PROVED IT IS INCLUDED!
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter` is IN THE COMMAND LINE FOR `path_provider_foundation`!
+I literally copied it from the log!
+```
+-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter
+```
+If the framework path IS there, WHY `no such module 'Flutter'`?
+Because `Flutter` module doesn't exist? But `url_launcher_ios` found it!
+
+Wait! Does `Flutter.framework` support `tvOS`? YES.
+Does `Flutter.framework` have a `module.modulemap`?
+Let's check the engine artifact structure for `tvOS`.
+Wait! Is it possible that `path_provider_foundation` and `url_launcher_ios` compile concurrently, but `url_launcher_ios` finished compiling BEFORE the error printed, BUT `url_launcher_ios` actually failed too, and it just hasn't printed the failure message yet?
+NO, Xcode build system prints `Command SwiftCompile failed` AS SOON as the task fails.
+Wait, look at the error log for `media_kit_video`.
+```
+Command SwiftCompile failed with a nonzero exit code
+```
+For `media_kit_video`, it DOES NOT print the `no such module Flutter` error in the stdout summary. It just says `Command SwiftCompile failed`.
+Why? Because `xcodebuild` output is truncated or buffered!
+But `xcodebuild` DOES print it if it's the LAST task!
+
+What if `path_provider_foundation` failed for ANOTHER reason?
+"error: no such module 'Flutter'"
+This is definitive.
+Wait, let's check `shared_preferences_foundation`.
+In `test_dl`, what is the content of `messages.g.swift` for `shared_preferences_foundation`?
+Let's download `shared_preferences_foundation-2.5.6`.

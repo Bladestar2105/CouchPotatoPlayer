@@ -1,0 +1,59 @@
+Ah! Looking at the build logs from GitHub Actions:
+```
+SwiftCompile normal arm64 Compiling\ Launcher.swift,\ messages.g.swift,\ URLLauncherPlugin.swift,\ URLLaunchSession.swift /Users/runner/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6/ios/url_launcher_ios/Sources/url_launcher_ios/Launcher.swift ... (in target 'url_launcher_ios' from project 'Pods')
+```
+Wait, URL Launcher completed fine. But path_provider_foundation failed:
+```
+/Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift:10:10: error: no such module 'Flutter'
+  import Flutter
+```
+If `-F .../ios/Flutter` is present, why does it say "no such module 'Flutter'"?
+Because `Flutter` framework for iOS is NOT compatible with `tvOS` unless it is built for tvOS!
+But wait! The memory says: "The CI workflow (`.github/workflows/build-apps.yml`) uses a custom tvOS engine built for Flutter `3.35.7`. Ensure plugins like `url_launcher_ios` are constrained appropriately... "
+"In `tvos/Podfile`, `FRAMEWORK_SEARCH_PATHS` must resolve to `".../ios/Flutter" $(inherited)`. During CI, `$PROJECT_DIR` evaluates to the `ios` directory, so this correctly points to the `ios/Flutter` directory where the GitHub Actions workflow places the custom tvOS engine."
+Wait! The GitHub Action puts the engine in `ios/Flutter/Flutter.xcframework` or `ios/Flutter/Flutter.framework`.
+Is `path_provider_foundation` compiling as an SPM dependency or a Pod?
+Looking at the logs, it's compiling from `.../path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/...`
+This is inside `darwin/` meaning it's an SPM package? Or a CocoaPods target that includes the source files.
+Let's check the command line for `path_provider_foundation`:
+```
+/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name path_provider_foundation ... -I ... -F ... -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter ...
+```
+It has `-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`. So the framework path IS passed.
+Why `no such module 'Flutter'` ONLY for `path_provider_foundation`?
+Did `url_launcher_ios` use the exact same `-F` argument? Yes.
+Why did `path_provider_foundation` fail to find `Flutter` when `url_launcher_ios` found it?
+Wait... let's look at `media_kit_video`. It also failed!
+Why did they fail?
+Is it possible they are depending on `Flutter` but NOT including the `Flutter.framework` in their linker?
+No, `swiftc` only needs the modulemap inside `Flutter.framework/Modules/module.modulemap`.
+
+Let's rethink: Does `tvos/Podfile` patch the `FRAMEWORK_SEARCH_PATHS` for ALL targets? Yes, `installer.pods_project.targets.each`.
+But wait! CocoaPods 1.15+ uses `xcconfig` files for targets.
+Is it possible that `path_provider_foundation` is built as an SPM package wrapped by CocoaPods?
+If it's an SPM package, its `Package.swift` needs tvOS support. The script does this:
+`PATCH 7: Patch Package.swift files to add tvOS platform support`
+Wait, does `url_launcher_ios` have a `Package.swift`? Yes, `url_launcher_ios` is an SPM package too.
+Wait, look at the error log for `path_provider_foundation`:
+```
+2026-03-16T02:42:57.1078110Z /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/runner/.pub-cache/hosted/pub.dev/path_provider_foundation-2.5.1/darwin/path_provider_foundation/Sources/path_provider_foundation/messages.g.swift ... -F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter ...
+```
+If `-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter` is there, why does `import Flutter` fail?
+Could there be ANOTHER `FRAMEWORK_SEARCH_PATHS` that overrides it?
+Look at the `-F` arguments for `path_provider_foundation`:
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/path_provider_foundation`
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`
+
+What about `url_launcher_ios`?
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/build/ios/Release-appletvos/url_launcher_ios`
+`-F /Users/runner/work/CouchPotatoPlayer/CouchPotatoPlayer/ios/Flutter`
+
+Why did `path_provider_foundation` fail with "no such module 'Flutter'"?
+Wait... what if `path_provider_foundation` doesn't actually have `s.dependency 'Flutter'` in its podspec for tvOS?
+If it's not a dependency, maybe CocoaPods didn't add the correct module map or something? No, `-F` is enough for `swiftc`.
+Wait, look at this line in the error:
+`note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'Flutter' from project 'Pods')`
+Wait, `Flutter` from project `Pods`??
+Is `Flutter` a target in the `Pods` project?
+Yes, `Flutter` is a local pod because it's added via `pod 'Flutter', :path => 'Flutter'` in `tvos/Podfile`?
+Let's check `tvos/Podfile` for `Flutter`.

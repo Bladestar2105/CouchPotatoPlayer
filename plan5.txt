@@ -1,0 +1,15 @@
+Ah! Look at the podspec!
+`s.ios.dependency 'Flutter'`
+`s.osx.dependency 'FlutterMacOS'`
+
+Wait, CocoaPods maps targets to platforms.
+When CocoaPods generates the Pods project, it maps `s.ios.dependency 'Flutter'` to the iOS platform.
+But the tvOS Podfile changes the `SUPPORTED_PLATFORMS` to `appletvos` in the post_install hook!
+Does CocoaPods drop the iOS dependencies when compiling for tvOS?
+Wait! CocoaPods was run for the `ios` platform (because `platform :ios, '15.0'` is in the Podfile). So CocoaPods generates an iOS project.
+The `tvos/Podfile` post_install hook just forcefully changes `SDKROOT` to `appletvos`!
+If it generates an iOS project, why would `path_provider_foundation` fail to find `Flutter`?
+Look at the Podspec again: `s.ios.dependency 'Flutter'`
+If CocoaPods generates for iOS, `Flutter.framework` is linked.
+Wait, `url_launcher_ios` has `s.ios.dependency 'Flutter'` too! Why did it work?
+Let's check `url_launcher_ios` podspec in `test_dl/url_launcher/ios/url_launcher_ios.podspec`.
