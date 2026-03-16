@@ -352,10 +352,12 @@ def patch_pods_for_tvos(installer)
     if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
       patched = patched.gsub(
         "#import <Flutter/Flutter.h>",
-        "#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
       )
-      # Actually just keep it - Flutter framework is available on tvOS too via custom engine
-      # The real fix is messages.g.m and WakelockPlusPlugin.m
+      if patched != content
+        puts "Patching WakelockPlusPlugin.h: #{file}"
+        File.write(file, patched)
+      end
     end
   end
 

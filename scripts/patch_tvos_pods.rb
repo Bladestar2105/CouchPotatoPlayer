@@ -67,6 +67,20 @@ collect_files('*.swift').each do |file|
     patched = patched.gsub("#if os(iOS)\n  import Flutter\n#endif", "#if os(iOS) || os(tvOS)\n  import Flutter\n#endif")
   end
 
+  if patched.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)") && !patched.include?('os(tvOS)')
+    patched = patched.gsub(
+      "#if os(iOS)\n  import Flutter\n#elseif os(macOS)",
+      "#if os(iOS) || os(tvOS)\n  import Flutter\n#elseif os(macOS)"
+    )
+  end
+
+  if patched.include?("#if os(iOS)\nimport Flutter\n#elseif os(macOS)") && !patched.include?('os(tvOS)')
+    patched = patched.gsub(
+      "#if os(iOS)\nimport Flutter\n#elseif os(macOS)",
+      "#if os(iOS) || os(tvOS)\nimport Flutter\n#elseif os(macOS)"
+    )
+  end
+
   # Pattern D: no indent, iOS only guard
   if patched.include?("#if os(iOS)\nimport Flutter\n#endif") && !patched.include?('os(tvOS)')
     patched = patched.gsub("#if os(iOS)\nimport Flutter\n#endif", "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
@@ -196,6 +210,23 @@ collect_files('UIApplication+idleTimerLock.h').each do |file|
   unless content.include?('TARGET_OS_TV')
     puts "Patching UIApplication+idleTimerLock.h: #{file}"
     File.write(file, "#if !TARGET_OS_TV\n" + content + "\n#endif\n")
+    patch_count += 1
+  end
+end
+
+# ---------------------------------------------------------------------------
+# 8.5 WakelockPlusPlugin.h: replace iOS-only impl with tvOS stub
+# ---------------------------------------------------------------------------
+collect_files('WakelockPlusPlugin.h').each do |file|
+  content = File.read(file)
+  patched = content
+  if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
+    patched = patched.gsub(
+      "#import <Flutter/Flutter.h>",
+      "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+    )
+    puts "Patching WakelockPlusPlugin.h: #{file}"
+    File.write(file, patched)
     patch_count += 1
   end
 end
