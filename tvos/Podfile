@@ -112,38 +112,14 @@ def patch_pods_for_tvos(installer)
     content = File.read(file)
     patched = content
 
-    # Pattern A: 2-space indent with macOS elseif and #error else
-    error_str_a = '#if os(iOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + '  import FlutterMacOS' + "\n" + '#else' + "\n" + '  #error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
-    fix_str_a   = '#if os(iOS) || os(tvOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + '  import FlutterMacOS' + "\n" + '#endif'
-    patched = patched.gsub(error_str_a, fix_str_a)
+    # Use robust regex instead of exact string replacement for Flutter imports
 
-    # Pattern B: no indent with macOS elseif and #error else
-    error_str_b = '#if os(iOS)' + "\n" + 'import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + 'import FlutterMacOS' + "\n" + '#else' + "\n" + '#error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
-    fix_str_b   = '#if os(iOS) || os(tvOS)' + "\n" + 'import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + 'import FlutterMacOS' + "\n" + '#endif'
-    patched = patched.gsub(error_str_b, fix_str_b)
+    # Replace "#if os(iOS)" with "#if os(iOS) || os(tvOS)" where "import Flutter" is present
+    patched = patched.gsub(/(#if\s+os\(iOS\))(\n\s*import\s+Flutter\b)/, '\1 || os(tvOS)\2')
 
-    # Pattern C: 2-space indent with only iOS guard (no macOS)
-    if patched.include?("#if os(iOS)\n  import Flutter\n#endif") && !patched.include?("os(tvOS)")
-      patched = patched.gsub(
-        "#if os(iOS)\n  import Flutter\n#endif",
-        "#if os(iOS) || os(tvOS)\n  import Flutter\n#endif"
-      )
-    end
-
-    # Pattern D: no indent with only iOS guard
-    if patched.include?("#if os(iOS)\nimport Flutter\n#endif") && !patched.include?("os(tvOS)")
-      patched = patched.gsub(
-        "#if os(iOS)\nimport Flutter\n#endif",
-        "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif"
-      )
-    end
-
-    # Pattern E: 2-space indent with elseif macOS but no error (ends with #endif after macOS)
-    if patched.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif") && !patched.include?("os(tvOS)")
-      patched = patched.gsub(
-        "#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif",
-        "#if os(iOS) || os(tvOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif"
-      )
+    # Remove #else \n #error("Unsupported platform.") block if we just patched an iOS/macOS branch
+    if patched.include?("os(tvOS)") && patched.include?("#error(\"Unsupported platform.\")")
+      patched = patched.gsub(/\n\s*#else\n\s*#error\("Unsupported platform\."\)\n(#endif)/, "\n\\1")
     end
 
     # Pattern F: bare "import Flutter" with no platform guard
