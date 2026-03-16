@@ -301,7 +301,7 @@ def patch_pods_for_tvos(installer)
     search_dirs.each do |dir|
       files += Dir.glob(File.join(dir, "**/Package.swift"))
     end
-    files.select { |f| f.include?("/ios/") }.uniq
+    files.select { |f| f.include?("/ios/") || f.include?("/darwin/") }.uniq
   end
 
   collect_package_swift_files(search_dirs).each do |file|
@@ -309,16 +309,15 @@ def patch_pods_for_tvos(installer)
     next if content.include?("tvOS")
     patched = content
 
-    # Add .tvOS("15.0") to the platforms array, handling various indent/comma styles:
-    # Style A: .iOS("x.x")\n    ]          (no trailing comma)
-    # Style B: .iOS("x.x"),\n    ]         (trailing comma before closing bracket)
     if patched.include?(".iOS(") && !patched.include?(".tvOS(")
-      # Style A: no trailing comma - add comma + tvOS before ]
-      patched = patched.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n(\s*)\])/) do |_match|
+      patched = patched.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n)/) do |_match|
         ios_line = $1
         rest = $2
-        indent = $3
-        ios_line + ",\n" + indent + ".tvOS(&quot;15.0&quot;)" + rest
+        rest = rest.gsub(/^,/, '')
+        if ios_line.end_with?(',')
+          ios_line = ios_line[0...-1]
+        end
+        ios_line + "," + rest + "    .tvOS(\"15.0\"),\n"
       end
     end
 

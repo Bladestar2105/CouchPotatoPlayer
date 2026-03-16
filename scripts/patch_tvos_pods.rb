@@ -21,17 +21,20 @@ patch_count = 0
 # ---------------------------------------------------------------------------
 # 1. Package.swift: add .tvOS("15.0") to iOS-only platform declarations
 # ---------------------------------------------------------------------------
-collect_files('Package.swift').select { |f| f.include?('/ios/') }.each do |file|
+collect_files('Package.swift').select { |f| f.include?('/ios/') || f.include?('/darwin/') }.each do |file|
   content = File.read(file)
   next if content.include?('tvOS')
   next unless content.include?('.iOS(')
 
   tvos = '15.0'
-  patched = content.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n(\s*)\])/) do |_match|
+  patched = content.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n)/) do |_match|
     ios_line = $1
     rest = $2
-    indent = $3
-    ios_line + ",\n" + indent + '.tvOS("' + tvos + '")' + rest
+    rest = rest.gsub(/^,/, '')
+    if ios_line.end_with?(',')
+      ios_line = ios_line[0...-1]
+    end
+    ios_line + "," + rest + "    .tvOS(\"" + tvos + "\"),\n"
   end
 
   if patched != content
