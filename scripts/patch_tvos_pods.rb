@@ -373,28 +373,20 @@ end
 
 # ---------------------------------------------------------------------------
 # 8. WakelockPlusPlugin.m: replace iOS-only impl with tvOS stub
+# The import of Flutter.h fails on tvOS if header search paths aren't set.
+# Wrap the ENTIRE file (including imports) with #if !TARGET_OS_TV and add
+# a minimal tvOS stub at the end.
 # ---------------------------------------------------------------------------
 collect_files('WakelockPlusPlugin.m').each do |file|
   content = File.read(file)
   next if content.include?('TARGET_OS_TV')
-  patched = content
+  
+  # Wrap the entire original content with #if !TARGET_OS_TV
+  patched = "#if !TARGET_OS_TV\n" + content + "\n#else\n// tvOS stub - wakelock not supported\n#import <Flutter/Flutter.h>\n@interface WakelockPlusPlugin : NSObject <WAKELOCKPLUSWakelockPlusApi>\n@end\n@implementation WakelockPlusPlugin\n+ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {\n  WakelockPlusPlugin* instance = [[WakelockPlusPlugin alloc] init];\n  SetUpWAKELOCKPLUSWakelockPlusApi(registrar.messenger, instance);\n}\n- (void)toggleMsg:(WAKELOCKPLUSToggleMessage*)input error:(FlutterError**)error {\n  // No-op on tvOS\n}\n- (WAKELOCKPLUSIsEnabledMessage*)isEnabledWithError:(FlutterError* __autoreleasing *)error {\n  WAKELOCKPLUSIsEnabledMessage* result = [[WAKELOCKPLUSIsEnabledMessage alloc] init];\n  result.enabled = @NO;\n  return result;\n}\n@end\n#endif\n"
 
-  if patched.include?('@implementation WakelockPlusPlugin')
-    tvos_stub = "#if TARGET_OS_TV\n// tvOS stub - wakelock not supported\n@implementation WakelockPlusPlugin\n+ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {\n  WakelockPlusPlugin* instance = [[WakelockPlusPlugin alloc] init];\n  SetUpWAKELOCKPLUSWakelockPlusApi(registrar.messenger, instance);\n}\n- (void)toggleMsg:(WAKELOCKPLUSToggleMessage*)input error:(FlutterError**)error {\n  // No-op on tvOS\n}\n- (WAKELOCKPLUSIsEnabledMessage*)isEnabledWithError:(FlutterError* __autoreleasing *)error {\n  WAKELOCKPLUSIsEnabledMessage* result = [[WAKELOCKPLUSIsEnabledMessage alloc] init];\n  result.enabled = @NO;\n  return result;\n}\n@end\n#else\n"
-    impl_start = patched.index('@implementation WakelockPlusPlugin')
-    end_pos = patched.index("\n@end", impl_start)
-    if end_pos
-      end_pos_after = end_pos + "\n@end".length
-      original_impl = patched[impl_start..end_pos_after - 1]
-      patched = patched.sub(original_impl, tvos_stub + original_impl + "\n#endif")
-    end
-  end
-
-  if patched != content
-    puts "Patching WakelockPlusPlugin.m: #{file}"
-    File.write(file, patched)
-    patch_count += 1
-  end
+  puts "Patching WakelockPlusPlugin.m: #{file}"
+  File.write(file, patched)
+  patch_count += 1
 end
 
 # ---------------------------------------------------------------------------
