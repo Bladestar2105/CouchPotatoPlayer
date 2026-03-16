@@ -53,48 +53,28 @@ collect_files('Package.swift').select { |f| f.include?('/ios/') }.each do |file|
 end
 
 # ---------------------------------------------------------------------------
-# 2. Swift files: fix #if os(iOS) import Flutter #else #error(...) patterns
+# 2. Swift files: fix #if os(iOS) import Flutter
 # ---------------------------------------------------------------------------
 collect_files('*.swift').each do |file|
   content = File.read(file)
   patched = content
 
-  # Pattern A: 2-space indent with #error
-  error_a = '#if os(iOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" +
-            '  import FlutterMacOS' + "\n" + '#else' + "\n" + '  #error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
-  fix_a   = '#if os(iOS) || os(tvOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" +
-            '  import FlutterMacOS' + "\n" + '#endif'
-  patched = patched.gsub(error_a, fix_a)
+  # Robust regex to catch any `#if os(iOS)` followed by `import Flutter` or `import UIKit`
+  patched = patched.gsub(/#if os\(iOS\)(\s*)import Flutter/, "#if os(iOS) || os(tvOS)\\1import Flutter")
+  patched = patched.gsub(/#if os\(iOS\)(\s*)import UIKit/, "#if os(iOS) || os(tvOS)\\1import UIKit")
 
-  # Pattern B: no indent with #error
-  error_b = '#if os(iOS)' + "\n" + 'import Flutter' + "\n" + '#elseif os(macOS)' + "\n" +
-            'import FlutterMacOS' + "\n" + '#else' + "\n" + '#error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
-  fix_b   = '#if os(iOS) || os(tvOS)' + "\n" + 'import Flutter' + "\n" + '#elseif os(macOS)' + "\n" +
-            'import FlutterMacOS' + "\n" + '#endif'
-  patched = patched.gsub(error_b, fix_b)
+  # Remove duplicate os(tvOS) if it was already patched
+  patched = patched.gsub("#if os(iOS) || os(tvOS) || os(tvOS)", "#if os(iOS) || os(tvOS)")
 
-  # Pattern C: 2-space indent, iOS only guard
-  if patched.include?("#if os(iOS)\n  import Flutter\n#endif") && !patched.include?('os(tvOS)')
-    patched = patched.gsub("#if os(iOS)\n  import Flutter\n#endif", "#if os(iOS) || os(tvOS)\n  import Flutter\n#endif")
-  end
-
-  # Pattern D: no indent, iOS only guard
-  if patched.include?("#if os(iOS)\nimport Flutter\n#endif") && !patched.include?('os(tvOS)')
-    patched = patched.gsub("#if os(iOS)\nimport Flutter\n#endif", "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
-  end
-
-  # Pattern E: 2-space indent with macOS elseif, no #error
-  if patched.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif") && !patched.include?('os(tvOS)')
-    patched = patched.gsub(
-      "#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif",
-      "#if os(iOS) || os(tvOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif"
-    )
-  end
-
-  # Pattern F: bare import Flutter (no guard at all)
+  # Catch bare `import Flutter` with no guard
   if patched.include?('import Flutter') && !patched.include?('os(tvOS)') &&
      !patched.include?('os(iOS)') && !patched.include?('canImport(Flutter)')
     patched = patched.gsub('import Flutter', "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
+  end
+
+  # Replace `#else` followed by `#error` if it's the `Unsupported platform` error (optional but prevents Pigeon failures)
+  if patched.include?('#error("Unsupported platform.")') && patched.include?('import FlutterMacOS')
+    patched = patched.gsub(/#else\s+#error\("Unsupported platform."\)/, "")
   end
 
   if patched != content
@@ -220,13 +200,18 @@ collect_files('WakelockPlusPlugin.m').each do |file|
   patched = content
 
   if patched.include?('@implementation WakelockPlusPlugin')
-    tvos_stub = "#if TARGET_OS_TV\n// tvOS stub - wakelock not supported\n@implementation WakelockPlusPlugin\n+ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {\n  WakelockPlusPlugin* instance = [[WakelockPlusPlugin alloc] init];\n  SetUpWAKELOCKPLUSWakelockPlusApi(registrar.messenger, instance);\n}\n- (void)toggleMsg:(WAKELOCKPLUSToggleMessage*)input error:(FlutterError**)error {\n  // No-op on tvOS\n}\n- (WAKELOCKPLUSIsEnabledMessage*)isEnabledWithError:(FlutterError* __autoreleasing *)error {\n  WAKELOCKPLUSIsEnabledMessage* result = [[WAKELOCKPLUSIsEnabledMessage alloc] init];\n  result.enabled = @NO;\n  return result;\n}\n@end\n#else\n"
-    impl_start = patched.index('@implementation WakelockPlusPlugin')
-    end_pos = patched.index("\n@end", impl_start)
-    if end_pos
-      end_pos_after = end_pos + "\n@end".length
-      original_impl = patched[impl_start..end_pos_after - 1]
-      patched = patched.sub(original_impl, tvos_stub + original_impl + "\n#endif")
+    tvos_stub = "#if TARGET_OS_TV\n// tvOS stub - wakelock not supported\n@interface WakelockPlusPlugin () <FlutterPlugin>\n@end\n@implementation WakelockPlusPlugin\n+ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {}\n@end\n#else\n"
+
+    # We replace everything from `@interface WakelockPlusPlugin ()` down to the end of the file.
+    # WakelockPlusPlugin.m usually contains an interface block followed by the implementation block.
+    if patched.include?('@interface WakelockPlusPlugin ()')
+      interface_start = patched.index('@interface WakelockPlusPlugin ()')
+      end_pos = patched.rindex("\n@end") # Find the last @end
+      if end_pos
+        end_pos_after = end_pos + "\n@end".length
+        original_impl = patched[interface_start..end_pos_after - 1]
+        patched = patched.sub(original_impl, tvos_stub + original_impl + "\n#endif")
+      end
     end
   end
 

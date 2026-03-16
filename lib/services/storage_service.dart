@@ -28,6 +28,8 @@ class StorageService {
     try {
       final file = await _localFile(filename);
       // Offload heavy JSON stringification to background isolate
+      // Note: `data` MUST be standard lists/maps of primitives (already serialized via .toJson())
+      // before being passed here, because custom objects cannot be sent across isolates.
       final jsonString = await compute(_encodeJson, data);
       await file.writeAsString(jsonString);
     } catch (e) {
