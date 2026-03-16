@@ -292,10 +292,28 @@ def patch_pods_for_tvos(installer)
   end
 
   # ---------------------------------------------------------------------------
-  # PATCH 7: Patch Package.swift files to add tvOS platform support
+  # PATCH 7: Patch Package.swift & Podspec files to add tvOS platform support
   # All iOS-only SPM packages fail ScanDependencies when built for tvOS
   # because they don't declare tvOS in their platforms array.
   # ---------------------------------------------------------------------------
+  def collect_podspecs(search_dirs)
+    files = []
+    search_dirs.each do |dir|
+      files += Dir.glob(File.join(dir, "**/*.podspec"))
+    end
+    files.uniq
+  end
+
+  collect_podspecs(search_dirs).each do |file|
+    content = File.read(file)
+    patched = content
+    if patched.include?("s.ios.dependency 'Flutter'") && !patched.include?("s.tvos.dependency 'Flutter'")
+      patched = patched.gsub("s.ios.dependency 'Flutter'", "s.ios.dependency 'Flutter'\n  s.tvos.dependency 'Flutter'")
+      puts "Patching Podspec: #{file}"
+      File.write(file, patched)
+    end
+  end
+
   def collect_package_swift_files(search_dirs)
     files = []
     search_dirs.each do |dir|
