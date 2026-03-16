@@ -75,11 +75,12 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     }
   }
 
-  Widget _buildInput(String label, TextEditingController controller) {
+  Widget _buildInput(String label, TextEditingController controller, {bool autofocus = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
         controller: controller,
+        autofocus: autofocus,
         obscureText: true,
         keyboardType: TextInputType.number,
         maxLength: 4,
@@ -146,10 +147,10 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                   ),
 
                 if (_isSettingPin) ...[
-                  _buildInput('New PIN', _pinController),
+                  _buildInput('New PIN', _pinController, autofocus: true),
                   _buildInput('Confirm PIN', _confirmController),
                 ] else ...[
-                  _buildInput('Current PIN', _pinController),
+                  _buildInput('Current PIN', _pinController, autofocus: true),
                   _buildInput('New PIN (Optional)', _confirmController),
                 ],
 
