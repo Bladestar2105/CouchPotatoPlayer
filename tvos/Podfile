@@ -46,8 +46,16 @@ post_install do |installer|
     target.build_configurations.each do |config|
       # set framework search path
       flutter_dir = File.expand_path('..', $PROJECT_DIR) + '/ios/Flutter'
-      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
-      config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+
+      search_paths = [
+        "\"#{flutter_dir}\"",
+        "\"#{flutter_dir}/Flutter.xcframework/ios-arm64\"",
+        "\"#{flutter_dir}/Flutter.xcframework/tvos-arm64\"",
+        "\"#{flutter_dir}/Flutter.xcframework/tvos-arm64_x86_64-simulator\""
+      ].join(" ")
+
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = "#{search_paths} $(inherited)"
+      config.build_settings['HEADER_SEARCH_PATHS'] = "#{search_paths} $(inherited)"
       config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
       config.build_settings["TVOS_DEPLOYMENT_TARGET"] = "15.0"
       # convert ios to tvos target

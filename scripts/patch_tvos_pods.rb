@@ -5,15 +5,26 @@
 
 require 'fileutils'
 
-PUB_CACHE_DIR = File.expand_path('~/.pub-cache/hosted/pub.dev')
+PUB_CACHE_DIRS = []
+if ENV['PUB_CACHE'] && Dir.exist?(ENV['PUB_CACHE'])
+  PUB_CACHE_DIRS << File.join(ENV['PUB_CACHE'], 'hosted', 'pub.dev')
+end
+PUB_CACHE_DIRS << File.expand_path('~/.pub-cache/hosted/pub.dev')
+PUB_CACHE_DIRS << File.expand_path('~/.pub-cache/hosted/pub.dartlang.org')
 
-unless Dir.exist?(PUB_CACHE_DIR)
-  puts "pub cache not found at #{PUB_CACHE_DIR}, skipping patches"
+valid_cache_dirs = PUB_CACHE_DIRS.select { |d| Dir.exist?(d) }
+
+if valid_cache_dirs.empty?
+  puts "pub cache not found in any of the expected locations, skipping patches"
   exit 0
 end
 
 def collect_files(pattern)
-  Dir.glob(File.join(PUB_CACHE_DIR, '**', pattern)).uniq
+  files = []
+  PUB_CACHE_DIRS.select { |d| Dir.exist?(d) }.each do |dir|
+    files += Dir.glob(File.join(dir, '**', pattern))
+  end
+  files.uniq
 end
 
 patch_count = 0
