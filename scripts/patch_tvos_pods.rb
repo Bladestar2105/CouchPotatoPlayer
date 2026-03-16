@@ -235,6 +235,24 @@ collect_files('WakelockPlusPlugin.h').each do |file|
 end
 
 # ---------------------------------------------------------------------------
+# 8.6 messages.g.m: replace iOS-only impl with tvOS stub
+# ---------------------------------------------------------------------------
+collect_files('messages.g.m').each do |file|
+  next unless file.include?("wakelock_plus")
+  content = File.read(file)
+  patched = content
+  if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
+    patched = patched.gsub(
+      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+    )
+    puts "Patching wakelock_plus messages.g.m: #{file}"
+    File.write(file, patched)
+    patch_count += 1
+  end
+end
+
+# ---------------------------------------------------------------------------
 # 8. WakelockPlusPlugin.m: replace iOS-only impl with tvOS stub
 # ---------------------------------------------------------------------------
 collect_files('WakelockPlusPlugin.m').each do |file|
