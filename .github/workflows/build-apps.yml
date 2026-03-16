@@ -109,6 +109,20 @@ jobs:
           curl -L -o out/ios_release.zip https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download
           unzip -q out/host_release_arm64.zip -d out/
           unzip -q out/ios_release.zip -d out/
+      - name: Prepare engine directory for xcode_appletv.sh
+        run: |
+          # xcode_appletv.sh BuildAppRelease() looks for gen_snapshot_arm64
+          # in clang_x64/, but the zip only ships gen_snapshot there.
+          # Create a symlink so the script finds it.
+          if [ -f out/ios_release/clang_x64/gen_snapshot ] && [ ! -f out/ios_release/clang_x64/gen_snapshot_arm64 ]; then
+            ln -s gen_snapshot out/ios_release/clang_x64/gen_snapshot_arm64
+            echo "Created gen_snapshot_arm64 symlink in clang_x64/"
+          fi
+          # Debug: show engine structure
+          echo "=== Engine directory structure ==="
+          ls -la out/ios_release/ | head -30
+          echo "=== clang_x64 ==="
+          ls -la out/ios_release/clang_x64/ | head -15
       - name: Generate Boilerplate
         run: flutter build ios --config-only --no-codesign
         env:
@@ -159,7 +173,7 @@ jobs:
           cd ios
           xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
         env:
-          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
+          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}
       - name: Package tvOS App
         run: tar -czf tvos-build.tar.gz build/ios/Release-appletvos/Runner.app
       - name: Upload tvOS Build

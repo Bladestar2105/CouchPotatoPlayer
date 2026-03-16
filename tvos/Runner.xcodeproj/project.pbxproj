@@ -314,7 +314,6 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6ZHF6A3G28;
 				ENABLE_BITCODE = NO;
-				FLUTTER_LOCAL_ENGINE = /Users/Aleksandr_Denisov/Work/engine/src;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Flutter",
@@ -453,7 +452,6 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6ZHF6A3G28;
 				ENABLE_BITCODE = NO;
-				FLUTTER_LOCAL_ENGINE = /Users/Aleksandr_Denisov/Work/engine/src;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Flutter",
@@ -485,7 +483,6 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6ZHF6A3G28;
 				ENABLE_BITCODE = NO;
-				FLUTTER_LOCAL_ENGINE = /Users/Aleksandr_Denisov/Work/engine/src;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Flutter",
