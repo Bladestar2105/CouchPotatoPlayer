@@ -223,12 +223,12 @@ collect_files('URLLauncherPlugin.swift').each do |file|
   end
 
   init_old_63x = "  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }"
-  init_new_63x = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  init() {}\n#endif"
+  init_new_63x = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  override init() {}\n#endif"
   patched = patched.gsub(init_old_63x, init_new_63x)
 
   # new init v6.3.6
   init_old_636 = "  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }"
-  init_new_636 = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#else\n  init() {}\n#endif"
+  init_new_636 = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#else\n  override init() {}\n#endif"
   patched = patched.gsub(init_old_636, init_new_636)
 
   reg_old_63x = "  public static func register(with registrar: FlutterPluginRegistrar) {\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"

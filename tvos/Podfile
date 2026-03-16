@@ -227,32 +227,53 @@ def patch_pods_for_tvos(installer)
     )
 
     # Wrap currentSession property (depends on URLLaunchSession which is iOS-only)
-    if patched.include?("private var currentSession: URLLaunchSession?")
+    if patched.include?("private var currentSession: URLLaunchSession?") && !patched.include?("#if os(iOS)\n  private var currentSession")
       patched = patched.gsub(
         "  private var currentSession: URLLaunchSession?",
         "#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif"
       )
     end
 
+    # Wrap launcher property (Launcher type is iOS-only, wrapped in #if os(iOS) by Launcher.swift patch)
+    if patched.include?("  private let launcher: Launcher") && !patched.include?("#if os(iOS)\n  private let launcher")
+      patched = patched.gsub(
+        "  private let launcher: Launcher",
+        "#if os(iOS)\n  private let launcher: Launcher\n#endif"
+      )
+    end
+
+    # Wrap topViewController property (uses UIViewController, iOS-only)
+    if patched.include?("  private var topViewController: UIViewController? {") && !patched.include?("#if os(iOS)\n  private var topViewController")
+      patched = patched.gsub(
+        /(  private var topViewController: UIViewController\? \{[\s\S]*?\n  \})/,
+        "#if os(iOS)\n\\1\n#endif"
+      )
+    end
+
     # Wrap viewPresenterProvider property (depends on ViewPresenterProvider iOS-only)
-    if patched.include?("private let viewPresenterProvider: ViewPresenterProvider")
+    if patched.include?("private let viewPresenterProvider: ViewPresenterProvider") && !patched.include?("#if os(iOS)\n  private let viewPresenterProvider")
       patched = patched.gsub(
         "  private let viewPresenterProvider: ViewPresenterProvider",
         "#if os(iOS)\n  private let viewPresenterProvider: ViewPresenterProvider\n#endif"
       )
     end
 
-    # Wrap the init that takes viewPresenterProvider
+    # Wrap the init that takes viewPresenterProvider (v6.4.1+)
     if patched.include?("init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider)")
       patched = patched.gsub(
         "  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }",
-        "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#endif"
+        "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  override init() {}\n#endif"
       )
     end
 
-    # For older 6.3.x that has init without viewPresenterProvider
-    if patched.include?("init(launcher: Launcher = DefaultLauncher()) {") && !patched.include?("viewPresenterProvider")
-      # nothing needed
+    # For v6.3.6 that has init without viewPresenterProvider
+    # Must wrap in #if os(iOS) because Launcher type is iOS-only, and provide override init for tvOS
+    if patched.include?("  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }") &&
+       !patched.include?("#if os(iOS)\n  init(launcher:")
+      patched = patched.gsub(
+        "  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }",
+        "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#else\n  override init() {}\n#endif"
+      )
     end
 
     # Wrap register func that uses DefaultViewPresenterProvider (iOS-only)
@@ -263,9 +284,15 @@ def patch_pods_for_tvos(installer)
       )
     end
 
-    # Wrap openUrlInSafariViewController and closeSafariViewController methods
-    if patched.include?("func openUrlInSafariViewController") &&
+    # Wrap ALL methods: canLaunchUrl through closeSafariViewController (v6.3.6)
+    methods_all_regex = /( +func canLaunchUrl[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
+    if patched.match?(methods_all_regex) && !patched.include?("#if os(iOS)\n  func canLaunchUrl")
+      patched = patched.gsub(methods_all_regex) do |match|
+        "#if os(iOS)\n#{match}\n#else\n  func canLaunchUrl(url: String) -> LaunchResult {\n    return .failure\n  }\n  func launchUrl(\n    url: String,\n    universalLinksOnly: Bool,\n    completion: @escaping (Result<LaunchResult, Error>) -> Void\n  ) {\n    completion(.success(.failure))\n  }\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
+      end
+    elsif patched.include?("func openUrlInSafariViewController") &&
        !patched.include?("#if os(iOS)\n  func openUrlInSafariViewController")
+      # Fallback for older versions without canLaunchUrl
       patched = patched.gsub(
         /( +func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
       ) do |match|
