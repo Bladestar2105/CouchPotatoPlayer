@@ -52,6 +52,11 @@ collect_files('*.podspec').each do |file|
   patched = content
   if patched.include?("s.ios.dependency 'Flutter'") && !patched.include?("s.tvos.dependency 'Flutter'")
     patched = patched.gsub("s.ios.dependency 'Flutter'", "s.ios.dependency 'Flutter'\n  s.tvos.dependency 'Flutter'")
+  end
+  if patched.match(/s\.ios\.deployment_target\s*=\s*'[^']+'/) && !patched.include?("s.tvos.deployment_target")
+    patched = patched.gsub(/(s\.ios\.deployment_target\s*=\s*'[^']+')/, "\\1\n  s.tvos.deployment_target = '15.0'")
+  end
+  if patched != content
     puts "Patching Podspec: #{file}"
     File.write(file, patched)
     patch_count += 1
