@@ -119,6 +119,11 @@ jobs:
         run: |
           cp _ios/Flutter/Generated.xcconfig ios/Flutter/
           cp _ios/Flutter/flutter_export_environment.sh ios/Flutter/
+          cp -r ${{ github.workspace }}/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework ios/Flutter/Flutter.framework
+          cp -r ${{ github.workspace }}/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework ios/Flutter/
+          cp _ios/Flutter/Flutter.podspec ios/Flutter/
+          sed -i '' 's/Flutter.xcframework/Flutter.framework/g' ios/Flutter/Flutter.podspec
+          plutil -replace CFBundleSupportedPlatforms -array AppleTVOS ios/Flutter/Flutter.framework/Info.plist || true
       - name: Install Dependencies
         run: flutter pub get
       - name: Patch pub-cache for tvOS

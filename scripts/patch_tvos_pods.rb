@@ -109,6 +109,14 @@ collect_files('*.swift').each do |file|
     patched = patched.gsub("#if os(iOS)\nimport Flutter\n#endif", "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
   end
 
+  # Fix registrar properties (messenger/textures are methods on iOS/tvOS but properties on macOS)
+  if patched.match(/registrar\.messenger(?!\()/)
+    patched = patched.gsub(/registrar\.messenger(?!\()/, "registrar.messenger()")
+  end
+  if patched.match(/registrar\.textures(?!\()/)
+    patched = patched.gsub(/registrar\.textures(?!\()/, "registrar.textures()")
+  end
+
   # Pattern E: 2-space indent with macOS elseif, no #error
   if patched.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif") && !patched.include?('os(tvOS)')
     patched = patched.gsub(
@@ -171,37 +179,70 @@ end
 # ---------------------------------------------------------------------------
 collect_files('URLLauncherPlugin.swift').each do |file|
   content = File.read(file)
-  next if content.include?('os(tvOS)')
   patched = content
 
-  patched = patched.gsub(
-    "import Flutter\nimport UIKit",
-    "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
-  )
+  # Note: Do not skip the entire file if it contains 'os(tvOS)',
+  # because the earlier '*.swift' loop might have injected `#if os(iOS) || os(tvOS)`
+  # at the import statements. We rely on the specific checks below for idempotency.
 
-  if patched.include?('  private var currentSession: URLLaunchSession?')
+  if patched.include?("import Flutter\nimport UIKit") && !patched.include?("#elseif os(tvOS)\nimport Flutter\nimport UIKit")
+    patched = patched.gsub(
+      "import Flutter\nimport UIKit",
+      "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
+    )
+  end
+
+  # v6.3.6 updates
+  if patched.include?('  private var currentSession: URLLaunchSession?') && !patched.include?("#if os(iOS)\n  private var currentSession")
     patched = patched.gsub(
       '  private var currentSession: URLLaunchSession?',
       "#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif"
     )
   end
 
-  if patched.include?('  private let viewPresenterProvider: ViewPresenterProvider')
+  if patched.include?('  private let launcher: Launcher') && !patched.include?("#if os(iOS)\n  private let launcher")
+    patched = patched.gsub(
+      '  private let launcher: Launcher',
+      "#if os(iOS)\n  private let launcher: Launcher\n#endif"
+    )
+  end
+
+  if patched.include?('  private var topViewController: UIViewController? {') && !patched.include?("#if os(iOS)\n  private var topViewController")
+    patched = patched.gsub(
+      /(  private var topViewController: UIViewController\? \{[\s\S]*?\n  \})/,
+      "#if os(iOS)\n\\1\n#endif"
+    )
+  end
+
+  # old init v6.3.x
+  if patched.include?('  private let viewPresenterProvider: ViewPresenterProvider') && !patched.include?("#if os(iOS)\n  private let viewPresenterProvider")
     patched = patched.gsub(
       '  private let viewPresenterProvider: ViewPresenterProvider',
       "#if os(iOS)\n  private let viewPresenterProvider: ViewPresenterProvider\n#endif"
     )
   end
 
-  init_old = "  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }"
-  init_new = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#endif"
-  patched = patched.gsub(init_old, init_new)
+  init_old_63x = "  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }"
+  init_new_63x = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  init() {}\n#endif"
+  patched = patched.gsub(init_old_63x, init_new_63x)
 
-  reg_old = "  public static func register(with registrar: FlutterPluginRegistrar) {\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
-  reg_new = "  public static func register(with registrar: FlutterPluginRegistrar) {\n#if os(iOS)\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n#else\n    let plugin = URLLauncherPlugin()\n#endif\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
-  patched = patched.gsub(reg_old, reg_new)
+  # new init v6.3.6
+  init_old_636 = "  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }"
+  init_new_636 = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#else\n  init() {}\n#endif"
+  patched = patched.gsub(init_old_636, init_new_636)
 
-  if patched.include?('func openUrlInSafariViewController') && !patched.include?("#if os(iOS)\n  func openUrlInSafariViewController")
+  reg_old_63x = "  public static func register(with registrar: FlutterPluginRegistrar) {\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
+  reg_new_tvos = "  public static func register(with registrar: FlutterPluginRegistrar) {\n#if os(iOS)\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n#else\n    let plugin = URLLauncherPlugin()\n#endif\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
+  patched = patched.gsub(reg_old_63x, reg_new_tvos)
+
+  # Support v6.3.6 where canLaunchUrl is also here and needs to be stubbed if launcher is nil
+  methods_old_regex = /( +func canLaunchUrl[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
+  if patched.match?(methods_old_regex) && !patched.include?("#if os(iOS)\n  func canLaunchUrl")
+    patched = patched.gsub(methods_old_regex) do |match|
+      "#if os(iOS)\n#{match}\n#else\n  func canLaunchUrl(url: String) -> LaunchResult {\n    return .failure\n  }\n  func launchUrl(\n    url: String,\n    universalLinksOnly: Bool,\n    completion: @escaping (Result<LaunchResult, Error>) -> Void\n  ) {\n    completion(.success(.failure))\n  }\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
+    end
+  elsif patched.include?('func openUrlInSafariViewController') && !patched.include?("#if os(iOS)\n  func openUrlInSafariViewController")
+    # Fallback to old regex for older url_launcher versions
     patched = patched.gsub(
       /( +func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
     ) do |match|
@@ -246,7 +287,7 @@ collect_files('WakelockPlusPlugin.h').each do |file|
   if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
     patched = patched.gsub(
       "#import <Flutter/Flutter.h>",
-      "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      "#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
     )
     puts "Patching WakelockPlusPlugin.h: #{file}"
     File.write(file, patched)
@@ -261,28 +302,41 @@ collect_files('messages.g.*').each do |file|
   next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
   content = File.read(file)
   patched = content
+
+  # Handle newer Pigeon which uses @import Flutter;
+  if patched.include?("@import FlutterMacOS;\n#else\n@import Flutter;\n#endif") && !patched.include?("TARGET_OS_TV")
+    patched = patched.gsub(
+      "@import FlutterMacOS;\n#else\n@import Flutter;\n#endif",
+      "@import FlutterMacOS;\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n@import Flutter;\n#endif"
+    )
+  end
+
+  # Handle older Pigeon which uses #import <Flutter/Flutter.h>
   if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
     patched = patched.gsub(
       "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
-      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
     )
-    puts "Patching wakelock_plus messages.g.m: #{file}"
-    File.write(file, patched)
-    patch_count += 1
   end
 
   if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
-    # For messages.g.h, we need to manually insert the import if it's missing,
-    # but wait, let's just insert it after #import <Foundation/Foundation.h>
     if patched.include?("#import <Foundation/Foundation.h>")
       patched = patched.gsub(
         "#import <Foundation/Foundation.h>",
-        "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
       )
-      puts "Patching wakelock_plus messages.g.h: #{file}"
-      File.write(file, patched)
-      patch_count += 1
+    elsif patched.include?("@import Foundation;")
+      patched = patched.gsub(
+        "@import Foundation;",
+        "@import Foundation;\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#endif"
+      )
     end
+  end
+
+  if patched != content
+    puts "Patching wakelock_plus messages: #{file}"
+    File.write(file, patched)
+    patch_count += 1
   end
 end
 
