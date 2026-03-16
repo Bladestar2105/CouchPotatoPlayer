@@ -451,7 +451,7 @@ def patch_pods_for_tvos(installer)
       if patched.include?("#import <Foundation/Foundation.h>")
         patched = patched.gsub(
           "#import <Foundation/Foundation.h>",
-          "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+          "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
         )
         puts "Patching wakelock_plus messages.g.h: #{file}"
         File.write(file, patched)
