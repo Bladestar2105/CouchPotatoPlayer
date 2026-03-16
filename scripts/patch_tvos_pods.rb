@@ -179,13 +179,18 @@ end
 # ---------------------------------------------------------------------------
 collect_files('URLLauncherPlugin.swift').each do |file|
   content = File.read(file)
-  next if content.include?('os(tvOS)')
   patched = content
 
-  patched = patched.gsub(
-    "import Flutter\nimport UIKit",
-    "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
-  )
+  # Note: Do not skip the entire file if it contains 'os(tvOS)',
+  # because the earlier '*.swift' loop might have injected `#if os(iOS) || os(tvOS)`
+  # at the import statements. We rely on the specific checks below for idempotency.
+
+  if patched.include?("import Flutter\nimport UIKit") && !patched.include?("#elseif os(tvOS)\nimport Flutter\nimport UIKit")
+    patched = patched.gsub(
+      "import Flutter\nimport UIKit",
+      "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
+    )
+  end
 
   # v6.3.6 updates
   if patched.include?('  private var currentSession: URLLaunchSession?') && !patched.include?("#if os(iOS)\n  private var currentSession")
