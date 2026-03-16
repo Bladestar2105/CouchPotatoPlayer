@@ -187,29 +187,57 @@ collect_files('URLLauncherPlugin.swift').each do |file|
     "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
   )
 
-  if patched.include?('  private var currentSession: URLLaunchSession?')
+  # v6.3.6 updates
+  if patched.include?('  private var currentSession: URLLaunchSession?') && !patched.include?("#if os(iOS)\n  private var currentSession")
     patched = patched.gsub(
       '  private var currentSession: URLLaunchSession?',
       "#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif"
     )
   end
 
-  if patched.include?('  private let viewPresenterProvider: ViewPresenterProvider')
+  if patched.include?('  private let launcher: Launcher') && !patched.include?("#if os(iOS)\n  private let launcher")
+    patched = patched.gsub(
+      '  private let launcher: Launcher',
+      "#if os(iOS)\n  private let launcher: Launcher\n#endif"
+    )
+  end
+
+  if patched.include?('  private var topViewController: UIViewController? {') && !patched.include?("#if os(iOS)\n  private var topViewController")
+    patched = patched.gsub(
+      /(  private var topViewController: UIViewController\? \{[\s\S]*?\n  \})/,
+      "#if os(iOS)\n\\1\n#endif"
+    )
+  end
+
+  # old init v6.3.x
+  if patched.include?('  private let viewPresenterProvider: ViewPresenterProvider') && !patched.include?("#if os(iOS)\n  private let viewPresenterProvider")
     patched = patched.gsub(
       '  private let viewPresenterProvider: ViewPresenterProvider',
       "#if os(iOS)\n  private let viewPresenterProvider: ViewPresenterProvider\n#endif"
     )
   end
 
-  init_old = "  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }"
-  init_new = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#endif"
-  patched = patched.gsub(init_old, init_new)
+  init_old_63x = "  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }"
+  init_new_63x = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  init() {}\n#endif"
+  patched = patched.gsub(init_old_63x, init_new_63x)
 
-  reg_old = "  public static func register(with registrar: FlutterPluginRegistrar) {\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
-  reg_new = "  public static func register(with registrar: FlutterPluginRegistrar) {\n#if os(iOS)\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n#else\n    let plugin = URLLauncherPlugin()\n#endif\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
-  patched = patched.gsub(reg_old, reg_new)
+  # new init v6.3.6
+  init_old_636 = "  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }"
+  init_new_636 = "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#else\n  init() {}\n#endif"
+  patched = patched.gsub(init_old_636, init_new_636)
 
-  if patched.include?('func openUrlInSafariViewController') && !patched.include?("#if os(iOS)\n  func openUrlInSafariViewController")
+  reg_old_63x = "  public static func register(with registrar: FlutterPluginRegistrar) {\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
+  reg_new_tvos = "  public static func register(with registrar: FlutterPluginRegistrar) {\n#if os(iOS)\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n#else\n    let plugin = URLLauncherPlugin()\n#endif\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
+  patched = patched.gsub(reg_old_63x, reg_new_tvos)
+
+  # Support v6.3.6 where canLaunchUrl is also here and needs to be stubbed if launcher is nil
+  methods_old_regex = /( +func canLaunchUrl[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
+  if patched.match?(methods_old_regex) && !patched.include?("#if os(iOS)\n  func canLaunchUrl")
+    patched = patched.gsub(methods_old_regex) do |match|
+      "#if os(iOS)\n#{match}\n#else\n  func canLaunchUrl(url: String) -> LaunchResult {\n    return .failure\n  }\n  func launchUrl(\n    url: String,\n    universalLinksOnly: Bool,\n    completion: @escaping (Result<LaunchResult, Error>) -> Void\n  ) {\n    completion(.success(.failure))\n  }\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
+    end
+  elsif patched.include?('func openUrlInSafariViewController') && !patched.include?("#if os(iOS)\n  func openUrlInSafariViewController")
+    # Fallback to old regex for older url_launcher versions
     patched = patched.gsub(
       /( +func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
     ) do |match|
