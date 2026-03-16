@@ -126,7 +126,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         }
       }
     } catch (e) {
-      setState(() => error = 'Connection error: $e');
+      debugPrint('Connection error: $e');
+      setState(() => error = 'Connection error. Please check your network and server URL.');
     } finally {
       if (mounted) setState(() => loading = false);
     }
