@@ -150,12 +150,25 @@ jobs:
           # in the ios-arm64 slice (which is arm64, same arch as tvOS).
           FRAMEWORKS_DIR="$HOME/.pub-cache/hosted/pub.dev/media_kit_libs_ios_video-1.1.4/ios/Frameworks"
           if [ -d "$FRAMEWORKS_DIR" ]; then
+            # Re-tag for tvOS device (ios-arm64)
             find "$FRAMEWORKS_DIR" -path "*/ios-arm64/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
               # Check if it's a Mach-O binary
               if file "$binary" | grep -q "Mach-O"; then
-                echo "Re-tagging for tvOS: $binary"
+                echo "Re-tagging for tvOS device: $binary"
                 xcrun vtool -arch arm64 -set-build-version 3 15.0 18.0 -replace -output "${binary}.tvos" "$binary"
                 mv "${binary}.tvos" "$binary"
+              fi
+            done
+            # Re-tag for tvOS simulator (ios-arm64_x86_64-simulator) - platform 7 for simulator
+            find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
+              if file "$binary" | grep -q "Mach-O"; then
+                echo "Re-tagging for tvOS simulator: $binary"
+                # Platform 7 = iOS Simulator, but for tvOS simulator we need platform 8
+                # Actually tvOS simulator uses platform 8 (tvOS Simulator)
+                xcrun vtool -arch arm64 -set-build-version 8 15.0 18.0 -replace -output "${binary}.tvos" "$binary" 2>/dev/null || true
+                if [ -f "${binary}.tvos" ]; then
+                  mv "${binary}.tvos" "$binary"
+                fi
               fi
             done
             # Re-sign the frameworks after modifying binaries

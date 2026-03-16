@@ -195,6 +195,32 @@ open Runner.xcworkspace
 
 ### Troubleshooting tvOS Build Issues
 
+#### Building for tvOS Simulator vs Physical Device
+
+The CI workflow builds for **physical Apple TV device**. If you want to build for the **tvOS Simulator**, you need to also re-tag the simulator frameworks:
+
+```bash
+# Re-tag simulator frameworks for tvOS simulator
+FRAMEWORKS_DIR="$HOME/.pub-cache/hosted/pub.dev/media_kit_libs_ios_video-1.1.4/ios/Frameworks"
+if [ -d "$FRAMEWORKS_DIR" ]; then
+  find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
+    if file "$binary" | grep -q "Mach-O"; then
+      echo "Re-tagging for tvOS simulator: $binary"
+      xcrun vtool -arch arm64 -set-build-version 8 15.0 18.0 -replace -output "${binary}.tvos" "$binary" 2>/dev/null || true
+      if [ -f "${binary}.tvos" ]; then
+        mv "${binary}.tvos" "$binary"
+      fi
+    fi
+  done
+  # Re-sign after modifying
+  find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework" -type d | while read fw; do
+    codesign --force --sign - "$fw" 2>/dev/null || true
+  done
+fi
+```
+
+**Note:** For physical Apple TV device builds, the standard workflow already handles this. You only need the above if building for simulator.
+
 #### "No such module 'Flutter'"
 Ensure the `FLUTTER_LOCAL_ENGINE` environment variable is set correctly and the `out` directory contains the extracted engine files.
 
