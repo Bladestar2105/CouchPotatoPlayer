@@ -1,3 +1,7 @@
 ## 2024-05-24 - Added tooltips to IconButtons
 **Learning:** In a media application context like IPTV, it's very common to use icon-only buttons to save space on mobile and TV screens. Many of these icons in CouchPotatoPlayer (`Icons.lock`, `Icons.favorite`, `Icons.delete`) lacked textual descriptions via the `tooltip` property, making them inaccessible to screen readers and potentially confusing to new users relying on mouse-over interactions.
 **Action:** Always add `tooltip` attributes to `IconButton` widgets if they lack visible accompanying text to maintain accessibility and usability, particularly in highly visual list and grid layouts.
+
+## 2024-10-24 - Add autofocus to initial inputs
+**Learning:** The application acts as a TV UI (like Android TV/Apple TV) where keyboard support/remote support is prioritized. `TextField` widgets need to eagerly capture focus so users can immediately use their physical remote controls / connected keyboards. This is particularly important for initial inputs on modal/entry screens (e.g., `WelcomeScreen`'s first setup input, `PinSetupScreen`'s pin entry, `SettingsScreen`'s provider name setup). Without `autofocus: true`, the user must explicitly navigate to the field first.
+**Action:** Always add `autofocus: true` to the primary input `TextField` on entry/setup screens to ensure remote controls and keyboards can be used immediately upon opening the screen.
