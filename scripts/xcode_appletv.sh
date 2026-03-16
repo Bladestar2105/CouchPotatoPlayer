@@ -32,7 +32,7 @@ BuildAppDebug() {
 
   ROOTDIR=$(dirname "$PROJECT_DIR")
   OUTDIR=$ROOTDIR/build/ios/Debug-iphonesimulator
-  mkdir -p $OUTDIR
+  mkdir -p "$OUTDIR/App.framework"
 
 
   echo " └─Coping Flutter.framework"
@@ -157,7 +157,7 @@ BuildAppRelease() {
 
   ROOTDIR=$(dirname "$PROJECT_DIR")
   OUTDIR=$ROOTDIR/build/ios/Debug-iphonesimulator
-  mkdir -p $OUTDIR
+  mkdir -p "$OUTDIR/App.framework"
 
   echo " └─Coping Flutter.framework"
   rm -rf "$OUTDIR/Flutter.framework"
@@ -202,6 +202,8 @@ BuildAppRelease() {
     -o "$OUTDIR/snapshot_assembly.o"
 
   echo " └─Linking app"
+
+  mkdir -p "$OUTDIR/App.framework"
 
   clang -v -arch arm64 \
     -fembed-bitcode \
