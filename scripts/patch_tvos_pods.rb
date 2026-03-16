@@ -65,6 +65,37 @@ end
 
 
 # ---------------------------------------------------------------------------
+# 1.6. media_kit_video podspec: add FRAMEWORK_SEARCH_PATHS for appletvos
+# The podspec only sets FRAMEWORK_SEARCH_PATHS for iphoneos* and iphonesimulator*,
+# so the linker cannot find Mpv.framework when building for tvOS.
+# Reuse the ios (arm64) path since tvOS is also arm64.
+# ---------------------------------------------------------------------------
+collect_files('media_kit_video.podspec').each do |file|
+  content = File.read(file)
+  next if content.include?('appletvos')
+
+  lines = content.lines
+  new_lines = []
+  inserted = false
+  lines.each do |line|
+    new_lines << line
+    if !inserted && line.include?('FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]')
+      tvos_line = line.gsub('iphonesimulator*]\'', 'appletvos*]\'       ')
+                      .gsub('framework_search_paths_iphonesimulator', 'framework_search_paths_iphoneos')
+      new_lines << tvos_line
+      inserted = true
+    end
+  end
+
+  if inserted
+    patched = new_lines.join
+    puts "Patching media_kit_video.podspec for tvOS: #{file}"
+    File.write(file, patched)
+    patch_count += 1
+  end
+end
+
+# ---------------------------------------------------------------------------
 # 2. Swift files: fix #if os(iOS) import Flutter #else #error(...) patterns
 # ---------------------------------------------------------------------------
 collect_files('*.swift').each do |file|

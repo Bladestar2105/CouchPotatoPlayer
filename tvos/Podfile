@@ -47,6 +47,17 @@ post_install do |installer|
       # set framework search path
       flutter_dir = File.expand_path('Flutter', File.dirname(File.realpath(__FILE__)))
       config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+
+      # media_kit_video needs Mpv.framework from media_kit_libs_ios_video.
+      # The podspec only sets FRAMEWORK_SEARCH_PATHS for iphoneos* and iphonesimulator*,
+      # so for appletvos the linker cannot find Mpv.  Reuse the ios-arm64 path because
+      # tvOS is also arm64 and the Mpv binary is compatible.
+      if target.name == 'media_kit_video'
+        pods_root = installer.pods_project.path.dirname
+        mpv_symlink = File.join(pods_root, '..', '.symlinks', 'plugins',
+                                'media_kit_libs_ios_video', 'ios', 'Frameworks', '.symlinks', 'mpv', 'ios')
+        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" "' + mpv_symlink + '" $(inherited)'
+      end
       config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
       config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="' + flutter_dir + '/Flutter.framework/Modules/module.modulemap"'
       config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
