@@ -255,8 +255,30 @@ BuildApp() {
 
   echo "Compling /Flutter/App.Framework $cpu_arch"
 
+  # Check for FLUTTER_LOCAL_ENGINE - try environment variable first, then config file
   if [ -z "$FLUTTER_LOCAL_ENGINE" ]; then
+    # Try to read from config file
+    CONFIG_FILE="$PROJECT_DIR/../.flutter_local_engine"
+    if [ -f "$CONFIG_FILE" ]; then
+      export FLUTTER_LOCAL_ENGINE=$(cat "$CONFIG_FILE")
+      echo " └─Read FLUTTER_LOCAL_ENGINE from config file: $FLUTTER_LOCAL_ENGINE"
+    fi
+  fi
+
+  if [ -z "$FLUTTER_LOCAL_ENGINE" ]; then
+    echo ""
     echo " └─ERROR: FLUTTER_LOCAL_ENGINE not set!"
+    echo ""
+    echo "    For local tvOS builds, you need to:"
+    echo "    1. Download the custom Flutter engine to the 'out' directory"
+    echo "    2. Set the environment variable:"
+    echo "       export FLUTTER_LOCAL_ENGINE=/path/to/CouchPotatoPlayer"
+    echo "    3. Or create a config file:"
+    echo "       echo '/path/to/CouchPotatoPlayer' > .flutter_local_engine"
+    echo ""
+    echo "    Or run the setup script:"
+    echo "       ./scripts/run_apple_tv.sh release"
+    echo ""
     return 1;
   fi
 
