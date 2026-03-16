@@ -53,7 +53,7 @@ collect_files('Package.swift').select { |f| f.include?('/ios/') }.each do |file|
 end
 
 # ---------------------------------------------------------------------------
-# 2. Swift files: fix #if os(iOS) import Flutter
+# 2. Swift files: fix #if os(iOS) import Flutter and shared_preferences messenger
 # ---------------------------------------------------------------------------
 collect_files('*.swift').each do |file|
   content = File.read(file)
@@ -63,13 +63,16 @@ collect_files('*.swift').each do |file|
   patched = patched.gsub(/#if os\(iOS\)(\s*)import Flutter/, "#if os(iOS) || os(tvOS)\\1import Flutter")
   patched = patched.gsub(/#if os\(iOS\)(\s*)import UIKit/, "#if os(iOS) || os(tvOS)\\1import UIKit")
 
+  # Fix shared_preferences_foundation using `registrar.messenger()` on iOS/tvOS but `registrar.messenger` on macOS
+  patched = patched.gsub(/#if os\(iOS\)(\s*)let messenger = registrar\.messenger\(\)/, "#if os(iOS) || os(tvOS)\\1let messenger = registrar.messenger()")
+
   # Remove duplicate os(tvOS) if it was already patched
   patched = patched.gsub("#if os(iOS) || os(tvOS) || os(tvOS)", "#if os(iOS) || os(tvOS)")
 
   # Catch bare `import Flutter` with no guard
-  if patched.include?('import Flutter') && !patched.include?('os(tvOS)') &&
+  if patched.match?(/\bimport Flutter\b/) && !patched.include?('os(tvOS)') &&
      !patched.include?('os(iOS)') && !patched.include?('canImport(Flutter)')
-    patched = patched.gsub('import Flutter', "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
+    patched = patched.gsub(/\bimport Flutter\b/, "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
   end
 
   # Replace `#else` followed by `#error` if it's the `Unsupported platform` error (optional but prevents Pigeon failures)

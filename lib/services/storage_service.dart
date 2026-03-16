@@ -14,8 +14,7 @@ class StorageService {
     return File('$path/$filename');
   }
 
-  // Top-level functions for compute isolate
-  static String _encodeJson(dynamic data) => json.encode(data);
+  // Top-level function for compute isolate
   static dynamic _decodeJson(String data) => json.decode(data);
 
   Future<void> saveLargeData(String filename, dynamic data) async {
@@ -27,10 +26,9 @@ class StorageService {
 
     try {
       final file = await _localFile(filename);
-      // Offload heavy JSON stringification to background isolate
-      // Note: `data` MUST be standard lists/maps of primitives (already serialized via .toJson())
-      // before being passed here, because custom objects cannot be sent across isolates.
-      final jsonString = await compute(_encodeJson, data);
+      // Stringify on main thread to safely invoke custom .toJson() methods
+      // before writing to disk.
+      final jsonString = json.encode(data);
       await file.writeAsString(jsonString);
     } catch (e) {
       debugPrint('Error saving large data $filename: $e');
