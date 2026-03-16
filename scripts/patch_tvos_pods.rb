@@ -21,17 +21,20 @@ patch_count = 0
 # ---------------------------------------------------------------------------
 # 1. Package.swift: add .tvOS("15.0") to iOS-only platform declarations
 # ---------------------------------------------------------------------------
-collect_files('Package.swift').select { |f| f.include?('/ios/') }.each do |file|
+collect_files('Package.swift').select { |f| f.include?('/ios/') || f.include?('/darwin/') }.each do |file|
   content = File.read(file)
   next if content.include?('tvOS')
   next unless content.include?('.iOS(')
 
   tvos = '15.0'
-  patched = content.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n(\s*)\])/) do |_match|
+  patched = content.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n)/) do |_match|
     ios_line = $1
     rest = $2
-    indent = $3
-    ios_line + ",\n" + indent + '.tvOS("' + tvos + '")' + rest
+    rest = rest.gsub(/^,/, '')
+    if ios_line.end_with?(',')
+      ios_line = ios_line[0...-1]
+    end
+    ios_line + "," + rest + "    .tvOS(\"" + tvos + "\"),\n"
   end
 
   if patched != content
@@ -40,6 +43,26 @@ collect_files('Package.swift').select { |f| f.include?('/ios/') }.each do |file|
     patch_count += 1
   end
 end
+
+# ---------------------------------------------------------------------------
+# 1.5. Podspec: add s.tvos.dependency 'Flutter' to plugins defining s.ios.dependency 'Flutter'
+# ---------------------------------------------------------------------------
+collect_files('*.podspec').each do |file|
+  content = File.read(file)
+  patched = content
+  if patched.include?("s.ios.dependency 'Flutter'") && !patched.include?("s.tvos.dependency 'Flutter'")
+    patched = patched.gsub("s.ios.dependency 'Flutter'", "s.ios.dependency 'Flutter'\n  s.tvos.dependency 'Flutter'")
+  end
+  if patched.match(/s\.ios\.deployment_target\s*=\s*'[^']+'/) && !patched.include?("s.tvos.deployment_target")
+    patched = patched.gsub(/(s\.ios\.deployment_target\s*=\s*'[^']+')/, "\\1\n  s.tvos.deployment_target = '15.0'")
+  end
+  if patched != content
+    puts "Patching Podspec: #{file}"
+    File.write(file, patched)
+    patch_count += 1
+  end
+end
+
 
 # ---------------------------------------------------------------------------
 # 2. Swift files: fix #if os(iOS) import Flutter #else #error(...) patterns
@@ -65,6 +88,20 @@ collect_files('*.swift').each do |file|
   # Pattern C: 2-space indent, iOS only guard
   if patched.include?("#if os(iOS)\n  import Flutter\n#endif") && !patched.include?('os(tvOS)')
     patched = patched.gsub("#if os(iOS)\n  import Flutter\n#endif", "#if os(iOS) || os(tvOS)\n  import Flutter\n#endif")
+  end
+
+  if patched.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)") && !patched.include?('os(tvOS)')
+    patched = patched.gsub(
+      "#if os(iOS)\n  import Flutter\n#elseif os(macOS)",
+      "#if os(iOS) || os(tvOS)\n  import Flutter\n#elseif os(macOS)"
+    )
+  end
+
+  if patched.include?("#if os(iOS)\nimport Flutter\n#elseif os(macOS)") && !patched.include?('os(tvOS)')
+    patched = patched.gsub(
+      "#if os(iOS)\nimport Flutter\n#elseif os(macOS)",
+      "#if os(iOS) || os(tvOS)\nimport Flutter\n#elseif os(macOS)"
+    )
   end
 
   # Pattern D: no indent, iOS only guard
@@ -201,6 +238,55 @@ collect_files('UIApplication+idleTimerLock.h').each do |file|
 end
 
 # ---------------------------------------------------------------------------
+# 8.5 WakelockPlusPlugin.h: replace iOS-only impl with tvOS stub
+# ---------------------------------------------------------------------------
+collect_files('WakelockPlusPlugin.h').each do |file|
+  content = File.read(file)
+  patched = content
+  if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
+    patched = patched.gsub(
+      "#import <Flutter/Flutter.h>",
+      "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+    )
+    puts "Patching WakelockPlusPlugin.h: #{file}"
+    File.write(file, patched)
+    patch_count += 1
+  end
+end
+
+# ---------------------------------------------------------------------------
+# 8.6 messages.g.m / .h: replace iOS-only impl with tvOS stub
+# ---------------------------------------------------------------------------
+collect_files('messages.g.*').each do |file|
+  next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
+  content = File.read(file)
+  patched = content
+  if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
+    patched = patched.gsub(
+      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+    )
+    puts "Patching wakelock_plus messages.g.m: #{file}"
+    File.write(file, patched)
+    patch_count += 1
+  end
+
+  if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
+    # For messages.g.h, we need to manually insert the import if it's missing,
+    # but wait, let's just insert it after #import <Foundation/Foundation.h>
+    if patched.include?("#import <Foundation/Foundation.h>")
+      patched = patched.gsub(
+        "#import <Foundation/Foundation.h>",
+        "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+      puts "Patching wakelock_plus messages.g.h: #{file}"
+      File.write(file, patched)
+      patch_count += 1
+    end
+  end
+end
+
+# ---------------------------------------------------------------------------
 # 8. WakelockPlusPlugin.m: replace iOS-only impl with tvOS stub
 # ---------------------------------------------------------------------------
 collect_files('WakelockPlusPlugin.m').each do |file|
@@ -221,6 +307,28 @@ collect_files('WakelockPlusPlugin.m').each do |file|
 
   if patched != content
     puts "Patching WakelockPlusPlugin.m: #{file}"
+    File.write(file, patched)
+    patch_count += 1
+  end
+end
+
+# ---------------------------------------------------------------------------
+# 9. media_kit_video VideoOutput.swift
+# Uses #if canImport(Flutter) which should work, but may need UIKit on tvOS
+# ---------------------------------------------------------------------------
+collect_files('VideoOutput.swift').each do |file|
+  content = File.read(file)
+  patched = content
+
+  if patched.include?("#if canImport(Flutter)\n  import Flutter") && !patched.include?("os(tvOS)")
+    patched = patched.gsub(
+      "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif",
+      "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif\n#if os(tvOS)\nimport UIKit\n#endif"
+    )
+  end
+
+  if patched != content
+    puts "Patching VideoOutput.swift: #{file}"
     File.write(file, patched)
     patch_count += 1
   end
