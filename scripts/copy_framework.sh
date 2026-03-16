@@ -14,23 +14,42 @@ fi
 
 FLUTTER_LOCAL_ENGINE=$2
 
+OUTDIR=$PWD/Flutter
+rm -rf "$OUTDIR/Flutter.framework"
+
 if [ "$1" = "release" ]; then
-	echo "Coping Flutter.framework (release)..."
-	DEVICE_TOOLS=$FLUTTER_LOCAL_ENGINE/out/ios_release/clang_arm64
+	echo "Copying Flutter.framework (release for tvOS device)..."
+	# For tvOS device, use the tvOS-specific framework from the xcframework
+	if [ -d "$FLUTTER_LOCAL_ENGINE/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework" ]; then
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework" "$OUTDIR"
+	else
+		# Fallback for older engine structure
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_release/Flutter.framework" "$OUTDIR"
+	fi
 elif [ "$1" = "debug_sim" ] ; then
-	echo "Coping Flutter.framework (debug-simulator)..."
-	DEVICE_TOOLS=$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt/clang_x64
+	echo "Copying Flutter.framework (debug-simulator for x86_64)..."
+	# For tvOS simulator on Intel Mac
+	if [ -d "$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt/Flutter.xcframework/tvos-arm64_x86_64-simulator/Flutter.framework" ]; then
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt/Flutter.xcframework/tvos-arm64_x86_64-simulator/Flutter.framework" "$OUTDIR"
+	else
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt/Flutter.framework" "$OUTDIR"
+	fi
 elif [ "$1" = "debug_sim_arm64" ] ; then
-	echo "Coping Flutter.framework (debug-simulator-arm64)..."
-	DEVICE_TOOLS=$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt_arm64/clang_arm64
+	echo "Copying Flutter.framework (debug-simulator for ARM64)..."
+	# For tvOS simulator on Apple Silicon Mac
+	if [ -d "$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt_arm64/Flutter.xcframework/tvos-arm64_x86_64-simulator/Flutter.framework" ]; then
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt_arm64/Flutter.xcframework/tvos-arm64_x86_64-simulator/Flutter.framework" "$OUTDIR"
+	else
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_debug_sim_unopt_arm64/Flutter.framework" "$OUTDIR"
+	fi
 else
-	#debug
-	echo "Coping Flutter.framework (debug)..."
-	DEVICE_TOOLS=$FLUTTER_LOCAL_ENGINE/out/ios_debug_unopt/clang_x64
+	# debug
+	echo "Copying Flutter.framework (debug for tvOS device)..."
+	if [ -d "$FLUTTER_LOCAL_ENGINE/out/ios_debug_unopt/Flutter.xcframework/tvos-arm64/Flutter.framework" ]; then
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_debug_unopt/Flutter.xcframework/tvos-arm64/Flutter.framework" "$OUTDIR"
+	else
+		cp -R "$FLUTTER_LOCAL_ENGINE/out/ios_debug_unopt/Flutter.framework" "$OUTDIR"
+	fi
 fi
 
-
-OUTDIR=$PWD/Flutter
-
-rm -rf "$OUTDIR/Flutter.framework"
-cp -R "$DEVICE_TOOLS/../Flutter.framework" "$OUTDIR"
+echo "Flutter.framework copied to $OUTDIR/Flutter.framework"
