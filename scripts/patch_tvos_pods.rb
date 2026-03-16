@@ -48,26 +48,12 @@ collect_files('*.swift').each do |file|
   content = File.read(file)
   patched = content
 
-  # Pattern A & B: varying indent with macOS elseif and #error else
-  patched = patched.gsub(
-    /#if os\(iOS\)\s+import Flutter\s+#elseif os\(macOS\)\s+import FlutterMacOS\s+#else\s+#error\("Unsupported platform."\)\s+#endif/,
-    "#if os(iOS) || os(tvOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif\n"
-  )
+  # First replace `#else #error` blocks related to platform
+  patched = patched.gsub(/#else\s+#error\("Unsupported platform."\)\s+#endif/, "#endif\n")
 
-  # Pattern C & D: varying indent, iOS only guard
+  # Then replace `#if os(iOS) import Flutter` with `os(tvOS)` inclusive
   if !patched.include?('os(tvOS)')
-    patched = patched.gsub(
-      /#if os\(iOS\)\s+import Flutter\s+#endif/,
-      "#if os(iOS) || os(tvOS)\n  import Flutter\n#endif\n"
-    )
-  end
-
-  # Pattern E: varying indent with macOS elseif, no #error
-  if !patched.include?('os(tvOS)')
-    patched = patched.gsub(
-      /#if os\(iOS\)\s+import Flutter\s+#elseif os\(macOS\)\s+import FlutterMacOS\s+#endif/,
-      "#if os(iOS) || os(tvOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif\n"
-    )
+    patched = patched.gsub(/#if os\(iOS\)(\s+)import Flutter/, "#if os(iOS) || os(tvOS)\\1import Flutter")
   end
 
   # Pattern F: bare import Flutter (no guard at all)
