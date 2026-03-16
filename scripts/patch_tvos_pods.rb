@@ -235,10 +235,10 @@ collect_files('WakelockPlusPlugin.h').each do |file|
 end
 
 # ---------------------------------------------------------------------------
-# 8.6 messages.g.m: replace iOS-only impl with tvOS stub
+# 8.6 messages.g.m / .h: replace iOS-only impl with tvOS stub
 # ---------------------------------------------------------------------------
-collect_files('messages.g.m').each do |file|
-  next unless file.include?("wakelock_plus")
+collect_files('messages.g.*').each do |file|
+  next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
   content = File.read(file)
   patched = content
   if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
@@ -249,6 +249,20 @@ collect_files('messages.g.m').each do |file|
     puts "Patching wakelock_plus messages.g.m: #{file}"
     File.write(file, patched)
     patch_count += 1
+  end
+
+  if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
+    # For messages.g.h, we need to manually insert the import if it's missing,
+    # but wait, let's just insert it after #import <Foundation/Foundation.h>
+    if patched.include?("#import <Foundation/Foundation.h>")
+      patched = patched.gsub(
+        "#import <Foundation/Foundation.h>",
+        "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+      puts "Patching wakelock_plus messages.g.h: #{file}"
+      File.write(file, patched)
+      patch_count += 1
+    end
   end
 end
 

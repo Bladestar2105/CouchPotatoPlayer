@@ -360,9 +360,9 @@ def patch_pods_for_tvos(installer)
     end
   end
 
-  # Patch messages.g.m - fix Flutter import for tvOS
-  collect_objc_files(search_dirs, 'messages.g.m').each do |file|
-    next unless file.include?("wakelock_plus")
+  # Patch messages.g.m / .h - fix Flutter import for tvOS
+  collect_objc_files(search_dirs, 'messages.g.*').each do |file|
+    next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
     content = File.read(file)
     patched = content
     # Replace the macOS/iOS guard with one that also covers tvOS
@@ -371,10 +371,21 @@ def patch_pods_for_tvos(installer)
         "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
         "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
       )
+      if patched != content
+        puts "Patching wakelock_plus messages.g.m: #{file}"
+        File.write(file, patched)
+      end
     end
-    if patched != content
-      puts "Patching wakelock_plus messages.g.m: #{file}"
-      File.write(file, patched)
+
+    if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
+      if patched.include?("#import <Foundation/Foundation.h>")
+        patched = patched.gsub(
+          "#import <Foundation/Foundation.h>",
+          "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+        puts "Patching wakelock_plus messages.g.h: #{file}"
+        File.write(file, patched)
+      end
     end
   end
 
