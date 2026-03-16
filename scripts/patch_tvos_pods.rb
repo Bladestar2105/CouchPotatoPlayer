@@ -109,6 +109,11 @@ collect_files('*.swift').each do |file|
     patched = patched.gsub("#if os(iOS)\nimport Flutter\n#endif", "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
   end
 
+  # Pattern: registrar.messenger()
+  if patched.match(/#if\s+os\(iOS\)(\s+let\s+[a-zA-Z0-9_]+\s*=\s*registrar\.messenger\(\))/)
+    patched = patched.gsub(/#if\s+os\(iOS\)(\s+let\s+[a-zA-Z0-9_]+\s*=\s*registrar\.messenger\(\))/, "#if os(iOS) || os(tvOS)\\1")
+  end
+
   # Pattern E: 2-space indent with macOS elseif, no #error
   if patched.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif") && !patched.include?('os(tvOS)')
     patched = patched.gsub(
