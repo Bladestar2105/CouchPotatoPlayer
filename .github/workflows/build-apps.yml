@@ -119,8 +119,9 @@ jobs:
         run: |
           cp _ios/Flutter/Generated.xcconfig ios/Flutter/
           cp _ios/Flutter/flutter_export_environment.sh ios/Flutter/
-          cp -r _ios/Flutter/Flutter.xcframework ios/Flutter/ || true
-          cp -r _ios/Flutter/Flutter.podspec ios/Flutter/ || true
+          cp -r ${{ github.workspace }}/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework ios/Flutter/
+          cp _ios/Flutter/Flutter.podspec ios/Flutter/
+          sed -i '' 's/Flutter.xcframework/Flutter.framework/g' ios/Flutter/Flutter.podspec
       - name: Install Dependencies
         run: flutter pub get
       - name: Patch pub-cache for tvOS
@@ -129,8 +130,6 @@ jobs:
         run: |
           cd ios
           pod install
-        env:
-          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
       - name: Build tvOS App (No Codesign)
         run: |
           cd ios
