@@ -318,7 +318,7 @@ collect_files('WakelockPlusPlugin.h').each do |file|
   if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
     patched = patched.gsub(
       "#import <Flutter/Flutter.h>",
-      "#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
     )
     puts "Patching WakelockPlusPlugin.h: #{file}"
     File.write(file, patched)
@@ -338,7 +338,7 @@ collect_files('messages.g.*').each do |file|
   if patched.include?("@import FlutterMacOS;\n#else\n@import Flutter;\n#endif") && !patched.include?("TARGET_OS_TV")
     patched = patched.gsub(
       "@import FlutterMacOS;\n#else\n@import Flutter;\n#endif",
-      "@import FlutterMacOS;\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n@import Flutter;\n#endif"
+      "@import FlutterMacOS;\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n@import Flutter;\n#endif"
     )
   end
 
@@ -346,7 +346,7 @@ collect_files('messages.g.*').each do |file|
   if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
     patched = patched.gsub(
       "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
-      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
     )
   end
 
@@ -354,12 +354,12 @@ collect_files('messages.g.*').each do |file|
     if patched.include?("#import <Foundation/Foundation.h>")
       patched = patched.gsub(
         "#import <Foundation/Foundation.h>",
-        "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
       )
     elsif patched.include?("@import Foundation;")
       patched = patched.gsub(
         "@import Foundation;",
-        "@import Foundation;\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#endif"
+        "@import Foundation;\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#endif"
       )
     end
   end
