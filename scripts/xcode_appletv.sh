@@ -31,19 +31,14 @@ BuildAppDebug() {
 
 
   ROOTDIR=$(dirname "$PROJECT_DIR")
-  
-  # Set correct OUTDIR based on target (simulator or device)
-  if [[ "$debug_sim" == "true" ]]; then
-    OUTDIR=$ROOTDIR/build/ios/Debug-iphonesimulator
-  else
-    OUTDIR=$ROOTDIR/build/ios/Debug-appletvos
-  fi
+  OUTDIR=$ROOTDIR/build/ios/Debug-iphonesimulator
   mkdir -p "$OUTDIR/App.framework"
 
 
   echo " └─Coping Flutter.framework"
   rm -rf "$OUTDIR/Flutter.framework"
   cp -R "$DEVICE_TOOLS/../Flutter.framework" "$OUTDIR"
+
 
   tvos_deployment_target="$TVOS_DEPLOYMENT_TARGET"
 
@@ -137,10 +132,11 @@ BuildAppDebug() {
   cp -R "${OUTDIR}/"{App.framework,Flutter.framework} "$TARGET_BUILD_DIR"
 
   echo " └─Sign"
-  # Only sign if we have a valid signing identity
-  if [[ "$debug_sim" != "true" && -n "$EXPANDED_CODE_SIGN_IDENTITY" ]]; then
+  if [[ "$debug_sim" != "true" && -n "${EXPANDED_CODE_SIGN_IDENTITY}" ]]; then
     codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${TARGET_BUILD_DIR}/App.framework/App"
     codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${TARGET_BUILD_DIR}/Flutter.framework/Flutter"
+  else
+    echo " └─Skipping code signing (no identity configured or simulator build)"
   fi
 
   echo " └─Done"
@@ -162,8 +158,7 @@ BuildAppRelease() {
   fi
 
   ROOTDIR=$(dirname "$PROJECT_DIR")
-  # Use correct output directory for Release builds (appletvos for device)
-  OUTDIR=$ROOTDIR/build/ios/Release-appletvos
+  OUTDIR=$ROOTDIR/build/ios/Debug-iphonesimulator
   mkdir -p "$OUTDIR/App.framework"
 
   echo " └─Coping Flutter.framework"
@@ -230,10 +225,12 @@ BuildAppRelease() {
   echo "copy frameworks"
   cp -R "${OUTDIR}/"{App.framework,Flutter.framework} "$BUILT_PRODUCTS_DIR"
 
-  # Sign the binaries we moved - only if we have a valid signing identity
-  if [[ -n "$EXPANDED_CODE_SIGN_IDENTITY" ]]; then
+  # Sign the binaries we moved (only if code signing is configured).
+  if [[ -n "${EXPANDED_CODE_SIGN_IDENTITY}" ]]; then
     codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${BUILT_PRODUCTS_DIR}/App.framework/App"
     codesign --force --verbose --sign "${EXPANDED_CODE_SIGN_IDENTITY}" -- "${BUILT_PRODUCTS_DIR}/Flutter.framework/Flutter"
+  else
+    echo " └─Skipping code signing (no identity configured)"
   fi
 
   echo " └─Done"
@@ -242,43 +239,6 @@ BuildAppRelease() {
 
 }
 
-# EmbedFlutterFrameworks function - embeds Flutter frameworks into the app bundle
-EmbedFlutterFrameworks() {
-  echo " └─Embedding Flutter Frameworks"
-  
-  # Determine the correct source directory based on build configuration
-  local build_mode="$(echo "${FLUTTER_BUILD_MODE:-${CONFIGURATION}}" | tr "[:upper:]" "[:lower:]")"
-  local source_dir
-  
-  ROOTDIR=$(dirname "$PROJECT_DIR")
-  
-  if [[ "$build_mode" =~ "debug" ]]; then
-    if [[ "$PLATFORM_NAME" == "appletvsimulator" ]]; then
-      source_dir="$ROOTDIR/build/ios/Debug-iphonesimulator"
-    else
-      source_dir="$ROOTDIR/build/ios/Debug-appletvos"
-    fi
-  else
-    source_dir="$ROOTDIR/build/ios/Release-appletvos"
-  fi
-  
-  # Copy frameworks to the app bundle
-  local app_frameworks_dir="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Frameworks"
-  mkdir -p "$app_frameworks_dir"
-  
-  if [[ -d "$source_dir/App.framework" ]]; then
-    cp -R "$source_dir/App.framework" "$app_frameworks_dir/"
-    echo " └─Copied App.framework to $app_frameworks_dir"
-  fi
-  
-  if [[ -d "$source_dir/Flutter.framework" ]]; then
-    cp -R "$source_dir/Flutter.framework" "$app_frameworks_dir/"
-    echo " └─Copied Flutter.framework to $app_frameworks_dir"
-  fi
-  
-  echo " └─Embedding complete"
-  return 0
-}
 
 BuildApp() {
 
