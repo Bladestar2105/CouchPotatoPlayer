@@ -14,6 +14,10 @@ class StorageService {
     return File('$path/$filename');
   }
 
+  // Top-level functions for compute isolate
+  static String _encodeJson(dynamic data) => json.encode(data);
+  static dynamic _decodeJson(String data) => json.decode(data);
+
   Future<void> saveLargeData(String filename, dynamic data) async {
     if (kIsWeb) {
       // For web, we might need a different approach (IndexedDB or just localStorage if it fits)
@@ -23,7 +27,8 @@ class StorageService {
 
     try {
       final file = await _localFile(filename);
-      final jsonString = json.encode(data);
+      // Offload heavy JSON stringification to background isolate
+      final jsonString = await compute(_encodeJson, data);
       await file.writeAsString(jsonString);
     } catch (e) {
       debugPrint('Error saving large data $filename: $e');
@@ -37,7 +42,8 @@ class StorageService {
       final file = await _localFile(filename);
       if (await file.exists()) {
         final contents = await file.readAsString();
-        return json.decode(contents);
+        // Offload heavy JSON parsing to background isolate
+        return await compute(_decodeJson, contents);
       }
     } catch (e) {
       debugPrint('Error loading large data $filename: $e');
