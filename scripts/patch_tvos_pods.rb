@@ -311,8 +311,82 @@ end
 
 
 # ---------------------------------------------------------------------------
-# 8. WakelockPlusPlugin.m: replace iOS-only impl with tvOS stub
+# 8. wakelock_plus Objective-C files
+# WakelockPlusPlugin.h/m uses #import <Flutter/Flutter.h> (needs tvOS guard)
 # ---------------------------------------------------------------------------
+
+# Patch WakelockPlusPlugin.h
+collect_files('WakelockPlusPlugin.h').each do |file|
+  content = File.read(file)
+  patched = content
+
+  if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
+    if ENV['LOCAL_TVOS_BUILD'] == '1'
+      patched = patched.gsub(
+        "#import <Flutter/Flutter.h>",
+        "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+    else
+      patched = patched.gsub(
+        "#import <Flutter/Flutter.h>",
+        "#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+    end
+
+    if patched != content
+      puts "Patching WakelockPlusPlugin.h: #{file}"
+      File.write(file, patched)
+      patch_count += 1
+    end
+  end
+end
+
+# Patch messages.g.m / .h
+collect_files('messages.g.*').each do |file|
+  next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
+  content = File.read(file)
+  patched = content
+
+  if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
+    if ENV['LOCAL_TVOS_BUILD'] == '1'
+      patched = patched.gsub(
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+    else
+      patched = patched.gsub(
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+    end
+
+    if patched != content
+      puts "Patching wakelock_plus messages.g.m: #{file}"
+      File.write(file, patched)
+      patch_count += 1
+    end
+  end
+
+  if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
+    if patched.include?("#import <Foundation/Foundation.h>")
+      if ENV['LOCAL_TVOS_BUILD'] == '1'
+        patched = patched.gsub(
+          "#import <Foundation/Foundation.h>",
+          "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+      else
+        patched = patched.gsub(
+          "#import <Foundation/Foundation.h>",
+          "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+      end
+      puts "Patching wakelock_plus messages.g.h: #{file}"
+      File.write(file, patched)
+      patch_count += 1
+    end
+  end
+end
+
 collect_files('WakelockPlusPlugin.m').each do |file|
   content = File.read(file)
   next if content.include?('TARGET_OS_TV')
