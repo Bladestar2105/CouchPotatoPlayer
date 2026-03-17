@@ -137,7 +137,7 @@ jobs:
           cp -r ${{ github.workspace }}/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework ios/Flutter/
           cp _ios/Flutter/Flutter.podspec ios/Flutter/
           sed -i '' 's/Flutter.xcframework/Flutter.framework/g' ios/Flutter/Flutter.podspec
-          plutil -replace CFBundleSupportedPlatforms -array AppleTVOS ios/Flutter/Flutter.framework/Info.plist || true
+          plutil -replace CFBundleSupportedPlatforms -json '["AppleTVOS"]' ios/Flutter/Flutter.framework/Info.plist || true
       - name: Install Dependencies
         run: flutter pub get
       - name: Patch pub-cache for tvOS

@@ -23,6 +23,12 @@ fi
 ROOT_DIR=$(pwd)
 OUT_DIR="$ROOT_DIR/out"
 
+# Revert to iOS state if previously left in tvOS state
+if [ -d "$ROOT_DIR/_ios" ]; then
+    echo "Detected previous tvOS build state. Reverting to iOS state..."
+    sh scripts/switch_target.sh ios
+fi
+
 # Step 1: Download Custom Engine
 echo "=== Step 1: Downloading/Verifying Custom Engine ==="
 mkdir -p "$OUT_DIR"
@@ -108,7 +114,7 @@ fi
 
 cp _ios/Flutter/Flutter.podspec ios/Flutter/
 sed -i '' 's/Flutter.xcframework/Flutter.framework/g' ios/Flutter/Flutter.podspec
-plutil -replace CFBundleSupportedPlatforms -array AppleTVOS ios/Flutter/Flutter.framework/Info.plist || true
+plutil -replace CFBundleSupportedPlatforms -json '["AppleTVOS"]' ios/Flutter/Flutter.framework/Info.plist || true
 
 # Step 6: Install Dependencies
 echo "=== Step 6: Installing Dependencies ==="
