@@ -23,6 +23,12 @@ fi
 ROOT_DIR=$(pwd)
 OUT_DIR="$ROOT_DIR/out"
 
+# Revert to iOS state if previously left in tvOS state
+if [ -d "$ROOT_DIR/_ios" ]; then
+    echo "Detected previous tvOS build state. Reverting to iOS state..."
+    sh scripts/switch_target.sh ios
+fi
+
 # Step 1: Download Custom Engine
 echo "=== Step 1: Downloading/Verifying Custom Engine ==="
 mkdir -p "$OUT_DIR"
