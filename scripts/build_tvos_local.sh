@@ -114,7 +114,7 @@ fi
 
 cp _ios/Flutter/Flutter.podspec ios/Flutter/
 sed -i '' 's/Flutter.xcframework/Flutter.framework/g' ios/Flutter/Flutter.podspec
-plutil -replace CFBundleSupportedPlatforms -array AppleTVOS ios/Flutter/Flutter.framework/Info.plist || true
+plutil -replace CFBundleSupportedPlatforms -json '["AppleTVOS"]' ios/Flutter/Flutter.framework/Info.plist || true
 
 # Step 6: Install Dependencies
 echo "=== Step 6: Installing Dependencies ==="
