@@ -1,0 +1,541 @@
+# Uncomment this line to define a global platform for your project
+platform :ios, '15.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+# Override CocoaPods `target` method to intercept and ignore the 'RunnerTests'
+# target dynamically injected by Flutter's podhelper.rb. The tvOS custom Xcode project
+# lacks this target, causing `pod install` to crash if it's evaluated.
+module Pod
+  class Podfile
+    alias_method :original_target, :target
+    def target(name, options = nil, &block)
+      if name == 'RunnerTests'
+        puts "Skipping dynamically injected RunnerTests target for tvOS"
+        return
+      end
+      original_target(name, options, &block)
+    end
+  end
+end
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+end
+
+post_install do |installer|
+  patch_pods_for_tvos(installer)
+
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings["ENABLE_USER_SCRIPT_SANDBOXING"] = "NO"
+  end
+
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # set framework search path
+      flutter_dir = File.expand_path('Flutter', File.dirname(File.realpath(__FILE__)))
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+
+      # media_kit_video needs Mpv.framework from media_kit_libs_ios_video.
+      # The podspec only sets FRAMEWORK_SEARCH_PATHS for iphoneos* and iphonesimulator*,
+      # so for appletvos the linker cannot find Mpv.  Reuse the ios-arm64 path because
+      # tvOS is also arm64 and the Mpv binary is compatible.
+      if target.name == 'media_kit_video'
+        pods_root = installer.pods_project.path.dirname
+        mpv_symlink = File.join(pods_root, '..', '.symlinks', 'plugins',
+                                'media_kit_libs_ios_video', 'ios', 'Frameworks', '.symlinks', 'mpv', 'ios')
+        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" "' + mpv_symlink + '" $(inherited)'
+      end
+      config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+      config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="' + flutter_dir + '/Flutter.framework/Modules/module.modulemap"'
+      config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
+      config.build_settings["TVOS_DEPLOYMENT_TARGET"] = "15.0"
+      # convert ios to tvos target
+      if config.build_settings["TARGETED_DEVICE_FAMILY"]
+        config.build_settings["TARGETED_DEVICE_FAMILY"] = "3"
+      end
+      if config.build_settings["SDKROOT"]
+        config.build_settings["SDKROOT"] = "appletvos"
+      end
+      if config.build_settings["SUPPORTED_PLATFORMS"]
+        config.build_settings["SUPPORTED_PLATFORMS"] = "appletvos"
+      end
+      if config.build_settings["ENABLE_BITCODE"]
+        config.build_settings["ENABLE_BITCODE"] = "NO"
+      end
+      config.build_settings["ENABLE_USER_SCRIPT_SANDBOXING"] = "NO"
+    end
+  end
+end
+
+def patch_pods_for_tvos(installer)
+  pods_dir = installer.pods_project.path.dirname
+
+  # Collect all directories to search for Swift files.
+  # IMPORTANT: CocoaPods with Swift Package Manager style sources compiles files
+  # directly from ~/.pub-cache, so we must patch those files too.
+  search_dirs = [pods_dir.to_s]
+
+  # Resolve .symlinks/plugins symlinks
+  symlinks_dir = File.expand_path(File.join(pods_dir, '..', '.symlinks', 'plugins'))
+  if Dir.exist?(symlinks_dir)
+    Dir.foreach(symlinks_dir) do |plugin|
+      next if plugin == '.' || plugin == '..'
+      plugin_path = File.join(symlinks_dir, plugin)
+      begin
+        real_path = File.realpath(plugin_path)
+        search_dirs << real_path
+      rescue
+      end
+    end
+  end
+
+  # Add pub cache directory - this is where SPM-style pods compile from
+  pub_cache_dir = File.expand_path('~/.pub-cache/hosted/pub.dev')
+  search_dirs << pub_cache_dir if Dir.exist?(pub_cache_dir)
+
+  # Helper: collect unique Swift files matching a glob pattern
+  def collect_swift_files(search_dirs, pattern)
+    files = []
+    search_dirs.each do |dir|
+      files += Dir.glob(File.join(dir, "**", pattern))
+    end
+    files.uniq
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 1: Fix Pigeon-generated files and any Swift file with
+  #   "#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n...\n#else\n  #error(...)\n#endif"
+  # tvOS falls into the #error branch → replace with || os(tvOS) and remove #error
+  # ---------------------------------------------------------------------------
+  collect_swift_files(search_dirs, '*.swift').each do |file|
+    content = File.read(file)
+    patched = content
+
+    # Pattern A: 2-space indent with macOS elseif and #error else
+    error_str_a = '#if os(iOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + '  import FlutterMacOS' + "\n" + '#else' + "\n" + '  #error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
+    fix_str_a   = '#if os(iOS) || os(tvOS)' + "\n" + '  import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + '  import FlutterMacOS' + "\n" + '#endif'
+    patched = patched.gsub(error_str_a, fix_str_a)
+
+    # Pattern B: no indent with macOS elseif and #error else
+    error_str_b = '#if os(iOS)' + "\n" + 'import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + 'import FlutterMacOS' + "\n" + '#else' + "\n" + '#error(' + '"' + 'Unsupported platform.' + '"' + ')' + "\n" + '#endif'
+    fix_str_b   = '#if os(iOS) || os(tvOS)' + "\n" + 'import Flutter' + "\n" + '#elseif os(macOS)' + "\n" + 'import FlutterMacOS' + "\n" + '#endif'
+    patched = patched.gsub(error_str_b, fix_str_b)
+
+    # Pattern C: 2-space indent with only iOS guard (no macOS)
+    if patched.include?("#if os(iOS)\n  import Flutter\n#endif") && !patched.include?("os(tvOS)")
+      patched = patched.gsub(
+        "#if os(iOS)\n  import Flutter\n#endif",
+        "#if os(iOS) || os(tvOS)\n  import Flutter\n#endif"
+      )
+    end
+
+    # Pattern D: no indent with only iOS guard
+    if patched.include?("#if os(iOS)\nimport Flutter\n#endif") && !patched.include?("os(tvOS)")
+      patched = patched.gsub(
+        "#if os(iOS)\nimport Flutter\n#endif",
+        "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif"
+      )
+    end
+
+    # Fix registrar properties (messenger/textures are methods on iOS/tvOS but properties on macOS)
+    if patched.match(/registrar\.messenger(?!\()/)
+      patched = patched.gsub(/registrar\.messenger(?!\()/, "registrar.messenger()")
+    end
+    if patched.match(/registrar\.textures(?!\()/)
+      patched = patched.gsub(/registrar\.textures(?!\()/, "registrar.textures()")
+    end
+
+    # Pattern E: 2-space indent with elseif macOS but no error (ends with #endif after macOS)
+    if patched.include?("#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif") && !patched.include?("os(tvOS)")
+      patched = patched.gsub(
+        "#if os(iOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif",
+        "#if os(iOS) || os(tvOS)\n  import Flutter\n#elseif os(macOS)\n  import FlutterMacOS\n#endif"
+      )
+    end
+
+    # Pattern F: bare "import Flutter" with no platform guard
+    if patched.include?("import Flutter") &&
+       !patched.include?("os(tvOS)") &&
+       !patched.include?("os(iOS)") &&
+       !patched.include?("canImport(Flutter)")
+      patched = patched.gsub("import Flutter", "#if os(iOS) || os(tvOS)\nimport Flutter\n#endif")
+    end
+
+    if patched != content
+      puts "Patching (Flutter import) #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 2: URLLaunchSession.swift
+  # Uses SafariServices (SFSafariViewController) which is iOS-only.
+  # Wrap the entire file in #if os(iOS) ... #endif
+  # ---------------------------------------------------------------------------
+  collect_swift_files(search_dirs, 'URLLaunchSession.swift').each do |file|
+    content = File.read(file)
+    unless content.start_with?("#if os(iOS)")
+      puts "Patching URLLaunchSession.swift: #{file}"
+      File.write(file, "#if os(iOS)\n" + content + "\n#endif\n")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 3: Launcher.swift (url_launcher_ios)
+  # Uses UIApplication.shared.open with OpenExternalURLOptionsKey (different on tvOS).
+  # Wrap entire file in #if os(iOS) ... #endif
+  # ---------------------------------------------------------------------------
+  collect_swift_files(search_dirs, 'Launcher.swift').each do |file|
+    content = File.read(file)
+    # Only patch if it's the url_launcher Launcher (contains UIApplication.shared)
+    if content.include?("UIApplication.shared") && !content.start_with?("#if os(iOS)")
+      puts "Patching Launcher.swift: #{file}"
+      File.write(file, "#if os(iOS)\n" + content + "\n#endif\n")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 4: ViewPresenter.swift (url_launcher_ios 6.4.1+)
+  # Uses UIViewController and registrar.viewController (iOS-only).
+  # Wrap entire file in #if os(iOS) ... #endif
+  # ---------------------------------------------------------------------------
+  collect_swift_files(search_dirs, 'ViewPresenter.swift').each do |file|
+    content = File.read(file)
+    if content.include?("UIViewController") && !content.start_with?("#if os(iOS)")
+      puts "Patching ViewPresenter.swift: #{file}"
+      File.write(file, "#if os(iOS)\n" + content + "\n#endif\n")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 5: URLLauncherPlugin.swift
+  # References URLLaunchSession, ViewPresenterProvider (iOS-only types).
+  # Replace with a tvOS-compatible stub for the iOS-only parts.
+  # ---------------------------------------------------------------------------
+  collect_swift_files(search_dirs, 'URLLauncherPlugin.swift').each do |file|
+    content = File.read(file)
+    next if content.include?("os(tvOS)")
+
+    patched = content
+
+    # Replace imports at top: "import Flutter\nimport UIKit" with platform-guarded version
+    patched = patched.gsub(
+      "import Flutter\nimport UIKit",
+      "#if os(iOS)\nimport Flutter\nimport UIKit\n#elseif os(tvOS)\nimport Flutter\nimport UIKit\n#endif"
+    )
+
+    # Wrap currentSession property (depends on URLLaunchSession which is iOS-only)
+    if patched.include?("private var currentSession: URLLaunchSession?") && !patched.include?("#if os(iOS)\n  private var currentSession")
+      patched = patched.gsub(
+        "  private var currentSession: URLLaunchSession?",
+        "#if os(iOS)\n  private var currentSession: URLLaunchSession?\n#endif"
+      )
+    end
+
+    # Wrap launcher property (Launcher type is iOS-only, wrapped in #if os(iOS) by Launcher.swift patch)
+    if patched.include?("  private let launcher: Launcher") && !patched.include?("#if os(iOS)\n  private let launcher")
+      patched = patched.gsub(
+        "  private let launcher: Launcher",
+        "#if os(iOS)\n  private let launcher: Launcher\n#endif"
+      )
+    end
+
+    # Wrap topViewController property (uses UIViewController, iOS-only)
+    if patched.include?("  private var topViewController: UIViewController? {") && !patched.include?("#if os(iOS)\n  private var topViewController")
+      patched = patched.gsub(
+        /(  private var topViewController: UIViewController\? \{[\s\S]*?\n  \})/,
+        "#if os(iOS)\n\\1\n#endif"
+      )
+    end
+
+    # Wrap viewPresenterProvider property (depends on ViewPresenterProvider iOS-only)
+    if patched.include?("private let viewPresenterProvider: ViewPresenterProvider") && !patched.include?("#if os(iOS)\n  private let viewPresenterProvider")
+      patched = patched.gsub(
+        "  private let viewPresenterProvider: ViewPresenterProvider",
+        "#if os(iOS)\n  private let viewPresenterProvider: ViewPresenterProvider\n#endif"
+      )
+    end
+
+    # Wrap the init that takes viewPresenterProvider (v6.4.1+)
+    if patched.include?("init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider)")
+      patched = patched.gsub(
+        "  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }",
+        "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher(), viewPresenterProvider: ViewPresenterProvider) {\n    self.launcher = launcher\n    self.viewPresenterProvider = viewPresenterProvider\n  }\n#else\n  override init() {}\n#endif"
+      )
+    end
+
+    # For v6.3.6 that has init without viewPresenterProvider
+    # Must wrap in #if os(iOS) because Launcher type is iOS-only, and provide override init for tvOS
+    if patched.include?("  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }") &&
+       !patched.include?("#if os(iOS)\n  init(launcher:")
+      patched = patched.gsub(
+        "  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }",
+        "#if os(iOS)\n  init(launcher: Launcher = DefaultLauncher()) {\n    self.launcher = launcher\n  }\n#else\n  override init() {}\n#endif"
+      )
+    end
+
+    # Wrap register func that uses DefaultViewPresenterProvider (iOS-only)
+    if patched.include?("DefaultViewPresenterProvider(registrar: registrar)")
+      patched = patched.gsub(
+        "  public static func register(with registrar: FlutterPluginRegistrar) {\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }",
+        "  public static func register(with registrar: FlutterPluginRegistrar) {\n#if os(iOS)\n    let plugin = URLLauncherPlugin(\n      viewPresenterProvider: DefaultViewPresenterProvider(registrar: registrar))\n#else\n    let plugin = URLLauncherPlugin()\n#endif\n    UrlLauncherApiSetup.setUp(binaryMessenger: registrar.messenger(), api: plugin)\n    registrar.publish(plugin)\n  }"
+      )
+    end
+
+    # Wrap ALL methods: canLaunchUrl through closeSafariViewController (v6.3.6)
+    methods_all_regex = /( +func canLaunchUrl[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
+    if patched.match?(methods_all_regex) && !patched.include?("#if os(iOS)\n  func canLaunchUrl")
+      patched = patched.gsub(methods_all_regex) do |match|
+        "#if os(iOS)\n#{match}\n#else\n  func canLaunchUrl(url: String) -> LaunchResult {\n    return .failure\n  }\n  func launchUrl(\n    url: String,\n    universalLinksOnly: Bool,\n    completion: @escaping (Result<LaunchResult, Error>) -> Void\n  ) {\n    completion(.success(.failure))\n  }\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
+      end
+    elsif patched.include?("func openUrlInSafariViewController") &&
+       !patched.include?("#if os(iOS)\n  func openUrlInSafariViewController")
+      # Fallback for older versions without canLaunchUrl
+      patched = patched.gsub(
+        /( +func openUrlInSafariViewController[\s\S]*?func closeSafariViewController\(\) \{[\s\S]*?\n  \})/
+      ) do |match|
+        "#if os(iOS)\n#{match}\n#else\n  func openUrlInSafariViewController(\n    url: String,\n    completion: @escaping (Result<InAppLoadResult, Error>) -> Void\n  ) {\n    completion(.success(.failedToLoad))\n  }\n  func closeSafariViewController() {}\n#endif"
+      end
+    end
+
+    if patched != content
+      puts "Patching URLLauncherPlugin.swift: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 6: media_kit_video VideoOutput.swift and related files
+  # Uses #if canImport(Flutter) which should work, but may need UIKit on tvOS
+  # ---------------------------------------------------------------------------
+  collect_swift_files(search_dirs, 'VideoOutput.swift').each do |file|
+    content = File.read(file)
+    patched = content
+
+    if patched.include?("#if canImport(Flutter)\n  import Flutter") && !patched.include?("os(tvOS)")
+      patched = patched.gsub(
+        "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif",
+        "#if canImport(Flutter)\n  import Flutter\n#elseif canImport(FlutterMacOS)\n  import FlutterMacOS\n#endif\n#if os(tvOS)\nimport UIKit\n#endif"
+      )
+    end
+
+    if patched != content
+      puts "Patching VideoOutput.swift: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 7: Patch Package.swift & Podspec files to add tvOS platform support
+  # All iOS-only SPM packages fail ScanDependencies when built for tvOS
+  # because they don't declare tvOS in their platforms array.
+  # ---------------------------------------------------------------------------
+  def collect_podspecs(search_dirs)
+    files = []
+    search_dirs.each do |dir|
+      files += Dir.glob(File.join(dir, "**/*.podspec"))
+    end
+    files.uniq
+  end
+
+  collect_podspecs(search_dirs).each do |file|
+    content = File.read(file)
+    patched = content
+    if patched.include?("s.ios.dependency 'Flutter'") && !patched.include?("s.tvos.dependency 'Flutter'")
+      patched = patched.gsub("s.ios.dependency 'Flutter'", "s.ios.dependency 'Flutter'\n  s.tvos.dependency 'Flutter'")
+    end
+    if patched.match(/s\.ios\.deployment_target\s*=\s*'[^']+'/) && !patched.include?("s.tvos.deployment_target")
+      patched = patched.gsub(/(s\.ios\.deployment_target\s*=\s*'[^']+')/, "\\1\n  s.tvos.deployment_target = '15.0'")
+    end
+    if patched != content
+      puts "Patching Podspec: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  def collect_package_swift_files(search_dirs)
+    files = []
+    search_dirs.each do |dir|
+      files += Dir.glob(File.join(dir, "**/Package.swift"))
+    end
+    files.select { |f| f.include?("/ios/") || f.include?("/darwin/") }.uniq
+  end
+
+  collect_package_swift_files(search_dirs).each do |file|
+    content = File.read(file)
+    next if content.include?("tvOS")
+    patched = content
+
+    if patched.include?(".iOS(") && !patched.include?(".tvOS(")
+      patched = patched.gsub(/(\s+\.iOS\("[^"]+"\))(,?\s*\n)/) do |_match|
+        ios_line = $1
+        rest = $2
+        rest = rest.gsub(/^,/, '')
+        if ios_line.end_with?(',')
+          ios_line = ios_line[0...-1]
+        end
+        ios_line + "," + rest + "    .tvOS(\"15.0\"),\n"
+      end
+    end
+
+    if patched != content
+      puts "Patching Package.swift for tvOS: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PATCH 8: wakelock_plus Objective-C files
+  # WakelockPlusPlugin.h/m uses #import <Flutter/Flutter.h> (needs tvOS guard)
+  # WakelockPlusPlugin.m uses isIdleTimerDisabled which is iOS-only on tvOS
+  # UIApplication+idleTimerLock uses method swizzling (iOS-only)
+  # messages.g.m uses #import <Flutter/Flutter.h> without tvOS guard
+  # ---------------------------------------------------------------------------
+
+  # Helper: collect ObjC files
+  def collect_objc_files(search_dirs, pattern)
+    files = []
+    search_dirs.each do |dir|
+      files += Dir.glob(File.join(dir, "**", pattern))
+    end
+    files.uniq
+  end
+
+  # Patch WakelockPlusPlugin.h - replace bare Flutter import with guarded one
+  collect_objc_files(search_dirs, 'WakelockPlusPlugin.h').each do |file|
+    content = File.read(file)
+    patched = content
+    if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
+      patched = patched.gsub(
+        "#import <Flutter/Flutter.h>",
+        "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+      if patched != content
+        puts "Patching WakelockPlusPlugin.h: #{file}"
+        File.write(file, patched)
+      end
+    end
+  end
+
+  # Patch messages.g.m / .h - fix Flutter import for tvOS
+  collect_objc_files(search_dirs, 'messages.g.*').each do |file|
+    next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
+    content = File.read(file)
+    patched = content
+    # Replace the macOS/iOS guard with one that also covers tvOS
+    if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
+      patched = patched.gsub(
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+      )
+      if patched != content
+        puts "Patching wakelock_plus messages.g.m: #{file}"
+        File.write(file, patched)
+      end
+    end
+
+    if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
+      if patched.include?("#import <Foundation/Foundation.h>")
+        patched = patched.gsub(
+          "#import <Foundation/Foundation.h>",
+          "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+        puts "Patching wakelock_plus messages.g.h: #{file}"
+        File.write(file, patched)
+      end
+    end
+  end
+
+  # Patch WakelockPlusPlugin.m - wrap iOS-only APIs in TARGET_OS_IOS guard
+  collect_objc_files(search_dirs, 'WakelockPlusPlugin.m').each do |file|
+    content = File.read(file)
+    next if content.include?("TARGET_OS_TV")
+    patched = content
+
+    # Wrap the entire implementation in TARGET_OS_IOS guard and provide tvOS stub
+    if patched.include?("@implementation WakelockPlusPlugin") && !patched.include?("TARGET_OS_TV")
+      tvos_stub = <<~OBJC
+
+        #if TARGET_OS_TV
+        // tvOS stub - wakelock is not supported on tvOS
+        @implementation WakelockPlusPlugin
+        + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+          WakelockPlusPlugin* instance = [[WakelockPlusPlugin alloc] init];
+          SetUpWAKELOCKPLUSWakelockPlusApi(registrar.messenger, instance);
+        }
+        - (void)toggleMsg:(WAKELOCKPLUSToggleMessage*)input error:(FlutterError**)error {
+          // No-op on tvOS
+        }
+        - (WAKELOCKPLUSIsEnabledMessage*)isEnabledWithError:(FlutterError* __autoreleasing *)error {
+          WAKELOCKPLUSIsEnabledMessage* result = [[WAKELOCKPLUSIsEnabledMessage alloc] init];
+          result.enabled = @NO;
+          return result;
+        }
+        @end
+        #else
+      OBJC
+
+      # Find the start of @implementation WakelockPlusPlugin
+      impl_start = patched.index("@implementation WakelockPlusPlugin")
+      # Find the matching @end
+      end_pos = patched.index("\n@end", impl_start)
+      if end_pos
+        end_pos_after = end_pos + "\n@end".length
+        original_impl = patched[impl_start..end_pos_after-1]
+        patched = patched.sub(original_impl, tvos_stub + original_impl + "\n#endif")
+      end
+    end
+
+    if patched != content
+      puts "Patching WakelockPlusPlugin.m: #{file}"
+      File.write(file, patched)
+    end
+  end
+
+  # Patch UIApplication+idleTimerLock.m - wrap in TARGET_OS_IOS guard
+  collect_objc_files(search_dirs, 'UIApplication+idleTimerLock.m').each do |file|
+    content = File.read(file)
+    unless content.start_with?("#if TARGET_OS_IOS") || content.include?("TARGET_OS_TV")
+      puts "Patching UIApplication+idleTimerLock.m: #{file}"
+      File.write(file, "#if !TARGET_OS_TV\n" + content + "\n#endif\n")
+    end
+  end
+
+  # Patch UIApplication+idleTimerLock.h - wrap in TARGET_OS_IOS guard
+  collect_objc_files(search_dirs, 'UIApplication+idleTimerLock.h').each do |file|
+    content = File.read(file)
+    unless content.include?("TARGET_OS_TV")
+      puts "Patching UIApplication+idleTimerLock.h: #{file}"
+      File.write(file, "#if !TARGET_OS_TV\n" + content + "\n#endif\n")
+    end
+  end
+end
