@@ -82,6 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     TextField(
+                      autofocus: true,
                       controller: nameController,
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(labelText: 'Name', labelStyle: TextStyle(color: Colors.grey)),
@@ -349,6 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               backgroundColor: const Color(0xFF2C2C2E),
                               title: const Text('Enter PIN', style: TextStyle(color: Colors.white)),
                               content: TextField(
+                                autofocus: true,
                                 controller: pinController,
                                 obscureText: true,
                                 keyboardType: TextInputType.number,

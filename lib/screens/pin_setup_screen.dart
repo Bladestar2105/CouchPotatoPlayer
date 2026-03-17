@@ -80,6 +80,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
         controller: controller,
+        autofocus: true,
         obscureText: true,
         keyboardType: TextInputType.number,
         maxLength: 4,

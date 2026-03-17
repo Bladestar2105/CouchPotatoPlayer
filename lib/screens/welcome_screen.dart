@@ -137,11 +137,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     required String hint,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
+    bool autofocus = false,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: controller,
+        autofocus: autofocus,
         obscureText: obscureText,
         keyboardType: keyboardType,
         style: const TextStyle(color: Colors.white, fontSize: 16),
@@ -265,7 +267,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         ),
                       ),
 
-                    buildInput(controller: nameController, hint: 'Provider Name'),
+                    buildInput(controller: nameController, hint: 'Provider Name', autofocus: true),
                     buildInput(
                       controller: serverUrlController,
                       hint: type == 'xtream' ? 'Server URL (http://...)' : 'M3U Playlist URL',
