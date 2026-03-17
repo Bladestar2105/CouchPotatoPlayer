@@ -359,7 +359,7 @@ collect_files('messages.g.*').each do |file|
     elsif patched.include?("@import Foundation;")
       patched = patched.gsub(
         "@import Foundation;",
-        "@import Foundation;\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#endif"
+        "@import Foundation;\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
       )
     end
   end
