@@ -74,7 +74,8 @@ npm run build:android-sim
 **Apple TV (tvOS) Simulator**
 ```bash
 npm run build:tvos-sim
-# Note: For full, native tvOS support, React Native projects often require the `react-native-tvos` fork. Ensure your environment is configured for tvOS targets in Xcode if compilation fails.
+# Note: For full, native tvOS support, install `react-native-tvos` locally by running: `npm install react-native@npm:react-native-tvos@latest`.
+# Our GitHub CI pipeline dynamically performs this substitution to build a true tvOS binary.
 ```
 
 **Android TV Emulator**

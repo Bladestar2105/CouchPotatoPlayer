@@ -57,7 +57,7 @@ jobs:
       - name: Build iOS App (No Codesign)
         run: |
           cd ios
-          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -destination 'generic/platform=iOS Simulator' SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
+          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -sdk iphonesimulator SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
       - name: Package iOS App
         run: tar -czf ios-build.tar.gz build/ios/Release-iphonesimulator/CouchPotatoPlayer.app
       - name: Upload iOS Build
@@ -67,8 +67,8 @@ jobs:
           path: ios-build.tar.gz
 
   # ── tvOS Build (React Native Expo) ───────────────────────────────────────
-  # Note: Standard Expo usually does not fully support Apple TV out of the box without
-  # react-native-tvos, but we compile what we have for tvOS simulation.
+  # We dynamically install react-native-tvos to generate the true tvOS targets
+  # during prebuild, ensuring native compilation against the Apple TV SDK.
   build-tvos:
     runs-on: macos-15
     steps:
@@ -80,8 +80,10 @@ jobs:
           cache: 'npm'
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
-      - name: Prebuild iOS (tvOS)
-        run: npx expo prebuild --platform ios
+      - name: Inject react-native-tvos
+        run: npm install react-native@npm:react-native-tvos@latest --legacy-peer-deps
+      - name: Prebuild iOS (Generates tvOS scheme)
+        run: EXPO_TV=1 npx expo prebuild --platform ios
       - name: Pod Install
         run: |
           cd ios
@@ -89,7 +91,7 @@ jobs:
       - name: Build tvOS App (No Codesign)
         run: |
           cd ios
-          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -destination 'generic/platform=tvOS Simulator' SYMROOT="${{ github.workspace }}/build/tvos" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
+          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -sdk appletvsimulator SYMROOT="${{ github.workspace }}/build/tvos" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
       - name: Package tvOS App
         run: tar -czf tvos-build.tar.gz build/tvos/Release-appletvsimulator/CouchPotatoPlayer.app
       - name: Upload tvOS Build
