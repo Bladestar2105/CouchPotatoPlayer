@@ -45,7 +45,14 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       # set framework search path
-      flutter_dir = '"${PROJECT_DIR}/../ios/Flutter"'
+      if ENV['LOCAL_TVOS_BUILD'] == '1'
+        flutter_dir = '"${PROJECT_DIR}/../ios/Flutter"'
+        flutter_dir_raw = '${PROJECT_DIR}/../ios/Flutter'
+      else
+        flutter_dir_raw = File.expand_path('Flutter', File.dirname(File.realpath(__FILE__)))
+        flutter_dir = '"' + flutter_dir_raw + '"'
+      end
+
       config.build_settings['FRAMEWORK_SEARCH_PATHS'] = flutter_dir + ' $(inherited)'
 
       # media_kit_video needs Mpv.framework from media_kit_libs_ios_video.
@@ -59,7 +66,7 @@ post_install do |installer|
         config.build_settings['FRAMEWORK_SEARCH_PATHS'] = flutter_dir + ' "' + mpv_symlink + '" $(inherited)'
       end
       config.build_settings['HEADER_SEARCH_PATHS'] = flutter_dir + ' $(inherited)'
-      config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="${PROJECT_DIR}/../ios/Flutter/Flutter.framework/Modules/module.modulemap"'
+      config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="' + flutter_dir_raw + '/Flutter.framework/Modules/module.modulemap"'
       config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
       config.build_settings["TVOS_DEPLOYMENT_TARGET"] = "15.0"
       # convert ios to tvos target
