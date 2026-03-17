@@ -120,63 +120,110 @@ flutter pub get
 echo "=== Step 7: Patching pub-cache for tvOS ==="
 ruby scripts/patch_tvos_pods.rb
 
-# Step 8: Re-tag media_kit xcframeworks for tvOS
-echo "=== Step 8: Re-tagging media_kit xcframeworks ==="
-MEDIA_KIT_PATH=$(find "$HOME/.pub-cache/hosted/pub.dev/" -maxdepth 1 -type d -name "media_kit_libs_ios_video-*" | sort -V | tail -n 1)
-FRAMEWORKS_DIR="$MEDIA_KIT_PATH/ios/Frameworks"
-if [ -n "$MEDIA_KIT_PATH" ] && [ -d "$FRAMEWORKS_DIR" ]; then
-    echo "Found media_kit at $MEDIA_KIT_PATH"
-    # Re-tag for tvOS device (ios-arm64)
-    find "$FRAMEWORKS_DIR" -path "*/ios-arm64/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
-        if file "$binary" | grep -q "Mach-O"; then
-            echo "Re-tagging for tvOS device: $binary"
-            xcrun vtool -arch arm64 -set-build-version 3 15.0 18.0 -replace -output "${binary}.tvos" "$binary"
-            mv "${binary}.tvos" "$binary"
-        fi
-    done
-
-    # Re-tag for tvOS simulator (ios-arm64_x86_64-simulator)
-    find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
-        if file "$binary" | grep -q "Mach-O"; then
-            echo "Re-tagging for tvOS simulator: $binary"
-            xcrun vtool -arch arm64 -set-build-version 8 15.0 18.0 -replace -output "${binary}.tvos" "$binary" 2>/dev/null || true
-            if [ -f "${binary}.tvos" ]; then
-                mv "${binary}.tvos" "$binary"
-            fi
-        fi
-    done
-
-    # Re-sign the frameworks after modifying binaries
-    if [ "$TARGET" == "simulator" ]; then
-        find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework" -type d | while read fw; do
-            echo "Re-signing simulator framework: $fw"
-            codesign --force --sign - "$fw" 2>/dev/null || true
-        done
-    else
-        find "$FRAMEWORKS_DIR" -path "*/ios-arm64/*.framework" -type d | while read fw; do
-            echo "Re-signing device framework: $fw"
-            codesign --force --sign - "$fw" 2>/dev/null || true
-        done
-    fi
-fi
-
-# Step 9: Pod Install
-echo "=== Step 9: Running Pod Install ==="
+# Step 8: Pod Install
+echo "=== Step 8: Running Pod Install ==="
 cd ios
 pod install
 cd ..
 
-# Step 10: Build tvOS App (No Codesign)
-echo "=== Step 10: Building tvOS App ==="
+# Step 9: Re-tag media_kit frameworks locally for tvOS
+echo "=== Step 9: Re-tagging media_kit frameworks locally ==="
+# We mutate the locally downloaded/extracted Pods frameworks to prevent corrupting the global pub-cache for standard iOS builds
+PODS_MEDIA_KIT_DIR="$ROOT_DIR/ios/Pods/media_kit_libs_ios_video/ios/Frameworks"
+
+if [ -d "$PODS_MEDIA_KIT_DIR" ]; then
+    echo "Found media_kit frameworks at $PODS_MEDIA_KIT_DIR"
+
+    if [ "$TARGET" == "simulator" ]; then
+        # Re-tag for tvOS simulator (ios-arm64_x86_64-simulator)
+        find "$PODS_MEDIA_KIT_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
+            if file "$binary" | grep -q "Mach-O"; then
+                echo "Re-tagging for tvOS simulator: $binary"
+                xcrun vtool -arch arm64 -set-build-version 8 15.0 18.0 -replace -output "${binary}.tvos" "$binary" 2>/dev/null || true
+                if [ -f "${binary}.tvos" ]; then
+                    mv "${binary}.tvos" "$binary"
+                fi
+            fi
+        done
+
+        # Re-sign the frameworks after modifying binaries
+        find "$PODS_MEDIA_KIT_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework" -type d | while read fw; do
+            echo "Re-signing simulator framework: $fw"
+            codesign --force --sign - "$fw" 2>/dev/null || true
+        done
+    else
+        # Re-tag for tvOS device (ios-arm64)
+        find "$PODS_MEDIA_KIT_DIR" -path "*/ios-arm64/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
+            if file "$binary" | grep -q "Mach-O"; then
+                echo "Re-tagging for tvOS device: $binary"
+                xcrun vtool -arch arm64 -set-build-version 3 15.0 18.0 -replace -output "${binary}.tvos" "$binary"
+                mv "${binary}.tvos" "$binary"
+            fi
+        done
+
+        # Re-sign the frameworks after modifying binaries
+        find "$PODS_MEDIA_KIT_DIR" -path "*/ios-arm64/*.framework" -type d | while read fw; do
+            echo "Re-signing device framework: $fw"
+            codesign --force --sign - "$fw" 2>/dev/null || true
+        done
+    fi
+else
+    echo "Warning: Local media_kit frameworks not found at $PODS_MEDIA_KIT_DIR. Build may fail if media_kit is required."
+fi
+
+# Step 10: Code Signing Selection (Device only)
+CODE_SIGN_FLAG="CODE_SIGNING_ALLOWED=\"NO\" CODE_SIGNING_REQUIRED=\"NO\" CODE_SIGN_IDENTITY=\"\""
+
+if [ "$TARGET" == "device" ]; then
+    echo "=== Step 10: Selecting Code Signing Identity ==="
+    echo "Fetching available signing identities..."
+
+    # Store identities in an array (macOS Bash 3.2 compatible)
+    IDENTITIES=()
+    while IFS= read -r line; do
+        if [ -n "$line" ]; then
+            IDENTITIES+=("$line")
+        fi
+    done < <(security find-identity -v -p codesigning | grep '"' | awk -F'"' '{print $2}')
+
+    if [ ${#IDENTITIES[@]} -eq 0 ]; then
+        echo "No signing identities found! The build will proceed without code signing, but it cannot be installed on a physical device."
+    else
+        echo "Please select a signing identity for the device build:"
+        select IDENTITY in "${IDENTITIES[@]}" "Skip Signing"; do
+            if [ "$IDENTITY" == "Skip Signing" ]; then
+                echo "Skipping code signing."
+                break
+            elif [ -n "$IDENTITY" ]; then
+                echo "Selected Identity: $IDENTITY"
+                # Use the exact string to configure xcodebuild arguments for signing
+                CODE_SIGN_FLAG="CODE_SIGN_IDENTITY=\"$IDENTITY\" CODE_SIGNING_REQUIRED=\"YES\" CODE_SIGNING_ALLOWED=\"YES\""
+
+                # In order to sign properly via CLI, Xcode often requires the Development Team ID to be specified as well.
+                # However, extracting it automatically without parsing provisioning profiles is difficult.
+                # We will rely on Xcode resolving it based on the identity, or the user finishing it in Xcode.
+                break
+            else
+                echo "Invalid selection. Try again."
+            fi
+        done
+    fi
+else
+    echo "=== Step 10: Skipping Code Signing (Simulator) ==="
+fi
+
+# Step 11: Build tvOS App
+echo "=== Step 11: Building tvOS App ==="
 # Exporting FLUTTER_LOCAL_ENGINE as the ROOT_DIR (just like the GH Actions workflow does in the build step)
 export FLUTTER_LOCAL_ENGINE="$ROOT_DIR"
 cd ios
 
-xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration "$BUILD_CONFIG" -destination "$DESTINATION" SYMROOT="$ROOT_DIR/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
+# Evaluate the signing flags dynamically
+eval xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration "$BUILD_CONFIG" -destination \'"$DESTINATION"\' SYMROOT=\"$ROOT_DIR/build/ios\" "$CODE_SIGN_FLAG"
 cd ..
 
-# Step 11: Package tvOS App
-echo "=== Step 11: Packaging tvOS App ==="
+# Step 12: Package tvOS App
+echo "=== Step 12: Packaging tvOS App ==="
 if [ "$TARGET" == "simulator" ]; then
     tar -czf tvos-build-simulator.tar.gz build/ios/Debug-appletvsimulator/Runner.app
     echo "=== tvOS Local Compilation Completed Successfully! ==="
@@ -186,3 +233,9 @@ else
     echo "=== tvOS Local Compilation Completed Successfully! ==="
     echo "You can find your build at tvos-build.tar.gz"
 fi
+
+echo "=== Launching Xcode ==="
+echo "To install and run the app, Xcode will now open."
+echo "1. Select your Apple TV Device or Simulator from the top destination dropdown."
+echo "2. Press Cmd+R (or click the Play button) to install and launch it."
+open ios/Runner.xcworkspace
