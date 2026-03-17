@@ -45,8 +45,10 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       # set framework search path
-      flutter_dir = File.expand_path('Flutter', File.dirname(File.realpath(__FILE__)))
-      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+      flutter_dir = '"${PROJECT_DIR}/../Flutter"'
+      flutter_dir_raw = '${PROJECT_DIR}/../Flutter'
+
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = flutter_dir + ' $(inherited)'
 
       # media_kit_video needs Mpv.framework from media_kit_libs_ios_video.
       # The podspec only sets FRAMEWORK_SEARCH_PATHS for iphoneos* and iphonesimulator*,
@@ -56,10 +58,11 @@ post_install do |installer|
         pods_root = installer.pods_project.path.dirname
         mpv_symlink = File.join(pods_root, '..', '.symlinks', 'plugins',
                                 'media_kit_libs_ios_video', 'ios', 'Frameworks', '.symlinks', 'mpv', 'ios')
-        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" "' + mpv_symlink + '" $(inherited)'
+        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = flutter_dir + ' "' + mpv_symlink + '" $(inherited)'
       end
-      config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
-      config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="' + flutter_dir + '/Flutter.framework/Modules/module.modulemap"'
+      config.build_settings['HEADER_SEARCH_PATHS'] = flutter_dir + ' $(inherited)'
+      config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="' + flutter_dir_raw + '/Flutter.framework/Modules/module.modulemap"'
+      config.build_settings['OTHER_CFLAGS'] = '$(inherited) -fmodule-map-file="' + flutter_dir_raw + '/Flutter.framework/Modules/module.modulemap"'
       config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
       config.build_settings["TVOS_DEPLOYMENT_TARGET"] = "15.0"
       # convert ios to tvos target
@@ -418,11 +421,23 @@ def patch_pods_for_tvos(installer)
   collect_objc_files(search_dirs, 'WakelockPlusPlugin.h').each do |file|
     content = File.read(file)
     patched = content
-    if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
-      patched = patched.gsub(
-        "#import <Flutter/Flutter.h>",
-        "#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
-      )
+
+    # Strip existing patch blocks for idempotency
+    patched = patched.gsub("#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif", "#import <Flutter/Flutter.h>")
+    patched = patched.gsub("#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif", "#import <Flutter/Flutter.h>")
+
+    if patched.include?("#import <Flutter/Flutter.h>")
+      if ENV['LOCAL_TVOS_BUILD'] == '1'
+        patched = patched.gsub(
+          "#import <Flutter/Flutter.h>",
+          "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+      else
+        patched = patched.gsub(
+          "#import <Flutter/Flutter.h>",
+          "#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+      end
       if patched != content
         puts "Patching WakelockPlusPlugin.h: #{file}"
         File.write(file, patched)
@@ -435,26 +450,51 @@ def patch_pods_for_tvos(installer)
     next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
     content = File.read(file)
     patched = content
+
+    # Strip existing patch blocks for idempotency
+    patched = patched.gsub("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif", "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif")
+    patched = patched.gsub("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif", "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif")
+
     # Replace the macOS/iOS guard with one that also covers tvOS
-    if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
-      patched = patched.gsub(
-        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
-        "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
-      )
+    if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif")
+      if ENV['LOCAL_TVOS_BUILD'] == '1'
+        patched = patched.gsub(
+          "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+          "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+      else
+        patched = patched.gsub(
+          "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
+          "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+        )
+      end
       if patched != content
-        puts "Patching wakelock_plus messages.g.m: #{file}"
+        puts "Patching wakelock_plus messages.g.m/h: #{file}"
         File.write(file, patched)
       end
     end
 
-    if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
-      if patched.include?("#import <Foundation/Foundation.h>")
-        patched = patched.gsub(
-          "#import <Foundation/Foundation.h>",
-          "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
-        )
-        puts "Patching wakelock_plus messages.g.h: #{file}"
-        File.write(file, patched)
+    if file.end_with?(".h")
+      # For messages.g.h, we also appended to the Foundation import
+      patched = patched.gsub("#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif", "#import <Foundation/Foundation.h>")
+      patched = patched.gsub("#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif", "#import <Foundation/Foundation.h>")
+
+      if patched.include?("#import <Foundation/Foundation.h>") && !patched.include?("Flutter.h") && !patched.include?("Flutter/Flutter.h")
+        if ENV['LOCAL_TVOS_BUILD'] == '1'
+          patched = patched.gsub(
+            "#import <Foundation/Foundation.h>",
+            "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
+          )
+        else
+          patched = patched.gsub(
+            "#import <Foundation/Foundation.h>",
+            "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import <Flutter/Flutter.h>\n#else\n#import <Flutter/Flutter.h>\n#endif"
+          )
+        end
+        if patched != content
+          puts "Patching wakelock_plus messages.g.h (Foundation block): #{file}"
+          File.write(file, patched)
+        end
       end
     end
   end

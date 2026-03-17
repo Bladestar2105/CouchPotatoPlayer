@@ -2,6 +2,8 @@
 
 set -e
 
+export LOCAL_TVOS_BUILD=1
+
 echo "=== Starting tvOS Local Compilation ==="
 
 # Default variables
