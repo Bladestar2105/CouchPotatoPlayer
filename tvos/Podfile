@@ -45,13 +45,8 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       # set framework search path
-      if ENV['LOCAL_TVOS_BUILD'] == '1'
-        flutter_dir = '"${PROJECT_DIR}/../ios/Flutter"'
-        flutter_dir_raw = '${PROJECT_DIR}/../ios/Flutter'
-      else
-        flutter_dir_raw = File.expand_path('Flutter', File.dirname(File.realpath(__FILE__)))
-        flutter_dir = '"' + flutter_dir_raw + '"'
-      end
+      flutter_dir = '"${PROJECT_DIR}/../Flutter"'
+      flutter_dir_raw = '${PROJECT_DIR}/../Flutter'
 
       config.build_settings['FRAMEWORK_SEARCH_PATHS'] = flutter_dir + ' $(inherited)'
 
