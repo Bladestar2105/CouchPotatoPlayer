@@ -30,16 +30,14 @@ flutter_ios_podfile_setup
 # Override CocoaPods `target` method to intercept and ignore the 'RunnerTests'
 # target dynamically injected by Flutter's podhelper.rb. The tvOS custom Xcode project
 # lacks this target, causing `pod install` to crash if it's evaluated.
-module Pod
-  class Podfile
-    alias_method :original_target, :target
-    def target(name, options = nil, &block)
-      if name == 'RunnerTests'
-        puts "Skipping dynamically injected RunnerTests target for tvOS"
-        return
-      end
-      original_target(name, options, &block)
+class ::Pod::Podfile
+  alias_method :original_target_intercept, :target
+  def target(name, options = nil, &block)
+    if name == 'RunnerTests'
+      puts "Skipping dynamically injected RunnerTests target for tvOS"
+      return
     end
+    original_target_intercept(name, options, &block)
   end
 end
 
