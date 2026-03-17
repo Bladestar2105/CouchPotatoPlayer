@@ -309,67 +309,6 @@ collect_files('UIApplication+idleTimerLock.h').each do |file|
   end
 end
 
-# ---------------------------------------------------------------------------
-# 8.5 WakelockPlusPlugin.h: replace iOS-only impl with tvOS stub
-# ---------------------------------------------------------------------------
-collect_files('WakelockPlusPlugin.h').each do |file|
-  content = File.read(file)
-  patched = content
-  if patched.include?("#import <Flutter/Flutter.h>") && !patched.include?("TARGET_OS_TV")
-    patched = patched.gsub(
-      "#import <Flutter/Flutter.h>",
-      "#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
-    )
-    puts "Patching WakelockPlusPlugin.h: #{file}"
-    File.write(file, patched)
-    patch_count += 1
-  end
-end
-
-# ---------------------------------------------------------------------------
-# 8.6 messages.g.m / .h: replace iOS-only impl with tvOS stub
-# ---------------------------------------------------------------------------
-collect_files('messages.g.*').each do |file|
-  next unless file.include?("wakelock_plus") && (file.end_with?(".m") || file.end_with?(".h"))
-  content = File.read(file)
-  patched = content
-
-  # Handle newer Pigeon which uses @import Flutter;
-  if patched.include?("@import FlutterMacOS;\n#else\n@import Flutter;\n#endif") && !patched.include?("TARGET_OS_TV")
-    patched = patched.gsub(
-      "@import FlutterMacOS;\n#else\n@import Flutter;\n#endif",
-      "@import FlutterMacOS;\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n@import Flutter;\n#endif"
-    )
-  end
-
-  # Handle older Pigeon which uses #import <Flutter/Flutter.h>
-  if patched.include?("#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif") && !patched.include?("TARGET_OS_TV")
-    patched = patched.gsub(
-      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#else\n#import <Flutter/Flutter.h>\n#endif",
-      "#if TARGET_OS_OSX\n#import <FlutterMacOS/FlutterMacOS.h>\n#elif TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
-    )
-  end
-
-  if file.end_with?(".h") && !patched.include?("TARGET_OS_TV") && !patched.include?("Flutter.h")
-    if patched.include?("#import <Foundation/Foundation.h>")
-      patched = patched.gsub(
-        "#import <Foundation/Foundation.h>",
-        "#import <Foundation/Foundation.h>\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#else\n#import <Flutter/Flutter.h>\n#endif"
-      )
-    elsif patched.include?("@import Foundation;")
-      patched = patched.gsub(
-        "@import Foundation;",
-        "@import Foundation;\n#if TARGET_OS_TV\n#import \"Flutter.h\"\n#endif"
-      )
-    end
-  end
-
-  if patched != content
-    puts "Patching wakelock_plus messages: #{file}"
-    File.write(file, patched)
-    patch_count += 1
-  end
-end
 
 # ---------------------------------------------------------------------------
 # 8. WakelockPlusPlugin.m: replace iOS-only impl with tvOS stub
