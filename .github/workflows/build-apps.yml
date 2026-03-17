@@ -81,7 +81,7 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
       - name: Inject react-native-tvos
-        run: npm install react-native@npm:react-native-tvos@latest --legacy-peer-deps
+        run: npm install react-native@npm:react-native-tvos@0.81.5-2 --legacy-peer-deps
       - name: Prebuild iOS (Generates tvOS scheme)
         run: EXPO_TV=1 npx expo prebuild --platform ios
       - name: Pod Install
