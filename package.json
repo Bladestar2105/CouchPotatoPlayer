@@ -45,7 +45,7 @@
     "react-native-video": "^6.17.0",
     "react-native-vlc-media-player": "^1.0.96",
     "react-native-web": "^0.21.2",
-    "react-native-worklets": "^0.4.2"
+    "react-native-worklets": "^0.6.1"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
