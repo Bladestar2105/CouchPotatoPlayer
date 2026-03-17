@@ -45,8 +45,10 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       # set framework search path
-      flutter_dir = File.expand_path('Flutter', File.dirname(File.realpath(__FILE__)))
-      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
+      flutter_dir = '"${PROJECT_DIR}/../Flutter"'
+      flutter_dir_raw = '${PROJECT_DIR}/../Flutter'
+
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = flutter_dir + ' $(inherited)'
 
       # media_kit_video needs Mpv.framework from media_kit_libs_ios_video.
       # The podspec only sets FRAMEWORK_SEARCH_PATHS for iphoneos* and iphonesimulator*,
@@ -56,10 +58,11 @@ post_install do |installer|
         pods_root = installer.pods_project.path.dirname
         mpv_symlink = File.join(pods_root, '..', '.symlinks', 'plugins',
                                 'media_kit_libs_ios_video', 'ios', 'Frameworks', '.symlinks', 'mpv', 'ios')
-        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = '"' + flutter_dir + '" "' + mpv_symlink + '" $(inherited)'
+        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = flutter_dir + ' "' + mpv_symlink + '" $(inherited)'
       end
-      config.build_settings['HEADER_SEARCH_PATHS'] = '"' + flutter_dir + '" $(inherited)'
-      config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="' + flutter_dir + '/Flutter.framework/Modules/module.modulemap"'
+      config.build_settings['HEADER_SEARCH_PATHS'] = flutter_dir + ' $(inherited)'
+      config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xcc -fmodule-map-file="' + flutter_dir_raw + '/Flutter.framework/Modules/module.modulemap"'
+      config.build_settings['OTHER_CFLAGS'] = '$(inherited) -fmodule-map-file="' + flutter_dir_raw + '/Flutter.framework/Modules/module.modulemap"'
       config.build_settings["ONLY_ACTIVE_ARCH"] = "YES"
       config.build_settings["TVOS_DEPLOYMENT_TARGET"] = "15.0"
       # convert ios to tvos target
