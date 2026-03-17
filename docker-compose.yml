@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  couchpotatoplayer:
+    image: ghcr.io/siku2/couchpotatoplayer-web:latest # Replace 'siku2' with your actual repository owner if different
+    container_name: couchpotatoplayer
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production

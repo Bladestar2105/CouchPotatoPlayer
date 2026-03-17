@@ -1,4 +1,6 @@
-# Super XJ Player: A React Native IPTV Player
+# CouchPotatoPlayer: A React Native IPTV Player
+
+[![Build Apps](https://github.com/xjapan007/XJ_Player/actions/workflows/build-apps.yml/badge.svg)](https://github.com/xjapan007/XJ_Player/actions/workflows/build-apps.yml)
 
 ![Project Header Image](./assets/images/header.jpg)
 
@@ -100,6 +102,32 @@ If you do not have Xcode or Android Studio installed locally, you can use Expo's
 2.  Build for iOS Simulator: `eas build --profile development --platform ios --type simulator`
 3.  Build for Android Emulator: `eas build --profile development --platform android`
 4.  Once EAS finishes, download the generated `.tar.gz` (iOS) or `.apk` (Android) and drag-and-drop it onto your running simulator. Start the local server with `npx expo start --dev-client`.
+
+---
+
+## 🐳 Docker Deployment (Web)
+
+We provide an easy way to deploy the web version of the CouchPotatoPlayer using Docker and Docker Compose. This is especially useful for managing deployments via Portainer.
+
+### Using Docker Compose
+
+1.  Clone this repository or copy the `docker-compose.yml` file to your server.
+2.  *Note: Depending on where your GitHub repository is hosted, you may need to update the `image` field in `docker-compose.yml` to point to your specific GHCR namespace (e.g., `ghcr.io/yourusername/couchpotatoplayer-web:latest`).*
+3.  Run the following command in the directory containing `docker-compose.yml`:
+
+```bash
+docker-compose up -d
+```
+
+### Using Portainer
+
+1.  Open your Portainer dashboard.
+2.  Go to **Stacks** and click **Add stack**.
+3.  Name the stack (e.g., `couchpotatoplayer`).
+4.  Copy and paste the contents of `docker-compose.yml` into the Web editor.
+5.  Click **Deploy the stack**.
+
+The application will be accessible on port `8080` (e.g., `http://localhost:8080`).
 
 ---
 
