@@ -23,7 +23,8 @@ class StorageService {
 
     try {
       final file = await _localFile(filename);
-      final jsonString = json.encode(data);
+      // Offload heavy JSON serialization to background isolate
+      final jsonString = await compute(jsonEncode, data);
       await file.writeAsString(jsonString);
     } catch (e) {
       debugPrint('Error saving large data $filename: $e');
@@ -37,7 +38,8 @@ class StorageService {
       final file = await _localFile(filename);
       if (await file.exists()) {
         final contents = await file.readAsString();
-        return json.decode(contents);
+        // Offload heavy JSON parsing to background isolate
+        return await compute(jsonDecode, contents);
       }
     } catch (e) {
       debugPrint('Error loading large data $filename: $e');

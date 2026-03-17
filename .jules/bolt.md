@@ -8,3 +8,7 @@
 ## 2025-03-15 - [Use compute() for heavy XMLTV parsing in Flutter]
 **Learning:** Parsing large XMLTV EPG files using `XmlDocument.parse` blocks the main UI thread in Flutter, causing severe jank and unresponsive UI during the initial load or EPG update.
 **Action:** Offload heavy string manipulation and XML parsing to a background isolate using Flutter's `compute()` function to ensure the main thread remains free for rendering.
+
+## 2025-03-15 - [Offload large JSON serialization to isolate]
+**Learning:** Serializing large datasets (like thousands of channels or EPG programs) with `json.encode` or `json.decode` blocks the main UI thread, causing jank when saving to or loading from disk.
+**Action:** Use Flutter's `compute()` to offload heavy JSON operations to a background isolate.
