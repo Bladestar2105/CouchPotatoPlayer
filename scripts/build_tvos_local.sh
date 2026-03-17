@@ -27,39 +27,37 @@ OUT_DIR="$ROOT_DIR/out"
 echo "=== Step 1: Downloading/Verifying Custom Engine ==="
 mkdir -p "$OUT_DIR"
 
-if [ "$TARGET" == "device" ]; then
-    if [ ! -f "$OUT_DIR/host_release_arm64.zip" ]; then
-        echo "Downloading host_release_arm64.zip..."
-        curl -L -o "$OUT_DIR/host_release_arm64.zip" https://oc.bw.tech/s/utLzZGcszpqvX5a/download
-    else
-        echo "host_release_arm64.zip already exists. Skipping download."
+# Helper function to check zip integrity and download if missing or corrupted
+download_engine() {
+    local ZIP_FILE="$1"
+    local URL="$2"
+
+    if [ -f "$ZIP_FILE" ]; then
+        # Check integrity
+        if unzip -tq "$ZIP_FILE" >/dev/null 2>&1; then
+            echo "$(basename "$ZIP_FILE") already exists and is valid. Skipping download."
+            return
+        else
+            echo "Warning: $(basename "$ZIP_FILE") is corrupted or incomplete. Removing it."
+            rm -f "$ZIP_FILE"
+        fi
     fi
 
-    if [ ! -f "$OUT_DIR/ios_release.zip" ]; then
-        echo "Downloading ios_release.zip..."
-        curl -L -o "$OUT_DIR/ios_release.zip" https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download
-    else
-        echo "ios_release.zip already exists. Skipping download."
-    fi
+    echo "Downloading $(basename "$ZIP_FILE")..."
+    curl -L -o "$ZIP_FILE" "$URL"
+}
+
+if [ "$TARGET" == "device" ]; then
+    download_engine "$OUT_DIR/host_release_arm64.zip" "https://oc.bw.tech/s/utLzZGcszpqvX5a/download"
+    download_engine "$OUT_DIR/ios_release.zip" "https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download"
 
     echo "Unzipping engines..."
     unzip -q -o "$OUT_DIR/host_release_arm64.zip" -d "$OUT_DIR/"
     unzip -q -o "$OUT_DIR/ios_release.zip" -d "$OUT_DIR/"
 else
     # Simulator engine download
-    if [ ! -f "$OUT_DIR/host_release_arm64.zip" ]; then
-        echo "Downloading host_release_arm64.zip..."
-        curl -L -o "$OUT_DIR/host_release_arm64.zip" https://oc.bw.tech/s/utLzZGcszpqvX5a/download
-    else
-        echo "host_release_arm64.zip already exists. Skipping download."
-    fi
-
-    if [ ! -f "$OUT_DIR/ios_debug_sim_unopt_arm64.zip" ]; then
-        echo "Downloading ios_debug_sim_unopt_arm64.zip..."
-        curl -L -o "$OUT_DIR/ios_debug_sim_unopt_arm64.zip" https://oc.bw.tech/s/53IGIdwy4j9tg6c/download
-    else
-        echo "ios_debug_sim_unopt_arm64.zip already exists. Skipping download."
-    fi
+    download_engine "$OUT_DIR/host_release_arm64.zip" "https://oc.bw.tech/s/utLzZGcszpqvX5a/download"
+    download_engine "$OUT_DIR/ios_debug_sim_unopt_arm64.zip" "https://oc.bw.tech/s/53IGIdwy4j9tg6c/download"
 
     echo "Unzipping engines..."
     unzip -q -o "$OUT_DIR/host_release_arm64.zip" -d "$OUT_DIR/"
