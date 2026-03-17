@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   couchpotatoplayer:
-    image: ghcr.io/siku2/couchpotatoplayer-web:latest # Replace 'siku2' with your actual repository owner if different
+    image: ghcr.io/bladestar2105/couchpotatoplayer-web:latest
     container_name: couchpotatoplayer
     ports:
       - "8080:80"

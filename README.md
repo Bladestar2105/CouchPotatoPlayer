@@ -1,6 +1,6 @@
 # CouchPotatoPlayer: A React Native IPTV Player
 
-[![Build Apps](https://github.com/xjapan007/XJ_Player/actions/workflows/build-apps.yml/badge.svg)](https://github.com/xjapan007/XJ_Player/actions/workflows/build-apps.yml)
+[![Build Apps](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml/badge.svg)](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml)
 
 ![Project Header Image](./assets/images/header.jpg)
 
@@ -49,8 +49,8 @@ We have provided convenient npm scripts to quickly build and launch the app on y
 Clone the repository and install the dependencies:
 
 ```bash
-git clone https://github.com/xjapan007/XJ_Player.git
-cd XJ_Player
+git clone https://github.com/Bladestar2105/CouchPotatoPlayer.git
+cd CouchPotatoPlayer
 npm install
 ```
 
@@ -112,7 +112,7 @@ We provide an easy way to deploy the web version of the CouchPotatoPlayer using 
 ### Using Docker Compose
 
 1.  Clone this repository or copy the `docker-compose.yml` file to your server.
-2.  *Note: Depending on where your GitHub repository is hosted, you may need to update the `image` field in `docker-compose.yml` to point to your specific GHCR namespace (e.g., `ghcr.io/yourusername/couchpotatoplayer-web:latest`).*
+2.  *Note: Depending on where your GitHub repository is hosted, you may need to update the `image` field in `docker-compose.yml` to point to your specific GHCR namespace (e.g., `ghcr.io/bladestar2105/couchpotatoplayer-web:latest`).*
 3.  Run the following command in the directory containing `docker-compose.yml`:
 
 ```bash
