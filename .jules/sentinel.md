@@ -1,4 +1,4 @@
-## 2026-03-14 - Added security headers in Nginx configuration
-**Vulnerability:** Missing fundamental security headers (X-Frame-Options, X-XSS-Protection, X-Content-Type-Options, Referrer-Policy) in Nginx reverse proxy configuration for the web UI.
-**Learning:** When configuring a custom Nginx reverse proxy, standard security headers are not included by default and must be explicitly added to protect the web client against Clickjacking, MIME sniffing, and cross-site scripting attacks.
-**Prevention:** Always enforce a baseline set of security headers for HTTP server location blocks serving web applications.
+## 2024-05-15 - Information Exposure via Fetch Error Messages
+**Vulnerability:** Network fetch operations threw original error messages (`e.message` or `fetchError.message`) to the frontend when Xtream API authentication or M3U list downloads failed. Because Xtream API passes credentials as query parameters in the URL (`?username=...&password=...`), these plaintext credentials could be leaked on the UI inside the error message string from the failed `fetch` request.
+**Learning:** Raw network error messages often echo the requested URL. When APIs embed sensitive data within the URL, propagating the raw error message to the UI creates an Information Exposure vulnerability.
+**Prevention:** Never throw or pass raw network error messages directly to the UI layer when connecting to APIs that use credentials in their URLs. Always log the original error using `console.error` for debugging observability, and throw a sanitized, generic error message (e.g., "Network error occurred") to the user.

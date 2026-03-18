@@ -239,7 +239,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!response.ok) throw new Error(`Erreur réseau: ${response.status}`);
       m3uContent = await response.text();
     } catch (fetchError: any) {
-      throw new Error(`Impossible de télécharger la liste : ${fetchError.message}`);
+      console.error("Network error fetching M3U:", fetchError);
+      throw new Error("Impossible de télécharger la liste. Vérifiez votre connexion ou l'URL.");
     }
 
     try {
@@ -342,7 +343,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Authentification échouée. Vérifiez vos identifiants.");
       }
     } catch (e: any) {
-      throw new Error(`Connexion au serveur échouée: ${e.message}`);
+      // 🛡️ SECURITY: Prevent leaking credentials from the URL in e.message to the UI
+      console.error("Network error during Xtream auth:", e);
+      throw new Error("Connexion au serveur échouée. Vérifiez votre connexion ou l'URL du serveur.");
     }
 
     // 2. Fetch Categories
@@ -436,8 +439,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSeries(parsedSeries);
 
     } catch (e: any) {
+      // 🛡️ SECURITY: e.message might contain sensitive URLs
       console.error("Erreur lors de la récupération des flux Xtream", e);
-      throw new Error("Impossible de charger les listes de flux.");
+      throw new Error("Impossible de charger les listes de flux. Vérifiez votre connexion.");
     }
   };
   // --- FIN DE LA LOGIQUE XTREAM ---
