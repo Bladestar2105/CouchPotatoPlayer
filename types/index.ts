@@ -68,6 +68,7 @@ export interface M3UProfile { id: string; name: string; type: 'm3u'; url: string
 export interface XtreamProfile { id: string; name: string; type: 'xtream'; serverUrl: string; username: string; password?: string; }
 export interface StalkerProfile { id: string; name: string; type: 'stalker'; portalUrl: string; macAddress: string; }
 export type IPTVProfile = M3UProfile | XtreamProfile | StalkerProfile;
+export type ProfileType = IPTVProfile['type'];
 
 export type IPTVContextType = {
   profiles: IPTVProfile[];

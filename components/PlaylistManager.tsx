@@ -154,6 +154,7 @@ const PlaylistManager = () => {
         value={name}
         onChangeText={setName}
         placeholderTextColor="#888"
+        autoFocus={true}
       />
 
       {profileType === 'm3u' && (
