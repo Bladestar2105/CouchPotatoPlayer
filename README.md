@@ -24,8 +24,9 @@ You must build a **Custom Development Client** (Prebuild) for your target device
 
 Before compiling the app for any platform, ensure your local development environment is set up:
 
-*   **Node.js**: LTS version (18+ recommended).
-*   **Expo CLI**: Installed via `npm install -g expo-cli`.
+*   **Node.js**: Node 20+ required.
+*   **pnpm**: Exclusively used for package management. Installed via `npm install -g pnpm`.
+*   **Expo CLI**: Installed via `pnpm install -g expo-cli`.
 *   **Git**: For version control.
 
 ### iOS / Apple TV (tvOS) Specific Prerequisites (macOS Only)
@@ -42,7 +43,7 @@ Before compiling the app for any platform, ensure your local development environ
 
 ## 🚀 Getting Started & Compilation
 
-We have provided convenient npm scripts to quickly build and launch the app on your preferred simulator.
+We have provided convenient pnpm scripts to quickly build and launch the app on your preferred simulator.
 
 ### 1. First-Time Setup
 
@@ -51,7 +52,7 @@ Clone the repository and install the dependencies:
 ```bash
 git clone https://github.com/Bladestar2105/CouchPotatoPlayer.git
 cd CouchPotatoPlayer
-npm install
+pnpm install
 ```
 
 ### 2. Building for Simulators (Local Compilation)
@@ -60,34 +61,34 @@ These commands will use Expo Prebuild to generate the native `/ios` and `/androi
 
 **iOS Simulator (Mobile/Tablet)**
 ```bash
-npm run build:ios-sim
+pnpm run build:ios-sim
 # Alternatively: npx expo run:ios
 ```
 
 **Android Emulator (Mobile/Tablet)**
 ```bash
 # Ensure your Android emulator is running in Android Studio first
-npm run build:android-sim
+pnpm run build:android-sim
 # Alternatively: npx expo run:android
 ```
 
 **Apple TV (tvOS) Simulator**
 ```bash
-npm run build:tvos-sim
-# Note: For full, native tvOS support, install `react-native-tvos` locally by running: `npm install react-native@npm:react-native-tvos@latest`.
+pnpm run build:tvos-sim
+# Note: For full, native tvOS support, install `react-native-tvos` locally by running: `pnpm install react-native@npm:react-native-tvos@latest`.
 # Our GitHub CI pipeline dynamically performs this substitution to build a true tvOS binary.
 ```
 
 **Android TV Emulator**
 ```bash
 # Ensure your Android TV emulator is running in Android Studio first
-npm run build:android-tv-sim
+pnpm run build:android-tv-sim
 ```
 
 **Web (Development & Production)**
 To start the development server for the web:
 ```bash
-npm run build:web
+pnpm run build:web
 # Alternatively: npx expo start --web
 ```
 To export a production-ready static web bundle:
@@ -113,7 +114,7 @@ We provide an easy way to deploy the web version of the CouchPotatoPlayer using 
 ### Using Docker Compose
 
 1.  Clone this repository or copy the `docker-compose.yml` file to your server.
-2.  *Note: Depending on where your GitHub repository is hosted, you may need to update the `image` field in `docker-compose.yml` to point to your specific GHCR namespace (e.g., `ghcr.io/bladestar2105/couchpotatoplayer-web:latest`).*
+2.  *Note: Depending on where your GitHub repository is hosted, you may need to update the `image` field in `docker-compose.yml` to point to your specific GHCR namespace (e.g., `ghcr.io/bladestar2105/couchpotatoplayer-web:latest`). A tag for each branch exists, and the `latest` tag always points to the newest build from any branch.*
 3.  Run the following command in the directory containing `docker-compose.yml`:
 
 ```bash
