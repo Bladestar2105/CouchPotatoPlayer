@@ -4,17 +4,20 @@ FROM node:20-alpine AS build
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Copy package.json and pnpm lockfile
+COPY package*.json pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm
 
 # Install dependencies (ignoring pure React Native / native issues since we just build web)
-RUN npm install --legacy-peer-deps
+RUN pnpm install
 
 # Copy the rest of the application code
 COPY . .
 
 # In a React Native Expo project, these specific web dependencies are needed for export.
-RUN npm install react-dom react-native-web @expo/metro-runtime --legacy-peer-deps
+RUN pnpm add react-dom react-native-web @expo/metro-runtime
 
 # Build the web export
 RUN npx expo export -p web
