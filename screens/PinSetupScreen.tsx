@@ -56,6 +56,7 @@ const PinSetupScreen = () => {
           onChangeText={setInputValue}
           placeholder={setupMode ? "Nouveau code (4 chiffres)" : "Code PIN"}
           placeholderTextColor="#888"
+          autoFocus={true}
         />
       )}
 
