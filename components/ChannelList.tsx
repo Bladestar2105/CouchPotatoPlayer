@@ -6,6 +6,7 @@ import {
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Channel } from '../types';
+import { findCurrentProgram } from '../utils/epgUtils';
 
 const defaultLogo = require('../assets/icon.png');
 
@@ -49,7 +50,11 @@ const ChannelList = () => {
   const renderItem = ({ item }: { item: Channel }) => {
     const channelEpg = item.tvgId ? epg[item.tvgId] : [];
     const now = new Date();
-    const currentProgram = channelEpg?.find(p => p.start <= now && p.end >= now);
+    // ⚡ Bolt Optimization: Replaced O(N) linear search (channelEpg?.find)
+    // with an O(log N) binary search for the current program since the EPG
+    // array is sorted chronologically. This significantly speeds up rendering
+    // for channels with extensive programming guides.
+    const currentProgram = channelEpg ? findCurrentProgram(channelEpg, now) : undefined;
 
     return (
       <TouchableOpacity
