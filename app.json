@@ -30,14 +30,6 @@
       "bundler": "metro"
     },
     "plugins": [
-      [
-        "@react-native-tvos/config-tv",
-        {
-          "isTV": true,
-          "showAndroidInTV": true,
-          "showAndroidInMobile": true
-        }
-      ],
       "expo-asset",
       "react-native-vlc-media-player",
       [

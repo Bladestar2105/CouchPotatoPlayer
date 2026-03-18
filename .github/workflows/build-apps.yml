@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -44,7 +44,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
@@ -76,12 +76,15 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
-      - name: Inject react-native-tvos
-        run: npm install react-native@npm:react-native-tvos@0.81.5-2 --legacy-peer-deps
+      - name: Inject react-native-tvos and config-tv
+        run: |
+          npm install react-native@npm:react-native-tvos@0.81.5-2 --legacy-peer-deps
+          npm install @react-native-tvos/config-tv --save-dev --legacy-peer-deps
+          sed -i '' 's/"plugins": \[/"plugins": \[ \["@react-native-tvos\/config-tv", {"isTV": true, "showAndroidInTV": true, "showAndroidInMobile": true}\],/g' app.json || sed -i 's/"plugins": \[/"plugins": \[ \["@react-native-tvos\/config-tv", {"isTV": true, "showAndroidInTV": true, "showAndroidInMobile": true}\],/g' app.json
       - name: Prebuild iOS (Generates tvOS scheme)
         run: EXPO_TV=1 npx expo prebuild --platform ios
       - name: Pod Install
