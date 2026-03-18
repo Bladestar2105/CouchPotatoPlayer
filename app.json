@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Super XJ Player",
-    "slug": "newsuperxjplayer",
+    "name": "CouchPotatoPlayer",
+    "slug": "couchpotatoplayer",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -15,20 +15,32 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.couchpotatoplayer"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#121212"
-      }
+      },
+      "package": "com.anonymous.couchpotatoplayer"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-asset",
-      "react-native-vlc-media-player"
+      "react-native-vlc-media-player",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26,
+            "kotlinVersion": "2.1.20"
+          }
+        }
+      ]
     ]
   }
 }
