@@ -50,49 +50,65 @@ const ChannelList = () => {
 
   // Rendu d'un item (une chaîne)
   const renderItem = ({ item }: { item: Channel }) => {
-    const channelEpg = item.tvgId ? epg[item.tvgId] : [];
-    const now = new Date();
-    // ⚡ Bolt Optimization: Replaced O(N) linear search (channelEpg?.find)
-    // with an O(log N) binary search for the current program since the EPG
-    // array is sorted chronologically. This significantly speeds up rendering
-    // for channels with extensive programming guides.
-    const currentProgram = channelEpg ? findCurrentProgram(channelEpg, now) : undefined;
-
     return (
-      <TouchableOpacity
-        style={[styles.channelItem, { borderBottomColor: colors.divider }]}
-        onPress={() => handleChannelPress(item)}
-      >
-        <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
-          <Image
-            style={styles.logo}
-            source={item.logo ? { uri: item.logo } : defaultLogo}
-            defaultSource={defaultLogo}
-            resizeMode="contain"
-          />
+      <View style={styles.itemContainer}>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <TouchableOpacity
+            style={styles.logoContainer}
+            onPress={() => handleChannelPress(item)}
+          >
+            <Image
+              style={styles.logo}
+              source={item.logo ? { uri: item.logo } : defaultLogo}
+              defaultSource={defaultLogo}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+          <View style={styles.infoRow}>
+            <TouchableOpacity style={styles.infoTextContainer} onPress={() => handleChannelPress(item)}>
+              <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.epgButton, { backgroundColor: colors.primary + '33' }]}
+              onPress={() => navigation.navigate('EPG', { channelId: item.tvgId || item.id, channelName: item.name })}
+            >
+              <Text style={{ fontSize: 16 }}>📅</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.channelInfo}>
-          <Text style={[styles.channelName, { color: colors.text }]} numberOfLines={2}>
-            {item.name}
-          </Text>
-        </View>
-        <TouchableOpacity style={[styles.epgContainer, { borderBottomColor: colors.divider }]} onPress={() => navigation.navigate('EPG', { channelId: item.tvgId || item.id, channelName: item.name })}>
-            {currentProgram ? (
-              <View style={[styles.epgBlock, { backgroundColor: colors.primary + '4D', borderColor: colors.primary }]}>
-                <Text style={[styles.epgTitle, { color: '#FFF' }]} numberOfLines={1}>
-                  {currentProgram.title}
-                </Text>
-                <Text style={[styles.epgTime, { color: colors.textSecondary }]}>
-                  {currentProgram.start.getHours().toString().padStart(2, '0')}:{currentProgram.start.getMinutes().toString().padStart(2, '0')} - {currentProgram.end.getHours().toString().padStart(2, '0')}:{currentProgram.end.getMinutes().toString().padStart(2, '0')}
-                </Text>
-              </View>
-            ) : (
-              <Text style={{ color: colors.textSecondary, marginLeft: 16 }}>No EPG Data</Text>
-            )}
-        </TouchableOpacity>
-      </TouchableOpacity>
+      </View>
     );
   };
+
+  // Group items into rows of 3
+  const formatData = (data: Channel[], numColumns: number) => {
+    const formattedData = [];
+    for (let i = 0; i < data.length; i += numColumns) {
+      formattedData.push(data.slice(i, i + numColumns));
+    }
+    return formattedData;
+  };
+
+  const sectionsWithRows = groupedData.map(section => ({
+    ...section,
+    data: formatData(section.data, 3)
+  }));
+
+  const renderRow = ({ item }: { item: Channel[] }) => (
+    <View style={styles.row}>
+      {item.map(channelItem => (
+        <React.Fragment key={channelItem.id + channelItem.url}>
+          {renderItem({ item: channelItem })}
+        </React.Fragment>
+      ))}
+      {/* Fill empty spaces in the last row to maintain grid alignment */}
+      {Array.from({ length: 3 - item.length }).map((_, i) => (
+        <View key={`empty-${i}`} style={styles.itemContainer} />
+      ))}
+    </View>
+  );
 
   // Rendu de l'en-tête de section (ex: "France HD")
   const renderSectionHeader = ({ section: { title } }: { section: { title: string } }) => (
@@ -125,12 +141,11 @@ const ChannelList = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* On remplace FlatList par SectionList */}
       <SectionList
-        sections={groupedData}
-        renderItem={renderItem}
+        sections={sectionsWithRows}
+        renderItem={renderRow}
         renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item) => item.id + item.url}
+        keyExtractor={(item, index) => index.toString()}
         stickySectionHeadersEnabled={true} // En-têtes collants
       />
     </View>
@@ -153,6 +168,7 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
+    flex: 1,
   },
   errorText: {
     color: '#FF3B30',
@@ -161,17 +177,30 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
-  channelItem: {
+  row: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  itemContainer: {
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  card: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 8,
+    overflow: 'hidden',
     alignItems: 'center',
-    borderBottomWidth: 1,
+    padding: 10,
+    aspectRatio: 1,
   },
   logoContainer: {
-    width: 48,
-    height: 48,
+    width: '100%',
+    flex: 1,
+    backgroundColor: 'transparent',
     borderRadius: 8,
+    marginBottom: 8,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -180,37 +209,26 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  channelInfo: {
+  infoRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  infoTextContainer: {
     flex: 1,
-    marginLeft: 12,
-    maxWidth: 200,
+    paddingRight: 8,
   },
-  channelName: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  epgContainer: {
-    flex: 2,
-    height: 60,
-    justifyContent: 'center',
-    borderLeftWidth: 1,
-    paddingLeft: 16,
-    marginLeft: 16,
-  },
-  epgBlock: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  epgTitle: {
+  name: {
     fontWeight: 'bold',
     fontSize: 12,
+    textAlign: 'left',
   },
-  epgTime: {
-    fontSize: 10,
-    marginTop: 2,
+  epgButton: {
+    padding: 6,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

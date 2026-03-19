@@ -125,6 +125,14 @@ const MediaTabs = () => {
 
                 {profiles.map(p => {
                   const isCurrent = currentProfile?.id === p.id;
+
+                  // Map flutter icon names to valid MaterialIcons
+                  let iconName = p.icon || 'dns';
+                  const validIcons = ['tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business'];
+                  if (!validIcons.includes(iconName.replace('_', '-'))) {
+                      iconName = 'dns';
+                  }
+
                   return (
                     <TouchableOpacity
                       key={p.id}
@@ -139,7 +147,7 @@ const MediaTabs = () => {
                         marginBottom: 4,
                       }}
                     >
-                      <Icon name={(p.icon || 'dns').replace('-', '_') as any} size={24} color={isCurrent ? '#FFF' : '#888'} />
+                      <Icon name={iconName.replace('_', '-') as any} size={24} color={isCurrent ? '#FFF' : '#888'} />
                       <Text style={{ color: isCurrent ? '#FFF' : '#888', marginLeft: 16, fontWeight: isCurrent ? 'bold' : 'normal' }}>
                         {p.name}
                       </Text>
