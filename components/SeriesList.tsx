@@ -18,7 +18,8 @@ const SeriesList = () => {
   const navigation = useNavigation<SeriesListNavigationProp>();
 
   const handleSeriesPress = (series: Series) => {
-    navigation.navigate('Season', { series: series });
+    // @ts-ignore
+    navigation.navigate('MediaInfo', { id: series.id, type: 'series', title: series.name, cover: series.cover });
   };
 
   const groupedData = React.useMemo(() => {

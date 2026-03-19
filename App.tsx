@@ -14,6 +14,9 @@ import PlayerScreen from './screens/PlayerScreen';
 import SeasonScreen from './screens/SeasonScreen';
 import EpisodeScreen from './screens/EpisodeScreen';
 import PinSetupScreen from './screens/PinSetupScreen';
+import SearchScreen from './screens/SearchScreen';
+import MediaInfoScreen from './screens/MediaInfoScreen';
+import EPGScreen from './screens/EPGScreen';
 import { Series, Season } from './types';
 
 // Mettre à jour la liste des écrans (SAUF Splash)
@@ -23,6 +26,9 @@ export type RootStackParamList = {
   Season: { series: Series };
   Episode: { season: Season };
   PinSetup: undefined;
+  Search: undefined;
+  MediaInfo: { id: string; type: 'vod' | 'series'; title: string; cover?: string; streamUrl?: string; };
+  EPG: { channelId: string; channelName: string; };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -69,6 +75,21 @@ const App = () => {
               name="PinSetup"
               component={PinSetupScreen}
               options={{ title: t('parentalControl') }}
+            />
+            <Stack.Screen
+              name="Search"
+              component={SearchScreen}
+              options={{ title: t('search') }}
+            />
+            <Stack.Screen
+              name="MediaInfo"
+              component={MediaInfoScreen}
+              options={{ title: '' }}
+            />
+            <Stack.Screen
+              name="EPG"
+              component={EPGScreen}
+              options={{ title: 'TV Guide' }}
             />
             </Stack.Navigator>
           </NavigationContainer>

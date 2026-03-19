@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useWindowDimensions } from 'react-native';
@@ -150,7 +150,7 @@ const HomeScreen = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {currentProfile ? (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-          <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
+          <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.divider, flexDirection: 'row', alignItems: 'center' }]}>
             <Picker
               selectedValue={currentProfile.id}
               onValueChange={(itemValue) => onProfileChange(itemValue)}
@@ -178,6 +178,9 @@ const HomeScreen = () => {
                 color={colors.textSecondary}
               />
             </Picker>
+            <TouchableOpacity onPress={() => navigation.navigate('Search')} style={{ paddingRight: 16 }}>
+              <Text style={{ fontSize: 24 }}>🔍</Text>
+            </TouchableOpacity>
           </View>
           <MediaTabs />
         </View>
@@ -201,7 +204,7 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
-    width: '100%',
+    flex: 1,
     color: '#FFF',
     backgroundColor: '#222',
   },

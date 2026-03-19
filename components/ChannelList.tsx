@@ -14,7 +14,7 @@ const defaultLogo = require('../assets/icon.png');
 const ChannelList = () => {
   const { channels, playStream, isLoading, error, pin, isAdultUnlocked, epg, loadEPG } = useIPTV();
   const { colors } = useSettings();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   React.useEffect(() => {
     loadEPG();
@@ -76,7 +76,7 @@ const ChannelList = () => {
             {item.name}
           </Text>
         </View>
-        <View style={[styles.epgContainer, { borderBottomColor: colors.divider }]}>
+        <TouchableOpacity style={[styles.epgContainer, { borderBottomColor: colors.divider }]} onPress={() => navigation.navigate('EPG', { channelId: item.tvgId || item.id, channelName: item.name })}>
             {currentProgram ? (
               <View style={[styles.epgBlock, { backgroundColor: colors.primary + '4D', borderColor: colors.primary }]}>
                 <Text style={[styles.epgTitle, { color: '#FFF' }]} numberOfLines={1}>
@@ -89,7 +89,7 @@ const ChannelList = () => {
             ) : (
               <Text style={{ color: colors.textSecondary, marginLeft: 16 }}>No EPG Data</Text>
             )}
-        </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
