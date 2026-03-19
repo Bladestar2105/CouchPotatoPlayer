@@ -171,7 +171,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (currentProfile.type === 'xtream') {
         const { serverUrl, username, password } = currentProfile;
-        const epgUrl = `${serverUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
+        const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
+        const epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
         const response = await fetch(epgUrl);
         if (!response.ok) return;
@@ -332,12 +333,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (profile.type !== 'xtream') return;
 
     const { serverUrl, username, password } = profile;
-    const baseUrl = `${serverUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
+    const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
+    const baseUrl = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
     // 0. Pré-vérification (IPTV-Manager)
     // The PR #430 introduces both /cpp and /player_api.php?action=cpp endpoints returning `true`.
     // We use /cpp here as a clean health-check before doing any authentication.
-    const cleanServerUrl = serverUrl.replace(/\/$/, '');
     const preCheckUrl = `${cleanServerUrl}/cpp`;
     const fallbackPreCheckUrl = `${cleanServerUrl}/player_api.php?action=cpp`;
 
@@ -463,7 +464,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           id: String(channel.stream_id),
           name: channel.name,
-          url: `${serverUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${channel.stream_id}.${channel.stream_type || 'ts'}`,
+          url: `${cleanServerUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${channel.stream_id}.${channel.stream_type || 'ts'}`,
           logo: channel.stream_icon,
           group: catInfo.name,
           tvgId: channel.epg_channel_id,
@@ -477,7 +478,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           id: String(movie.stream_id),
           name: movie.name,
-          streamUrl: `${serverUrl}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${movie.stream_id}.${movie.container_extension}`,
+          streamUrl: `${cleanServerUrl}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${movie.stream_id}.${movie.container_extension}`,
           cover: movie.stream_icon,
           group: catInfo.name,
           isAdult: catInfo.isAdult
