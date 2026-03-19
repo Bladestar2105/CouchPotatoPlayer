@@ -97,6 +97,9 @@ export type IPTVContextType = {
   epg: Record<string, EPGProgram[]>;
   loadEPG: () => Promise<void>;
 
+  getSeriesInfo: (seriesId: string) => Promise<any>;
+  getVodInfo: (vodId: string) => Promise<any>;
+
   addFavorite: (id: string) => Promise<void>;
   removeFavorite: (id: string) => Promise<void>;
   isFavorite: (id: string) => boolean;
