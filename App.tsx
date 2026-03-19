@@ -4,6 +4,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { IPTVProvider } from './context/IPTVContext';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import './utils/i18n';
+import { useTranslation } from 'react-i18next';
 
 // Importez les écrans (SAUF SplashScreen)
 import HomeScreen from './screens/HomeScreen';
@@ -25,6 +27,7 @@ export type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 
 const App = () => {
+  const { t } = useTranslation();
   return (
     <SafeAreaProvider>
       <IPTVProvider>
@@ -43,7 +46,7 @@ const App = () => {
             <Stack.Screen
               name="Home"
               component={HomeScreen}
-              options={{ title: 'Mes Profils IPTV' }}
+              options={{ title: t('appTitle') }}
             />
             <Stack.Screen
               name="Player"
@@ -63,7 +66,7 @@ const App = () => {
             <Stack.Screen
               name="PinSetup"
               component={PinSetupScreen}
-              options={{ title: 'Contrôle Parental' }}
+              options={{ title: t('parentalControl') }}
             />
           </Stack.Navigator>
         </NavigationContainer>

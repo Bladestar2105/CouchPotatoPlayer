@@ -6,6 +6,7 @@ import { useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { Picker } from '@react-native-picker/picker';
+import { useTranslation } from 'react-i18next';
 import { IPTVProfile } from '../types';
 
 import PlaylistManager from '../components/PlaylistManager';
@@ -19,6 +20,7 @@ import HeroBanner from '../components/HeroBanner';
 const Drawer = createDrawerNavigator();
 
 const MediaTabs = () => {
+  const { t } = useTranslation();
   const { channels, movies, series, favorites, recentlyWatched, isLoading, isAdultUnlocked, pin } = useIPTV();
 
   const filterAdult = (items: any[]) => items.filter(item => !item.isAdult || isAdultUnlocked || !pin);
@@ -52,7 +54,7 @@ const MediaTabs = () => {
     <Drawer.Navigator
       screenOptions={{
         drawerStyle: {
-          backgroundColor: '#1A1A1A',
+          backgroundColor: '#222',
           width: isTV ? 240 : 200,
         },
         drawerType: isTV ? 'permanent' : 'front',
@@ -66,37 +68,37 @@ const MediaTabs = () => {
     >
       {safeChannels.length > 0 && (
         <Drawer.Screen
-          name="Chaînes"
+          name="Channels"
           component={ChannelList}
-          options={{ title: `Chaînes (${safeChannels.length})` }}
+          options={{ title: `${t('channels')} (${safeChannels.length})` }}
         />
       )}
       {safeMovies.length > 0 && (
         <Drawer.Screen
-          name="Films"
+          name="Movies"
           component={MovieList}
-          options={{ title: `Films (${safeMovies.length})` }}
+          options={{ title: `${t('movies')} (${safeMovies.length})` }}
         />
       )}
       {safeSeries.length > 0 && (
         <Drawer.Screen
-          name="Séries"
+          name="Series"
           component={SeriesList}
-          options={{ title: `Séries (${safeSeries.length})` }}
+          options={{ title: `${t('series')} (${safeSeries.length})` }}
         />
       )}
       {favorites.length > 0 && (
         <Drawer.Screen
-          name="Favoris"
+          name="Favorites"
           component={FavoritesList}
-          options={{ title: `Favoris (${favorites.length})` }}
+          options={{ title: `${t('favorites')} (${favorites.length})` }}
         />
       )}
       {recentlyWatched.length > 0 && (
         <Drawer.Screen
-          name="Récents"
+          name="Recent"
           component={RecentlyWatchedList}
-          options={{ title: `Récents (${recentlyWatched.length})` }}
+          options={{ title: `${t('recent')} (${recentlyWatched.length})` }}
         />
       )}
     </Drawer.Navigator>
@@ -104,6 +106,7 @@ const MediaTabs = () => {
 };
 
 const HomeScreen = () => {
+  const { t } = useTranslation();
   const { currentProfile, unloadProfile, profiles, loadProfile } = useIPTV();
   const navigation = useNavigation<any>();
 
@@ -118,7 +121,7 @@ const HomeScreen = () => {
     }
     const selectedProfile = profiles.find(p => p.id === profileId);
     if (selectedProfile && selectedProfile.id !== currentProfile?.id) {
-      console.log("Changement de profil via le menu...", selectedProfile.name);
+      console.log(t('changingProfile'), selectedProfile.name);
       loadProfile(selectedProfile);
     }
   };
@@ -139,20 +142,20 @@ const HomeScreen = () => {
                   key={profile.id}
                   label={profile.name}
                   value={profile.id}
-                  color={Platform.OS === 'android' ? '#000' : '#FFF'}
+                  color="#FFF"
                 />
               ))}
               <Picker.Item
                 key="pin"
-                label="Contrôle Parental (PIN)"
+                label={t('pinControl')}
                 value="pin_setup"
-                color={Platform.OS === 'android' ? '#F00' : '#F55'}
+                color="#F55"
               />
               <Picker.Item
                 key="logout"
-                label="Gérer les profils (Déconnexion)"
+                label={t('manageProfiles')}
                 value={null}
-                color={Platform.OS === 'android' ? '#555' : '#AAA'}
+                color="#AAA"
               />
             </Picker>
           </View>
@@ -181,7 +184,7 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
     color: '#FFF',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#222',
   },
   centeredContainer: {
     flex: 1,
