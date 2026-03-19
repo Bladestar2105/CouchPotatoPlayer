@@ -17,7 +17,7 @@ RUN pnpm install
 COPY . .
 
 # In a React Native Expo project, these specific web dependencies are needed for export.
-RUN pnpm add react-dom react-native-web @expo/metro-runtime
+# These dependencies are now managed inside package.json
 
 # Build the web export
 RUN npx expo export -p web
