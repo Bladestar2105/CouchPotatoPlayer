@@ -47,7 +47,6 @@ const App = () => {
             screenOptions={{
               headerStyle: { backgroundColor: '#1A1A1A' },
               headerTintColor: '#FFF',
-              headerBackTitleVisible: false,
             }}
           >
             {/* On a supprimé l'écran "Splash" */}

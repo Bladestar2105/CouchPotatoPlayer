@@ -64,9 +64,9 @@ export interface EPGProgram {
   end: Date;
 }
 
-export interface M3UProfile { id: string; name: string; type: 'm3u'; url: string; epgUrl?: string; }
-export interface XtreamProfile { id: string; name: string; type: 'xtream'; url: string; username: string; password?: string; }
-export interface StalkerProfile { id: string; name: string; type: 'stalker'; portalUrl: string; macAddress: string; }
+export interface M3UProfile { id: string; name: string; type: 'm3u'; url: string; epgUrl?: string; icon?: string; }
+export interface XtreamProfile { id: string; name: string; type: 'xtream'; url: string; username: string; password?: string; icon?: string; }
+export interface StalkerProfile { id: string; name: string; type: 'stalker'; portalUrl: string; macAddress: string; icon?: string; }
 export type IPTVProfile = M3UProfile | XtreamProfile | StalkerProfile;
 export type ProfileType = IPTVProfile['type'];
 
@@ -89,7 +89,7 @@ export type IPTVContextType = {
   removeProfile: (id: string) => Promise<void>;
   editProfile: (updatedProfile: IPTVProfile) => Promise<void>;
   loadProfile: (profile: IPTVProfile) => Promise<void>;
-  unloadProfile: () => void;
+  unloadProfile: () => Promise<void>;
   setCurrentProfile: (profile: IPTVProfile | null) => void;
 
   playStream: (stream: { url: string; id: string; }) => void;

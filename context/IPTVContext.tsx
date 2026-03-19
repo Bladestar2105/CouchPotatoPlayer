@@ -18,9 +18,13 @@ import { parseXMLTV } from '../utils/epgParser';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
 const PROFILES_STORAGE_KEY = 'IPTV_PROFILES';
+const CURRENT_PROFILE_STORAGE_KEY = 'IPTV_CURRENT_PROFILE';
 const FAVORITES_STORAGE_KEY = 'IPTV_FAVORITES';
 const RECENTLY_WATCHED_KEY = 'IPTV_RECENTLY_WATCHED';
 const PIN_STORAGE_KEY = 'IPTV_PIN';
+const EPG_STORAGE_KEY_PREFIX = 'IPTV_EPG_';
+
+const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Response> => {
   try {
@@ -66,14 +70,23 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadDataFromStorage = async () => {
       try {
         const profilesJson = await AsyncStorage.getItem(PROFILES_STORAGE_KEY);
+        let loadedProfiles: IPTVProfile[] = [];
         if (profilesJson) {
           try {
-            const storedProfiles = JSON.parse(profilesJson);
-            setProfiles(storedProfiles);
+            loadedProfiles = JSON.parse(profilesJson);
+            setProfiles(loadedProfiles);
           } catch (parseError) {
             console.error("Profile data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(PROFILES_STORAGE_KEY);
             setProfiles([]);
+          }
+        }
+
+        const currentProfileId = await AsyncStorage.getItem(CURRENT_PROFILE_STORAGE_KEY);
+        if (currentProfileId && loadedProfiles.length > 0) {
+          const profileToLoad = loadedProfiles.find(p => p.id === currentProfileId);
+          if (profileToLoad) {
+            loadProfile(profileToLoad);
           }
         }
 
@@ -171,6 +184,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn(i18n.t('stalkerNotImplemented'));
       }
       setCurrentProfile(profile);
+      await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
     } catch (e: any) {
       console.error("Failed to load profile:", e);
       setError(e.message || i18n.t('unknownError'));
@@ -179,7 +193,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const unloadProfile = () => {
+  const unloadProfile = async () => {
     setCurrentProfile(null);
     setChannels([]);
     setMovies([]);
@@ -187,35 +201,48 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEpg({});
     setError(null);
     setCurrentStream(null);
+    await AsyncStorage.removeItem(CURRENT_PROFILE_STORAGE_KEY);
   };
 
   const loadEPG = async () => {
     if (!currentProfile) return;
 
+    const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
+
     try {
-      if (currentProfile.type === 'm3u' && currentProfile.epgUrl) {
-        const epgData = await parseXMLTV(currentProfile.epgUrl);
-        const newEpg: Record<string, EPGProgram[]> = {};
-        for (const channelId in epgData) {
-          newEpg[channelId] = epgData[channelId].map((p: any) => ({
-            id: Math.random().toString(),
-            channelId: p.channelId,
-            title: p.title,
-            description: p.description,
-            start: p.start,
-            end: p.end,
-          }));
+      // 1. Try to load from cache
+      const cachedEpgStr = await AsyncStorage.getItem(storageKey);
+      if (cachedEpgStr) {
+        const cachedEpg = JSON.parse(cachedEpgStr);
+        if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
+          // Re-hydrate Date objects
+          const hydratedEpg: Record<string, EPGProgram[]> = {};
+          for (const channelId in cachedEpg.data) {
+            hydratedEpg[channelId] = cachedEpg.data[channelId].map((p: any) => ({
+              ...p,
+              start: new Date(p.start),
+              end: new Date(p.end),
+            }));
+          }
+          setEpg(hydratedEpg);
+          return;
         }
-        setEpg(newEpg);
+      }
+
+      // 2. Fetch fresh EPG
+      let epgUrl = '';
+      if (currentProfile.type === 'm3u' && currentProfile.epgUrl) {
+         epgUrl = currentProfile.epgUrl;
       } else if (currentProfile.type === 'xtream') {
         const { url: serverUrlProp, username, password } = currentProfile;
         const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
         if (!serverUrl) throw new Error("Server URL is missing from profile");
         const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
-        const epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
+        epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
+      }
 
+      if (epgUrl) {
         const epgData = await parseXMLTV(epgUrl);
-
         const newEpg: Record<string, EPGProgram[]> = {};
         for (const channelId in epgData) {
           newEpg[channelId] = epgData[channelId].map((p: any) => ({
@@ -228,6 +255,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }));
         }
         setEpg(newEpg);
+
+        // Save to cache without stringifying huge objects repeatedly
+        // Fast JSON serialization is key here, we rely on the JS engine
+        await AsyncStorage.setItem(storageKey, JSON.stringify({
+          timestamp: Date.now(),
+          data: newEpg
+        }));
       }
     } catch (e) {
       console.error("Failed to load EPG", e);
