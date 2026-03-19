@@ -5,3 +5,7 @@
 ## 2024-10-25 - [Optimize EPG program lookups with binary search]
 **Learning:** Finding the current program using a linear O(N) search (e.g., `findIndex`) can be a bottleneck when dealing with large, sorted EPG arrays, especially when the search is executed frequently (like in rendering intervals or for multiple channels).
 **Action:** Use binary search utilities like `findCurrentProgramIndex` (which provides O(log N) complexity) instead of linear array methods (`findIndex`, `find`) for lookups on time-sorted program lists.
+
+## 2024-11-20 - [Avoid Eager O(N) Array Mapping on Huge Lists]
+**Learning:** Mapping over huge lists like `channels` (10k+ items), `movies`, and `series` on every render just to map properties like `mediaType` before a `.filter` significantly blocks the main thread and uses massive heap memory for discarded objects.
+**Action:** Always prefer localized lookup mapping inside `React.useMemo`. Iterate over the *smaller* array (e.g., `favorites` or `recentlyWatched`) and use `.find()` to pull items from the huge arrays instead of copying everything into an aggregate array first.

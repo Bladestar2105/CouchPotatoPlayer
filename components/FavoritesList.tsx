@@ -12,14 +12,24 @@ const FavoritesList = () => {
   const { channels, movies, series, favorites, playStream } = useIPTV();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
 
-  // Aggregate all items into a single list
-  const allItems = [
-    ...channels.map(c => ({ ...c, mediaType: 'channel' as const })),
-    ...movies.map(m => ({ ...m, mediaType: 'movie' as const })),
-    ...series.map(s => ({ ...s, mediaType: 'series' as const }))
-  ];
+  // ⚡ Bolt Optimization: Prevented O(N) array copying and mapping on every render.
+  // Instead of eagerly copying and modifying every single channel/movie/series into
+  // one massive array, we only lookup and map the items that are actually in favorites.
+  // This drastically reduces memory allocation and execution time.
+  const favoriteItems = React.useMemo(() => {
+    return favorites.reduce((acc: any[], id: string) => {
+      let item: any = channels.find(c => c.id === id);
+      if (item) { acc.push({ ...item, mediaType: 'channel' }); return acc; }
 
-  const favoriteItems = allItems.filter(item => favorites.includes(item.id));
+      item = movies.find(m => m.id === id);
+      if (item) { acc.push({ ...item, mediaType: 'movie' }); return acc; }
+
+      item = series.find(s => s.id === id);
+      if (item) { acc.push({ ...item, mediaType: 'series' }); return acc; }
+
+      return acc;
+    }, []);
+  }, [channels, movies, series, favorites]);
 
   const handlePress = (item: any) => {
     if (item.mediaType === 'channel' || item.mediaType === 'movie') {

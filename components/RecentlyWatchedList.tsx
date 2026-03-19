@@ -11,16 +11,24 @@ const RecentlyWatchedList = () => {
   const { channels, movies, series, recentlyWatched, playStream } = useIPTV();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
 
-  // Aggregate all items into a single list
-  const allItems = [
-    ...channels.map(c => ({ ...c, mediaType: 'channel' as const })),
-    ...movies.map(m => ({ ...m, mediaType: 'movie' as const })),
-    ...series.map(s => ({ ...s, mediaType: 'series' as const }))
-  ];
+  // ⚡ Bolt Optimization: Prevented O(N) array copying and mapping on every render.
+  // Instead of eagerly copying and modifying every single channel/movie/series into
+  // one massive array, we only lookup and map the items that are actually in recentlyWatched.
+  // This drastically reduces memory allocation and execution time.
+  const recentItems = React.useMemo(() => {
+    return recentlyWatched.reduce((acc: any[], id: string) => {
+      let item: any = channels.find(c => c.id === id);
+      if (item) { acc.push({ ...item, mediaType: 'channel' }); return acc; }
 
-  const recentItems = recentlyWatched
-    .map(id => allItems.find(item => item.id === id))
-    .filter(Boolean); // removes undefined
+      item = movies.find(m => m.id === id);
+      if (item) { acc.push({ ...item, mediaType: 'movie' }); return acc; }
+
+      item = series.find(s => s.id === id);
+      if (item) { acc.push({ ...item, mediaType: 'series' }); return acc; }
+
+      return acc;
+    }, []);
+  }, [channels, movies, series, recentlyWatched]);
 
   const handlePress = (item: any) => {
     if (item.mediaType === 'channel' || item.mediaType === 'movie') {
