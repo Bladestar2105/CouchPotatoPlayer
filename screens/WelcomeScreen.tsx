@@ -30,15 +30,25 @@ const WelcomeScreen = () => {
     setError('');
 
     try {
-      const newProfile = {
-        id: Date.now().toString(),
-        name,
-        type,
-        url: serverUrl,
-        username: type === 'xtream' ? username : undefined,
-        password: type === 'xtream' ? password : undefined,
-        epgUrl: type === 'm3u' ? epgUrl : undefined,
-      };
+      let newProfile: any;
+      if (type === 'm3u') {
+        newProfile = {
+          id: Date.now().toString(),
+          name,
+          type: 'm3u',
+          url: serverUrl,
+          epgUrl: epgUrl || undefined,
+        };
+      } else {
+        newProfile = {
+          id: Date.now().toString(),
+          name,
+          type: 'xtream',
+          url: serverUrl,
+          username,
+          password,
+        };
+      }
 
       await addProfile(newProfile);
       await loadProfile(newProfile);

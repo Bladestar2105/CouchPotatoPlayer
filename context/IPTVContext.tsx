@@ -208,7 +208,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setEpg(newEpg);
       } else if (currentProfile.type === 'xtream') {
-        const { url: serverUrl, username, password } = currentProfile;
+        const { url: serverUrlProp, username, password } = currentProfile;
+        const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
+        if (!serverUrl) throw new Error("Server URL is missing from profile");
         const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
         const epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
@@ -330,7 +332,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // S'assurer que le profil est de type Xtream
     if (profile.type !== 'xtream') return;
 
-    const { serverUrl, username, password } = profile;
+    // Support backward compatibility for profiles stored with `serverUrl`
+    const { url: serverUrlProp, username, password } = profile;
+    const serverUrl = serverUrlProp || (profile as any).serverUrl;
+    if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const baseUrl = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
@@ -504,7 +509,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getSeriesInfo = async (seriesId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;
-    const { url: serverUrl, username, password } = currentProfile;
+    const { url: serverUrlProp, username, password } = currentProfile;
+    const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
+    if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_series_info&series_id=${seriesId}`;
     try {
@@ -520,7 +527,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getVodInfo = async (vodId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;
-    const { url: serverUrl, username, password } = currentProfile;
+    const { url: serverUrlProp, username, password } = currentProfile;
+    const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
+    if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_vod_info&vod_id=${vodId}`;
     try {

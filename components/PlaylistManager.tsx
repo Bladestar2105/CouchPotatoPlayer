@@ -38,7 +38,7 @@ const PlaylistManager = () => {
       if (editingProfile.type === 'm3u') {
         setUrl(editingProfile.url);
       } else if (editingProfile.type === 'xtream') {
-        setServerUrl(editingProfile.serverUrl);
+        setServerUrl(editingProfile.url);
         setUsername(editingProfile.username);
         setPassword(editingProfile.password || '');
       }
@@ -67,7 +67,7 @@ const PlaylistManager = () => {
       }
       profileData = {
         id: editingProfile?.id || Date.now().toString(),
-        name, type: 'xtream', serverUrl, username, password,
+        name, type: 'xtream', url: serverUrl, username, password,
       };
     } else {
       Alert.alert(t('error'), t('unsupportedProfileType'));
