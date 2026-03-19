@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { XMLParser } from 'fast-xml-parser';
 import i18n from '../utils/i18n';
@@ -359,18 +360,29 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
              // Not valid JSON or not true
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error(`Pre-check failed for ${url}:`, e);
+        if (Platform.OS === 'web' && e.message === 'Failed to fetch') {
+           throw new Error(i18n.t('corsError'));
+        }
       }
       return false;
     };
 
     // Try primary endpoint first
-    isIptvManager = await performPreCheck(preCheckUrl);
+    try {
+      isIptvManager = await performPreCheck(preCheckUrl);
+    } catch (e: any) {
+      if (e.message === i18n.t('corsError')) throw e;
+    }
 
     // If primary fails, try fallback endpoint
     if (!isIptvManager) {
-      isIptvManager = await performPreCheck(fallbackPreCheckUrl);
+      try {
+        isIptvManager = await performPreCheck(fallbackPreCheckUrl);
+      } catch (e: any) {
+        if (e.message === i18n.t('corsError')) throw e;
+      }
     }
 
     if (!isIptvManager) {
