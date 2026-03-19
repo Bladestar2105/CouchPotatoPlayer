@@ -14,8 +14,10 @@ import {
 import { useIPTV } from '../context/IPTVContext';
 import { IPTVProfile, M3UProfile, XtreamProfile, ProfileType } from '../types';
 import { Picker } from '@react-native-picker/picker';
+import { useTranslation } from 'react-i18next';
 
 const PlaylistManager = () => {
+  const { t } = useTranslation();
   const {
     addProfile, removeProfile, editProfile, profiles,
     loadProfile, isLoading, error, currentProfile
@@ -45,13 +47,13 @@ const PlaylistManager = () => {
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      Alert.alert("Error / Fehler", "Please fill in the profile name / Bitte geben Sie den Profilnamen ein");
+      Alert.alert(t('error'), t('errorFillProfileName'));
       return;
     }
     let profileData: IPTVProfile;
     if (profileType === 'm3u') {
       if (!url.trim()) {
-        Alert.alert("Error / Fehler", "Please fill in the M3U URL / Bitte geben Sie die M3U-URL ein");
+        Alert.alert(t('error'), t('errorFillM3UUrl'));
         return;
       }
       profileData = {
@@ -60,7 +62,7 @@ const PlaylistManager = () => {
       };
     } else if (profileType === 'xtream') {
       if (!serverUrl.trim() || !username.trim()) {
-        Alert.alert("Error / Fehler", "Please fill in the Server and Username / Bitte geben Sie den Server und Benutzernamen ein");
+        Alert.alert(t('error'), t('errorFillServerAndUser'));
         return;
       }
       profileData = {
@@ -68,13 +70,13 @@ const PlaylistManager = () => {
         name, type: 'xtream', serverUrl, username, password,
       };
     } else {
-      Alert.alert("Error / Fehler", "Unsupported profile type / Nicht unterstützter Profiltyp");
+      Alert.alert(t('error'), t('unsupportedProfileType'));
       return;
     }
 
     if (editingProfile) {
       editProfile(profileData);
-      Alert.alert("Success / Erfolg", `Profil "${name}" mis à jour.`);
+      Alert.alert(t('success'), t('profileUpdated', { name }));
     } else {
       addProfile(profileData);
     }
@@ -83,7 +85,7 @@ const PlaylistManager = () => {
 
   const startEditing = (profile: IPTVProfile) => {
     if (profile.type === 'stalker') {
-      Alert.alert("Unsupported / Nicht unterstützt", "Editing Stalker profiles is not yet implemented. / Das Bearbeiten von Stalker-Profilen ist noch nicht implementiert.");
+      Alert.alert(t('unsupported'), t('stalkerEditNotImplemented'));
       return;
     }
     setEditingProfile(profile);
@@ -97,13 +99,13 @@ const PlaylistManager = () => {
 
   const handleLoadProfile = (profile: IPTVProfile) => {
     if (isLoading) return;
-    console.log("Loading profile: / Lade Profil:", profile.name);
+    console.log(t('loadingProfile'), profile.name);
     loadProfile(profile);
   };
 
   const handleDeleteProfile = (profile: IPTVProfile) => {
-    Alert.alert( "Delete Profile / Profil löschen", `Êtes-vous sûr de vouloir supprimer "${profile.name}" ?`,
-      [ { text: "Cancel / Abbrechen", style: "cancel" }, { text: "Delete / Löschen", style: "destructive", onPress: () => removeProfile(profile.id) } ]
+    Alert.alert( t('deleteProfile'), t('deleteConfirmation', { name: profile.name }),
+      [ { text: t('cancel'), style: "cancel" }, { text: t('delete'), style: "destructive", onPress: () => removeProfile(profile.id) } ]
     );
   };
 
@@ -115,10 +117,10 @@ const PlaylistManager = () => {
       </View>
       <View style={styles.profileActions}>
         <TouchableOpacity style={[styles.actionButton, styles.loadButton]} onPress={() => handleLoadProfile(item)} disabled={isLoading}>
-          <Text style={styles.actionButtonText}>Load / Laden</Text>
+          <Text style={styles.actionButtonText}>{t('load')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.actionButton, styles.editButton]} onPress={() => startEditing(item)}>
-          <Text style={styles.actionButtonText}>Edit / Bearbeiten</Text>
+          <Text style={styles.actionButtonText}>{t('edit')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={() => handleDeleteProfile(item)}>
           <Text style={styles.actionButtonText}>X</Text>
@@ -129,9 +131,9 @@ const PlaylistManager = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{editingProfile ? "Edit Profile / Profil bearbeiten" : "Add Profile / Profil hinzufügen"}</Text>
+      <Text style={styles.title}>{editingProfile ? t('editProfile') : t('addProfile')}</Text>
 
-      <Text style={styles.label}>Profile Type / Profiltyp</Text>
+      <Text style={styles.label}>{t('profileType')}</Text>
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={profileType}
@@ -147,10 +149,10 @@ const PlaylistManager = () => {
         </Picker>
       </View>
 
-      <Text style={styles.label}>Profile Name / Profilname</Text>
+      <Text style={styles.label}>{t('profileName')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Ex: My ISP / Bsp: Mein ISP"
+        placeholder={t('exMyISP')}
         value={name}
         onChangeText={setName}
         placeholderTextColor="#888"
@@ -159,42 +161,42 @@ const PlaylistManager = () => {
 
       {profileType === 'm3u' && (
         <>
-          <Text style={styles.label}>M3U URL</Text>
+          <Text style={styles.label}>{t('m3uUrl')}</Text>
           <TextInput style={styles.input} placeholder="http://..." value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" />
         </>
       )}
 
       {profileType === 'xtream' && (
         <>
-          <Text style={styles.label}>Server URL (with http:// and port) / Server-URL (mit http:// und Port)</Text>
+          <Text style={styles.label}>{t('serverUrl')}</Text>
           <TextInput style={styles.input} placeholder="http://domaine.com:80" value={serverUrl} onChangeText={setServerUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" />
-          <Text style={styles.label}>Username / Benutzername</Text>
-          <TextInput style={styles.input} placeholder="Username / Benutzername" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#888" />
-          <Text style={styles.label}>Password / Passwort</Text>
-          <TextInput style={styles.input} placeholder="Password / Passwort" value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholderTextColor="#888" />
+          <Text style={styles.label}>{t('username')}</Text>
+          <TextInput style={styles.input} placeholder={t('username')} value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#888" />
+          <Text style={styles.label}>{t('password')}</Text>
+          <TextInput style={styles.input} placeholder={t('password')} value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholderTextColor="#888" />
         </>
       )}
 
       <View style={styles.formButtons}>
-        <Button title={editingProfile ? "Save / Speichern" : "Add / Hinzufügen"} onPress={handleSubmit} />
-        {editingProfile && (<Button title="Cancel / Abbrechen" onPress={cancelEdit} color="#FF3B30" />)}
+        <Button title={editingProfile ? t('save') : t('add')} onPress={handleSubmit} />
+        {editingProfile && (<Button title={t('cancel')} onPress={cancelEdit} color="#FF3B30" />)}
       </View>
 
       <View style={styles.divider} />
-      <Text style={styles.title}>Saved Profiles / Gespeicherte Profile</Text>
+      <Text style={styles.title}>{t('savedProfiles')}</Text>
 
       {isLoading && !currentProfile && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading... / Wird geladen...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       )}
-      {error && <Text style={styles.errorText}>Error / Fehler: {error}</Text>}
+      {error && <Text style={styles.errorText}>{t('error')}: {error}</Text>}
       <FlatList
         data={profiles}
         renderItem={renderProfileItem}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={ !isLoading ? <Text style={styles.emptyText}>No saved profiles. / Keine gespeicherten Profile.</Text> : null }
+        ListEmptyComponent={ !isLoading ? <Text style={styles.emptyText}>{t('noSavedProfiles')}</Text> : null }
       />
     </View>
   );

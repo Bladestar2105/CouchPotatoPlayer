@@ -6,6 +6,7 @@ import { useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { Picker } from '@react-native-picker/picker';
+import { useTranslation } from 'react-i18next';
 import { IPTVProfile } from '../types';
 
 import PlaylistManager from '../components/PlaylistManager';
@@ -19,6 +20,7 @@ import HeroBanner from '../components/HeroBanner';
 const Drawer = createDrawerNavigator();
 
 const MediaTabs = () => {
+  const { t } = useTranslation();
   const { channels, movies, series, favorites, recentlyWatched, isLoading, isAdultUnlocked, pin } = useIPTV();
 
   const filterAdult = (items: any[]) => items.filter(item => !item.isAdult || isAdultUnlocked || !pin);
@@ -66,37 +68,37 @@ const MediaTabs = () => {
     >
       {safeChannels.length > 0 && (
         <Drawer.Screen
-          name="Channels / Sender"
+          name="Channels"
           component={ChannelList}
-          options={{ title: `Channels/Sender (${safeChannels.length})` }}
+          options={{ title: `${t('channels')} (${safeChannels.length})` }}
         />
       )}
       {safeMovies.length > 0 && (
         <Drawer.Screen
-          name="Movies / Filme"
+          name="Movies"
           component={MovieList}
-          options={{ title: `Movies/Filme (${safeMovies.length})` }}
+          options={{ title: `${t('movies')} (${safeMovies.length})` }}
         />
       )}
       {safeSeries.length > 0 && (
         <Drawer.Screen
-          name="Series / Serien"
+          name="Series"
           component={SeriesList}
-          options={{ title: `Series/Serien (${safeSeries.length})` }}
+          options={{ title: `${t('series')} (${safeSeries.length})` }}
         />
       )}
       {favorites.length > 0 && (
         <Drawer.Screen
-          name="Favorites / Favoriten"
+          name="Favorites"
           component={FavoritesList}
-          options={{ title: `Favorites/Favoriten (${favorites.length})` }}
+          options={{ title: `${t('favorites')} (${favorites.length})` }}
         />
       )}
       {recentlyWatched.length > 0 && (
         <Drawer.Screen
-          name="Recent / Kürzlich"
+          name="Recent"
           component={RecentlyWatchedList}
-          options={{ title: `Recent/Kürzlich (${recentlyWatched.length})` }}
+          options={{ title: `${t('recent')} (${recentlyWatched.length})` }}
         />
       )}
     </Drawer.Navigator>
@@ -104,6 +106,7 @@ const MediaTabs = () => {
 };
 
 const HomeScreen = () => {
+  const { t } = useTranslation();
   const { currentProfile, unloadProfile, profiles, loadProfile } = useIPTV();
   const navigation = useNavigation<any>();
 
@@ -118,7 +121,7 @@ const HomeScreen = () => {
     }
     const selectedProfile = profiles.find(p => p.id === profileId);
     if (selectedProfile && selectedProfile.id !== currentProfile?.id) {
-      console.log("Changing profile via menu... / Profilwechsel über das Menü...", selectedProfile.name);
+      console.log(t('changingProfile'), selectedProfile.name);
       loadProfile(selectedProfile);
     }
   };
@@ -144,13 +147,13 @@ const HomeScreen = () => {
               ))}
               <Picker.Item
                 key="pin"
-                label="Parental Control (PIN) / Kindersicherung (PIN)"
+                label={t('pinControl')}
                 value="pin_setup"
                 color="#F55"
               />
               <Picker.Item
                 key="logout"
-                label="Manage Profiles (Logout) / Profile verwalten (Abmelden)"
+                label={t('manageProfiles')}
                 value={null}
                 color="#AAA"
               />
