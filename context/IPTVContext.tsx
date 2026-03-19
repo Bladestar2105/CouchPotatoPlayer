@@ -332,6 +332,23 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { serverUrl, username, password } = profile;
     const baseUrl = `${serverUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
+    // 0. Pré-vérification (IPTV-Manager)
+    // The PR #430 introduces both /cpp and /player_api.php?action=cpp endpoints returning `true`.
+    // We use /cpp here as a clean health-check before doing any authentication.
+    const cleanServerUrl = serverUrl.replace(/\/$/, '');
+    const preCheckUrl = `${cleanServerUrl}/cpp`;
+    try {
+      const preCheckResponse = await fetch(preCheckUrl);
+      if (!preCheckResponse.ok) throw new Error(`Serveur non compatible (Erreur HTTP ${preCheckResponse.status})`);
+      const isCpp = await preCheckResponse.json();
+      if (isCpp !== true) {
+         throw new Error("Le serveur n'est pas une instance IPTV-Manager valide.");
+      }
+    } catch (e: any) {
+      console.error("Échec de la pré-vérification du serveur IPTV-Manager:", e);
+      throw new Error("Connexion refusée : Le serveur n'est pas une instance IPTV-Manager valide ou est inaccessible.");
+    }
+
     // 1. Authentification
     let authResponse;
     try {
