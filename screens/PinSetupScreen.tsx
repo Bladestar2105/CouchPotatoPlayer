@@ -10,24 +10,24 @@ const PinSetupScreen = () => {
   const handleAction = async () => {
     if (setupMode) {
       if (inputValue.length < 4) {
-         Alert.alert('Erreur', 'Le code PIN doit contenir au moins 4 chiffres.');
+         Alert.alert('Error', 'The PIN code must contain at least 4 digits.');
          return;
       }
       await setPinCode(inputValue);
       setInputValue('');
       setSetupMode(false);
-      Alert.alert('Succès', 'Code PIN configuré avec succès.');
+      Alert.alert('Success', 'PIN code configured successfully.');
     } else {
        if (isAdultUnlocked) {
           lockAdultContent();
-          Alert.alert('Succès', 'Contenu adulte verrouillé.');
+          Alert.alert('Success', 'Adult content locked.');
        } else {
           const unlocked = unlockAdultContent(inputValue);
           if (unlocked) {
-             Alert.alert('Succès', 'Contenu adulte déverrouillé pour cette session.');
+             Alert.alert('Success', 'Adult content unlocked for this session.');
              setInputValue('');
           } else {
-             Alert.alert('Erreur', 'Code PIN incorrect.');
+             Alert.alert('Error', 'Incorrect PIN code.');
           }
        }
     }
@@ -37,13 +37,13 @@ const PinSetupScreen = () => {
      await setPinCode(null);
      setSetupMode(true);
      setInputValue('');
-     Alert.alert('Succès', 'Code PIN supprimé.');
+     Alert.alert('Success', 'PIN code removed.');
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-         {setupMode ? 'Configurer le Code PIN' : isAdultUnlocked ? 'Contenu Adulte Déverrouillé' : 'Saisir le Code PIN'}
+         {setupMode ? 'Configure PIN Code' : isAdultUnlocked ? 'Adult Content Unlocked' : 'Enter PIN Code'}
       </Text>
 
       {!isAdultUnlocked && (
@@ -54,7 +54,7 @@ const PinSetupScreen = () => {
           maxLength={4}
           value={inputValue}
           onChangeText={setInputValue}
-          placeholder={setupMode ? "Nouveau code (4 chiffres)" : "Code PIN"}
+          placeholder={setupMode ? "New code (4 digits)" : "PIN Code"}
           placeholderTextColor="#888"
           autoFocus={true}
         />
@@ -62,13 +62,13 @@ const PinSetupScreen = () => {
 
       <TouchableOpacity style={styles.button} onPress={handleAction}>
         <Text style={styles.buttonText}>
-           {setupMode ? 'Enregistrer' : isAdultUnlocked ? 'Verrouiller' : 'Déverrouiller'}
+           {setupMode ? 'Save' : isAdultUnlocked ? 'Lock' : 'Unlock'}
         </Text>
       </TouchableOpacity>
 
       {!setupMode && (
          <TouchableOpacity style={[styles.button, styles.clearButton]} onPress={handleClearPin}>
-            <Text style={styles.buttonText}>Supprimer le Code PIN</Text>
+            <Text style={styles.buttonText}>Remove PIN Code</Text>
          </TouchableOpacity>
       )}
     </View>

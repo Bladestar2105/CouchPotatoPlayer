@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { XMLParser } from 'fast-xml-parser';
+import i18n from '../utils/i18n';
 import {
   IPTVContextType,
   IPTVProfile,
@@ -45,7 +46,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const storedProfiles = JSON.parse(profilesJson);
             setProfiles(storedProfiles);
           } catch (parseError) {
-            console.error("Données de profil corrompues, nettoyage...", parseError);
+            console.error("Profile data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(PROFILES_STORAGE_KEY);
             setProfiles([]);
           }
@@ -57,7 +58,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const storedFavorites = JSON.parse(favoritesJson);
             setFavorites(storedFavorites);
           } catch (parseError) {
-             console.error("Données de favoris corrompues, nettoyage...", parseError);
+             console.error("Favorites data corrupted, cleaning up...", parseError);
              await AsyncStorage.removeItem(FAVORITES_STORAGE_KEY);
              setFavorites([]);
           }
@@ -69,7 +70,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const storedRecents = JSON.parse(recentlyWatchedJson);
             setRecentlyWatched(storedRecents);
           } catch (parseError) {
-            console.error("Données des éléments récemment regardés corrompues, nettoyage...", parseError);
+            console.error("Recently watched data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(RECENTLY_WATCHED_KEY);
             setRecentlyWatched([]);
           }
@@ -80,7 +81,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
            setPin(storedPin);
         }
       } catch (e) {
-        console.error("Échec du chargement des données depuis le stockage", e);
+        console.error("Failed to load data from storage", e);
       }
     };
     loadDataFromStorage();
@@ -142,12 +143,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await loadXtream(profile);
       }
       else if (profile.type === 'stalker') {
-        console.warn("Chargement Stalker non implémenté");
+        console.warn(i18n.t('stalkerNotImplemented'));
       }
       setCurrentProfile(profile);
     } catch (e: any) {
-      console.error("Échec du chargement du profil:", e);
-      setError(e.message || "Erreur inconnue");
+      console.error("Failed to load profile:", e);
+      setError(e.message || i18n.t('unknownError'));
     } finally {
       setIsLoading(false);
     }
@@ -215,7 +216,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
            const prog: EPGProgram = {
              id: `${channelId}-${startStr}`,
              channelId,
-             title: title || 'Inconnu',
+             title: title || 'Unknown',
              description: description,
              start: parseDate(startStr),
              end: parseDate(stopStr)
@@ -236,11 +237,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let m3uContent = '';
     try {
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`Erreur réseau: ${response.status}`);
+      if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
       m3uContent = await response.text();
     } catch (fetchError: any) {
       console.error("Network error fetching M3U:", fetchError);
-      throw new Error("Impossible de télécharger la liste. Vérifiez votre connexion ou l'URL.");
+      throw new Error(i18n.t('m3uDownloadError'));
     }
 
     try {
@@ -250,11 +251,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSeries(series);
 
       if (channels.length === 0 && movies.length === 0 && series.length === 0) {
-        throw new Error("Le fichier M3U est valide mais ne contient aucun média.");
+        throw new Error(i18n.t('m3uEmptyError'));
       }
     } catch (parseError: any) {
-      console.error("Erreur de parsing M3U:", parseError);
-      throw new Error(`Erreur de format M3U : ${parseError.message}`);
+      console.error("M3U parsing error:", parseError);
+      throw new Error(i18n.t('m3uFormatError', { message: parseError.message }));
     }
   };
 
@@ -275,7 +276,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (infoMatch) {
           const attributes = infoMatch[1] || '';
           const name = infoMatch[2] || 'Unknown';
-          currentItemInfo = { name: name.trim(), tvgId: attributes.match(tvgIdRegex)?.[1], logo: attributes.match(tvgLogoRegex)?.[1], group: attributes.match(groupTitleRegex)?.[1] || 'Inconnu' };
+          currentItemInfo = { name: name.trim(), tvgId: attributes.match(tvgIdRegex)?.[1], logo: attributes.match(tvgLogoRegex)?.[1], group: attributes.match(groupTitleRegex)?.[1] || 'Unknown' };
         }
       } else if ((line.startsWith('http://') || line.startsWith('https://')) && currentItemInfo) {
         const url = line.trim();
@@ -290,7 +291,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             seriesName = match[1].trim();
             seasonNum = parseInt(match[2]);
             episodeNum = parseInt(match[3]);
-            episodeName = `Épisode ${episodeNum}`;
+            episodeName = `Episode ${episodeNum}`;
           } else {
             seriesName = currentItemInfo.name.split(/ S\d+/i)[0].trim();
             if (seriesName === "") { seriesName = currentItemInfo.name; }
@@ -306,7 +307,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           let currentSeason = currentSeries.seasons.find(s => s.seasonNumber === seasonNum);
           if (!currentSeason) {
-            currentSeason = { id: `${seriesName}-S${seasonNum}`, name: `Saison ${seasonNum}`, seasonNumber: seasonNum, episodes: [] };
+            currentSeason = { id: `${seriesName}-S${seasonNum}`, name: `Season ${seasonNum}`, seasonNumber: seasonNum, episodes: [] };
             currentSeries.seasons.push(currentSeason);
             currentSeries.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
           }
@@ -332,20 +333,37 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { serverUrl, username, password } = profile;
     const baseUrl = `${serverUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
+    // 0. Pré-vérification (IPTV-Manager)
+    // The PR #430 introduces both /cpp and /player_api.php?action=cpp endpoints returning `true`.
+    // We use /cpp here as a clean health-check before doing any authentication.
+    const cleanServerUrl = serverUrl.replace(/\/$/, '');
+    const preCheckUrl = `${cleanServerUrl}/cpp`;
+    try {
+      const preCheckResponse = await fetch(preCheckUrl);
+      if (!preCheckResponse.ok) throw new Error(i18n.t('serverNotCompatible', { status: preCheckResponse.status }));
+      const isCpp = await preCheckResponse.json();
+      if (isCpp !== true) {
+         throw new Error(i18n.t('notIptvManager'));
+      }
+    } catch (e: any) {
+      console.error("IPTV-Manager server pre-check failed:", e);
+      throw new Error(i18n.t('notIptvManager'));
+    }
+
     // 1. Authentification
     let authResponse;
     try {
       authResponse = await fetch(baseUrl);
-      if (!authResponse.ok) throw new Error(`Erreur serveur: ${authResponse.status}`);
+      if (!authResponse.ok) throw new Error(i18n.t('serverError', { status: authResponse.status }));
 
       const authData = await authResponse.json();
       if (authData.user_info.auth === 0) {
-        throw new Error("Authentification échouée. Vérifiez vos identifiants.");
+        throw new Error(i18n.t('authFailed'));
       }
     } catch (e: any) {
       // 🛡️ SECURITY: Prevent leaking credentials from the URL in e.message to the UI
       console.error("Network error during Xtream auth:", e);
-      throw new Error("Connexion au serveur échouée. Vérifiez votre connexion ou l'URL du serveur.");
+      throw new Error(i18n.t('connectionFailed'));
     }
 
     // 2. Fetch Categories
@@ -426,7 +444,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMovies(parsedMovies);
 
       const parsedSeries: Series[] = Array.isArray(seriesData) ? seriesData.map((series: any): Series => {
-        const catInfo = categoryMap.get(String(series.category_id)) || { name: 'Séries', isAdult: false };
+        const catInfo = categoryMap.get(String(series.category_id)) || { name: 'Series', isAdult: false };
         return {
           id: String(series.series_id),
           name: series.name,
@@ -440,8 +458,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     } catch (e: any) {
       // 🛡️ SECURITY: e.message might contain sensitive URLs
-      console.error("Erreur lors de la récupération des flux Xtream", e);
-      throw new Error("Impossible de charger les listes de flux. Vérifiez votre connexion.");
+      console.error("Error fetching Xtream streams", e);
+      throw new Error(i18n.t('loadStreamsError'));
     }
   };
   // --- FIN DE LA LOGIQUE XTREAM ---
@@ -458,7 +476,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavorites));
       }
     } catch (e) {
-      console.error("Erreur lors de l'ajout aux favoris", e);
+      console.error("Error adding to favorites", e);
     }
   };
 
@@ -468,7 +486,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFavorites(newFavorites);
       await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavorites));
     } catch (e) {
-      console.error("Erreur lors de la suppression des favoris", e);
+      console.error("Error removing from favorites", e);
     }
   };
 
@@ -482,7 +500,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRecentlyWatched(newRecents);
       await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(newRecents));
     } catch (e) {
-      console.error("Erreur lors de l'ajout aux éléments récemment regardés", e);
+      console.error("Error adding to recently watched", e);
     }
   };
 
@@ -496,7 +514,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAdultUnlocked(false);
        }
     } catch (e) {
-       console.error("Erreur lors de la configuration du code PIN", e);
+       console.error("Error configuring PIN code", e);
     }
   };
 
