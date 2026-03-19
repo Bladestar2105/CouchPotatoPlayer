@@ -146,8 +146,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setCurrentProfile(profile);
     } catch (e: any) {
+      // 🛡️ SECURITY: Prevent leaking sensitive info in e.message to the UI
       console.error("Échec du chargement du profil:", e);
-      setError(e.message || "Erreur inconnue");
+      setError("Erreur inconnue lors du chargement du profil");
     } finally {
       setIsLoading(false);
     }
@@ -253,8 +254,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Le fichier M3U est valide mais ne contient aucun média.");
       }
     } catch (parseError: any) {
+      // 🛡️ SECURITY: Prevent leaking sensitive info in parseError.message to the UI
       console.error("Erreur de parsing M3U:", parseError);
-      throw new Error(`Erreur de format M3U : ${parseError.message}`);
+      throw new Error(`Erreur de format M3U`);
     }
   };
 
