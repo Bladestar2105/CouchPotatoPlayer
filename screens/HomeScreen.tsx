@@ -23,7 +23,7 @@ const MediaTabs = () => {
   const { t } = useTranslation();
   const { channels, movies, series, favorites, recentlyWatched, isLoading, isAdultUnlocked, pin } = useIPTV();
 
-  const filterAdult = (items: any[]) => items.filter(item => !item.isAdult || isAdultUnlocked || !pin);
+  const filterAdult = (items: any[]) => items.filter(item => !item.isAdult || (pin && isAdultUnlocked));
 
   const safeChannels = filterAdult(channels);
   const safeMovies = filterAdult(movies);
@@ -107,8 +107,17 @@ const MediaTabs = () => {
 
 const HomeScreen = () => {
   const { t } = useTranslation();
-  const { currentProfile, unloadProfile, profiles, loadProfile } = useIPTV();
+  const { currentProfile, unloadProfile, profiles, loadProfile, channels, movies, series, pin } = useIPTV();
   const navigation = useNavigation<any>();
+
+  React.useEffect(() => {
+    if (currentProfile && !pin) {
+      const hasAdultContent = channels.some(c => c.isAdult) || movies.some(m => m.isAdult) || series.some(s => s.isAdult);
+      if (hasAdultContent) {
+        navigation.navigate('PinSetup');
+      }
+    }
+  }, [currentProfile, channels, movies, series, pin, navigation]);
 
   const onProfileChange = (profileId: string | null) => {
     if (!profileId) {
