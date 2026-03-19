@@ -107,7 +107,7 @@ const WelcomeScreen = () => {
                    ]}
                    onPress={() => setSelectedIcon(iconName)}
                  >
-                   <Icon name={iconName.replace('-', '_') as any} size={24} color={selectedIcon === iconName ? colors.primary : '#FFF'} />
+                   <Icon name={iconName.replace('_', '-') as any} size={24} color={selectedIcon === iconName ? colors.primary : '#FFF'} />
                  </TouchableOpacity>
                ))}
              </View>

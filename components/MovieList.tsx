@@ -39,20 +39,50 @@ const MovieList = () => {
   }, [movies, pin, isAdultUnlocked]);
 
   const renderItem = ({ item }: { item: Movie }) => (
-    <TouchableOpacity
-      style={styles.item}
-      onPress={() => handleMoviePress(item)}
-    >
-      <Image
-        style={styles.logo}
-        source={item.cover ? { uri: item.cover } : defaultLogo}
-        defaultSource={defaultLogo}
-        resizeMode="contain"
-      />
-      <View style={styles.info}>
-        <Text style={styles.name}>{item.name}</Text>
-      </View>
-    </TouchableOpacity>
+    <View style={styles.itemContainer}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => handleMoviePress(item)}
+      >
+        <Image
+          style={styles.logo}
+          source={item.cover ? { uri: item.cover } : defaultLogo}
+          defaultSource={defaultLogo}
+          resizeMode="cover"
+        />
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Group items into rows of 3
+  const formatData = (data: Movie[], numColumns: number) => {
+    const formattedData = [];
+    for (let i = 0; i < data.length; i += numColumns) {
+      formattedData.push(data.slice(i, i + numColumns));
+    }
+    return formattedData;
+  };
+
+  const sectionsWithRows = groupedData.map(section => ({
+    ...section,
+    data: formatData(section.data, 3)
+  }));
+
+  const renderRow = ({ item }: { item: Movie[] }) => (
+    <View style={styles.row}>
+      {item.map(movie => (
+        <React.Fragment key={movie.id + movie.streamUrl}>
+          {renderItem({ item: movie })}
+        </React.Fragment>
+      ))}
+      {/* Fill empty spaces in the last row to maintain grid alignment */}
+      {Array.from({ length: 3 - item.length }).map((_, i) => (
+        <View key={`empty-${i}`} style={styles.itemContainer} />
+      ))}
+    </View>
   );
 
   const renderSectionHeader = ({ section: { title } }: { section: { title: string } }) => (
@@ -78,11 +108,10 @@ const MovieList = () => {
   return (
     <View style={styles.container}>
       <SectionList
-        sections={groupedData}
-        renderItem={renderItem}
+        sections={sectionsWithRows}
+        renderItem={renderRow}
         renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item) => item.id + item.streamUrl}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        keyExtractor={(item, index) => index.toString()}
         stickySectionHeadersEnabled={true}
       />
     </View>
@@ -104,34 +133,46 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
+    flex: 1,
   },
   emptyText: {
     color: '#888',
     textAlign: 'center',
   },
-  item: {
+  row: {
     flexDirection: 'row',
-    padding: 10,
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  itemContainer: {
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  card: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 8,
+    overflow: 'hidden',
+    aspectRatio: 2/3,
   },
   logo: {
-    width: 50,
-    height: 75,
-    marginRight: 15,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#333',
-    borderRadius: 4,
   },
   info: {
-    flex: 1,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 8,
   },
   name: {
     color: '#FFF',
-    fontSize: 16,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#333',
-    marginLeft: 75,
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

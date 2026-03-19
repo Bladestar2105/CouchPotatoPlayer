@@ -43,21 +43,51 @@ const SeriesList = () => {
   }, [series, pin, isAdultUnlocked]);
 
   const renderItem = ({ item }: { item: Series }) => (
-    <TouchableOpacity
-      style={styles.item}
-      onPress={() => handleSeriesPress(item)}
-    >
-      <Image
-        style={styles.logo}
-        source={item.cover ? { uri: item.cover } : defaultLogo}
-        defaultSource={defaultLogo}
-        resizeMode="contain"
-      />
-      <View style={styles.info}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.count}>{item.seasons.length} Saison(s)</Text>
-      </View>
-    </TouchableOpacity>
+    <View style={styles.itemContainer}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => handleSeriesPress(item)}
+      >
+        <Image
+          style={styles.logo}
+          source={item.cover ? { uri: item.cover } : defaultLogo}
+          defaultSource={defaultLogo}
+          resizeMode="cover"
+        />
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.count}>{item.seasons.length} Saison(s)</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Group items into rows of 3
+  const formatData = (data: Series[], numColumns: number) => {
+    const formattedData = [];
+    for (let i = 0; i < data.length; i += numColumns) {
+      formattedData.push(data.slice(i, i + numColumns));
+    }
+    return formattedData;
+  };
+
+  const sectionsWithRows = groupedData.map(section => ({
+    ...section,
+    data: formatData(section.data, 3)
+  }));
+
+  const renderRow = ({ item }: { item: Series[] }) => (
+    <View style={styles.row}>
+      {item.map(seriesItem => (
+        <React.Fragment key={seriesItem.id}>
+          {renderItem({ item: seriesItem })}
+        </React.Fragment>
+      ))}
+      {/* Fill empty spaces in the last row to maintain grid alignment */}
+      {Array.from({ length: 3 - item.length }).map((_, i) => (
+        <View key={`empty-${i}`} style={styles.itemContainer} />
+      ))}
+    </View>
   );
 
   const renderSectionHeader = ({ section: { title } }: { section: { title: string } }) => (
@@ -82,11 +112,10 @@ const SeriesList = () => {
   return (
     <View style={styles.container}>
       <SectionList
-        sections={groupedData}
-        renderItem={renderItem}
+        sections={sectionsWithRows}
+        renderItem={renderRow}
         renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item) => item.id}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        keyExtractor={(item, index) => index.toString()}
         stickySectionHeadersEnabled={true}
       />
     </View>
@@ -98,12 +127,13 @@ const styles = StyleSheet.create({
   header: { fontSize: 16, fontWeight: 'bold', color: '#FFF', backgroundColor: '#222', padding: 10 },
   centered: { justifyContent: 'center', alignItems: 'center', flex: 1 },
   emptyText: { color: '#888', textAlign: 'center' },
-  item: { flexDirection: 'row', padding: 10, alignItems: 'center' },
-  logo: { width: 50, height: 75, marginRight: 15, backgroundColor: '#333', borderRadius: 4 },
-  info: { flex: 1 },
-  name: { color: '#FFF', fontSize: 16 },
-  count: { color: '#AAA', fontSize: 12, marginTop: 4 },
-  separator: { height: 1, backgroundColor: '#333', marginLeft: 75 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 5 },
+  itemContainer: { flex: 1, marginHorizontal: 5 },
+  card: { backgroundColor: '#1C1C1E', borderRadius: 8, overflow: 'hidden', aspectRatio: 2/3 },
+  logo: { width: '100%', height: '100%', backgroundColor: '#333' },
+  info: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', padding: 8 },
+  name: { color: '#FFF', fontSize: 12, fontWeight: 'bold', textAlign: 'center' },
+  count: { color: '#AAA', fontSize: 10, marginTop: 4, textAlign: 'center' },
 });
 
 export default SeriesList;
