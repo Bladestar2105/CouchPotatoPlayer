@@ -55,7 +55,7 @@ const SettingsScreen = () => {
           <View key={p.id} style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>{p.name}</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{p.url}</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{(p.type === 'm3u' || p.type === 'xtream') ? p.url : p.type === 'stalker' ? p.portalUrl : ''}</Text>
             </View>
             <View style={styles.tileRight}>
               {p.id !== currentProfile?.id && (
