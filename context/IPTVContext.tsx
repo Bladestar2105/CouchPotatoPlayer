@@ -409,6 +409,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       // 🛡️ SECURITY: Prevent leaking credentials from the URL in e.message to the UI
       console.error("Network error during Xtream auth:", e);
+      if (Platform.OS === 'web' && e.message === 'Failed to fetch') {
+         throw new Error(i18n.t('corsError'));
+      }
       throw new Error(i18n.t('connectionFailed'));
     }
 
@@ -505,6 +508,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       // 🛡️ SECURITY: e.message might contain sensitive URLs
       console.error("Error fetching Xtream streams", e);
+      if (Platform.OS === 'web' && e.message === 'Failed to fetch') {
+         throw new Error(i18n.t('corsError'));
+      }
       throw new Error(i18n.t('loadStreamsError'));
     }
   };
