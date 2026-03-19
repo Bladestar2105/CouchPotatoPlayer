@@ -430,6 +430,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 1. Authentification
     let authResponse;
+    let liveExtension = 'ts'; // Default to 'ts' if not provided
     try {
       authResponse = await fetchWithProxy(baseUrl);
       if (!authResponse.ok) throw new Error(i18n.t('serverError', { status: authResponse.status }));
@@ -437,6 +438,18 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const authData = await authResponse.json();
       if (authData.user_info.auth === 0) {
         throw new Error(i18n.t('authFailed'));
+      }
+
+      // Extract allowed output format for Live TV URLs (e.g., 'ts' or 'm3u8')
+      if (authData.user_info.allowed_output_formats && Array.isArray(authData.user_info.allowed_output_formats)) {
+        const formats = authData.user_info.allowed_output_formats;
+        if (formats.includes('ts')) {
+          liveExtension = 'ts';
+        } else if (formats.includes('m3u8')) {
+          liveExtension = 'm3u8';
+        } else if (formats.length > 0) {
+          liveExtension = formats[0];
+        }
       }
     } catch (e: any) {
       // 🛡️ SECURITY: Prevent leaking credentials from the URL in e.message to the UI
@@ -496,10 +509,17 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 4. Parser les données
       const parsedChannels: Channel[] = Array.isArray(liveData) ? liveData.map((channel: any): Channel => {
         const catInfo = categoryMap.get(String(channel.category_id)) || { name: 'Live TV', isAdult: false };
+
+        // Sometimes stream_type is returned as 'live' instead of an extension. Fallback to our dynamic format if so.
+        let extension = channel.stream_type;
+        if (!extension || extension === 'live') {
+          extension = liveExtension;
+        }
+
         return {
           id: String(channel.stream_id),
           name: channel.name,
-          url: `${cleanServerUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${channel.stream_id}.${channel.stream_type || 'ts'}`,
+          url: `${cleanServerUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${channel.stream_id}.${extension}`,
           logo: channel.stream_icon,
           group: catInfo.name,
           tvgId: channel.epg_channel_id,

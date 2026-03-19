@@ -1,153 +1,198 @@
-import React from 'react';
-import {
-  View, Text, SectionList, TouchableOpacity, StyleSheet,
-  Image, ActivityIndicator
-} from 'react-native';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, ScrollView, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Channel } from '../types';
-import { findCurrentProgram } from '../utils/epgUtils';
 import { useSettings } from '../context/SettingsContext';
 
 const defaultLogo = require('../assets/icon.png');
+const TIMELINE_HOUR_WIDTH = 200; // pixels per hour
+const EPG_START_HOUR = 0;
+const EPG_END_HOUR = 24;
 
-const ChannelList = () => {
-  const { channels, playStream, isLoading, error, pin, isAdultUnlocked, epg, loadEPG } = useIPTV();
+const LiveTVFlow = () => {
+  const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
 
-  React.useEffect(() => {
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+
+  useEffect(() => {
     loadEPG();
   }, []);
 
-  const handleChannelPress = (channel: Channel) => {
-    console.log('CLIC SUR CHAÎNE:', channel.name);
-    playStream({ url: channel.url, id: channel.id });
-    navigation.navigate('Player');
-  };
-
-  const groupedData = React.useMemo(() => {
+  const groups = useMemo(() => {
     if (channels.length === 0) return [];
-
     const safeChannels = channels.filter(c => !c.isAdult || isAdultUnlocked || !pin);
-
-    // 1. On crée un objet pour regrouper (ex: { "France HD": [...], "Films": [...] })
-    const groups = safeChannels.reduce((acc, channel) => {
-      const groupTitle = channel.group || 'Inconnu'; // Utilise 'Inconnu' si pas de groupe
-      if (!acc[groupTitle]) {
-        acc[groupTitle] = [];
-      }
-      acc[groupTitle].push(channel);
+    const groupMap = safeChannels.reduce((acc, channel) => {
+      const g = channel.group || 'Unknown';
+      if (!acc[g]) acc[g] = [];
+      acc[g].push(channel);
       return acc;
     }, {} as Record<string, Channel[]>);
 
-
-    return Object.keys(groups).sort().map(title => ({
-      title: title,
-      data: groups[title]
-    }));
+    return Object.keys(groupMap).sort().map(title => ({ title, data: groupMap[title] }));
   }, [channels, isAdultUnlocked, pin]);
 
-  // Rendu d'un item (une chaîne)
-  const renderItem = ({ item }: { item: Channel }) => {
-    return (
-      <View style={styles.itemContainer}>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <TouchableOpacity
-            style={styles.logoContainer}
-            onPress={() => handleChannelPress(item)}
-          >
-            <Image
-              style={styles.logo}
-              source={item.logo ? { uri: item.logo } : defaultLogo}
-              defaultSource={defaultLogo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          <View style={styles.infoRow}>
-            <TouchableOpacity style={styles.infoTextContainer} onPress={() => handleChannelPress(item)}>
-              <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.epgButton, { backgroundColor: colors.primary + '33' }]}
-              onPress={() => navigation.navigate('EPG', { channelId: item.tvgId || item.id, channelName: item.name })}
-            >
-              <Text style={{ fontSize: 16 }}>📅</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  // Group items into rows of 3
-  const formatData = (data: Channel[], numColumns: number) => {
-    const formattedData = [];
-    for (let i = 0; i < data.length; i += numColumns) {
-      formattedData.push(data.slice(i, i + numColumns));
+  // Default select first group
+  useEffect(() => {
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0].title);
     }
-    return formattedData;
-  };
-
-  const sectionsWithRows = groupedData.map(section => ({
-    ...section,
-    data: formatData(section.data, 3)
-  }));
-
-  const renderRow = ({ item }: { item: Channel[] }) => (
-    <View style={styles.row}>
-      {item.map(channelItem => (
-        <React.Fragment key={channelItem.id + channelItem.url}>
-          {renderItem({ item: channelItem })}
-        </React.Fragment>
-      ))}
-      {/* Fill empty spaces in the last row to maintain grid alignment */}
-      {Array.from({ length: 3 - item.length }).map((_, i) => (
-        <View key={`empty-${i}`} style={styles.itemContainer} />
-      ))}
-    </View>
-  );
-
-  // Rendu de l'en-tête de section (ex: "France HD")
-  const renderSectionHeader = ({ section: { title } }: { section: { title: string } }) => (
-    <Text style={[styles.header, { backgroundColor: colors.surface, color: colors.text }]}>{title}</Text>
-  );
+  }, [groups, selectedGroup]);
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
-  if (error) {
-    return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.error }]}>Error: {error}</Text>
-      </View>
-    );
-  }
-
-  if (channels.length === 0) {
-    return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Aucune chaîne trouvée dans ce profil.</Text>
-      </View>
-    );
-  }
+  const selectedChannels = groups.find(g => g.title === selectedGroup)?.data || [];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <SectionList
-        sections={sectionsWithRows}
-        renderItem={renderRow}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item, index) => index.toString()}
-        stickySectionHeadersEnabled={true} // En-têtes collants
-      />
+      {/* Categories / Groups Sidebar */}
+      <View style={[styles.categoriesSidebar, { backgroundColor: colors.surface, borderRightColor: colors.divider }]}>
+        <FlatList
+          data={groups}
+          keyExtractor={(item) => item.title}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.categoryItem,
+                selectedGroup === item.title ? { backgroundColor: colors.primary + '33', borderLeftColor: colors.primary, borderLeftWidth: 4 } : { borderLeftColor: 'transparent', borderLeftWidth: 4 }
+              ]}
+              onPress={() => setSelectedGroup(item.title)}
+            >
+              <Text style={{ color: selectedGroup === item.title ? colors.primary : colors.textSecondary, fontWeight: selectedGroup === item.title ? 'bold' : 'normal' }}>
+                {item.title} ({item.data.length})
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+
+      {/* Main Content - Channel List & EPG Timeline */}
+      <View style={styles.mainContent}>
+        {selectedChannels.length > 0 ? (
+           <EPGTimeline channels={selectedChannels} playStream={playStream} epg={epg} colors={colors} navigation={navigation} />
+        ) : (
+          <View style={styles.centeredContainer}>
+            <Text style={{ color: colors.textSecondary }}>No channels available</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// Two-dimensional EPG timeline grid
+const EPGTimeline = ({ channels, playStream, epg, colors, navigation }: any) => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleChannelPress = (channel: Channel) => {
+    playStream({ url: channel.url, id: channel.id });
+    navigation.navigate('Player');
+  };
+
+  // Generate hour headers (00:00 to 23:00)
+  const hours = Array.from({ length: 24 }).map((_, i) => {
+    const d = new Date();
+    d.setHours(i, 0, 0, 0);
+    return d;
+  });
+
+  const getEpgBlockStyle = (start: Date, end: Date) => {
+    const startHourOffset = start.getHours() + (start.getMinutes() / 60);
+    const endHourOffset = end.getHours() + (end.getMinutes() / 60);
+    const width = (endHourOffset - startHourOffset) * TIMELINE_HOUR_WIDTH;
+    const left = startHourOffset * TIMELINE_HOUR_WIDTH;
+    return { left, width };
+  };
+
+  // Calculate current time line position
+  const currentHourOffset = currentTime.getHours() + (currentTime.getMinutes() / 60);
+  const currentTimeLineLeft = currentHourOffset * TIMELINE_HOUR_WIDTH;
+
+  return (
+    <View style={styles.timelineContainer}>
+      {/* Header with Hours */}
+      <View style={{ flexDirection: 'row' }}>
+         <View style={[styles.channelColumnHeader, { backgroundColor: colors.surface, borderRightColor: colors.divider }]} />
+         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, backgroundColor: colors.surface }}>
+            <View style={{ flexDirection: 'row', height: 40, alignItems: 'center' }}>
+              {hours.map((h, i) => (
+                <View key={i} style={{ width: TIMELINE_HOUR_WIDTH, paddingLeft: 8 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    {h.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+         </ScrollView>
+      </View>
+
+      {/* Main Grid */}
+      <ScrollView style={{ flex: 1 }}>
+        {channels.map((channel: Channel) => {
+          const channelEpg = epg[channel.tvgId || channel.id] || [];
+
+          return (
+            <View key={channel.id} style={[styles.timelineRow, { borderBottomColor: colors.divider }]}>
+              {/* Left Column: Channel Info */}
+              <TouchableOpacity
+                style={[styles.channelColumn, { backgroundColor: colors.card, borderRightColor: colors.divider }]}
+                onPress={() => handleChannelPress(channel)}
+              >
+                <Image source={channel.logo ? { uri: channel.logo } : defaultLogo} style={styles.channelLogo} resizeMode="contain" />
+                <Text style={{ color: colors.text, fontSize: 12, marginLeft: 8, flex: 1 }} numberOfLines={2}>
+                  {channel.name}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Right Column: EPG Scrollable Row */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, backgroundColor: colors.background }}>
+                <View style={{ width: 24 * TIMELINE_HOUR_WIDTH, height: 60, position: 'relative' }}>
+                  {channelEpg.map((prog: any, idx: number) => {
+                    const { left, width } = getEpgBlockStyle(prog.start, prog.end);
+                    const isNow = currentTime >= prog.start && currentTime < prog.end;
+
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.epgBlock,
+                          {
+                            left,
+                            width: width - 2, // 2px gap
+                            backgroundColor: isNow ? colors.primary : colors.surface,
+                            borderColor: colors.divider
+                          }
+                        ]}
+                        onPress={() => {}}
+                      >
+                        <Text style={{ color: isNow ? '#FFF' : colors.text, fontSize: 12, fontWeight: 'bold' }} numberOfLines={1}>{prog.title}</Text>
+                        <Text style={{ color: isNow ? 'rgba(255,255,255,0.7)' : colors.textSecondary, fontSize: 10 }} numberOfLines={1}>
+                          {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {/* Current Time Indicator Line */}
+                  <View style={[styles.currentTimeLine, { left: currentTimeLineLeft, backgroundColor: colors.error }]} />
+                </View>
+              </ScrollView>
+            </View>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 };
@@ -155,81 +200,66 @@ const ChannelList = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    flexDirection: 'row',
   },
-  // Style pour l'en-tête (ex: "France HD")
-  header: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-    backgroundColor: '#222',
-    padding: 10,
-  },
-  centered: {
+  centeredContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  categoriesSidebar: {
+    width: 200,
+    borderRightWidth: 1,
+  },
+  categoryItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  mainContent: {
     flex: 1,
   },
-  errorText: {
-    color: '#FF3B30',
+  timelineContainer: {
+    flex: 1,
   },
-  emptyText: {
-    color: '#888',
-    textAlign: 'center',
+  channelColumnHeader: {
+    width: 220,
+    height: 40,
+    borderRightWidth: 1,
   },
-  row: {
+  timelineRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    height: 60,
+    borderBottomWidth: 1,
   },
-  itemContainer: {
-    flex: 1,
-    marginHorizontal: 5,
-  },
-  card: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 8,
-    overflow: 'hidden',
-    alignItems: 'center',
-    padding: 10,
-    aspectRatio: 1,
-  },
-  logoContainer: {
-    width: '100%',
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderRadius: 8,
-    marginBottom: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  logo: {
-    width: '100%',
-    height: '100%',
-  },
-  infoRow: {
-    width: '100%',
+  channelColumn: {
+    width: 220,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    borderRightWidth: 1,
   },
-  infoTextContainer: {
-    flex: 1,
-    paddingRight: 8,
+  channelLogo: {
+    width: 40,
+    height: 30,
   },
-  name: {
-    fontWeight: 'bold',
-    fontSize: 12,
-    textAlign: 'left',
-  },
-  epgButton: {
+  epgBlock: {
+    position: 'absolute',
+    top: 4,
+    height: 52,
+    borderRadius: 4,
     padding: 6,
-    borderRadius: 8,
+    borderWidth: 1,
     justifyContent: 'center',
-    alignItems: 'center',
   },
+  currentTimeLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    zIndex: 10,
+  }
 });
 
-export default ChannelList;
+export default LiveTVFlow;

@@ -1,139 +1,154 @@
-import React from 'react';
-import {
-  View, Text, SectionList, TouchableOpacity, StyleSheet,
-  Image, ActivityIndicator
-} from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../App';
 import { Series } from '../types';
+import { useSettings } from '../context/SettingsContext';
 
 const defaultLogo = require('../assets/icon.png');
-
-type SeriesListNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+const { width } = Dimensions.get('window');
+const POSTER_WIDTH = 120;
+const numColumns = Math.floor((width - 200) / (POSTER_WIDTH + 16));
 
 const SeriesList = () => {
   const { series, isLoading, pin, isAdultUnlocked } = useIPTV();
-  const navigation = useNavigation<SeriesListNavigationProp>();
+  const { colors } = useSettings();
+  const navigation = useNavigation<any>();
 
-  const handleSeriesPress = (series: Series) => {
-    // @ts-ignore
-    navigation.navigate('MediaInfo', { id: series.id, type: 'series', title: series.name, cover: series.cover });
-  };
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
-  const groupedData = React.useMemo(() => {
+  const groups = useMemo(() => {
     if (series.length === 0) return [];
-
-    const safeSeries = series.filter(s => !s.isAdult || isAdultUnlocked || !pin);
-
-    const groups = safeSeries.reduce((acc, series) => {
-      const groupTitle = series.group || 'Inconnu';
-      if (!acc[groupTitle]) {
-        acc[groupTitle] = [];
-      }
-      acc[groupTitle].push(series);
+    const safeSeries = series.filter(c => !c.isAdult || isAdultUnlocked || !pin);
+    const groupMap = safeSeries.reduce((acc, s) => {
+      const g = s.group || 'Unknown';
+      if (!acc[g]) acc[g] = [];
+      acc[g].push(s);
       return acc;
     }, {} as Record<string, Series[]>);
 
-    return Object.keys(groups).sort().map(title => ({
-      title: title,
-      data: groups[title]
-    }));
-  }, [series, pin, isAdultUnlocked]);
+    return Object.keys(groupMap).sort().map(title => ({ title, data: groupMap[title] }));
+  }, [series, isAdultUnlocked, pin]);
 
-  const renderItem = ({ item }: { item: Series }) => (
-    <View style={styles.itemContainer}>
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => handleSeriesPress(item)}
-      >
-        <Image
-          style={styles.logo}
-          source={item.cover ? { uri: item.cover } : defaultLogo}
-          defaultSource={defaultLogo}
-          resizeMode="cover"
-        />
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.count}>{item.seasons.length} Saison(s)</Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // Group items into rows of 3
-  const formatData = (data: Series[], numColumns: number) => {
-    const formattedData = [];
-    for (let i = 0; i < data.length; i += numColumns) {
-      formattedData.push(data.slice(i, i + numColumns));
+  // Default select first group
+  useEffect(() => {
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0].title);
     }
-    return formattedData;
-  };
-
-  const sectionsWithRows = groupedData.map(section => ({
-    ...section,
-    data: formatData(section.data, 3)
-  }));
-
-  const renderRow = ({ item }: { item: Series[] }) => (
-    <View style={styles.row}>
-      {item.map(seriesItem => (
-        <React.Fragment key={seriesItem.id}>
-          {renderItem({ item: seriesItem })}
-        </React.Fragment>
-      ))}
-      {/* Fill empty spaces in the last row to maintain grid alignment */}
-      {Array.from({ length: 3 - item.length }).map((_, i) => (
-        <View key={`empty-${i}`} style={styles.itemContainer} />
-      ))}
-    </View>
-  );
-
-  const renderSectionHeader = ({ section: { title } }: { section: { title: string } }) => (
-    <Text style={styles.header}>{title}</Text>
-  );
+  }, [groups, selectedGroup]);
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#FFF" />
-      </View>
-    );
-  }
-  if (series.length === 0) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <Text style={styles.emptyText}>Aucune série trouvée.</Text>
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  const selectedSeries = groups.find(g => g.title === selectedGroup)?.data || [];
+
   return (
-    <View style={styles.container}>
-      <SectionList
-        sections={sectionsWithRows}
-        renderItem={renderRow}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item, index) => index.toString()}
-        stickySectionHeadersEnabled={true}
-      />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Categories Sidebar */}
+      <View style={[styles.categoriesSidebar, { backgroundColor: colors.surface, borderRightColor: colors.divider }]}>
+        <FlatList
+          data={groups}
+          keyExtractor={(item) => item.title}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.categoryItem,
+                selectedGroup === item.title ? { backgroundColor: colors.primary + '33', borderLeftColor: colors.primary, borderLeftWidth: 4 } : { borderLeftColor: 'transparent', borderLeftWidth: 4 }
+              ]}
+              onPress={() => setSelectedGroup(item.title)}
+            >
+              <Text style={{ color: selectedGroup === item.title ? colors.primary : colors.textSecondary, fontWeight: selectedGroup === item.title ? 'bold' : 'normal' }}>
+                {item.title} ({item.data.length})
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+
+      {/* Main Content - Series Grid */}
+      <View style={styles.mainContent}>
+        {selectedSeries.length > 0 ? (
+          <FlatList
+            data={selectedSeries}
+            keyExtractor={(item) => item.id}
+            numColumns={numColumns > 0 ? numColumns : 3}
+            key={numColumns} // Force re-render if columns change
+            contentContainerStyle={styles.gridContainer}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.posterContainer}
+                onPress={() => navigation.navigate('MediaInfo', { id: item.id, type: 'series', title: item.name, cover: item.cover })}
+              >
+                <Image
+                  source={item.cover ? { uri: item.cover } : defaultLogo}
+                  style={[styles.poster, { borderColor: colors.divider }]}
+                  resizeMode="cover"
+                />
+                <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        ) : (
+          <View style={styles.centeredContainer}>
+            <Text style={{ color: colors.textSecondary }}>No series available</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
-  header: { fontSize: 16, fontWeight: 'bold', color: '#FFF', backgroundColor: '#222', padding: 10 },
-  centered: { justifyContent: 'center', alignItems: 'center', flex: 1 },
-  emptyText: { color: '#888', textAlign: 'center' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 5 },
-  itemContainer: { flex: 1, marginHorizontal: 5 },
-  card: { backgroundColor: '#1C1C1E', borderRadius: 8, overflow: 'hidden', aspectRatio: 2/3 },
-  logo: { width: '100%', height: '100%', backgroundColor: '#333' },
-  info: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', padding: 8 },
-  name: { color: '#FFF', fontSize: 12, fontWeight: 'bold', textAlign: 'center' },
-  count: { color: '#AAA', fontSize: 10, marginTop: 4, textAlign: 'center' },
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  centeredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoriesSidebar: {
+    width: 200,
+    borderRightWidth: 1,
+  },
+  categoryItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  mainContent: {
+    flex: 1,
+  },
+  gridContainer: {
+    padding: 16,
+  },
+  posterContainer: {
+    width: POSTER_WIDTH,
+    marginRight: 16,
+    marginBottom: 24,
+  },
+  poster: {
+    width: POSTER_WIDTH,
+    height: POSTER_WIDTH * 1.5,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 8,
+    backgroundColor: '#1C1C1E',
+  },
+  title: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  }
 });
 
 export default SeriesList;
