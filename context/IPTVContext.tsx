@@ -21,6 +21,29 @@ const FAVORITES_STORAGE_KEY = 'IPTV_FAVORITES';
 const RECENTLY_WATCHED_KEY = 'IPTV_RECENTLY_WATCHED';
 const PIN_STORAGE_KEY = 'IPTV_PIN';
 
+const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Response> => {
+  try {
+    return await fetch(url, options);
+  } catch (e: any) {
+    if (Platform.OS === 'web' && e instanceof TypeError) {
+      console.warn(`CORS Error, retrying with local Nginx proxy for: ${url}`);
+      try {
+        // Try the local Nginx proxy (works in Docker/production deployment)
+        // We use `window.location.origin` to ensure it works on whichever port/host the app is served
+        // Note: The URL is NOT encoded here because Nginx intercepts the path directly via regex match.
+        // E.g., /proxy/http://example.com/api?user=1&pass=2 is matched as target_url=http://example.com/api?user=1&pass=2
+        const localProxyUrl = `${window.location.origin}/proxy/${url}`;
+        const localProxyResponse = await fetch(localProxyUrl, options);
+        return localProxyResponse;
+      } catch (localProxyError) {
+        console.error("Local proxy fetch failed (ensure you are running the Docker container)", localProxyError);
+        throw new Error(i18n.t('corsError'));
+      }
+    }
+    throw e;
+  }
+};
+
 const IPTVContext = createContext<IPTVContextType | undefined>(undefined);
 
 export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -174,7 +197,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
         const epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
-        const response = await fetch(epgUrl);
+        const response = await fetchWithProxy(epgUrl);
         if (!response.ok) return;
         const xmlData = await response.text();
 
@@ -238,15 +261,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadM3U = async (url: string) => {
     let m3uContent = '';
     try {
-      const response = await fetch(url);
+      const response = await fetchWithProxy(url);
       if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
       m3uContent = await response.text();
     } catch (fetchError: any) {
       console.error("Network error fetching M3U:", fetchError);
-      if (Platform.OS === 'web' && fetchError.message === 'Failed to fetch') {
-         throw new Error(i18n.t('corsError'));
-      }
-      throw new Error(i18n.t('m3uDownloadError'));
+      // fetchWithProxy already throws i18n.t('corsError') on web CORS failures
+      throw new Error(fetchError.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('m3uDownloadError'));
     }
 
     try {
@@ -350,7 +371,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const performPreCheck = async (url: string) => {
       try {
-        const response = await fetch(url);
+        const response = await fetchWithProxy(url);
         preCheckStatus = response.status;
         if (response.ok) {
           const text = await response.text();
@@ -366,9 +387,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (e: any) {
         console.error(`Pre-check failed for ${url}:`, e);
-        if (Platform.OS === 'web' && e.message === 'Failed to fetch') {
-           throw new Error(i18n.t('corsError'));
-        }
+        if (e.message === i18n.t('corsError')) throw e;
       }
       return false;
     };
@@ -399,7 +418,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Authentification
     let authResponse;
     try {
-      authResponse = await fetch(baseUrl);
+      authResponse = await fetchWithProxy(baseUrl);
       if (!authResponse.ok) throw new Error(i18n.t('serverError', { status: authResponse.status }));
 
       const authData = await authResponse.json();
@@ -409,10 +428,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       // 🛡️ SECURITY: Prevent leaking credentials from the URL in e.message to the UI
       console.error("Network error during Xtream auth:", e);
-      if (Platform.OS === 'web' && e.message === 'Failed to fetch') {
-         throw new Error(i18n.t('corsError'));
-      }
-      throw new Error(i18n.t('connectionFailed'));
+      throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('connectionFailed'));
     }
 
     // 2. Fetch Categories
@@ -426,9 +442,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const [liveCatRes, vodCatRes, seriesCatRes] = await Promise.all([
-        fetch(liveCategoriesUrl),
-        fetch(vodCategoriesUrl),
-        fetch(seriesCategoriesUrl)
+        fetchWithProxy(liveCategoriesUrl),
+        fetchWithProxy(vodCategoriesUrl),
+        fetchWithProxy(seriesCategoriesUrl)
       ]);
 
       const liveCatData = await liveCatRes.json();
@@ -455,9 +471,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const seriesStreamsUrl = `${baseUrl}&action=get_series`;
 
       const [liveRes, vodRes, seriesRes] = await Promise.all([
-        fetch(allStreamsUrl),
-        fetch(vodStreamsUrl),
-        fetch(seriesStreamsUrl)
+        fetchWithProxy(allStreamsUrl),
+        fetchWithProxy(vodStreamsUrl),
+        fetchWithProxy(seriesStreamsUrl)
       ]);
 
       const liveData = await liveRes.json();
@@ -508,10 +524,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       // 🛡️ SECURITY: e.message might contain sensitive URLs
       console.error("Error fetching Xtream streams", e);
-      if (Platform.OS === 'web' && e.message === 'Failed to fetch') {
-         throw new Error(i18n.t('corsError'));
-      }
-      throw new Error(i18n.t('loadStreamsError'));
+      throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
   };
   // --- FIN DE LA LOGIQUE XTREAM ---
