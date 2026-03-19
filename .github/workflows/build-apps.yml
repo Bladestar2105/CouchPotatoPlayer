@@ -32,6 +32,8 @@ jobs:
         run: pnpm install
       - name: Prebuild Android
         run: npx expo prebuild --platform android
+      - name: Configure Gradle Memory
+        run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
       - name: Build APK
         run: |
           cd android
@@ -100,7 +102,15 @@ jobs:
         run: |
           pnpm install react-native@npm:react-native-tvos@0.81.5-2
           pnpm install @react-native-tvos/config-tv --save-dev
-          sed -i '' 's/"plugins": \[/"plugins": \[ \["@react-native-tvos\/config-tv", {"isTV": true, "showAndroidInTV": true, "showAndroidInMobile": true}\],/g' app.json || sed -i 's/"plugins": \[/"plugins": \[ \["@react-native-tvos\/config-tv", {"isTV": true, "showAndroidInTV": true, "showAndroidInMobile": true}\],/g' app.json
+          node -e "const fs=require('fs');const app=JSON.parse(fs.readFileSync('app.json'));if(!app.expo.plugins.some(p=>Array.isArray(p)&&p[0]==='@react-native-tvos/config-tv')){app.expo.plugins.unshift(['@react-native-tvos/config-tv',{isTV:true,showAndroidInTV:true,showAndroidInMobile:true}]);fs.writeFileSync('app.json',JSON.stringify(app,null,2));}"
+      - name: Fix pnpm react-native symlink for podspecs
+        run: |
+          # Create a symlink in the isolated pnpm node_modules directory so that
+          # gesture handler and reanimated podspecs can find react-native/package.json
+          RN_DIR=$(dirname $(node --print "require.resolve('react-native/package.json')"))
+          if [ ! -d "$RN_DIR/../react-native" ]; then
+            ln -s react-native-tvos "$RN_DIR/../react-native"
+          fi
       - name: Prebuild iOS (Generates tvOS scheme)
         run: EXPO_TV=1 npx expo prebuild --platform ios
       - name: Pod Install
