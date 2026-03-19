@@ -26,7 +26,9 @@ const Drawer = createDrawerNavigator();
 const MediaTabs = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
-  const { channels, movies, series, favorites, recentlyWatched, isLoading, isAdultUnlocked, pin } = useIPTV();
+  const { channels, movies, series, favorites, recentlyWatched, isLoading, isAdultUnlocked, pin, profiles, currentProfile, loadProfile } = useIPTV();
+  const dimensions = useWindowDimensions();
+  const navigation = useNavigation<any>();
 
   const filterAdult = (items: any[]) => items.filter(item => !item.isAdult || (pin && isAdultUnlocked));
 
@@ -52,10 +54,7 @@ const MediaTabs = () => {
     );
   }
 
-  const dimensions = useWindowDimensions();
   const isTV = dimensions.width >= 768;
-  const { profiles, currentProfile, loadProfile } = useIPTV();
-  const navigation = useNavigation<any>();
 
   return (
     <Drawer.Navigator
