@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { IPTVProvider } from './context/IPTVContext';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SettingsProvider } from './context/SettingsContext';
 import './utils/i18n';
 import { useTranslation } from 'react-i18next';
 
@@ -13,6 +14,9 @@ import PlayerScreen from './screens/PlayerScreen';
 import SeasonScreen from './screens/SeasonScreen';
 import EpisodeScreen from './screens/EpisodeScreen';
 import PinSetupScreen from './screens/PinSetupScreen';
+import SearchScreen from './screens/SearchScreen';
+import MediaInfoScreen from './screens/MediaInfoScreen';
+import EPGScreen from './screens/EPGScreen';
 import { Series, Season } from './types';
 
 // Mettre à jour la liste des écrans (SAUF Splash)
@@ -22,6 +26,9 @@ export type RootStackParamList = {
   Season: { series: Series };
   Episode: { season: Season };
   PinSetup: undefined;
+  Search: undefined;
+  MediaInfo: { id: string; type: 'vod' | 'series'; title: string; cover?: string; streamUrl?: string; };
+  EPG: { channelId: string; channelName: string; };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -29,9 +36,10 @@ const Stack = createStackNavigator<RootStackParamList>();
 const App = () => {
   const { t } = useTranslation();
   return (
-    <SafeAreaProvider>
-      <IPTVProvider>
-        <StatusBar barStyle="light-content" />
+    <SettingsProvider>
+      <SafeAreaProvider>
+        <IPTVProvider>
+          <StatusBar barStyle="light-content" />
         <NavigationContainer>
           <Stack.Navigator
             // --- L'ÉCRAN DE DÉMARRAGE EST DE RETOUR SUR "Home" ---
@@ -68,10 +76,26 @@ const App = () => {
               component={PinSetupScreen}
               options={{ title: t('parentalControl') }}
             />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </IPTVProvider>
-    </SafeAreaProvider>
+            <Stack.Screen
+              name="Search"
+              component={SearchScreen}
+              options={{ title: t('search') }}
+            />
+            <Stack.Screen
+              name="MediaInfo"
+              component={MediaInfoScreen}
+              options={{ title: '' }}
+            />
+            <Stack.Screen
+              name="EPG"
+              component={EPGScreen}
+              options={{ title: 'TV Guide' }}
+            />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </IPTVProvider>
+      </SafeAreaProvider>
+    </SettingsProvider>
   );
 };
 

@@ -14,9 +14,8 @@ const MovieList = () => {
   const navigation = useNavigation();
 
   const handleMoviePress = (movie: Movie) => {
-    console.log('CLIC SUR FILM:', movie.name);
-    playStream({ url: movie.streamUrl, id: movie.id });
-    navigation.navigate('Player');
+    // @ts-ignore - Dynamic route
+    navigation.navigate('MediaInfo', { id: movie.id, type: 'vod', title: movie.name, cover: movie.cover, streamUrl: movie.streamUrl });
   };
 
   const groupedData = React.useMemo(() => {

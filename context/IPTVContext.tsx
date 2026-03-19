@@ -14,6 +14,7 @@ import {
   Episode,
   EPGProgram
 } from '../types';
+import { parseXMLTV } from '../utils/epgParser';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
 const PROFILES_STORAGE_KEY = 'IPTV_PROFILES';
@@ -192,65 +193,38 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentProfile) return;
 
     try {
-      if (currentProfile.type === 'xtream') {
-        const { serverUrl, username, password } = currentProfile;
+      if (currentProfile.type === 'm3u' && currentProfile.epgUrl) {
+        const epgData = await parseXMLTV(currentProfile.epgUrl);
+        const newEpg: Record<string, EPGProgram[]> = {};
+        for (const channelId in epgData) {
+          newEpg[channelId] = epgData[channelId].map((p: any) => ({
+            id: Math.random().toString(),
+            channelId: p.channelId,
+            title: p.title,
+            description: p.description,
+            start: p.start,
+            end: p.end,
+          }));
+        }
+        setEpg(newEpg);
+      } else if (currentProfile.type === 'xtream') {
+        const { url: serverUrl, username, password } = currentProfile;
         const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
         const epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
-        const response = await fetchWithProxy(epgUrl);
-        if (!response.ok) return;
-        const xmlData = await response.text();
-
-        const parser = new XMLParser({
-          ignoreAttributes: false,
-          attributeNamePrefix: "@_"
-        });
-
-        const parsed = parser.parse(xmlData);
-        if (!parsed || !parsed.tv || !parsed.tv.programme) return;
+        const epgData = await parseXMLTV(epgUrl);
 
         const newEpg: Record<string, EPGProgram[]> = {};
-        const programs = Array.isArray(parsed.tv.programme) ? parsed.tv.programme : [parsed.tv.programme];
-
-        const parseDate = (str: string) => {
-          if (!str || str.length < 14) return new Date();
-          return new Date(
-            parseInt(str.substring(0, 4)),
-            parseInt(str.substring(4, 6)) - 1,
-            parseInt(str.substring(6, 8)),
-            parseInt(str.substring(8, 10)),
-            parseInt(str.substring(10, 12)),
-            parseInt(str.substring(12, 14))
-          );
-        };
-
-        for (const progData of programs) {
-           const channelId = progData['@_channel'];
-           const startStr = progData['@_start'];
-           const stopStr = progData['@_stop'];
-
-           if (!channelId || !startStr || !stopStr) continue;
-
-           // fast-xml-parser returns either a string or an object with text node if title has attributes
-           const titleVal = progData.title;
-           const title = typeof titleVal === 'object' ? titleVal['#text'] : titleVal;
-
-           const descVal = progData.desc;
-           const description = typeof descVal === 'object' ? descVal['#text'] : (descVal || '');
-
-           const prog: EPGProgram = {
-             id: `${channelId}-${startStr}`,
-             channelId,
-             title: title || 'Unknown',
-             description: description,
-             start: parseDate(startStr),
-             end: parseDate(stopStr)
-           };
-
-           if (!newEpg[channelId]) newEpg[channelId] = [];
-           newEpg[channelId].push(prog);
+        for (const channelId in epgData) {
+          newEpg[channelId] = epgData[channelId].map((p: any) => ({
+            id: Math.random().toString(),
+            channelId: p.channelId,
+            title: p.title,
+            description: p.description,
+            start: p.start,
+            end: p.end,
+          }));
         }
-
         setEpg(newEpg);
       }
     } catch (e) {
@@ -527,6 +501,38 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
   };
+
+  const getSeriesInfo = async (seriesId: string): Promise<any> => {
+    if (currentProfile?.type !== 'xtream') return null;
+    const { url: serverUrl, username, password } = currentProfile;
+    const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
+    const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_series_info&series_id=${seriesId}`;
+    try {
+      const response = await fetchWithProxy(url);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (e) {
+      console.error("Failed to get series info:", e);
+    }
+    return null;
+  };
+
+  const getVodInfo = async (vodId: string): Promise<any> => {
+    if (currentProfile?.type !== 'xtream') return null;
+    const { url: serverUrl, username, password } = currentProfile;
+    const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
+    const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_vod_info&vod_id=${vodId}`;
+    try {
+      const response = await fetchWithProxy(url);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (e) {
+      console.error("Failed to get VOD info:", e);
+    }
+    return null;
+  };
   // --- FIN DE LA LOGIQUE XTREAM ---
 
   const playStream = (stream: { url: string; id: string; }) => {
@@ -626,6 +632,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lockAdultContent,
         epg,
         loadEPG,
+        getSeriesInfo,
+        getVodInfo,
       }}
     >
       {children}

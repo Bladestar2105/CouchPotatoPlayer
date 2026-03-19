@@ -58,7 +58,8 @@ const resources = {
       "authFailed": "Authentication failed. Check your credentials.",
       "connectionFailed": "Connection to the server failed. Check your connection or the server URL.",
       "loadStreamsError": "Unable to load stream lists. Check your connection.",
-      "corsError": "CORS Error: The server blocks web browsers. Please use the Desktop or Mobile app, or configure a proxy."
+      "corsError": "CORS Error: The server blocks web browsers. Please use the Desktop or Mobile app, or configure a proxy.",
+      "search": "Search"
     }
   },
   de: {
@@ -116,7 +117,8 @@ const resources = {
       "authFailed": "Authentifizierung fehlgeschlagen. Überprüfen Sie Ihre Zugangsdaten.",
       "connectionFailed": "Verbindung zum Server fehlgeschlagen. Überprüfen Sie Ihre Verbindung oder die Server-URL.",
       "loadStreamsError": "Stream-Listen konnten nicht geladen werden. Überprüfen Sie Ihre Verbindung.",
-      "corsError": "CORS-Fehler: Der Server blockiert Webbrowser. Bitte nutzen Sie die Desktop- oder Mobile-App oder konfigurieren Sie einen Proxy."
+      "corsError": "CORS-Fehler: Der Server blockiert Webbrowser. Bitte nutzen Sie die Desktop- oder Mobile-App oder konfigurieren Sie einen Proxy.",
+      "search": "Suche"
     }
   },
   fr: {
@@ -174,7 +176,8 @@ const resources = {
       "authFailed": "Authentification échouée. Vérifiez vos identifiants.",
       "connectionFailed": "Connexion au serveur échouée. Vérifiez votre connexion ou l'URL du serveur.",
       "loadStreamsError": "Impossible de charger les listes de flux. Vérifiez votre connexion.",
-      "corsError": "Erreur CORS : Le serveur bloque les navigateurs web. Veuillez utiliser l'application de bureau ou mobile, ou configurer un proxy."
+      "corsError": "Erreur CORS : Le serveur bloque les navigateurs web. Veuillez utiliser l'application de bureau ou mobile, ou configurer un proxy.",
+      "search": "Rechercher"
     }
   }
 };
