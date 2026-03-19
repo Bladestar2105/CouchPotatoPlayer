@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { XMLParser } from 'fast-xml-parser';
+import i18n from '../utils/i18n';
 import {
   IPTVContextType,
   IPTVProfile,
@@ -142,12 +143,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await loadXtream(profile);
       }
       else if (profile.type === 'stalker') {
-        console.warn("Chargement Stalker non implémenté");
+        console.warn(i18n.t('stalkerNotImplemented'));
       }
       setCurrentProfile(profile);
     } catch (e: any) {
       console.error("Échec du chargement du profil:", e);
-      setError(e.message || "Erreur inconnue");
+      setError(e.message || i18n.t('unknownError'));
     } finally {
       setIsLoading(false);
     }
@@ -236,11 +237,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let m3uContent = '';
     try {
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`Erreur réseau: ${response.status}`);
+      if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
       m3uContent = await response.text();
     } catch (fetchError: any) {
       console.error("Network error fetching M3U:", fetchError);
-      throw new Error("Impossible de télécharger la liste. Vérifiez votre connexion ou l'URL.");
+      throw new Error(i18n.t('m3uDownloadError'));
     }
 
     try {
@@ -250,11 +251,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSeries(series);
 
       if (channels.length === 0 && movies.length === 0 && series.length === 0) {
-        throw new Error("Le fichier M3U est valide mais ne contient aucun média.");
+        throw new Error(i18n.t('m3uEmptyError'));
       }
     } catch (parseError: any) {
       console.error("Erreur de parsing M3U:", parseError);
-      throw new Error(`Erreur de format M3U : ${parseError.message}`);
+      throw new Error(i18n.t('m3uFormatError', { message: parseError.message }));
     }
   };
 
@@ -339,30 +340,30 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const preCheckUrl = `${cleanServerUrl}/cpp`;
     try {
       const preCheckResponse = await fetch(preCheckUrl);
-      if (!preCheckResponse.ok) throw new Error(`Serveur non compatible (Erreur HTTP ${preCheckResponse.status})`);
+      if (!preCheckResponse.ok) throw new Error(i18n.t('serverNotCompatible', { status: preCheckResponse.status }));
       const isCpp = await preCheckResponse.json();
       if (isCpp !== true) {
-         throw new Error("Le serveur n'est pas une instance IPTV-Manager valide.");
+         throw new Error(i18n.t('notIptvManager'));
       }
     } catch (e: any) {
       console.error("Échec de la pré-vérification du serveur IPTV-Manager:", e);
-      throw new Error("Connexion refusée : Le serveur n'est pas une instance IPTV-Manager valide ou est inaccessible.");
+      throw new Error(i18n.t('notIptvManager'));
     }
 
     // 1. Authentification
     let authResponse;
     try {
       authResponse = await fetch(baseUrl);
-      if (!authResponse.ok) throw new Error(`Erreur serveur: ${authResponse.status}`);
+      if (!authResponse.ok) throw new Error(i18n.t('serverError', { status: authResponse.status }));
 
       const authData = await authResponse.json();
       if (authData.user_info.auth === 0) {
-        throw new Error("Authentification échouée. Vérifiez vos identifiants.");
+        throw new Error(i18n.t('authFailed'));
       }
     } catch (e: any) {
       // 🛡️ SECURITY: Prevent leaking credentials from the URL in e.message to the UI
       console.error("Network error during Xtream auth:", e);
-      throw new Error("Connexion au serveur échouée. Vérifiez votre connexion ou l'URL du serveur.");
+      throw new Error(i18n.t('connectionFailed'));
     }
 
     // 2. Fetch Categories
@@ -458,7 +459,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e: any) {
       // 🛡️ SECURITY: e.message might contain sensitive URLs
       console.error("Erreur lors de la récupération des flux Xtream", e);
-      throw new Error("Impossible de charger les listes de flux. Vérifiez votre connexion.");
+      throw new Error(i18n.t('loadStreamsError'));
     }
   };
   // --- FIN DE LA LOGIQUE XTREAM ---
