@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { IPTVProvider } from './context/IPTVContext';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SettingsProvider } from './context/SettingsContext';
 import './utils/i18n';
 import { useTranslation } from 'react-i18next';
 
@@ -29,9 +30,10 @@ const Stack = createStackNavigator<RootStackParamList>();
 const App = () => {
   const { t } = useTranslation();
   return (
-    <SafeAreaProvider>
-      <IPTVProvider>
-        <StatusBar barStyle="light-content" />
+    <SettingsProvider>
+      <SafeAreaProvider>
+        <IPTVProvider>
+          <StatusBar barStyle="light-content" />
         <NavigationContainer>
           <Stack.Navigator
             // --- L'ÉCRAN DE DÉMARRAGE EST DE RETOUR SUR "Home" ---
@@ -68,10 +70,11 @@ const App = () => {
               component={PinSetupScreen}
               options={{ title: t('parentalControl') }}
             />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </IPTVProvider>
-    </SafeAreaProvider>
+            </Stack.Navigator>
+          </NavigationContainer>
+        </IPTVProvider>
+      </SafeAreaProvider>
+    </SettingsProvider>
   );
 };
 

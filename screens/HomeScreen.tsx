@@ -8,19 +8,22 @@ import { useIPTV } from '../context/IPTVContext';
 import { Picker } from '@react-native-picker/picker';
 import { useTranslation } from 'react-i18next';
 import { IPTVProfile } from '../types';
+import { useSettings } from '../context/SettingsContext';
 
-import PlaylistManager from '../components/PlaylistManager';
+import WelcomeScreen from './WelcomeScreen';
 import ChannelList from '../components/ChannelList';
 import MovieList from '../components/MovieList';
 import SeriesList from '../components/SeriesList';
 import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import HeroBanner from '../components/HeroBanner';
+import SettingsScreen from './SettingsScreen';
 
 const Drawer = createDrawerNavigator();
 
 const MediaTabs = () => {
   const { t } = useTranslation();
+  const { colors } = useSettings();
   const { channels, movies, series, favorites, recentlyWatched, isLoading, isAdultUnlocked, pin } = useIPTV();
 
   const filterAdult = (items: any[]) => items.filter(item => !item.isAdult || (pin && isAdultUnlocked));
@@ -31,8 +34,8 @@ const MediaTabs = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color="#FFF" />
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -41,8 +44,8 @@ const MediaTabs = () => {
 
   if (totalCount === 0) {
     return (
-      <View style={styles.centeredContainer}>
-        <Text style={styles.emptyText}>{t('emptyProfile')}</Text>
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('emptyProfile')}</Text>
       </View>
     );
   }
@@ -54,16 +57,18 @@ const MediaTabs = () => {
     <Drawer.Navigator
       screenOptions={{
         drawerStyle: {
-          backgroundColor: '#222',
+          backgroundColor: colors.card,
           width: isTV ? 240 : 200,
+          borderRightWidth: 1,
+          borderRightColor: colors.divider,
         },
         drawerType: isTV ? 'permanent' : 'front',
         headerShown: !isTV,
-        headerStyle: { backgroundColor: '#1A1A1A' },
-        headerTintColor: '#FFF',
-        drawerActiveTintColor: '#FFF',
-        drawerInactiveTintColor: '#888',
-        sceneContainerStyle: { backgroundColor: '#121212' },
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        drawerActiveTintColor: colors.primary,
+        drawerInactiveTintColor: colors.textSecondary,
+        sceneContainerStyle: { backgroundColor: colors.background },
       }}
     >
       {safeChannels.length > 0 && (
@@ -101,12 +106,18 @@ const MediaTabs = () => {
           options={{ title: `${t('recent')} (${recentlyWatched.length})` }}
         />
       )}
+      <Drawer.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: 'Settings' }}
+      />
     </Drawer.Navigator>
   );
 };
 
 const HomeScreen = () => {
   const { t } = useTranslation();
+  const { colors } = useSettings();
   const { currentProfile, unloadProfile, profiles, loadProfile, channels, movies, series, pin } = useIPTV();
   const navigation = useNavigation<any>();
 
@@ -136,43 +147,42 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {currentProfile ? (
-        <View style={styles.container}>
-          <View style={styles.header}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
             <Picker
               selectedValue={currentProfile.id}
               onValueChange={(itemValue) => onProfileChange(itemValue)}
-              style={styles.picker}
-              dropdownIconColor="#FFF"
+              style={[styles.picker, { backgroundColor: colors.card, color: colors.text }]}
+              dropdownIconColor={colors.text}
             >
               {profiles.map((profile: IPTVProfile) => (
                 <Picker.Item
                   key={profile.id}
                   label={profile.name}
                   value={profile.id}
-                  color="#FFF"
+                  color={Platform.OS === 'ios' ? colors.text : undefined} // picker item color handling depends on OS
                 />
               ))}
               <Picker.Item
                 key="pin"
                 label={t('pinControl')}
                 value="pin_setup"
-                color="#F55"
+                color={colors.error}
               />
               <Picker.Item
                 key="logout"
                 label={t('manageProfiles')}
                 value={null}
-                color="#AAA"
+                color={colors.textSecondary}
               />
             </Picker>
           </View>
-          <HeroBanner />
           <MediaTabs />
         </View>
       ) : (
-        <PlaylistManager />
+        <WelcomeScreen />
       )}
     </SafeAreaView>
   );

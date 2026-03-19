@@ -7,11 +7,13 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Channel } from '../types';
 import { findCurrentProgram } from '../utils/epgUtils';
+import { useSettings } from '../context/SettingsContext';
 
 const defaultLogo = require('../assets/icon.png');
 
 const ChannelList = () => {
   const { channels, playStream, isLoading, error, pin, isAdultUnlocked, epg, loadEPG } = useIPTV();
+  const { colors } = useSettings();
   const navigation = useNavigation();
 
   React.useEffect(() => {
@@ -58,22 +60,35 @@ const ChannelList = () => {
 
     return (
       <TouchableOpacity
-        style={styles.channelItem}
+        style={[styles.channelItem, { borderBottomColor: colors.divider }]}
         onPress={() => handleChannelPress(item)}
       >
-        <Image
-          style={styles.logo}
-          source={item.logo ? { uri: item.logo } : defaultLogo}
-          defaultSource={defaultLogo}
-          resizeMode="contain"
-        />
+        <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
+          <Image
+            style={styles.logo}
+            source={item.logo ? { uri: item.logo } : defaultLogo}
+            defaultSource={defaultLogo}
+            resizeMode="contain"
+          />
+        </View>
         <View style={styles.channelInfo}>
-          <Text style={styles.channelName}>{item.name}</Text>
-          {currentProgram && (
-            <Text style={styles.epgText} numberOfLines={1}>
-              {currentProgram.start.getHours().toString().padStart(2, '0')}:{currentProgram.start.getMinutes().toString().padStart(2, '0')} - {currentProgram.title}
-            </Text>
-          )}
+          <Text style={[styles.channelName, { color: colors.text }]} numberOfLines={2}>
+            {item.name}
+          </Text>
+        </View>
+        <View style={[styles.epgContainer, { borderBottomColor: colors.divider }]}>
+            {currentProgram ? (
+              <View style={[styles.epgBlock, { backgroundColor: colors.primary + '4D', borderColor: colors.primary }]}>
+                <Text style={[styles.epgTitle, { color: '#FFF' }]} numberOfLines={1}>
+                  {currentProgram.title}
+                </Text>
+                <Text style={[styles.epgTime, { color: colors.textSecondary }]}>
+                  {currentProgram.start.getHours().toString().padStart(2, '0')}:{currentProgram.start.getMinutes().toString().padStart(2, '0')} - {currentProgram.end.getHours().toString().padStart(2, '0')}:{currentProgram.end.getMinutes().toString().padStart(2, '0')}
+                </Text>
+              </View>
+            ) : (
+              <Text style={{ color: colors.textSecondary, marginLeft: 16 }}>No EPG Data</Text>
+            )}
         </View>
       </TouchableOpacity>
     );
@@ -81,42 +96,41 @@ const ChannelList = () => {
 
   // Rendu de l'en-tête de section (ex: "France HD")
   const renderSectionHeader = ({ section: { title } }: { section: { title: string } }) => (
-    <Text style={styles.header}>{title}</Text>
+    <Text style={[styles.header, { backgroundColor: colors.surface, color: colors.text }]}>{title}</Text>
   );
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#FFF" />
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <Text style={styles.errorText}>Error: {error}</Text>
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>Error: {error}</Text>
       </View>
     );
   }
 
   if (channels.length === 0) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <Text style={styles.emptyText}>Aucune chaîne trouvée dans ce profil.</Text>
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Aucune chaîne trouvée dans ce profil.</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* On remplace FlatList par SectionList */}
       <SectionList
         sections={groupedData}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
         keyExtractor={(item) => item.id + item.url}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
         stickySectionHeadersEnabled={true} // En-têtes collants
       />
     </View>
@@ -149,32 +163,54 @@ const styles = StyleSheet.create({
   },
   channelItem: {
     flexDirection: 'row',
-    padding: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     alignItems: 'center',
+    borderBottomWidth: 1,
+  },
+  logoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   logo: {
-    width: 50,
-    height: 50,
-    marginRight: 15,
-    backgroundColor: '#333',
-    borderRadius: 8,
+    width: '100%',
+    height: '100%',
   },
   channelInfo: {
     flex: 1,
+    marginLeft: 12,
+    maxWidth: 200,
   },
   channelName: {
-    color: '#FFF',
+    fontWeight: 'bold',
     fontSize: 16,
   },
-  epgText: {
-    color: '#AAA',
-    fontSize: 12,
-    marginTop: 4,
+  epgContainer: {
+    flex: 2,
+    height: 60,
+    justifyContent: 'center',
+    borderLeftWidth: 1,
+    paddingLeft: 16,
+    marginLeft: 16,
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#333',
-    marginLeft: 75,
+  epgBlock: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  epgTitle: {
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  epgTime: {
+    fontSize: 10,
+    marginTop: 2,
   },
 });
 
