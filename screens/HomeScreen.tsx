@@ -42,7 +42,7 @@ const MediaTabs = () => {
   if (totalCount === 0) {
     return (
       <View style={styles.centeredContainer}>
-        <Text style={styles.emptyText}>Ce profil est vide ou n'a pas pu être analysé.</Text>
+        <Text style={styles.emptyText}>{t('emptyProfile')}</Text>
       </View>
     );
   }

@@ -29,7 +29,7 @@ const SplashScreen = () => {
         videoRef.current?.loadAsync({ uri: asset.uri }, { shouldPlay: true });
 
       } catch (e) {
-        console.error("Erreur de chargement de l'asset vidéo, navigation...", e);
+        console.error("Error loading video asset, navigating...", e);
 
         navigation.replace('Home');
       }
