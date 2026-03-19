@@ -32,6 +32,8 @@ jobs:
         run: pnpm install
       - name: Prebuild Android
         run: npx expo prebuild --platform android
+      - name: Configure Gradle Memory
+        run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
       - name: Build APK
         run: |
           cd android
