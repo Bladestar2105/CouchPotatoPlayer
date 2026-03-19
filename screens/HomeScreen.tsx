@@ -9,6 +9,8 @@ import { Picker } from '@react-native-picker/picker';
 import { useTranslation } from 'react-i18next';
 import { IPTVProfile } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { ScrollView } from 'react-native-gesture-handler';
 
 import WelcomeScreen from './WelcomeScreen';
 import ChannelList from '../components/ChannelList';
@@ -52,15 +54,17 @@ const MediaTabs = () => {
 
   const dimensions = useWindowDimensions();
   const isTV = dimensions.width >= 768;
+  const { profiles, currentProfile, loadProfile } = useIPTV();
+  const navigation = useNavigation<any>();
 
   return (
     <Drawer.Navigator
       screenOptions={{
         drawerStyle: {
-          backgroundColor: colors.card,
+          backgroundColor: '#1C1C1E',
           width: isTV ? 240 : 200,
           borderRightWidth: 1,
-          borderRightColor: colors.divider,
+          borderRightColor: '#2C2C2E',
         },
         drawerType: isTV ? 'permanent' : 'front',
         headerShown: !isTV,
@@ -68,7 +72,85 @@ const MediaTabs = () => {
         headerTintColor: colors.text,
         drawerActiveTintColor: colors.primary,
         drawerInactiveTintColor: colors.textSecondary,
-        sceneContainerStyle: { backgroundColor: colors.background },
+      }}
+      drawerContent={(props) => {
+        const { state, descriptors, navigation } = props;
+        return (
+          <View style={{ flex: 1, backgroundColor: '#1C1C1E' }}>
+            <ScrollView style={{ flex: 1 }}>
+              <View style={{ padding: 16, paddingTop: Platform.OS === 'ios' ? 40 : 16 }}>
+                <Text style={{ color: '#888', fontSize: 12, marginBottom: 8, textTransform: 'uppercase', fontWeight: 'bold' }}>MENU</Text>
+                {state.routes.map((route, index) => {
+                  const { options } = descriptors[route.key];
+                  const label = options.title !== undefined ? options.title : route.name;
+                  const isFocused = state.index === index;
+
+                  const onPress = () => {
+                    if (!isFocused) {
+                      navigation.navigate(route.name);
+                    }
+                  };
+
+                  let icon: any = 'dns';
+                  if (route.name === 'Channels') icon = 'tv';
+                  if (route.name === 'Movies') icon = 'movie';
+                  if (route.name === 'Series') icon = 'list';
+                  if (route.name === 'Favorites') icon = 'favorite';
+                  if (route.name === 'Recent') icon = 'history';
+                  if (route.name === 'Settings') icon = 'settings';
+
+                  return (
+                    <TouchableOpacity
+                      key={route.key}
+                      onPress={onPress}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: isFocused ? 'rgba(0, 122, 255, 0.3)' : 'transparent',
+                        borderRadius: 8,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Icon name={icon as any} size={24} color={isFocused ? '#FFF' : '#888'} />
+                      <Text style={{ color: isFocused ? '#FFF' : '#888', marginLeft: 16, fontWeight: isFocused ? 'bold' : 'normal' }}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
+                <Text style={{ color: '#888', fontSize: 12, marginBottom: 8, textTransform: 'uppercase', fontWeight: 'bold' }}>PROVIDERS</Text>
+
+                {profiles.map(p => {
+                  const isCurrent = currentProfile?.id === p.id;
+                  return (
+                    <TouchableOpacity
+                      key={p.id}
+                      onPress={() => loadProfile(p)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: isCurrent ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                        borderRadius: 8,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Icon name={(p.icon || 'dns').replace('-', '_') as any} size={24} color={isCurrent ? '#FFF' : '#888'} />
+                      <Text style={{ color: isCurrent ? '#FFF' : '#888', marginLeft: 16, fontWeight: isCurrent ? 'bold' : 'normal' }}>
+                        {p.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        );
       }}
     >
       {safeChannels.length > 0 && (

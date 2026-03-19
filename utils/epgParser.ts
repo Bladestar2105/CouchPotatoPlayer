@@ -19,6 +19,7 @@ export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProg
     const parser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '@_',
+      processEntities: false,
     });
 
     const parsed = parser.parse(xmlData);

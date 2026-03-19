@@ -1,33 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useIPTV } from '../context/IPTVContext';
 
 const VideoPlayer = () => {
-
-  // On lit 'currentStream' au lieu de 'currentChannel'
   const { currentStream } = useIPTV();
 
-  const videoRef = React.useRef(null);
+  const player = useVideoPlayer(currentStream?.url || null, player => {
+    player.loop = false;
+    player.play();
+  });
 
   return (
     <View style={styles.container}>
-      {/* On vérifie 'currentStream' */}
       {currentStream ? (
-        <Video
-          // On utilise la 'key' de 'currentStream'
+        <VideoView
           key={currentStream.id}
-          ref={videoRef}
           style={styles.video}
-          // On utilise l'URL de 'currentStream'
-          source={{ uri: currentStream.url }}
-
-          useNativeControls
-
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay // Démarre la lecture automatiquement
-          isMuted={false}
-          volume={1.0}
+          player={player}
+          allowsFullscreen
+          allowsPictureInPicture
+          nativeControls
         />
       ) : (
         <View style={styles.placeholder}>

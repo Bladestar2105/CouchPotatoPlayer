@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 const WelcomeScreen = () => {
   const { addProfile, loadProfile } = useIPTV();
@@ -15,6 +16,11 @@ const WelcomeScreen = () => {
   const [epgUrl, setEpgUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState('dns');
+
+  const predefinedIcons = [
+    'tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business'
+  ];
 
   const handleLogin = async () => {
     if (!name || !serverUrl) {
@@ -38,6 +44,7 @@ const WelcomeScreen = () => {
           type: 'm3u',
           url: serverUrl,
           epgUrl: epgUrl || undefined,
+          icon: selectedIcon,
         };
       } else {
         newProfile = {
@@ -47,6 +54,7 @@ const WelcomeScreen = () => {
           url: serverUrl,
           username,
           password,
+          icon: selectedIcon,
         };
       }
 
@@ -86,6 +94,24 @@ const WelcomeScreen = () => {
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <View style={{ width: '100%', marginBottom: 12 }}>
+             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Select Icon:</Text>
+             <View style={styles.iconContainer}>
+               {predefinedIcons.map((iconName) => (
+                 <TouchableOpacity
+                   key={iconName}
+                   style={[
+                     styles.iconWrapper,
+                     selectedIcon === iconName && { backgroundColor: 'rgba(0, 122, 255, 0.3)', borderColor: colors.primary }
+                   ]}
+                   onPress={() => setSelectedIcon(iconName)}
+                 >
+                   <Icon name={iconName.replace('-', '_') as any} size={24} color={selectedIcon === iconName ? colors.primary : '#FFF'} />
+                 </TouchableOpacity>
+               ))}
+             </View>
+          </View>
 
           {/* Inputs */}
           <TextInput
@@ -228,6 +254,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
+  },
+  inputLabel: {
+    width: '100%',
+    textAlign: 'left',
+    marginBottom: 8,
+  },
+  iconContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    width: '100%',
+  },
+  iconWrapper: {
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#3C3C3E',
+    backgroundColor: 'transparent',
   },
 });
 

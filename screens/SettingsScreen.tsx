@@ -51,24 +51,27 @@ const SettingsScreen = () => {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Providers</Text>
-        {profiles.map(p => (
-          <View key={p.id} style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>{p.name}</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{(p.type === 'm3u' || p.type === 'xtream') ? p.url : p.type === 'stalker' ? p.portalUrl : ''}</Text>
-            </View>
-            <View style={styles.tileRight}>
-              {p.id !== currentProfile?.id && (
-                <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton}>
-                  <Text style={{ color: colors.primary }}>Load</Text>
+        {profiles.map(p => {
+          const isCurrent = p.id === currentProfile?.id;
+          return (
+            <View key={p.id} style={[styles.tile, { backgroundColor: colors.card, borderColor: isCurrent ? colors.primary : colors.divider, borderWidth: isCurrent ? 2 : 1 }]}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: isCurrent ? colors.primary : colors.text, fontWeight: isCurrent ? 'bold' : 'normal' }]}>{p.name}</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{(p.type === 'm3u' || p.type === 'xtream') ? p.url : p.type === 'stalker' ? p.portalUrl : ''}</Text>
+              </View>
+              <View style={styles.tileRight}>
+                {!isCurrent && (
+                  <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton}>
+                    <Text style={{ color: colors.primary }}>Load</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton}>
+                  <Text style={{ color: colors.error }}>Delete</Text>
                 </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton}>
-                <Text style={{ color: colors.error }}>Delete</Text>
-              </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       <View style={styles.section}>

@@ -68,7 +68,7 @@ const RecentlyWatchedList = () => {
     <View style={styles.container}>
       <FlatList
         data={recentItems}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: any) => item.id}
         renderItem={renderItem}
         numColumns={3}
         contentContainerStyle={styles.listContainer}
