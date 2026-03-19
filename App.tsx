@@ -43,7 +43,7 @@ const App = () => {
             <Stack.Screen
               name="Home"
               component={HomeScreen}
-              options={{ title: 'Mes Profils IPTV' }}
+              options={{ title: 'My IPTV Profiles / Meine IPTV-Profile' }}
             />
             <Stack.Screen
               name="Player"
@@ -63,7 +63,7 @@ const App = () => {
             <Stack.Screen
               name="PinSetup"
               component={PinSetupScreen}
-              options={{ title: 'Contrôle Parental' }}
+              options={{ title: 'Parental Control / Kindersicherung' }}
             />
           </Stack.Navigator>
         </NavigationContainer>

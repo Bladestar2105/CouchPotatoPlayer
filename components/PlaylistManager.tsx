@@ -45,13 +45,13 @@ const PlaylistManager = () => {
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      Alert.alert("Erreur", "Veuillez remplir le nom du profil");
+      Alert.alert("Error / Fehler", "Please fill in the profile name / Bitte geben Sie den Profilnamen ein");
       return;
     }
     let profileData: IPTVProfile;
     if (profileType === 'm3u') {
       if (!url.trim()) {
-        Alert.alert("Erreur", "Veuillez remplir l'URL M3U");
+        Alert.alert("Error / Fehler", "Please fill in the M3U URL / Bitte geben Sie die M3U-URL ein");
         return;
       }
       profileData = {
@@ -60,7 +60,7 @@ const PlaylistManager = () => {
       };
     } else if (profileType === 'xtream') {
       if (!serverUrl.trim() || !username.trim()) {
-        Alert.alert("Erreur", "Veuillez remplir le Serveur et l'Utilisateur");
+        Alert.alert("Error / Fehler", "Please fill in the Server and Username / Bitte geben Sie den Server und Benutzernamen ein");
         return;
       }
       profileData = {
@@ -68,13 +68,13 @@ const PlaylistManager = () => {
         name, type: 'xtream', serverUrl, username, password,
       };
     } else {
-      Alert.alert("Erreur", "Type de profil non supporté");
+      Alert.alert("Error / Fehler", "Unsupported profile type / Nicht unterstützter Profiltyp");
       return;
     }
 
     if (editingProfile) {
       editProfile(profileData);
-      Alert.alert("Succès", `Profil "${name}" mis à jour.`);
+      Alert.alert("Success / Erfolg", `Profil "${name}" mis à jour.`);
     } else {
       addProfile(profileData);
     }
@@ -83,7 +83,7 @@ const PlaylistManager = () => {
 
   const startEditing = (profile: IPTVProfile) => {
     if (profile.type === 'stalker') {
-      Alert.alert("Non supporté", "L'édition des profils Stalker n'est pas encore implémentée.");
+      Alert.alert("Unsupported / Nicht unterstützt", "Editing Stalker profiles is not yet implemented. / Das Bearbeiten von Stalker-Profilen ist noch nicht implementiert.");
       return;
     }
     setEditingProfile(profile);
@@ -97,13 +97,13 @@ const PlaylistManager = () => {
 
   const handleLoadProfile = (profile: IPTVProfile) => {
     if (isLoading) return;
-    console.log("Chargement du profil:", profile.name);
+    console.log("Loading profile: / Lade Profil:", profile.name);
     loadProfile(profile);
   };
 
   const handleDeleteProfile = (profile: IPTVProfile) => {
-    Alert.alert( "Supprimer le profil", `Êtes-vous sûr de vouloir supprimer "${profile.name}" ?`,
-      [ { text: "Annuler", style: "cancel" }, { text: "Supprimer", style: "destructive", onPress: () => removeProfile(profile.id) } ]
+    Alert.alert( "Delete Profile / Profil löschen", `Êtes-vous sûr de vouloir supprimer "${profile.name}" ?`,
+      [ { text: "Cancel / Abbrechen", style: "cancel" }, { text: "Delete / Löschen", style: "destructive", onPress: () => removeProfile(profile.id) } ]
     );
   };
 
@@ -115,10 +115,10 @@ const PlaylistManager = () => {
       </View>
       <View style={styles.profileActions}>
         <TouchableOpacity style={[styles.actionButton, styles.loadButton]} onPress={() => handleLoadProfile(item)} disabled={isLoading}>
-          <Text style={styles.actionButtonText}>Charger</Text>
+          <Text style={styles.actionButtonText}>Load / Laden</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.actionButton, styles.editButton]} onPress={() => startEditing(item)}>
-          <Text style={styles.actionButtonText}>Éditer</Text>
+          <Text style={styles.actionButtonText}>Edit / Bearbeiten</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={() => handleDeleteProfile(item)}>
           <Text style={styles.actionButtonText}>X</Text>
@@ -129,9 +129,9 @@ const PlaylistManager = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{editingProfile ? "Modifier le Profil" : "Ajouter un Profil"}</Text>
+      <Text style={styles.title}>{editingProfile ? "Edit Profile / Profil bearbeiten" : "Add Profile / Profil hinzufügen"}</Text>
 
-      <Text style={styles.label}>Type de Profil</Text>
+      <Text style={styles.label}>Profile Type / Profiltyp</Text>
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={profileType}
@@ -147,10 +147,10 @@ const PlaylistManager = () => {
         </Picker>
       </View>
 
-      <Text style={styles.label}>Nom du Profil</Text>
+      <Text style={styles.label}>Profile Name / Profilname</Text>
       <TextInput
         style={styles.input}
-        placeholder="Ex: Mon FAI"
+        placeholder="Ex: My ISP / Bsp: Mein ISP"
         value={name}
         onChangeText={setName}
         placeholderTextColor="#888"
@@ -159,42 +159,42 @@ const PlaylistManager = () => {
 
       {profileType === 'm3u' && (
         <>
-          <Text style={styles.label}>URL M3U</Text>
+          <Text style={styles.label}>M3U URL</Text>
           <TextInput style={styles.input} placeholder="http://..." value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" />
         </>
       )}
 
       {profileType === 'xtream' && (
         <>
-          <Text style={styles.label}>URL du Serveur (avec http:// et port)</Text>
+          <Text style={styles.label}>Server URL (with http:// and port) / Server-URL (mit http:// und Port)</Text>
           <TextInput style={styles.input} placeholder="http://domaine.com:80" value={serverUrl} onChangeText={setServerUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" />
-          <Text style={styles.label}>Nom d'utilisateur</Text>
-          <TextInput style={styles.input} placeholder="Utilisateur" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#888" />
-          <Text style={styles.label}>Mot de passe</Text>
-          <TextInput style={styles.input} placeholder="Mot de passe" value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholderTextColor="#888" />
+          <Text style={styles.label}>Username / Benutzername</Text>
+          <TextInput style={styles.input} placeholder="Username / Benutzername" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#888" />
+          <Text style={styles.label}>Password / Passwort</Text>
+          <TextInput style={styles.input} placeholder="Password / Passwort" value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholderTextColor="#888" />
         </>
       )}
 
       <View style={styles.formButtons}>
-        <Button title={editingProfile ? "Sauvegarder" : "Ajouter"} onPress={handleSubmit} />
-        {editingProfile && (<Button title="Annuler" onPress={cancelEdit} color="#FF3B30" />)}
+        <Button title={editingProfile ? "Save / Speichern" : "Add / Hinzufügen"} onPress={handleSubmit} />
+        {editingProfile && (<Button title="Cancel / Abbrechen" onPress={cancelEdit} color="#FF3B30" />)}
       </View>
 
       <View style={styles.divider} />
-      <Text style={styles.title}>Profils Sauvegardés</Text>
+      <Text style={styles.title}>Saved Profiles / Gespeicherte Profile</Text>
 
       {isLoading && !currentProfile && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Chargement en cours...</Text>
+          <Text style={styles.loadingText}>Loading... / Wird geladen...</Text>
         </View>
       )}
-      {error && <Text style={styles.errorText}>Erreur: {error}</Text>}
+      {error && <Text style={styles.errorText}>Error / Fehler: {error}</Text>}
       <FlatList
         data={profiles}
         renderItem={renderProfileItem}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={ !isLoading ? <Text style={styles.emptyText}>Aucun profil sauvegardé.</Text> : null }
+        ListEmptyComponent={ !isLoading ? <Text style={styles.emptyText}>No saved profiles. / Keine gespeicherten Profile.</Text> : null }
       />
     </View>
   );
@@ -240,6 +240,7 @@ const styles = StyleSheet.create({
     height: 44,
     width: '100%',
     color: '#FFF', // Couleur du texte SÉLECTIONNÉ
+    backgroundColor: '#222',
   },
   formButtons: {
     flexDirection: 'row',

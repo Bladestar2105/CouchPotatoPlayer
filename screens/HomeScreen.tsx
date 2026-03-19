@@ -52,7 +52,7 @@ const MediaTabs = () => {
     <Drawer.Navigator
       screenOptions={{
         drawerStyle: {
-          backgroundColor: '#1A1A1A',
+          backgroundColor: '#222',
           width: isTV ? 240 : 200,
         },
         drawerType: isTV ? 'permanent' : 'front',
@@ -66,37 +66,37 @@ const MediaTabs = () => {
     >
       {safeChannels.length > 0 && (
         <Drawer.Screen
-          name="Chaînes"
+          name="Channels / Sender"
           component={ChannelList}
-          options={{ title: `Chaînes (${safeChannels.length})` }}
+          options={{ title: `Channels/Sender (${safeChannels.length})` }}
         />
       )}
       {safeMovies.length > 0 && (
         <Drawer.Screen
-          name="Films"
+          name="Movies / Filme"
           component={MovieList}
-          options={{ title: `Films (${safeMovies.length})` }}
+          options={{ title: `Movies/Filme (${safeMovies.length})` }}
         />
       )}
       {safeSeries.length > 0 && (
         <Drawer.Screen
-          name="Séries"
+          name="Series / Serien"
           component={SeriesList}
-          options={{ title: `Séries (${safeSeries.length})` }}
+          options={{ title: `Series/Serien (${safeSeries.length})` }}
         />
       )}
       {favorites.length > 0 && (
         <Drawer.Screen
-          name="Favoris"
+          name="Favorites / Favoriten"
           component={FavoritesList}
-          options={{ title: `Favoris (${favorites.length})` }}
+          options={{ title: `Favorites/Favoriten (${favorites.length})` }}
         />
       )}
       {recentlyWatched.length > 0 && (
         <Drawer.Screen
-          name="Récents"
+          name="Recent / Kürzlich"
           component={RecentlyWatchedList}
-          options={{ title: `Récents (${recentlyWatched.length})` }}
+          options={{ title: `Recent/Kürzlich (${recentlyWatched.length})` }}
         />
       )}
     </Drawer.Navigator>
@@ -118,7 +118,7 @@ const HomeScreen = () => {
     }
     const selectedProfile = profiles.find(p => p.id === profileId);
     if (selectedProfile && selectedProfile.id !== currentProfile?.id) {
-      console.log("Changement de profil via le menu...", selectedProfile.name);
+      console.log("Changing profile via menu... / Profilwechsel über das Menü...", selectedProfile.name);
       loadProfile(selectedProfile);
     }
   };
@@ -139,20 +139,20 @@ const HomeScreen = () => {
                   key={profile.id}
                   label={profile.name}
                   value={profile.id}
-                  color={Platform.OS === 'android' ? '#000' : '#FFF'}
+                  color="#FFF"
                 />
               ))}
               <Picker.Item
                 key="pin"
-                label="Contrôle Parental (PIN)"
+                label="Parental Control (PIN) / Kindersicherung (PIN)"
                 value="pin_setup"
-                color={Platform.OS === 'android' ? '#F00' : '#F55'}
+                color="#F55"
               />
               <Picker.Item
                 key="logout"
-                label="Gérer les profils (Déconnexion)"
+                label="Manage Profiles (Logout) / Profile verwalten (Abmelden)"
                 value={null}
-                color={Platform.OS === 'android' ? '#555' : '#AAA'}
+                color="#AAA"
               />
             </Picker>
           </View>
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
     color: '#FFF',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#222',
   },
   centeredContainer: {
     flex: 1,
