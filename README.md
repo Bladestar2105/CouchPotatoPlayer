@@ -138,7 +138,20 @@ Deploying directly from the repository avoids copy-paste errors (such as missing
 1.  Open your Portainer dashboard.
 2.  Go to **Stacks** and click **Add stack**.
 3.  Name the stack (e.g., `couchpotatoplayer`).
-4.  Copy and paste the contents of `docker-compose.yml` into the Web editor. *(Be careful not to miss any characters when copying!)*
+4.  Copy and paste the following contents into the Web editor:
+```yml
+version: '3.8'
+
+services:
+  couchpotatoplayer:
+    image: ghcr.io/bladestar2105/couchpotatoplayer-web:latest
+    container_name: couchpotatoplayer
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+```
 5.  Click **Deploy the stack**.
 
 The application will be accessible on port `8080` (e.g., `http://localhost:8080`).
