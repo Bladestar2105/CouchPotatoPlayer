@@ -1,46 +1,35 @@
-# Stage 1: Build the Flutter web app
-FROM debian:bullseye-slim AS build
+# Use an official Node.js runtime as a build environment
+FROM node:20-alpine AS build
 
-# Install dependencies for Flutter
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    unzip \
-    xz-utils \
-    zip \
-    libglu1-mesa \
-    && rm -rf /var/lib/apt/lists/*
-
-# Clone Flutter repository
-RUN git clone https://github.com/flutter/flutter.git /usr/local/flutter -b stable
-
-# Set Flutter path
-ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
-
-# Run flutter doctor to setup
-RUN flutter doctor -v
-
-# Set working directory
+# Set the working directory
 WORKDIR /app
 
-# Copy the app files
+# Copy package.json and pnpm lockfile
+COPY package*.json pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies (ignoring pure React Native / native issues since we just build web)
+RUN pnpm install
+
+# Copy the rest of the application code
 COPY . .
 
-# Get packages and build for web
-RUN flutter pub get
-RUN flutter build web --release
+# In a React Native Expo project, these specific web dependencies are needed for export.
+RUN pnpm add react-dom react-native-web @expo/metro-runtime
 
-# Stage 2: Serve the app with NGINX
+# Build the web export
+RUN npx expo export -p web
+
+# Use a lightweight web server to serve the static files
 FROM nginx:alpine
 
-# Copy the custom NGINX configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy the built bundle to the NGINX html directory
-COPY --from=build /app/build/web /usr/share/nginx/html
+# Copy the built output from the build stage to Nginx's html directory
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # Expose port 80
 EXPOSE 80
 
-# Start NGINX
+# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]

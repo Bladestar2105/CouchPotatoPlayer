@@ -1,8 +1,11 @@
+version: '3.8'
+
 services:
   couchpotatoplayer:
-    image: ghcr.io/bladestar2105/couchpotatoplayer:latest
+    image: ghcr.io/bladestar2105/couchpotatoplayer-web:latest
     container_name: couchpotatoplayer
-    pull_policy: always
     ports:
       - "8080:80"
     restart: unless-stopped
+    environment:
+      - NODE_ENV=production

@@ -5,6 +5,3 @@
 ## 2024-10-25 - [Optimize EPG program lookups with binary search]
 **Learning:** Finding the current program using a linear O(N) search (e.g., `findIndex`) can be a bottleneck when dealing with large, sorted EPG arrays, especially when the search is executed frequently (like in rendering intervals or for multiple channels).
 **Action:** Use binary search utilities like `findCurrentProgramIndex` (which provides O(log N) complexity) instead of linear array methods (`findIndex`, `find`) for lookups on time-sorted program lists.
-## 2025-03-15 - [Use compute() for heavy XMLTV parsing in Flutter]
-**Learning:** Parsing large XMLTV EPG files using `XmlDocument.parse` blocks the main UI thread in Flutter, causing severe jank and unresponsive UI during the initial load or EPG update.
-**Action:** Offload heavy string manipulation and XML parsing to a background isolate using Flutter's `compute()` function to ensure the main thread remains free for rendering.

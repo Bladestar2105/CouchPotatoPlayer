@@ -1,297 +1,178 @@
-# CouchPotatoPlayer
+# CouchPotatoPlayer: A React Native IPTV Player
 
-**Project Status:** 100% Migrated from React Native to Flutter!
+[![Build Apps](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml/badge.svg)](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml)
 
-CouchPotatoPlayer is a modern application migrated entirely to Flutter. It provides a seamless viewing experience across multiple platforms, including Android, Android TV, iOS, tvOS, and Web.
+![Project Header Image](./assets/images/header.jpg)
 
-## Getting Started
-
-### Prerequisites
-
-- [Flutter SDK](https://docs.flutter.dev/get-started/install)
-- For iOS/tvOS: macOS with Xcode installed.
-- For Android/Android TV: Android Studio or Android SDK installed.
-- For Web/Docker: Docker installed.
-
-### Build Instructions
-
-#### Android & Android TV
-
-To build the APK for Android or Android TV, run:
-
-```bash
-flutter pub get
-flutter build apk --release
-```
-
-The output APK will be located at `build/app/outputs/flutter-apk/app-release.apk`.
-
-#### iOS
-
-To build the application for iOS, run:
-
-```bash
-flutter pub get
-flutter build ios --release
-```
-
-You can then open `ios/Runner.xcworkspace` in Xcode to deploy it to a device or simulator.
+This is an open-source IPTV player for iOS, tvOS, Android, Android TV, and Web built with React Native and Expo.
 
 ---
 
-## tvOS (Apple TV) Build Instructions
+## 🏗 Architecture & Limitations
 
-Building for tvOS requires a **custom Flutter engine** because official Flutter does not support Apple TV. This project uses a custom engine from the [DenisovAV/flutter_tv](https://github.com/DenisovAV/flutter_tv) project.
+**IMPORTANT: EXPO GO IS NOT SUPPORTED**
 
-### Prerequisites for tvOS
+This project relies on native video player libraries (e.g., `react-native-vlc-media-player`, `react-native-video`) to handle complex streaming protocols (like Xtream codes) and codecs that the standard Expo `av` package struggles with.
 
-1. **macOS** with Apple Silicon (M1/M2/M3) or Intel
-2. **Xcode 16+** (Xcode 16.4 recommended)
-3. **CocoaPods** installed (`sudo gem install cocoapods`)
-4. **Flutter SDK** (version matching the custom engine - currently **3.35.7**)
+Because of these native code dependencies, **you cannot run this project using the standard Expo Go app.**
 
-### Step 1: Download the Custom Flutter Engine
-
-The custom engine consists of two ZIP files that must be downloaded and extracted:
-
-| Engine Component | Download URL |
-|-----------------|--------------|
-| Host Tools (ARM64) | `https://oc.bw.tech/s/utLzZGcszpqvX5a/download` |
-| iOS Release Engine | `https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download` |
-
-Create an `out` directory in your project root and extract both archives:
-
-```bash
-# From the project root
-mkdir -p out
-
-# Download the engine files
-curl -L -o out/host_release_arm64.zip https://oc.bw.tech/s/utLzZGcszpqvX5a/download
-curl -L -o out/ios_release.zip https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download
-
-# Extract them
-unzip -q out/host_release_arm64.zip -d out/
-unzip -q out/ios_release.zip -d out/
-
-# Create symlink for gen_snapshot_arm64 (required by build scripts)
-ln -s gen_snapshot out/ios_release/clang_x64/gen_snapshot_arm64
-```
-
-After extraction, your `out` directory should contain:
-
-```
-out/
-├── host_release_arm64/     # Host tools for ARM64 Mac
-│   ├── dart-sdk/
-│   ├── frontend_server_aot_product.dart.snapshot
-│   └── ...
-├── ios_release/            # iOS/tvOS engine
-│   ├── Flutter.framework/
-│   ├── Flutter.xcframework/
-│   │   └── tvos-arm64/Flutter.framework/  # tvOS-specific framework
-│   ├── clang_x64/
-│   │   └── gen_snapshot -> gen_snapshot_arm64
-│   └── ...
-├── host_release_arm64.zip  # (can be deleted)
-└── ios_release.zip         # (can be deleted)
-```
-
-### Step 2: Build for tvOS
-
-#### Option A: Quick Build Script (Recommended)
-
-Use the provided script to set up everything automatically:
-
-```bash
-# For release build (for Apple TV device)
-./scripts/run_apple_tv.sh release
-
-# For debug build with Apple TV Simulator (ARM64 Mac)
-./scripts/run_apple_tv.sh debug_sim_arm64
-
-# For debug build with Apple TV Simulator (Intel Mac)
-./scripts/run_apple_tv.sh debug_sim
-```
-
-The script will:
-1. Switch the project to tvOS target
-2. Install Flutter dependencies
-3. Run CocoaPods
-4. Copy the correct Flutter.framework
-5. Open Xcode workspace
-
-#### Option B: Manual Build Steps
-
-If you prefer to build manually:
-
-```bash
-# 1. Set the engine path
-export FLUTTER_LOCAL_ENGINE="$PWD"
-
-# 2. Generate iOS configuration first
-flutter clean
-flutter pub get
-flutter build ios --config-only --no-codesign
-
-# 3. Switch to tvOS target
-sh scripts/switch_target.sh tvos
-
-# 4. Copy tvOS Flutter.framework
-cp -r out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework ios/Flutter/
-
-# 5. Patch pub-cache for tvOS compatibility
-ruby scripts/patch_tvos_pods.rb
-
-# 6. Patch media_kit frameworks for tvOS platform tag
-FRAMEWORKS_DIR="$HOME/.pub-cache/hosted/pub.dev/media_kit_libs_ios_video-1.1.4/ios/Frameworks"
-if [ -d "$FRAMEWORKS_DIR" ]; then
-  find "$FRAMEWORKS_DIR" -path "*/ios-arm64/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
-    if file "$binary" | grep -q "Mach-O"; then
-      echo "Re-tagging for tvOS: $binary"
-      xcrun vtool -arch arm64 -set-build-version 3 15.0 18.0 -replace -output "${binary}.tvos" "$binary"
-      mv "${binary}.tvos" "$binary"
-    fi
-  done
-fi
-
-# 7. Install pods
-cd ios
-pod install
-
-# 8. Open Xcode
-open Runner.xcworkspace
-```
-
-### Step 3: Build in Xcode
-
-1. In Xcode, select the **Runner** scheme
-2. Choose your target:
-   - **Apple TV device**: Select "My Apple TV" or "Apple TV" from the device list
-   - **Apple TV Simulator**: Select "Apple TV" from the simulator list
-3. Click **Product → Build** (or press ⌘B)
-
-### Step 4: Deploy to Apple TV
-
-#### For Physical Apple TV Device
-
-1. Connect your Apple TV to the same network as your Mac
-2. In Xcode, go to **Window → Devices and Simulators**
-3. Add your Apple TV (it will appear automatically if on the same network)
-4. Enable **Developer Mode** on your Apple TV:
-   - Go to **Settings → Remotes and Devices → Remote App and Devices**
-   - Xcode will prompt you to pair
-5. Select your Apple TV in Xcode's device list
-6. Click **Run** (▶) to install and launch the app
-
-**Note:** For release builds to run on a physical device, you need:
-- An Apple Developer account (free or paid)
-- Your Apple TV registered in your developer account
-- Proper provisioning profile configured in Xcode
-
-#### For Apple TV Simulator
-
-1. In Xcode, select **Apple TV** from the simulator device list
-2. Click **Run** (▶) to launch the simulator
-
-### Troubleshooting tvOS Build Issues
-
-#### Building for tvOS Simulator vs Physical Device
-
-The CI workflow builds for **physical Apple TV device**. If you want to build for the **tvOS Simulator**, you need to also re-tag the simulator frameworks:
-
-```bash
-# Re-tag simulator frameworks for tvOS simulator
-FRAMEWORKS_DIR="$HOME/.pub-cache/hosted/pub.dev/media_kit_libs_ios_video-1.1.4/ios/Frameworks"
-if [ -d "$FRAMEWORKS_DIR" ]; then
-  find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
-    if file "$binary" | grep -q "Mach-O"; then
-      echo "Re-tagging for tvOS simulator: $binary"
-      xcrun vtool -arch arm64 -set-build-version 8 15.0 18.0 -replace -output "${binary}.tvos" "$binary" 2>/dev/null || true
-      if [ -f "${binary}.tvos" ]; then
-        mv "${binary}.tvos" "$binary"
-      fi
-    fi
-  done
-  # Re-sign after modifying
-  find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework" -type d | while read fw; do
-    codesign --force --sign - "$fw" 2>/dev/null || true
-  done
-fi
-```
-
-**Note:** For physical Apple TV device builds, the standard workflow already handles this. You only need the above if building for simulator.
-
-#### "No such module 'Flutter'"
-Ensure the `FLUTTER_LOCAL_ENGINE` environment variable is set correctly and the `out` directory contains the extracted engine files.
-
-#### "ld: building for 'tvOS', but linking in dylib built for 'iOS'"
-Run the `patch_tvos_pods.rb` script before `pod install`:
-```bash
-ruby scripts/patch_tvos_pods.rb
-```
-
-#### "framework 'Mpv' not found"
-The media_kit frameworks need to be re-tagged for tvOS. Run the vtool commands from Step 6 in the manual build process.
-
-#### CocoaPods Issues
-Try cleaning and reinstalling:
-```bash
-cd ios
-rm -rf Pods Podfile.lock
-pod install
-```
-
-#### Xcode Build Fails
-1. Clean the build folder: **Product → Clean Build Folder** (⇧⌘K)
-2. Delete derived data: **Xcode → Settings → Locations → Derived Data → Arrow icon → Delete Runner folder**
-3. Rebuild
-
-### Engine Types Reference
-
-| Engine Type | Description | Use Case |
-|-------------|-------------|----------|
-| `debug_sim` | Debug simulator (Intel Mac) | Testing on Apple TV Simulator on Intel Mac |
-| `debug_sim_arm64` | Debug simulator (ARM64 Mac) | Testing on Apple TV Simulator on M1/M2/M3 Mac |
-| `debug` | Debug device | Development on physical Apple TV |
-| `release` | Release device | Production builds for Apple TV |
-
-### CI/CD Builds
-
-The project includes GitHub Actions workflow that automatically builds tvOS on every push to main/master. The built `.app` file is uploaded as an artifact that you can download.
+You must build a **Custom Development Client** (Prebuild) for your target device or simulator.
 
 ---
 
-## Web (Docker)
+## 🛠 Prerequisites
 
-You can build and run the web version using Docker.
+Before compiling the app for any platform, ensure your local development environment is set up:
 
-**Manual Build and Run:**
+*   **Node.js**: Node 20+ required.
+*   **pnpm**: Exclusively used for package management. Installed via `npm install -g pnpm`.
+*   **Expo CLI**: Installed via `pnpm install -g expo-cli`.
+*   **Git**: For version control.
 
-1. Build the Docker image:
-   ```bash
-   docker build -t couchpotatoplayer-web .
-   ```
-2. Run the Docker container:
-   ```bash
-   docker run -p 8080:80 couchpotatoplayer-web
-   ```
-   The application will be accessible at `http://localhost:8080`.
+### iOS / Apple TV (tvOS) Specific Prerequisites (macOS Only)
+*   **Xcode**: Installed via the Mac App Store.
+*   **CocoaPods**: Installed via `sudo gem install cocoapods` or Homebrew.
+*   **Watchman**: Installed via `brew install watchman`.
 
-**Using Docker Compose / Portainer:**
-
-A `docker-compose.yml` file is included for easy deployment, including with Portainer.
-
-1. Ensure the image is built or available (as defined in `docker-compose.yml`, it pulls from `ghcr.io/bladestar2105/couchpotatoplayer:latest`).
-2. Run using Docker Compose:
-   ```bash
-   docker-compose up -d
-   ```
-   The application will be accessible at `http://localhost:8080`.
+### Android / Android TV Specific Prerequisites
+*   **Android Studio**: Installed with the Android SDK and SDK Command-line Tools.
+*   **Java Development Kit (JDK)**: JDK 17 is recommended.
+*   **Android Emulators**: Create a standard mobile emulator and an Android TV emulator in the Android Studio Device Manager.
 
 ---
 
-## Additional Resources
+## 🚀 Getting Started & Compilation
 
-- [Custom Flutter Engine for Apple TV (DenisovAV/flutter_tv)](https://github.com/DenisovAV/flutter_tv)
-- [Flutter Documentation](https://docs.flutter.dev/)
-- [Apple TV Developer Documentation](https://developer.apple.com/tvos/)
+We have provided convenient pnpm scripts to quickly build and launch the app on your preferred simulator.
+
+### 1. First-Time Setup
+
+Clone the repository and install the dependencies:
+
+```bash
+git clone https://github.com/Bladestar2105/CouchPotatoPlayer.git
+cd CouchPotatoPlayer
+pnpm install
+```
+
+### 2. Building for Simulators (Local Compilation)
+
+These commands will use Expo Prebuild to generate the native `/ios` and `/android` directories, compile the native code locally, and launch the custom dev client on your simulator.
+
+**iOS Simulator (Mobile/Tablet)**
+```bash
+pnpm run build:ios-sim
+# Alternatively: npx expo run:ios
+```
+
+**Android Emulator (Mobile/Tablet)**
+```bash
+# Ensure your Android emulator is running in Android Studio first
+pnpm run build:android-sim
+# Alternatively: npx expo run:android
+```
+
+**Apple TV (tvOS) Simulator**
+```bash
+pnpm run build:tvos-sim
+# Note: For full, native tvOS support, install `react-native-tvos` locally by running: `pnpm install react-native@npm:react-native-tvos@latest`.
+# Our GitHub CI pipeline dynamically performs this substitution to build a true tvOS binary.
+```
+
+**Android TV Emulator**
+```bash
+# Ensure your Android TV emulator is running in Android Studio first
+pnpm run build:android-tv-sim
+```
+
+**Web (Development & Production)**
+To start the development server for the web:
+```bash
+pnpm run build:web
+# Alternatively: npx expo start --web
+```
+To export a production-ready static web bundle:
+```bash
+npx expo export -p web
+```
+
+### 3. Building with EAS (Expo Application Services)
+
+If you do not have Xcode or Android Studio installed locally, you can use Expo's cloud build servers to generate a dev client.
+
+1.  Log in to Expo: `npx expo login`
+2.  Build for iOS Simulator: `eas build --profile development --platform ios --type simulator`
+3.  Build for Android Emulator: `eas build --profile development --platform android`
+4.  Once EAS finishes, download the generated `.tar.gz` (iOS) or `.apk` (Android) and drag-and-drop it onto your running simulator. Start the local server with `npx expo start --dev-client`.
+
+---
+
+## 🐳 Docker Deployment (Web)
+
+We provide an easy way to deploy the web version of the CouchPotatoPlayer using Docker and Docker Compose. This is especially useful for managing deployments via Portainer.
+
+### Using Docker Compose
+
+1.  Clone this repository or copy the `docker-compose.yml` file to your server.
+2.  *Note: Depending on where your GitHub repository is hosted, you may need to update the `image` field in `docker-compose.yml` to point to your specific GHCR namespace (e.g., `ghcr.io/bladestar2105/couchpotatoplayer-web:latest`). A tag for each branch exists, and the `latest` tag always points to the newest build from any branch.*
+3.  Run the following command in the directory containing `docker-compose.yml`:
+
+```bash
+docker-compose up -d
+```
+
+### Using Portainer
+
+1.  Open your Portainer dashboard.
+2.  Go to **Stacks** and click **Add stack**.
+3.  Name the stack (e.g., `couchpotatoplayer`).
+4.  Copy and paste the contents of `docker-compose.yml` into the Web editor.
+5.  Click **Deploy the stack**.
+
+The application will be accessible on port `8080` (e.g., `http://localhost:8080`).
+
+---
+
+## 🚀 Feature Roadmap / To-Do List
+
+We are actively developing this player. Help on any of these items is welcome!
+
+### Core API & Parsers
+* `[ ]` **Implement Xtream Codes API:**
+    * Add "Xtream Codes" as a profile type in the `PlaylistManager`.
+    * Create a service (`xtreamService.ts`) to handle the login (Server, User, Pass).
+    * Fetch and parse categories (Live, VOD, Series) from the Xtream API.
+    * Fetch and parse the stream lists for each category.
+* `[ ]` **Implement Stalker Portal API:**
+    * Add "Stalker (MAC)" as a profile type.
+    * Create a service (`stalkerService.ts`) to handle portal login (Portal URL, MAC Address).
+    * Parse the Stalker JSON-RPC responses for channels.
+* `[ ]` **Implement EPG Parser:**
+    * Fetch the `epg_url` provided by the M3U or Xtream API.
+    * Parse the `XMLTV` data using `fast-xml-parser` (already in package.json).
+    * Store and display EPG data (current/next program) for channels.
+* `[ ]` **Video Player Consolidation:**
+    * Standardize the video playback architecture. Evaluate `expo-video`, `react-native-video`, and `react-native-vlc-media-player` to determine the single best dependency for broad codec and streaming protocol support.
+
+### UI / UX
+* `[ ]` **Implement Tabbed Navigation:** On the `HomeScreen`, replace the single `ChannelList` with a Tab Navigator to show:
+    * "Live TV" (`ChannelList`)
+    * "Movies" (`MovieList`)
+    * "Series" (`SeriesList`)
+* `[ ]` **Create `MovieList` / `SeriesList`:** Create new components to display the lists of movies and series from the context.
+* `[ ]` **Profile Editing:** Add an "Edit" button next to "Delete" in the `PlaylistManager`.
+
+---
+
+## 🤝 How to Contribute
+
+1.  **Fork** this repository.
+2.  Create a new branch (`git checkout -b feature/my-new-feature`).
+3.  Make your changes.
+4.  **Submit a Pull Request** with a clear description of what you've done.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.

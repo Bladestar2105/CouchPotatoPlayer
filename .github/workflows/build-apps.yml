@@ -2,195 +2,163 @@ name: Build Apps
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches:
+      - '**'
   pull_request:
     branches: [ "main", "master" ]
 
 jobs:
-  # ── Web Build (Flutter) ────────────────────────────────────────
-  build-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - name: Install Dependencies
-        run: flutter pub get
-      - name: Build Web
-        run: flutter build web --release
-      - name: Upload Web Build
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-build
-          path: build/web
-
-  # ── Docker Build (Flutter Web) ─────────────────────────────────
-  build-docker:
-    runs-on: ubuntu-latest
-    needs: build-web
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download Web Build
-        uses: actions/download-artifact@v4
-        with:
-          name: web-build
-          path: build/web
-      - name: Build Docker Image
-        run: docker build -t couchpotatoplayer-web .
-      - name: Save Docker Image
-        run: docker save couchpotatoplayer-web > couchpotatoplayer-web.tar
-      - name: Upload Docker Image
-        uses: actions/upload-artifact@v4
-        with:
-          name: couchpotatoplayer-web-docker
-          path: couchpotatoplayer-web.tar
-
-  # ── Android Build (Flutter) ────────────────────────────────────
+  # ── Android Build (React Native Expo) ────────────────────────────────────
   build-android:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
       - name: Install Dependencies
-        run: flutter pub get
+        run: pnpm install
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android
       - name: Build APK
-        run: flutter build apk --release
+        run: |
+          cd android
+          ./gradlew assembleRelease
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release.apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
 
-  # ── iOS Build (Flutter) ────────────────────────────────────────
+  # ── iOS Build (React Native Expo) ────────────────────────────────────────
   build-ios:
     runs-on: macos-15
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          channel: 'stable'
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
       - name: Install Dependencies
-        run: flutter pub get
-      - name: Build iOS (No Codesign)
-        run: flutter build ios --release --no-codesign
+        run: pnpm install
+      - name: Prebuild iOS
+        run: npx expo prebuild --platform ios
+      - name: Pod Install
+        run: |
+          cd ios
+<<<<<<< Updated upstream
+=======
+          export REACT_NATIVE_NODE_MODULES_DIR="$(pwd)/../node_modules"
+>>>>>>> Stashed changes
+          pod install
+      - name: Build iOS App (No Codesign)
+        run: |
+          cd ios
+          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -sdk iphonesimulator SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
       - name: Package iOS App
-        run: tar -czf ios-build.tar.gz build/ios/iphoneos/Runner.app
+        run: tar -czf ios-build.tar.gz build/ios/Release-iphonesimulator/CouchPotatoPlayer.app
       - name: Upload iOS Build
         uses: actions/upload-artifact@v4
         with:
           name: ios-build.tar.gz
           path: ios-build.tar.gz
 
-  # ── tvOS Build (Flutter) ───────────────────────────────────────
+  # ── tvOS Build (React Native Expo) ───────────────────────────────────────
+  # We dynamically install react-native-tvos to generate the true tvOS targets
+  # during prebuild, ensuring native compilation against the Apple TV SDK.
   build-tvos:
     runs-on: macos-15
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          channel: 'stable'
-          flutter-version: '3.35.7'
-      - name: Download Custom Engine
-        run: |
-          mkdir -p out
-          curl -L -o out/host_release_arm64.zip https://oc.bw.tech/s/utLzZGcszpqvX5a/download
-          curl -L -o out/ios_release.zip https://oc.bw.tech/s/x0K4EbOJfTp9VJI/download
-          unzip -q out/host_release_arm64.zip -d out/
-          unzip -q out/ios_release.zip -d out/
-      - name: Prepare engine directory for xcode_appletv.sh
-        run: |
-          # xcode_appletv.sh BuildAppRelease() looks for gen_snapshot_arm64
-          # in clang_x64/, but the zip only ships gen_snapshot there.
-          # Create a symlink so the script finds it.
-          if [ -f out/ios_release/clang_x64/gen_snapshot ] && [ ! -f out/ios_release/clang_x64/gen_snapshot_arm64 ]; then
-            ln -s gen_snapshot out/ios_release/clang_x64/gen_snapshot_arm64
-            echo "Created gen_snapshot_arm64 symlink in clang_x64/"
-          fi
-          # Debug: show engine structure
-          echo "=== Engine directory structure ==="
-          ls -la out/ios_release/ | head -30
-          echo "=== clang_x64 ==="
-          ls -la out/ios_release/clang_x64/ | head -15
-      - name: Generate Boilerplate
-        run: flutter build ios --config-only --no-codesign
-        env:
-          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}/out/ios_release
-      - name: Switch Target to tvOS
-        run: sh scripts/switch_target.sh tvos
-      - name: Copy xcconfig and sh
-        run: |
-          cp _ios/Flutter/Generated.xcconfig ios/Flutter/
-          cp _ios/Flutter/flutter_export_environment.sh ios/Flutter/
-          cp -r ${{ github.workspace }}/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework ios/Flutter/Flutter.framework
-          cp -r ${{ github.workspace }}/out/ios_release/Flutter.xcframework/tvos-arm64/Flutter.framework ios/Flutter/
-          cp _ios/Flutter/Flutter.podspec ios/Flutter/
-          sed -i '' 's/Flutter.xcframework/Flutter.framework/g' ios/Flutter/Flutter.podspec
-          plutil -replace CFBundleSupportedPlatforms -json '["AppleTVOS"]' ios/Flutter/Flutter.framework/Info.plist || true
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
       - name: Install Dependencies
-        run: flutter pub get
-      - name: Patch pub-cache for tvOS
-        run: ruby scripts/patch_tvos_pods.rb
-      - name: Re-tag media_kit xcframeworks for tvOS
+        run: pnpm install
+      - name: Inject react-native-tvos and config-tv
         run: |
-          # The media_kit_libs_ios_video xcframeworks are built for iOS (platform 2).
-          # Xcode 16's linker rejects them when linking for tvOS.
-          # Use vtool to change the platform tag from iOS to tvOS (platform 3)
-          # in the ios-arm64 slice (which is arm64, same arch as tvOS).
-          FRAMEWORKS_DIR="$HOME/.pub-cache/hosted/pub.dev/media_kit_libs_ios_video-1.1.4/ios/Frameworks"
-          if [ -d "$FRAMEWORKS_DIR" ]; then
-            # Re-tag for tvOS device (ios-arm64)
-            find "$FRAMEWORKS_DIR" -path "*/ios-arm64/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
-              # Check if it's a Mach-O binary
-              if file "$binary" | grep -q "Mach-O"; then
-                echo "Re-tagging for tvOS device: $binary"
-                xcrun vtool -arch arm64 -set-build-version 3 15.0 18.0 -replace -output "${binary}.tvos" "$binary"
-                mv "${binary}.tvos" "$binary"
-              fi
-            done
-            # Re-tag for tvOS simulator (ios-arm64_x86_64-simulator) - platform 7 for simulator
-            find "$FRAMEWORKS_DIR" -path "*/ios-arm64_x86_64-simulator/*.framework/*" -type f ! -name "*.plist" ! -name "*.h" ! -name "*.modulemap" | while read binary; do
-              if file "$binary" | grep -q "Mach-O"; then
-                echo "Re-tagging for tvOS simulator: $binary"
-                # Platform 7 = iOS Simulator, but for tvOS simulator we need platform 8
-                # Actually tvOS simulator uses platform 8 (tvOS Simulator)
-                xcrun vtool -arch arm64 -set-build-version 8 15.0 18.0 -replace -output "${binary}.tvos" "$binary" 2>/dev/null || true
-                if [ -f "${binary}.tvos" ]; then
-                  mv "${binary}.tvos" "$binary"
-                fi
-              fi
-            done
-            # Re-sign the frameworks after modifying binaries
-            find "$FRAMEWORKS_DIR" -path "*/ios-arm64/*.framework" -type d | while read fw; do
-              echo "Re-signing: $fw"
-              codesign --force --sign - "$fw" 2>/dev/null || true
-            done
-          fi
+          pnpm install react-native@npm:react-native-tvos@0.81.5-2
+          pnpm install @react-native-tvos/config-tv --save-dev
+          sed -i '' 's/"plugins": \[/"plugins": \[ \["@react-native-tvos\/config-tv", {"isTV": true, "showAndroidInTV": true, "showAndroidInMobile": true}\],/g' app.json || sed -i 's/"plugins": \[/"plugins": \[ \["@react-native-tvos\/config-tv", {"isTV": true, "showAndroidInTV": true, "showAndroidInMobile": true}\],/g' app.json
+      - name: Prebuild iOS (Generates tvOS scheme)
+        run: EXPO_TV=1 npx expo prebuild --platform ios
       - name: Pod Install
         run: |
           cd ios
+          export REACT_NATIVE_NODE_MODULES_DIR="$(pwd)/../node_modules"
           pod install
       - name: Build tvOS App (No Codesign)
         run: |
           cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=tvOS' SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
-        env:
-          FLUTTER_LOCAL_ENGINE: ${{ github.workspace }}
+          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -sdk appletvsimulator SYMROOT="${{ github.workspace }}/build/tvos" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
       - name: Package tvOS App
-        run: tar -czf tvos-build.tar.gz build/ios/Release-appletvos/Runner.app
+        run: tar -czf tvos-build.tar.gz build/tvos/Release-appletvsimulator/CouchPotatoPlayer.app
       - name: Upload tvOS Build
         uses: actions/upload-artifact@v4
         with:
           name: tvos-build.tar.gz
           path: tvos-build.tar.gz
+
+  # ── Docker Build & Push (Web) ─────────────────────────────────
+  build-docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Convert repository name to lowercase
+        id: repo_name
+        run: echo "REPO_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Extract branch name
+        shell: bash
+        run: |
+          raw_branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          echo "branch=${raw_branch//\//-}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ env.REPO_NAME }}-web:${{ steps.extract_branch.outputs.branch }}
+            ghcr.io/${{ env.REPO_NAME }}-web:latest
