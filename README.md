@@ -123,6 +123,18 @@ docker-compose up -d
 
 ### Using Portainer
 
+**Recommended Method (Repository)**
+Deploying directly from the repository avoids copy-paste errors (such as missing characters when pasting into the Web editor).
+
+1.  Open your Portainer dashboard.
+2.  Go to **Stacks** and click **Add stack**.
+3.  Name the stack (e.g., `couchpotatoplayer`).
+4.  Select **Repository** as the build method.
+5.  Repository URL: `https://github.com/Bladestar2105/CouchPotatoPlayer.git`
+6.  Compose path: `docker-compose.yml`
+7.  Click **Deploy the stack**.
+
+*Alternative Method (Web Editor)*
 1.  Open your Portainer dashboard.
 2.  Go to **Stacks** and click **Add stack**.
 3.  Name the stack (e.g., `couchpotatoplayer`).
