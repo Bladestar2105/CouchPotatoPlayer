@@ -338,15 +338,45 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // We use /cpp here as a clean health-check before doing any authentication.
     const cleanServerUrl = serverUrl.replace(/\/$/, '');
     const preCheckUrl = `${cleanServerUrl}/cpp`;
-    try {
-      const preCheckResponse = await fetch(preCheckUrl);
-      if (!preCheckResponse.ok) throw new Error(i18n.t('serverNotCompatible', { status: preCheckResponse.status }));
-      const isCpp = await preCheckResponse.json();
-      if (isCpp !== true) {
-         throw new Error(i18n.t('notIptvManager'));
+    const fallbackPreCheckUrl = `${cleanServerUrl}/player_api.php?action=cpp`;
+
+    let isIptvManager = false;
+    let preCheckStatus = 0;
+
+    const performPreCheck = async (url: string) => {
+      try {
+        const response = await fetch(url);
+        preCheckStatus = response.status;
+        if (response.ok) {
+          const text = await response.text();
+          if (text.trim() === 'true' || text.trim() === '1') {
+            return true;
+          }
+          try {
+             const json = JSON.parse(text);
+             if (json === true) return true;
+          } catch (e) {
+             // Not valid JSON or not true
+          }
+        }
+      } catch (e) {
+        console.error(`Pre-check failed for ${url}:`, e);
       }
-    } catch (e: any) {
-      console.error("IPTV-Manager server pre-check failed:", e);
+      return false;
+    };
+
+    // Try primary endpoint first
+    isIptvManager = await performPreCheck(preCheckUrl);
+
+    // If primary fails, try fallback endpoint
+    if (!isIptvManager) {
+      isIptvManager = await performPreCheck(fallbackPreCheckUrl);
+    }
+
+    if (!isIptvManager) {
+      if (preCheckStatus !== 0 && preCheckStatus !== 200) {
+        throw new Error(i18n.t('serverNotCompatible', { status: preCheckStatus }));
+      }
       throw new Error(i18n.t('notIptvManager'));
     }
 
