@@ -22,14 +22,14 @@ const VideoPlayer = () => {
           key={currentStream?.id}
           source={{ uri: streamUrl }}
           style={styles.video}
-          useNativeControls
+          // useNativeControls // Removed to allow custom UI overlay
           resizeMode={ResizeMode.CONTAIN}
           shouldPlay
           isLooping={false}
         />
       ) : (
         <View style={styles.placeholder}>
-          <Text style={styles.placeholderText}>Aucune chaîne sélectionnée</Text>
+          {/* <Text style={styles.placeholderText}>No channel selected</Text> */}
         </View>
       )}
     </View>
@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
   },
   placeholderText: {
     color: '#FFF',

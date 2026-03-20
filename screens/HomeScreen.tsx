@@ -15,6 +15,7 @@ import SeriesList from '../components/SeriesList';
 import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
+import VideoPlayer from '../components/VideoPlayer';
 
 const MainLayout = () => {
   const { t } = useTranslation();
@@ -25,26 +26,19 @@ const MainLayout = () => {
 
   const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings'>('channels');
+  const [isOverlayVisible, setIsOverlayVisible] = useState(true);
 
   // Animation values for the sidebar expansion
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(!isSmallScreen);
-  const sidebarWidth = React.useRef(new Animated.Value(isSmallScreen ? 60 : 200)).current;
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
+  const sidebarWidth = React.useRef(new Animated.Value(60)).current;
 
   useEffect(() => {
     Animated.timing(sidebarWidth, {
       toValue: isSidebarExpanded ? 200 : 60,
-      duration: 250,
+      duration: 200,
       useNativeDriver: false,
     }).start();
-  }, [isSidebarExpanded, isSmallScreen]);
-
-  useEffect(() => {
-    if (isSmallScreen) {
-      setIsSidebarExpanded(false);
-    } else {
-      setIsSidebarExpanded(true);
-    }
-  }, [isSmallScreen]);
+  }, [isSidebarExpanded]);
 
   if (isLoading) {
     return (
@@ -67,46 +61,59 @@ const MainLayout = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'channels': return <ChannelList />;
+      case 'channels': return <ChannelList onChannelSelect={() => setIsOverlayVisible(false)} />;
       case 'movies': return <MovieList />;
       case 'series': return <SeriesList />;
       case 'favorites': return <FavoritesList />;
       case 'recent': return <RecentlyWatchedList />;
       case 'settings': return <SettingsScreen />;
-      default: return <ChannelList />;
+      default: return <ChannelList onChannelSelect={() => setIsOverlayVisible(false)} />;
     }
   };
 
   return (
-    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.background }}>
-      {/* Sidebar */}
-      <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: '#1C1C1E', borderRightColor: '#2C2C2E' }]}>
-        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
-            {isSmallScreen && (
-              <TouchableOpacity
-                onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
-                style={styles.menuItem}
-                accessibilityRole="button"
-                accessibilityLabel="Toggle Sidebar"
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      {/* Background Video Player */}
+      <View style={StyleSheet.absoluteFill}>
+        <VideoPlayer />
+      </View>
+
+      {/* Main Overlay UI */}
+      {isOverlayVisible && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 20, 0.85)', flexDirection: 'row' }]}>
+          {/* Sidebar */}
+          <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(0,0,0,0.5)', borderRightColor: '#2C2C2E' }]}>
+            <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+              <ScrollView
+                contentContainerStyle={{ paddingVertical: 16 }}
+                // TV focus interactions
+                onFocus={() => setIsSidebarExpanded(true)}
+                onBlur={() => setIsSidebarExpanded(false)}
               >
-                <Icon name="menu" size={24} color="#FFF" style={styles.menuIcon} />
-              </TouchableOpacity>
-            )}
+                {/* On a TV, the sidebar auto-expands on focus, so the hamburger menu isn't strictly necessary, but helpful for mouse/touch */}
+                <TouchableOpacity
+                  onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                  onFocus={() => setIsSidebarExpanded(true)}
+                  style={[styles.menuItem, { justifyContent: 'center' }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Toggle Sidebar"
+                >
+                  <Icon name="menu" size={24} color="#FFF" style={isSidebarExpanded ? styles.menuIcon : {}} />
+                </TouchableOpacity>
 
-            {(isSidebarExpanded || !isSmallScreen) && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
+                {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
 
-            <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} />
-            <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} />
-            <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} />
-            <SidebarItem icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} />
-            <SidebarItem icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} />
-            <SidebarItem icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} />
+                <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
+                <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
+                <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
+                <SidebarItem icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
+                <SidebarItem icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
+                <SidebarItem icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
 
-            <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
-            {(isSidebarExpanded || !isSmallScreen) && <Text style={styles.sidebarSectionTitle}>PROVIDERS</Text>}
+                <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
+                {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>PROVIDERS</Text>}
 
-            {profiles.map(p => {
+                {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;
               let iconName = p.icon || 'dns';
               const validIcons = ['tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business'];
@@ -122,44 +129,66 @@ const MainLayout = () => {
                   isActive={isCurrent}
                   onPress={() => loadProfile(p)}
                   showLabel={isSidebarExpanded}
+                  onFocus={() => setIsSidebarExpanded(true)}
                 />
               );
             })}
-          </ScrollView>
-        </SafeAreaView>
-      </Animated.View>
+              </ScrollView>
+            </SafeAreaView>
+          </Animated.View>
 
-      {/* Main Content Area */}
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <SafeAreaView edges={['top', 'bottom', 'right']} style={{ flex: 1 }}>
-           <View style={{ flex: 1 }}>
-             {renderContent()}
-           </View>
-        </SafeAreaView>
-      </View>
+          {/* Main Content Area */}
+          <View style={{ flex: 1 }}>
+            <SafeAreaView edges={['top', 'bottom', 'right']} style={{ flex: 1 }}>
+               <View style={{ flex: 1 }}>
+                 {renderContent()}
+               </View>
+            </SafeAreaView>
+          </View>
+        </View>
+      )}
+
+      {/* Overlay Toggle Control (temporary for mouse/touch, typically D-Pad Back/OK handles this) */}
+      {!isOverlayVisible && (
+        <TouchableOpacity
+          style={{ position: 'absolute', top: 40, right: 40, backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 8 }}
+          onPress={() => setIsOverlayVisible(true)}
+        >
+          <Icon name="menu" size={24} color="#FFF" />
+        </TouchableOpacity>
+      )}
 
     </View>
   );
 };
 
-const SidebarItem = ({ icon, label, isActive, onPress, showLabel }: any) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={[
-      styles.menuItem,
-      { backgroundColor: isActive ? 'rgba(0, 122, 255, 0.3)' : 'transparent', justifyContent: showLabel ? 'flex-start' : 'center' }
-    ]}
-    accessibilityRole="button"
-    accessibilityLabel={label}
-  >
-    <Icon name={icon} size={24} color={isActive ? '#FFF' : '#888'} style={styles.menuIcon} />
-    {showLabel && (
-      <Text style={{ color: isActive ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal' }} numberOfLines={1}>
-        {label}
-      </Text>
-    )}
-  </TouchableOpacity>
-);
+const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any) => {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onFocus={(e) => { setIsFocused(true); if (onFocus) onFocus(e); }}
+      onBlur={() => setIsFocused(false)}
+      style={[
+        styles.menuItem,
+        {
+          backgroundColor: isFocused ? 'rgba(255, 255, 255, 0.2)' : (isActive ? 'rgba(0, 122, 255, 0.3)' : 'transparent'),
+          justifyContent: showLabel ? 'flex-start' : 'center'
+        }
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Icon name={icon} size={24} color={isActive || isFocused ? '#FFF' : '#888'} style={showLabel ? styles.menuIcon : {}} />
+      {showLabel && (
+        <Text style={{ color: isActive || isFocused ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal' }} numberOfLines={1}>
+          {label}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 const HomeScreen = () => {
   const { currentProfile, profiles, pin, channels, movies, series } = useIPTV();
