@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
@@ -11,16 +11,22 @@ const RecentlyWatchedList = () => {
   const { channels, movies, series, recentlyWatched, playStream } = useIPTV();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
 
-  // Aggregate all items into a single list
-  const allItems = [
-    ...channels.map(c => ({ ...c, mediaType: 'channel' as const })),
-    ...movies.map(m => ({ ...m, mediaType: 'movie' as const })),
-    ...series.map(s => ({ ...s, mediaType: 'series' as const }))
-  ];
+  // ⚡ Bolt Optimization: Use useMemo to avoid eager array copying and mapping of
+  // tens of thousands of items on every render. Perform targeted lookups instead.
+  const recentItems = useMemo(() => {
+    return recentlyWatched.map(id => {
+      let item = channels.find(c => c.id === id);
+      if (item) return { ...item, mediaType: 'channel' as const };
 
-  const recentItems = recentlyWatched
-    .map(id => allItems.find(item => item.id === id))
-    .filter(Boolean); // removes undefined
+      item = movies.find(m => m.id === id);
+      if (item) return { ...item, mediaType: 'movie' as const };
+
+      item = series.find(s => s.id === id);
+      if (item) return { ...item, mediaType: 'series' as const };
+
+      return null;
+    }).filter(Boolean);
+  }, [recentlyWatched, channels, movies, series]);
 
   const handlePress = (item: any) => {
     if (item.mediaType === 'channel' || item.mediaType === 'movie') {
