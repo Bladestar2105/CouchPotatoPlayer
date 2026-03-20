@@ -84,7 +84,12 @@ const MainLayout = () => {
         <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
             {isSmallScreen && (
-              <TouchableOpacity onPress={() => setIsSidebarExpanded(!isSidebarExpanded)} style={styles.menuItem}>
+              <TouchableOpacity
+                onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                style={styles.menuItem}
+                accessibilityRole="button"
+                accessibilityLabel="Toggle Sidebar"
+              >
                 <Icon name="menu" size={24} color="#FFF" style={styles.menuIcon} />
               </TouchableOpacity>
             )}
@@ -144,6 +149,8 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel }: any) => (
       styles.menuItem,
       { backgroundColor: isActive ? 'rgba(0, 122, 255, 0.3)' : 'transparent', justifyContent: showLabel ? 'flex-start' : 'center' }
     ]}
+    accessibilityRole="button"
+    accessibilityLabel={label}
   >
     <Icon name={icon} size={24} color={isActive ? '#FFF' : '#888'} style={styles.menuIcon} />
     {showLabel && (

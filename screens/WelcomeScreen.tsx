@@ -106,6 +106,8 @@ const WelcomeScreen = () => {
                      selectedIcon === iconName && { backgroundColor: 'rgba(0, 122, 255, 0.3)', borderColor: colors.primary }
                    ]}
                    onPress={() => setSelectedIcon(iconName)}
+                   accessibilityRole="button"
+                   accessibilityLabel={`Select ${iconName.replace('_', ' ')} icon`}
                  >
                    <Icon name={iconName.replace('_', '-') as any} size={24} color={selectedIcon === iconName ? colors.primary : '#FFF'} />
                  </TouchableOpacity>
