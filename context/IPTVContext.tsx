@@ -219,10 +219,20 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEpg({});
 
     try {
+      // SSRF mitigation: validate URL starts with http:// or https://
+      const isValidUrl = (url: string) => /^https?:\/\//i.test(url.trim());
+
       if (profile.type === 'm3u') {
-        await loadM3U(profile.url);
+        if (!isValidUrl(profile.url)) {
+          throw new Error('Invalid URL. M3U URL must start with http:// or https://');
+        }
+        await loadM3U(profile.url.trim().replace(/\/+$/, ''));
       }
       else if (profile.type === 'xtream') {
+        const serverUrl = profile.url || (profile as any).serverUrl;
+        if (!isValidUrl(serverUrl)) {
+          throw new Error('Invalid URL. Xtream server URL must start with http:// or https://');
+        }
         await loadXtream(profile);
       }
       else if (profile.type === 'stalker') {

@@ -45,7 +45,9 @@ const MovieList = () => {
     );
   }
 
-  const selectedMovies = groups.find(g => g.title === selectedGroup)?.data || [];
+  const selectedMovies = useMemo(() => {
+    return groups.find(g => g.title === selectedGroup)?.data || [];
+  }, [groups, selectedGroup]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -54,6 +56,9 @@ const MovieList = () => {
         <FlatList
           data={groups}
           keyExtractor={(item) => item.title}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[
@@ -61,6 +66,8 @@ const MovieList = () => {
                 selectedGroup === item.title ? { backgroundColor: colors.primary + '33', borderLeftColor: colors.primary, borderLeftWidth: 4 } : { borderLeftColor: 'transparent', borderLeftWidth: 4 }
               ]}
               onPress={() => setSelectedGroup(item.title)}
+              accessibilityRole="button"
+              accessibilityLabel={`Select category ${item.title}`}
             >
               <Text style={{ color: selectedGroup === item.title ? colors.primary : colors.textSecondary, fontWeight: selectedGroup === item.title ? 'bold' : 'normal' }}>
                 {item.title} ({item.data.length})
@@ -79,6 +86,10 @@ const MovieList = () => {
             numColumns={numColumns > 0 ? numColumns : 3}
             key={numColumns} // Force re-render if columns change
             contentContainerStyle={styles.gridContainer}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={5}
+            removeClippedSubviews={true}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.posterContainer}

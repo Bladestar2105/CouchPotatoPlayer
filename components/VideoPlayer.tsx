@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Text, Platform } from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { Video, ResizeMode } from 'expo-av';
 import { useIPTV } from '../context/IPTVContext';
 
 const VideoPlayer = () => {
@@ -9,26 +9,23 @@ const VideoPlayer = () => {
   const streamUrl = useMemo(() => {
     if (!currentStream?.url) return null;
     if (Platform.OS === 'web') {
-      return `${window.location.origin}/proxy/${currentStream.url}`;
+      // In web platform, redirect network requests through the proxy
+      return `/proxy/${currentStream.url}`;
     }
     return currentStream.url;
   }, [currentStream?.url]);
 
-  const player = useVideoPlayer(streamUrl, player => {
-    player.loop = false;
-    player.play();
-  });
-
   return (
     <View style={styles.container}>
-      {currentStream ? (
-        <VideoView
-          key={currentStream.id}
+      {streamUrl ? (
+        <Video
+          key={currentStream?.id}
+          source={{ uri: streamUrl }}
           style={styles.video}
-          player={player}
-          allowsFullscreen
-          allowsPictureInPicture
-          nativeControls
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay
+          isLooping={false}
         />
       ) : (
         <View style={styles.placeholder}>

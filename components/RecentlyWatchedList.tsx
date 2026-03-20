@@ -121,6 +121,8 @@ const RecentlyWatchedList = () => {
           <TouchableOpacity
             style={styles.removeButton}
             onPress={() => removeRecentlyWatched(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${item.name} from recently watched`}
           >
             <Icon name="close" size={16} color="#FFF" />
           </TouchableOpacity>
@@ -166,6 +168,10 @@ const RecentlyWatchedList = () => {
         numColumns={numColumns}
         key={numColumns}
         contentContainerStyle={styles.listContainer}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
     </View>
   );
