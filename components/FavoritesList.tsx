@@ -1,75 +1,127 @@
 import React from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
-import { Channel, Movie, Series } from '../types';
+import { FavoriteItem } from '../types';
+import { useSettings } from '../context/SettingsContext';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 const FavoritesList = () => {
-  const { channels, movies, series, favorites, playStream } = useIPTV();
+  const { favorites, removeFavorite, playStream, addRecentlyWatched } = useIPTV();
+  const { colors } = useSettings();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
+  const dimensions = useWindowDimensions();
+  const isTvMode = dimensions.width >= 1200;
 
-  // Aggregate all items into a single list
-  const allItems = [
-    ...channels.map(c => ({ ...c, mediaType: 'channel' as const })),
-    ...movies.map(m => ({ ...m, mediaType: 'movie' as const })),
-    ...series.map(s => ({ ...s, mediaType: 'series' as const }))
-  ];
+  const handlePress = (item: FavoriteItem) => {
+    // Add to recently watched
+    addRecentlyWatched({
+      id: item.id,
+      type: item.type,
+      name: item.name,
+      icon: item.icon,
+      extension: item.type === 'live' ? 'm3u8' : 'mp4',
+      lastWatchedAt: Date.now(),
+    });
 
-  const favoriteItems = allItems.filter(item => favorites.includes(item.id));
-
-  const handlePress = (item: any) => {
-    if (item.mediaType === 'channel' || item.mediaType === 'movie') {
-       playStream({ url: item.url || item.streamUrl, id: item.id });
-       navigation.navigate('Player');
-    } else if (item.mediaType === 'series') {
-       navigation.navigate('Season', { series: item });
+    if (item.type === 'live') {
+      // For live channels, we need to get the URL from channels list
+      // For now, navigate to player with the ID
+      playStream({ url: '', id: item.id });
+      navigation.navigate('Player');
+    } else if (item.type === 'vod') {
+      navigation.navigate('MediaInfo', { 
+        id: item.id, 
+        type: 'movie',
+        title: item.name,
+        cover: item.icon 
+      });
+    } else if (item.type === 'series') {
+      navigation.navigate('MediaInfo', { 
+        id: item.id, 
+        type: 'series',
+        title: item.name,
+        cover: item.icon 
+      });
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'live': return 'tv';
+      case 'vod': return 'movie';
+      case 'series': return 'list';
+      default: return 'play-circle';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'live': return 'Live TV';
+      case 'vod': return 'Film';
+      case 'series': return 'Serie';
+      default: return '';
+    }
+  };
+
+  const renderItem = ({ item }: { item: FavoriteItem }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: colors.card }]}
       onPress={() => handlePress(item)}
     >
-      <View style={styles.imageContainer}>
-        {item.logo || item.cover ? (
+      <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
+        {item.icon ? (
           <Image
-            source={{ uri: item.logo || item.cover }}
+            source={{ uri: item.icon }}
             style={styles.image}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         ) : (
           <View style={styles.placeholderImage}>
-             <Text style={styles.placeholderText}>{item.name.charAt(0)}</Text>
+            <Icon name={getTypeIcon(item.type)} size={32} color={colors.textSecondary} />
           </View>
         )}
+        {/* Type Badge */}
+        <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#4CAF50' : item.type === 'vod' ? '#2196F3' : '#FF9800' }]}>
+          <Icon name={getTypeIcon(item.type)} size={12} color="#FFF" />
+        </View>
+        {/* Remove Button */}
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={() => removeFavorite(item.id)}
+        >
+          <Icon name="close" size={16} color="#FFF" />
+        </TouchableOpacity>
       </View>
-      <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-      <Text style={styles.typeLabel}>
-        {item.mediaType === 'channel' ? 'Live TV' : item.mediaType === 'movie' ? 'Film' : 'Série'}
-      </Text>
+      <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
+      <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>{getTypeLabel(item.type)}</Text>
     </TouchableOpacity>
   );
 
-  if (favoriteItems.length === 0) {
-     return (
-        <View style={styles.emptyContainer}>
-           <Text style={styles.emptyText}>Aucun favori pour le moment.</Text>
-        </View>
-     );
+  if (favorites.length === 0) {
+    return (
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+        <Icon name="favorite-border" size={64} color={colors.textSecondary} />
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Keine Favoriten vorhanden.</Text>
+        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>Füge Kanäle, Filme oder Serien zu deinen Favoriten hinzu.</Text>
+      </View>
+    );
   }
 
+  const numColumns = isTvMode ? 6 : 3;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
-        data={favoriteItems}
-        keyExtractor={(item) => item.id}
+        data={favorites}
+        keyExtractor={(item) => `${item.id}-${item.type}`}
         renderItem={renderItem}
-        numColumns={3}
+        numColumns={numColumns}
+        key={numColumns} // Force re-render when columns change
         contentContainerStyle={styles.listContainer}
       />
     </View>
@@ -79,17 +131,23 @@ const FavoritesList = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
   },
   emptyContainer: {
-     flex: 1,
-     justifyContent: 'center',
-     alignItems: 'center',
-     backgroundColor: '#121212',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   emptyText: {
-     color: '#888',
-     fontSize: 16,
+    fontSize: 18,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyHint: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    opacity: 0.7,
   },
   listContainer: {
     padding: 10,
@@ -97,7 +155,6 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     margin: 5,
-    backgroundColor: '#1E1E1E',
     borderRadius: 8,
     overflow: 'hidden',
     alignItems: 'center',
@@ -105,12 +162,12 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    aspectRatio: 1,
-    backgroundColor: '#2A2A2A',
+    aspectRatio: 2 / 3,
     borderRadius: 8,
     marginBottom: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
@@ -122,19 +179,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderText: {
-    color: '#555',
-    fontSize: 24,
-    fontWeight: 'bold',
+  typeBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   name: {
-    color: '#FFF',
     fontSize: 12,
     textAlign: 'center',
     marginBottom: 4,
   },
   typeLabel: {
-    color: '#AAA',
     fontSize: 10,
   }
 });
