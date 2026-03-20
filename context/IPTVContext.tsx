@@ -62,35 +62,18 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
     if (Platform.OS === 'web' && e instanceof TypeError) {
       console.warn(`CORS Error for: ${url}`);
       
-      // Try local CORS proxy server (run proxy-server.py alongside the app)
-      const localProxyUrl = `${window.location.protocol}//${window.location.hostname}:9001/proxy/${url}`;
+      // Use nginx proxy configured in the Docker container
+      // The nginx proxy is available at /proxy/ endpoint
+      const proxyUrl = `/proxy/${url}`;
       try {
-        console.log(`Trying local CORS proxy: ${localProxyUrl}...`);
-        const response = await fetch(localProxyUrl, options);
+        console.log(`Using nginx proxy for: ${url}`);
+        const response = await fetch(proxyUrl, options);
         if (response.ok) {
-          console.log(`Local CORS proxy succeeded`);
+          console.log(`Nginx proxy succeeded`);
           return response;
         }
       } catch (proxyError: any) {
-        console.warn(`Local CORS proxy failed: ${proxyError.message}`);
-      }
-      
-      // Try public CORS proxies as fallback
-      const corsProxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-      ];
-      
-      for (const proxyUrl of corsProxies) {
-        try {
-          console.log(`Trying CORS proxy: ${proxyUrl.split('?')[0]}...`);
-          const response = await fetch(proxyUrl, options);
-          if (response.ok) {
-            console.log(`CORS proxy succeeded`);
-            return response;
-          }
-        } catch (proxyError) {
-          console.warn(`CORS proxy failed, trying next...`);
-        }
+        console.warn(`Nginx proxy failed: ${proxyError.message}`);
       }
       
       throw new Error(i18n.t('corsError'));
