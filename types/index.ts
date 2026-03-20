@@ -187,25 +187,4 @@ export type IPTVContextType = {
   // Catchup/Archive support
   getCatchupUrl: (channel: Channel, startTime: Date, endTime: Date) => string | null;
   hasCatchup: (channel: Channel) => boolean;
-
-  // Recording support
-  recordings: RecordingItem[];
-  addRecording: (item: RecordingItem) => Promise<void>;
-  removeRecording: (id: string) => Promise<void>;
-  isRecording: (id: string) => boolean;
 };
-
-/**
- * Recording item for scheduled recordings
- */
-export interface RecordingItem {
-  id: string;
-  channelId: string;
-  channelName: string;
-  programTitle: string;
-  startTime: number; // Unix timestamp
-  endTime: number; // Unix timestamp
-  status: 'scheduled' | 'recording' | 'completed' | 'failed';
-  filePath?: string;
-  createdAt: number;
-}

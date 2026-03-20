@@ -4,7 +4,7 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
-import { EPGProgram, Channel, RecordingItem } from '../types';
+import { EPGProgram, Channel } from '../types';
 import { isProgramCatchupAvailable, getCatchupDays } from '../utils/catchupUtils';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,7 +13,7 @@ type EPGScreenRouteProp = RouteProp<RootStackParamList, 'EPG'>;
 const EPGScreen = () => {
   const route = useRoute<EPGScreenRouteProp>();
   const navigation = useNavigation<any>();
-  const { epg, getCatchupUrl, hasCatchup, recordings, addRecording, removeRecording, isRecording, playStream } = useIPTV();
+  const { epg, getCatchupUrl, hasCatchup, playStream } = useIPTV();
   const { colors } = useSettings();
 
   const { channelId, channelName, channel } = route.params;
@@ -59,34 +59,6 @@ const EPGScreen = () => {
       }
     };
 
-    const handleScheduleRecording = async () => {
-      if (!channel) return;
-      
-      const recordingId = `${channelId}_${startMs}`;
-      const newRecording: RecordingItem = {
-        id: recordingId,
-        channelId,
-        channelName,
-        programTitle: item.title,
-        startTime: startMs,
-        endTime: endMs,
-        status: 'scheduled',
-        createdAt: Date.now(),
-      };
-      
-      await addRecording(newRecording);
-      Alert.alert('Recording Scheduled', `"${item.title}" has been scheduled for recording.`);
-    };
-
-    const handleRemoveRecording = async () => {
-      const recordingId = `${channelId}_${startMs}`;
-      await removeRecording(recordingId);
-      Alert.alert('Recording Removed', `"${item.title}" has been removed from recordings.`);
-    };
-
-    const recordingId = `${channelId}_${startMs}`;
-    const isProgramRecording = isRecording(recordingId);
-
     return (
       <View style={[styles.epgItem, { backgroundColor: bgColor, borderColor: borderColor }]}>
         <View style={styles.timeRow}>
@@ -108,35 +80,16 @@ const EPGScreen = () => {
           </Text>
         ) : null}
         
-        {/* Action buttons for catchup and recording */}
-        {(canWatchCatchup || isProgramRecording) && (
+        {/* Catchup watch button */}
+        {canWatchCatchup && (
           <View style={styles.actionRow}>
-            {canWatchCatchup && (
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: colors.primary }]}
-                onPress={handlePlayCatchup}
-              >
-                <Ionicons name="play-circle" size={18} color="white" />
-                <Text style={styles.actionButtonText}>Watch</Text>
-              </TouchableOpacity>
-            )}
-            {isProgramRecording ? (
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: '#e74c3c' }]}
-                onPress={handleRemoveRecording}
-              >
-                <Ionicons name="trash" size={18} color="white" />
-                <Text style={styles.actionButtonText}>Remove</Text>
-              </TouchableOpacity>
-            ) : canWatchCatchup && (
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: colors.textSecondary }]}
-                onPress={handleScheduleRecording}
-              >
-                <Ionicons name="calendar" size={18} color="white" />
-                <Text style={styles.actionButtonText}>Record</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: colors.primary }]}
+              onPress={handlePlayCatchup}
+            >
+              <Ionicons name="play-circle" size={18} color="white" />
+              <Text style={styles.actionButtonText}>Watch Catchup</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
