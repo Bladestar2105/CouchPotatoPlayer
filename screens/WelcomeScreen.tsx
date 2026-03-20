@@ -23,8 +23,13 @@ const WelcomeScreen = () => {
   ];
 
   const handleLogin = async () => {
-    if (!name || !serverUrl) {
+    const trimmedServerUrl = serverUrl.trim();
+    if (!name || !trimmedServerUrl) {
       setError('Name and Server URL are required.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(trimmedServerUrl)) {
+      setError('URL must start with http:// or https://');
       return;
     }
     if (type === 'xtream' && (!username || !password)) {
@@ -42,7 +47,7 @@ const WelcomeScreen = () => {
           id: Date.now().toString(),
           name,
           type: 'm3u',
-          url: serverUrl,
+          url: trimmedServerUrl,
           epgUrl: epgUrl || undefined,
           icon: selectedIcon,
         };
@@ -51,7 +56,7 @@ const WelcomeScreen = () => {
           id: Date.now().toString(),
           name,
           type: 'xtream',
-          url: serverUrl,
+          url: trimmedServerUrl,
           username,
           password,
           icon: selectedIcon,
