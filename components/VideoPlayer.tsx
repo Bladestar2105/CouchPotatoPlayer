@@ -1,12 +1,20 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useIPTV } from '../context/IPTVContext';
 
 const VideoPlayer = () => {
   const { currentStream } = useIPTV();
 
-  const player = useVideoPlayer(currentStream?.url || null, player => {
+  const streamUrl = useMemo(() => {
+    if (!currentStream?.url) return null;
+    if (Platform.OS === 'web') {
+      return `${window.location.origin}/proxy/${currentStream.url}`;
+    }
+    return currentStream.url;
+  }, [currentStream?.url]);
+
+  const player = useVideoPlayer(streamUrl, player => {
     player.loop = false;
     player.play();
   });
