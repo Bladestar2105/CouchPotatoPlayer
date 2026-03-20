@@ -229,7 +229,7 @@ const SettingsScreen = () => {
                       { text: 'Cancel', style: 'cancel' },
                       {
                         text: 'Unlock',
-                        onPress: (enteredPin) => {
+                        onPress: (enteredPin?: string) => {
                            if (enteredPin) {
                               const unlocked = unlockAdultContent(enteredPin);
                               if (!unlocked) {

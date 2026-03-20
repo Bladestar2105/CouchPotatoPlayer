@@ -52,22 +52,32 @@ const PlaylistManager = () => {
     }
     let profileData: IPTVProfile;
     if (profileType === 'm3u') {
-      if (!url.trim()) {
+      const trimmedUrl = url.trim();
+      if (!trimmedUrl) {
         Alert.alert(t('error'), t('errorFillM3UUrl'));
         return;
       }
-      profileData = {
-        id: editingProfile?.id || Date.now().toString(),
-        name, type: 'm3u', url,
-      };
-    } else if (profileType === 'xtream') {
-      if (!serverUrl.trim() || !username.trim()) {
-        Alert.alert(t('error'), t('errorFillServerAndUser'));
+      if (!/^https?:\/\//i.test(trimmedUrl)) {
+        Alert.alert(t('error'), 'URL must start with http:// or https://');
         return;
       }
       profileData = {
         id: editingProfile?.id || Date.now().toString(),
-        name, type: 'xtream', url: serverUrl, username, password,
+        name, type: 'm3u', url: trimmedUrl,
+      };
+    } else if (profileType === 'xtream') {
+      const trimmedServerUrl = serverUrl.trim();
+      if (!trimmedServerUrl || !username.trim()) {
+        Alert.alert(t('error'), t('errorFillServerAndUser'));
+        return;
+      }
+      if (!/^https?:\/\//i.test(trimmedServerUrl)) {
+        Alert.alert(t('error'), 'URL must start with http:// or https://');
+        return;
+      }
+      profileData = {
+        id: editingProfile?.id || Date.now().toString(),
+        name, type: 'xtream', url: trimmedServerUrl, username, password,
       };
     } else {
       Alert.alert(t('error'), t('unsupportedProfileType'));
