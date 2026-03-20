@@ -36,7 +36,7 @@ const FavoritesList = () => {
     } else if (item.type === 'vod') {
       navigation.navigate('MediaInfo', { 
         id: item.id, 
-        type: 'movie',
+        type: 'vod',
         title: item.name,
         cover: item.icon 
       });

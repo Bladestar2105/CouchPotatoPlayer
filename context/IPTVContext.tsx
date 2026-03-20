@@ -16,7 +16,7 @@ import {
   FavoriteItem,
   RecentlyWatchedItem
 } from '../types';
-import { parseXMLTV } from '../utils/epgParser';
+import { parseXMLTVFromString } from '../utils/epgParser';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
 const PROFILES_STORAGE_KEY = 'IPTV_PROFILES';
@@ -268,6 +268,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadEPG = async () => {
     if (!currentProfile) return;
 
+    console.log('[EPG] Starting EPG load...');
     const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
 
     try {
@@ -277,6 +278,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cachedEpg = JSON.parse(cachedEpgStr);
         if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
           // Re-hydrate Date objects
+          console.log('[EPG] Using cached EPG data');
           const hydratedEpg: Record<string, EPGProgram[]> = {};
           for (const channelId in cachedEpg.data) {
             hydratedEpg[channelId] = cachedEpg.data[channelId].map((p: any) => ({
@@ -303,7 +305,21 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (epgUrl) {
-        const epgData = await parseXMLTV(epgUrl);
+        console.log('[EPG] Fetching EPG from:', epgUrl);
+        
+        // Use CORS proxy for fetching EPG
+        const response = await fetchWithProxy(epgUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch EPG: ${response.status}`);
+        }
+        
+        const xmlData = await response.text();
+        console.log('[EPG] Received XML data, length:', xmlData.length);
+        
+        // Parse the XML data
+        const epgData = parseXMLTVFromString(xmlData);
+        console.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
+        
         const newEpg: Record<string, EPGProgram[]> = {};
         for (const channelId in epgData) {
           newEpg[channelId] = epgData[channelId].map((p: any) => ({
@@ -316,14 +332,17 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }));
         }
         setEpg(newEpg);
+        console.log('[EPG] EPG loaded successfully');
 
         await AsyncStorage.setItem(storageKey, JSON.stringify({
           timestamp: Date.now(),
           data: newEpg
         }));
+      } else {
+        console.log('[EPG] No EPG URL available');
       }
     } catch (e) {
-      console.error("Failed to load EPG", e);
+      console.error("[EPG] Failed to load EPG", e);
     }
   };
 

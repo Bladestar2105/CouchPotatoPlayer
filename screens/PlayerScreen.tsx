@@ -11,7 +11,12 @@ const PlayerScreen = () => {
 
   useEffect(() => {
     if (isFocused && currentStream && currentStream.id) {
-       addRecentlyWatched(currentStream.id);
+       addRecentlyWatched({
+        id: currentStream.id,
+        type: 'live',
+        name: currentStream.id,
+        lastWatchedAt: Date.now(),
+      });
     }
   }, [isFocused, currentStream]);
 
