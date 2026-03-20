@@ -22,7 +22,7 @@ const VideoPlayer = () => {
           key={currentStream?.id}
           source={{ uri: streamUrl }}
           style={styles.video}
-          // useNativeControls // Removed to allow custom UI overlay
+          useNativeControls // Restoring native controls for VOD/catchup scrubbing since custom controls are complex to build reliably cross-platform
           resizeMode={ResizeMode.CONTAIN}
           shouldPlay
           isLooping={false}

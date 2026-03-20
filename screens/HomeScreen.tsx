@@ -15,7 +15,7 @@ import SeriesList from '../components/SeriesList';
 import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
-import VideoPlayer from '../components/VideoPlayer';
+import SearchScreen from './SearchScreen';
 
 const MainLayout = () => {
   const { t } = useTranslation();
@@ -25,8 +25,7 @@ const MainLayout = () => {
   const navigation = useNavigation<any>();
 
   const isSmallScreen = dimensions.width < 768;
-  const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings'>('channels');
-  const [isOverlayVisible, setIsOverlayVisible] = useState(true);
+  const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search'>('channels');
 
   // Animation values for the sidebar expansion
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
@@ -61,29 +60,22 @@ const MainLayout = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'channels': return <ChannelList onChannelSelect={() => setIsOverlayVisible(false)} />;
+      case 'channels': return <ChannelList />;
       case 'movies': return <MovieList />;
       case 'series': return <SeriesList />;
       case 'favorites': return <FavoritesList />;
       case 'recent': return <RecentlyWatchedList />;
       case 'settings': return <SettingsScreen />;
-      default: return <ChannelList onChannelSelect={() => setIsOverlayVisible(false)} />;
+      case 'search': return <SearchScreen />;
+      default: return <ChannelList />;
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* Background Video Player */}
-      <View style={StyleSheet.absoluteFill}>
-        <VideoPlayer />
-      </View>
-
-      {/* Main Overlay UI */}
-      {isOverlayVisible && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 20, 0.85)', flexDirection: 'row' }]}>
-          {/* Sidebar */}
-          <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(0,0,0,0.5)', borderRightColor: '#2C2C2E' }]}>
-            <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#000', flexDirection: 'row' }}>
+      {/* Sidebar */}
+      <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(0,0,0,0.5)', borderRightColor: '#2C2C2E' }]}>
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
               <ScrollView
                 contentContainerStyle={{ paddingVertical: 16 }}
                 // TV focus interactions
@@ -103,6 +95,7 @@ const MainLayout = () => {
 
                 {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
 
+                <SidebarItem icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
                 <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
                 <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
                 <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
@@ -133,30 +126,18 @@ const MainLayout = () => {
                 />
               );
             })}
-              </ScrollView>
-            </SafeAreaView>
-          </Animated.View>
+          </ScrollView>
+        </SafeAreaView>
+      </Animated.View>
 
-          {/* Main Content Area */}
-          <View style={{ flex: 1 }}>
-            <SafeAreaView edges={['top', 'bottom', 'right']} style={{ flex: 1 }}>
-               <View style={{ flex: 1 }}>
-                 {renderContent()}
-               </View>
-            </SafeAreaView>
-          </View>
-        </View>
-      )}
-
-      {/* Overlay Toggle Control (temporary for mouse/touch, typically D-Pad Back/OK handles this) */}
-      {!isOverlayVisible && (
-        <TouchableOpacity
-          style={{ position: 'absolute', top: 40, right: 40, backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 8 }}
-          onPress={() => setIsOverlayVisible(true)}
-        >
-          <Icon name="menu" size={24} color="#FFF" />
-        </TouchableOpacity>
-      )}
+      {/* Main Content Area */}
+      <View style={{ flex: 1 }}>
+        <SafeAreaView edges={['top', 'bottom', 'right']} style={{ flex: 1 }}>
+           <View style={{ flex: 1 }}>
+             {renderContent()}
+           </View>
+        </SafeAreaView>
+      </View>
 
     </View>
   );
