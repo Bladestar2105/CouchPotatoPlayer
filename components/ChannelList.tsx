@@ -47,7 +47,9 @@ const LiveTVFlow = () => {
     );
   }
 
-  const selectedChannels = groups.find(g => g.title === selectedGroup)?.data || [];
+  const selectedChannels = useMemo(() => {
+    return groups.find(g => g.title === selectedGroup)?.data || [];
+  }, [groups, selectedGroup]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -56,6 +58,9 @@ const LiveTVFlow = () => {
         <FlatList
           data={groups}
           keyExtractor={(item) => item.title}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[
@@ -63,6 +68,8 @@ const LiveTVFlow = () => {
                 selectedGroup === item.title ? { backgroundColor: colors.primary + '33', borderLeftColor: colors.primary, borderLeftWidth: 4 } : { borderLeftColor: 'transparent', borderLeftWidth: 4 }
               ]}
               onPress={() => setSelectedGroup(item.title)}
+              accessibilityRole="button"
+              accessibilityLabel={`Select category ${item.title}`}
             >
               <Text style={{ color: selectedGroup === item.title ? colors.primary : colors.textSecondary, fontWeight: selectedGroup === item.title ? 'bold' : 'normal' }}>
                 {item.title} ({item.data.length})
@@ -247,7 +254,10 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChanne
       </View>
 
       {/* Main Grid */}
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        removeClippedSubviews={true}
+      >
         {channels.map((channel: Channel) => {
           const epgKey = getEpgKey(channel);
           const channelEpg = epg[epgKey] || [];
@@ -278,6 +288,8 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChanne
                   <TouchableOpacity
                     onPress={() => handleFavoriteToggle(channel)}
                     style={{ padding: 4 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={isFav ? `Remove ${channel.name} from favorites` : `Add ${channel.name} to favorites`}
                   >
                     <Icon 
                       name={isFav ? 'favorite' : 'favorite-border'} 
@@ -289,6 +301,8 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChanne
                     <TouchableOpacity
                       onPress={() => handleLockToggle(channel)}
                       style={{ padding: 4 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={isLocked ? `Unlock ${channel.name}` : `Lock ${channel.name}`}
                     >
                       <Icon 
                         name={isLocked ? 'lock' : 'lock-open'} 

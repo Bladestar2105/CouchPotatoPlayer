@@ -112,6 +112,8 @@ const FavoritesList = () => {
         <TouchableOpacity
           style={styles.removeButton}
           onPress={() => removeFavorite(item.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${item.name} from favorites`}
         >
           <Icon name="close" size={16} color="#FFF" />
         </TouchableOpacity>
@@ -168,6 +170,10 @@ const FavoritesList = () => {
         numColumns={numColumns}
         key={numColumns} // Force re-render when columns change
         contentContainerStyle={styles.listContainer}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
     </View>
   );
