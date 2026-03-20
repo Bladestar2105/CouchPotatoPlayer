@@ -55,18 +55,44 @@ const decodeBase64IfNeeded = (text: string): string => {
 
 const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Response> => {
   try {
-    return await fetch(url, options);
+    const response = await fetch(url, options);
+    return response;
   } catch (e: any) {
     if (Platform.OS === 'web' && e instanceof TypeError) {
-      console.warn(`CORS Error, retrying with local Nginx proxy for: ${url}`);
+      console.warn(`CORS Error for: ${url}`);
+      
+      // Try local CORS proxy server (run proxy-server.py alongside the app)
+      const localProxyUrl = `${window.location.protocol}//${window.location.hostname}:9001/proxy/${url}`;
       try {
-        const localProxyUrl = `${window.location.origin}/proxy/${url}`;
-        const localProxyResponse = await fetch(localProxyUrl, options);
-        return localProxyResponse;
-      } catch (localProxyError) {
-        console.error("Local proxy fetch failed (ensure you are running the Docker container)", localProxyError);
-        throw new Error(i18n.t('corsError'));
+        console.log(`Trying local CORS proxy: ${localProxyUrl}...`);
+        const response = await fetch(localProxyUrl, options);
+        if (response.ok) {
+          console.log(`Local CORS proxy succeeded`);
+          return response;
+        }
+      } catch (proxyError: any) {
+        console.warn(`Local CORS proxy failed: ${proxyError.message}`);
       }
+      
+      // Try public CORS proxies as fallback
+      const corsProxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      ];
+      
+      for (const proxyUrl of corsProxies) {
+        try {
+          console.log(`Trying CORS proxy: ${proxyUrl.split('?')[0]}...`);
+          const response = await fetch(proxyUrl, options);
+          if (response.ok) {
+            console.log(`CORS proxy succeeded`);
+            return response;
+          }
+        } catch (proxyError) {
+          console.warn(`CORS proxy failed, trying next...`);
+        }
+      }
+      
+      throw new Error(i18n.t('corsError'));
     }
     throw e;
   }
@@ -402,16 +428,17 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const baseUrl = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
+    // Pre-check for IPTV-Manager specific endpoint (optional)
+    // Standard Xtream Codes servers work without this
     const preCheckUrl = `${cleanServerUrl}/cpp`;
     const fallbackPreCheckUrl = `${cleanServerUrl}/player_api.php?action=cpp`;
 
     let isIptvManager = false;
-    let preCheckStatus = 0;
+    let preCheckFailed = false;
 
-    const performPreCheck = async (url: string) => {
+    const performPreCheck = async (url: string): Promise<boolean> => {
       try {
         const response = await fetchWithProxy(url);
-        preCheckStatus = response.status;
         if (response.ok) {
           const text = await response.text();
           if (text.trim() === 'true' || text.trim() === '1') {
@@ -425,31 +452,28 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (e: any) {
-        console.error(`Pre-check failed for ${url}:`, e);
-        if (e.message === i18n.t('corsError')) throw e;
+        console.warn(`Pre-check failed for ${url}:`, e.message);
+        // Don't throw on CORS error - we'll try the standard API instead
       }
       return false;
     };
 
+    // Try pre-check but don't block on failure
     try {
       isIptvManager = await performPreCheck(preCheckUrl);
-    } catch (e: any) {
-      if (e.message === i18n.t('corsError')) throw e;
-    }
-
-    if (!isIptvManager) {
-      try {
+      if (!isIptvManager) {
         isIptvManager = await performPreCheck(fallbackPreCheckUrl);
-      } catch (e: any) {
-        if (e.message === i18n.t('corsError')) throw e;
       }
+    } catch (e: any) {
+      console.warn('IPTV-Manager pre-check error:', e.message);
+      preCheckFailed = true;
     }
 
-    if (!isIptvManager) {
-      if (preCheckStatus !== 0 && preCheckStatus !== 200) {
-        throw new Error(i18n.t('serverNotCompatible', { status: preCheckStatus }));
-      }
-      throw new Error(i18n.t('notIptvManager'));
+    // If pre-check failed due to CORS, we still try the standard API
+    // If pre-check succeeded but returned false, it's not an IPTV-Manager server
+    // but it might still be a valid Xtream Codes server
+    if (!isIptvManager && !preCheckFailed) {
+      console.log('Server is not an IPTV-Manager instance, trying standard Xtream Codes API...');
     }
 
     let authResponse;
