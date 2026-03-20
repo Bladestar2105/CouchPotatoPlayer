@@ -16,6 +16,7 @@ import {
   FavoriteItem,
   RecentlyWatchedItem
 } from '../types';
+import { generateCatchupUrl, hasCatchupSupport } from '../utils/catchupUtils';
 import { parseXMLTVFromString } from '../utils/epgParser';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
@@ -447,54 +448,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const baseUrl = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
-    // Pre-check for IPTV-Manager specific endpoint (optional)
-    // Standard Xtream Codes servers work without this
-    const preCheckUrl = `${cleanServerUrl}/cpp`;
-    const fallbackPreCheckUrl = `${cleanServerUrl}/player_api.php?action=cpp`;
-
-    let isIptvManager = false;
-    let preCheckFailed = false;
-
-    const performPreCheck = async (url: string): Promise<boolean> => {
-      try {
-        const response = await fetchWithProxy(url);
-        if (response.ok) {
-          const text = await response.text();
-          if (text.trim() === 'true' || text.trim() === '1') {
-            return true;
-          }
-          try {
-             const json = JSON.parse(text);
-             if (json === true) return true;
-          } catch (e) {
-             // Not valid JSON or not true
-          }
-        }
-      } catch (e: any) {
-        console.warn(`Pre-check failed for ${url}:`, e.message);
-        // Don't throw on CORS error - we'll try the standard API instead
-      }
-      return false;
-    };
-
-    // Try pre-check but don't block on failure
-    try {
-      isIptvManager = await performPreCheck(preCheckUrl);
-      if (!isIptvManager) {
-        isIptvManager = await performPreCheck(fallbackPreCheckUrl);
-      }
-    } catch (e: any) {
-      console.warn('IPTV-Manager pre-check error:', e.message);
-      preCheckFailed = true;
-    }
-
-    // If pre-check failed due to CORS, we still try the standard API
-    // If pre-check succeeded but returned false, it's not an IPTV-Manager server
-    // but it might still be a valid Xtream Codes server
-    if (!isIptvManager && !preCheckFailed) {
-      console.log('Server is not an IPTV-Manager instance, trying standard Xtream Codes API...');
-    }
-
     let authResponse;
     let liveExtension = 'ts';
     try {
@@ -788,6 +741,26 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
      setIsAdultUnlocked(false);
   };
 
+  // --- Catchup/Archive Support ---
+  const getCatchupUrl = (channel: Channel, startTime: Date, endTime: Date): string | null => {
+    if (!currentProfile || currentProfile.type !== 'xtream') {
+      return null;
+    }
+    const xtreamProfile = currentProfile as XtreamProfile;
+    return generateCatchupUrl(
+      channel,
+      startTime,
+      endTime,
+      xtreamProfile.url,
+      xtreamProfile.username,
+      xtreamProfile.password || ''
+    );
+  };
+
+  const hasCatchup = (channel: Channel): boolean => {
+    return hasCatchupSupport(channel);
+  };
+
   return (
     <IPTVContext.Provider
       value={{
@@ -827,6 +800,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lockChannel,
         unlockChannel,
         isChannelLocked,
+        getCatchupUrl,
+        hasCatchup,
       }}
     >
       {children}

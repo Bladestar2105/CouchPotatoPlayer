@@ -13,6 +13,11 @@ export interface Channel {
   streamId?: number;
   categoryId?: string;
   containerExtension?: string;
+  // Catchup/Archive support
+  tvArchive?: number; // 1 if channel has archive/catchup
+  tvArchiveDuration?: number; // Duration in hours
+  catchupId?: string; // Catchup source ID
+  catchupDays?: number; // Number of days available for catchup
 }
 
 /**
@@ -90,6 +95,7 @@ export interface FavoriteItem {
   icon?: string;
   categoryId?: string;
   addedAt: number;
+  lastWatchedAt?: number;
 }
 
 /**
@@ -177,4 +183,8 @@ export type IPTVContextType = {
   lockChannel: (id: string) => Promise<void>;
   unlockChannel: (id: string) => Promise<void>;
   isChannelLocked: (id: string) => boolean;
+
+  // Catchup/Archive support
+  getCatchupUrl: (channel: Channel, startTime: Date, endTime: Date) => string | null;
+  hasCatchup: (channel: Channel) => boolean;
 };
