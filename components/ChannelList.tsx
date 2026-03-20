@@ -4,13 +4,13 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Channel, FavoriteItem, RecentlyWatchedItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
-import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { MaterialIcons as Icon, Ionicons } from '@expo/vector-icons';
 
 const defaultLogo = require('../assets/icon.png');
 const TIMELINE_HOUR_WIDTH = 200; // pixels per hour
 
 const LiveTVFlow = () => {
-  const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched } = useIPTV();
+  const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, hasCatchup, getCatchupUrl } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
 
@@ -89,6 +89,8 @@ const LiveTVFlow = () => {
              isFavorite={isFavorite}
              addRecentlyWatched={addRecentlyWatched}
              pin={pin}
+             hasCatchup={hasCatchup}
+             getCatchupUrl={getCatchupUrl}
            />
         ) : (
           <View style={styles.centeredContainer}>
@@ -101,7 +103,7 @@ const LiveTVFlow = () => {
 };
 
 // Two-dimensional EPG timeline grid with synchronized scrolling
-const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, pin }: any) => {
+const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, pin, hasCatchup, getCatchupUrl }: any) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const headerScrollRef = useRef<ScrollView>(null);
   const rowScrollRefs = useRef<{ [key: string]: ScrollView }>({});
@@ -311,6 +313,11 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChanne
                   {channelEpg.map((prog: any, idx: number) => {
                     const { left, width } = getEpgBlockStyle(prog.start, prog.end);
                     const isNow = currentTime >= prog.start && currentTime < prog.end;
+                    const isPast = currentTime >= prog.end;
+                    
+                    // Check if catchup is available
+                    const canCatchup = isPast && hasCatchup(channel) && 
+                      prog.end.getTime() > Date.now() - (channel.catchupDays || 0) * 24 * 60 * 60 * 1000;
 
                     return (
                       <TouchableOpacity
@@ -320,16 +327,33 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChanne
                           {
                             left,
                             width: width - 2,
-                            backgroundColor: isNow ? colors.primary + '40' : colors.surface,
-                            borderColor: isNow ? colors.primary : colors.divider,
-                            borderWidth: isNow ? 2 : 1,
+                            backgroundColor: isNow ? colors.primary + '40' : canCatchup ? colors.primary + '20' : colors.surface,
+                            borderColor: isNow ? colors.primary : canCatchup ? colors.primary + '60' : colors.divider,
+                            borderWidth: isNow ? 2 : canCatchup ? 1 : 1,
                           }
                         ]}
-                        onPress={() => {}}
+                        onPress={() => {
+                          if (isNow) {
+                            // Play live
+                            handleChannelPress(channel);
+                          } else if (canCatchup) {
+                            // Play catchup
+                            const catchupUrl = getCatchupUrl(channel, prog.start, prog.end);
+                            if (catchupUrl) {
+                              playStream({ url: catchupUrl, id: `${channel.id}_${prog.start.getTime()}` });
+                              navigation.navigate('Player');
+                            }
+                          }
+                        }}
                       >
-                        <Text style={{ color: isNow ? '#FFF' : colors.text, fontSize: 11, fontWeight: isNow ? 'bold' : 'normal' }} numberOfLines={1}>
-                          {prog.title}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={{ color: isNow ? '#FFF' : colors.text, fontSize: 11, fontWeight: isNow ? 'bold' : 'normal' }} numberOfLines={1}>
+                            {prog.title}
+                          </Text>
+                          {canCatchup && !isNow && (
+                            <Ionicons name="play-back" size={10} color={colors.primary} style={{ marginLeft: 4 }} />
+                          )}
+                        </View>
                         <Text style={{ color: isNow ? 'rgba(255,255,255,0.7)' : colors.textSecondary, fontSize: 9 }} numberOfLines={1}>
                           {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>

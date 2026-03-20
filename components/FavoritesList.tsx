@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
@@ -10,12 +10,15 @@ import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
+type SortOption = 'added' | 'name' | 'type' | 'recent';
+
 const FavoritesList = () => {
   const { favorites, removeFavorite, playStream, addRecentlyWatched } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
   const dimensions = useWindowDimensions();
   const isTvMode = dimensions.width >= 1200;
+  const [sortBy, setSortBy] = useState<SortOption>('added');
 
   const handlePress = (item: FavoriteItem) => {
     // Add to recently watched
@@ -68,6 +71,22 @@ const FavoritesList = () => {
     }
   };
 
+  // Sort favorites based on selected option
+  const sortedFavorites = useMemo(() => {
+    const sorted = [...favorites];
+    switch (sortBy) {
+      case 'name':
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case 'type':
+        return sorted.sort((a, b) => a.type.localeCompare(b.type));
+      case 'recent':
+        return sorted.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+      case 'added':
+      default:
+        return sorted.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+    }
+  }, [favorites, sortBy]);
+
   const renderItem = ({ item }: { item: FavoriteItem }) => (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.card }]}
@@ -116,8 +135,34 @@ const FavoritesList = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Sort Options Header */}
+      <View style={styles.sortHeader}>
+        <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>Sort by:</Text>
+        <View style={styles.sortButtons}>
+          {[
+            { key: 'added', label: 'Recently Added' },
+            { key: 'name', label: 'Name' },
+            { key: 'type', label: 'Type' },
+            { key: 'recent', label: 'Recently Watched' },
+          ].map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.sortButton,
+                { backgroundColor: sortBy === option.key ? colors.primary : colors.surface }
+              ]}
+              onPress={() => setSortBy(option.key as SortOption)}
+            >
+              <Text style={[styles.sortButtonText, { color: sortBy === option.key ? '#FFF' : colors.text }]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      
       <FlatList
-        data={favorites}
+        data={sortedFavorites}
         keyExtractor={(item) => `${item.id}-${item.type}`}
         renderItem={renderItem}
         numColumns={numColumns}
@@ -207,7 +252,31 @@ const styles = StyleSheet.create({
   },
   typeLabel: {
     fontSize: 10,
-  }
+  },
+  sortHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  sortLabel: {
+    fontSize: 14,
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    flex: 1,
+  },
+  sortButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  sortButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
 });
 
 export default FavoritesList;

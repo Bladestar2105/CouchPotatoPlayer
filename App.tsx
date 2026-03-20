@@ -17,7 +17,7 @@ import PinSetupScreen from './screens/PinSetupScreen';
 import SearchScreen from './screens/SearchScreen';
 import MediaInfoScreen from './screens/MediaInfoScreen';
 import EPGScreen from './screens/EPGScreen';
-import { Series, Season } from './types';
+import { Series, Season, Channel } from './types';
 
 // Mettre à jour la liste des écrans (SAUF Splash)
 export type RootStackParamList = {
@@ -28,7 +28,7 @@ export type RootStackParamList = {
   PinSetup: undefined;
   Search: undefined;
   MediaInfo: { id: string; type: 'vod' | 'series'; title: string; cover?: string; streamUrl?: string; };
-  EPG: { channelId: string; channelName: string; };
+  EPG: { channelId: string; channelName: string; channel?: Channel; };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();

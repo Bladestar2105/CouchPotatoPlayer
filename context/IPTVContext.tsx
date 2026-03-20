@@ -14,8 +14,10 @@ import {
   Episode,
   EPGProgram,
   FavoriteItem,
-  RecentlyWatchedItem
+  RecentlyWatchedItem,
+  RecordingItem
 } from '../types';
+import { generateCatchupUrl, hasCatchupSupport } from '../utils/catchupUtils';
 import { parseXMLTVFromString } from '../utils/epgParser';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
@@ -26,6 +28,7 @@ const RECENTLY_WATCHED_KEY = 'IPTV_RECENTLY_WATCHED';
 const PIN_STORAGE_KEY = 'IPTV_PIN';
 const LOCKED_CHANNELS_KEY = 'IPTV_LOCKED_CHANNELS';
 const EPG_STORAGE_KEY_PREFIX = 'IPTV_EPG_';
+const RECORDINGS_STORAGE_KEY = 'IPTV_RECORDINGS';
 
 const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -115,6 +118,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lockedChannels, setLockedChannels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [recordings, setRecordings] = useState<RecordingItem[]>([]);
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -178,6 +182,18 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error("Locked channels data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(LOCKED_CHANNELS_KEY);
             setLockedChannels([]);
+          }
+        }
+
+        const recordingsJson = await AsyncStorage.getItem(RECORDINGS_STORAGE_KEY);
+        if (recordingsJson) {
+          try {
+            const storedRecordings: RecordingItem[] = JSON.parse(recordingsJson);
+            setRecordings(storedRecordings);
+          } catch (parseError) {
+            console.error("Recordings data corrupted, cleaning up...", parseError);
+            await AsyncStorage.removeItem(RECORDINGS_STORAGE_KEY);
+            setRecordings([]);
           }
         }
       } catch (e) {
@@ -788,6 +804,51 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
      setIsAdultUnlocked(false);
   };
 
+  // --- Catchup/Archive Support ---
+  const getCatchupUrl = (channel: Channel, startTime: Date, endTime: Date): string | null => {
+    if (!currentProfile || currentProfile.type !== 'xtream') {
+      return null;
+    }
+    const xtreamProfile = currentProfile as XtreamProfile;
+    return generateCatchupUrl(
+      channel,
+      startTime,
+      endTime,
+      xtreamProfile.url,
+      xtreamProfile.username,
+      xtreamProfile.password || ''
+    );
+  };
+
+  const hasCatchup = (channel: Channel): boolean => {
+    return hasCatchupSupport(channel);
+  };
+
+  // --- Recording Management ---
+  const addRecording = async (item: RecordingItem) => {
+    try {
+      const newRecordings = [...recordings, item];
+      setRecordings(newRecordings);
+      await AsyncStorage.setItem(RECORDINGS_STORAGE_KEY, JSON.stringify(newRecordings));
+    } catch (e) {
+      console.error("Failed to add recording", e);
+    }
+  };
+
+  const removeRecording = async (id: string) => {
+    try {
+      const newRecordings = recordings.filter(r => r.id !== id);
+      setRecordings(newRecordings);
+      await AsyncStorage.setItem(RECORDINGS_STORAGE_KEY, JSON.stringify(newRecordings));
+    } catch (e) {
+      console.error("Failed to remove recording", e);
+    }
+  };
+
+  const isRecording = (id: string): boolean => {
+    return recordings.some(r => r.id === id);
+  };
+
   return (
     <IPTVContext.Provider
       value={{
@@ -827,6 +888,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lockChannel,
         unlockChannel,
         isChannelLocked,
+        getCatchupUrl,
+        hasCatchup,
+        recordings,
+        addRecording,
+        removeRecording,
+        isRecording,
       }}
     >
       {children}
