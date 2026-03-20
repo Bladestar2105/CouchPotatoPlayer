@@ -9,6 +9,10 @@ export interface Channel {
   group: string;
   tvgId?: string;
   isAdult?: boolean;
+  epgChannelId?: string;
+  streamId?: number;
+  categoryId?: string;
+  containerExtension?: string;
 }
 
 /**
@@ -21,6 +25,8 @@ export interface Movie {
   cover?: string;
   group: string;
   isAdult?: boolean;
+  categoryId?: string;
+  containerExtension?: string;
 }
 
 /**
@@ -31,6 +37,7 @@ export interface Episode {
   name: string;
   streamUrl: string;
   episodeNumber: number;
+  containerExtension?: string;
 }
 
 /**
@@ -53,8 +60,12 @@ export interface Series {
   group: string;
   seasons: Season[];
   isAdult?: boolean;
+  categoryId?: string;
 }
 
+/**
+ * Programme EPG avec support pour timestamps Unix (Flutter)
+ */
 export interface EPGProgram {
   id: string;
   channelId: string;
@@ -62,6 +73,52 @@ export interface EPGProgram {
   description: string;
   start: Date;
   end: Date;
+  // Support for raw data from Xtream API
+  title_raw?: string;
+  description_raw?: string;
+  start_unix?: number;
+  end_unix?: number;
+}
+
+/**
+ * Élément favori avec métadonnées complètes (Flutter migration)
+ */
+export interface FavoriteItem {
+  id: string;
+  type: 'live' | 'vod' | 'series';
+  name: string;
+  icon?: string;
+  categoryId?: string;
+  addedAt: number;
+}
+
+/**
+ * Élément récemment regardé avec progression (Flutter migration)
+ */
+export interface RecentlyWatchedItem {
+  id: string;
+  type: 'live' | 'vod' | 'series';
+  name: string;
+  icon?: string;
+  extension?: string;
+  directSource?: string;
+  lastWatchedAt: number;
+  position?: number;
+  duration?: number;
+  episodeId?: number;
+  episodeName?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}
+
+/**
+ * Catégorie IPTV (Flutter migration)
+ */
+export interface Category {
+  category_id: string;
+  category_name: string;
+  parent_id?: number;
+  adult?: number;
 }
 
 export interface M3UProfile { id: string; name: string; type: 'm3u'; url: string; epgUrl?: string; icon?: string; }
@@ -80,7 +137,8 @@ export type IPTVContextType = {
 
   currentStream: { url: string; id: string; } | null;
 
-  favorites: string[];
+  favorites: FavoriteItem[];
+  recentlyWatched: RecentlyWatchedItem[];
 
   isLoading: boolean;
   error: string | null;
@@ -100,16 +158,23 @@ export type IPTVContextType = {
   getSeriesInfo: (seriesId: string) => Promise<any>;
   getVodInfo: (vodId: string) => Promise<any>;
 
-  addFavorite: (id: string) => Promise<void>;
+  addFavorite: (item: FavoriteItem) => Promise<void>;
   removeFavorite: (id: string) => Promise<void>;
   isFavorite: (id: string) => boolean;
 
-  recentlyWatched: string[];
-  addRecentlyWatched: (id: string) => Promise<void>;
+  addRecentlyWatched: (item: RecentlyWatchedItem) => Promise<void>;
+  updatePlaybackPosition: (id: string, position: number, duration?: number) => Promise<void>;
+  removeRecentlyWatched: (id: string) => Promise<void>;
 
   pin: string | null;
   isAdultUnlocked: boolean;
   setPinCode: (newPin: string | null) => Promise<void>;
   unlockAdultContent: (pinInput: string) => boolean;
   lockAdultContent: () => void;
+
+  // Channel Lock/Unlock (Flutter migration)
+  lockedChannels: string[];
+  lockChannel: (id: string) => Promise<void>;
+  unlockChannel: (id: string) => Promise<void>;
+  isChannelLocked: (id: string) => boolean;
 };

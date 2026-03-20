@@ -12,9 +12,11 @@ import {
   Series,
   Season,
   Episode,
-  EPGProgram
+  EPGProgram,
+  FavoriteItem,
+  RecentlyWatchedItem
 } from '../types';
-import { parseXMLTV } from '../utils/epgParser';
+import { parseXMLTVFromString } from '../utils/epgParser';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
 const PROFILES_STORAGE_KEY = 'IPTV_PROFILES';
@@ -22,28 +24,75 @@ const CURRENT_PROFILE_STORAGE_KEY = 'IPTV_CURRENT_PROFILE';
 const FAVORITES_STORAGE_KEY = 'IPTV_FAVORITES';
 const RECENTLY_WATCHED_KEY = 'IPTV_RECENTLY_WATCHED';
 const PIN_STORAGE_KEY = 'IPTV_PIN';
+const LOCKED_CHANNELS_KEY = 'IPTV_LOCKED_CHANNELS';
 const EPG_STORAGE_KEY_PREFIX = 'IPTV_EPG_';
 
 const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+/**
+ * Decode Base64 string if needed (Flutter migration)
+ * Xtream EPG sometimes returns base64-encoded titles
+ */
+const decodeBase64IfNeeded = (text: string): string => {
+  if (!text || text.length === 0) return text;
+  try {
+    // Simple heuristic: if it doesn't contain spaces and length is divisible by 4, it might be base64
+    if (!text.includes(' ') && text.length % 4 === 0) {
+      // Try to decode in web environment
+      if (Platform.OS === 'web') {
+        const decoded = atob(text);
+        // Check if it's valid UTF-8
+        if (!decoded.includes('�')) {
+          return decoded;
+        }
+      }
+    }
+  } catch (_) {
+    // Not valid base64
+  }
+  return text;
+};
+
 const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Response> => {
   try {
-    return await fetch(url, options);
+    const response = await fetch(url, options);
+    return response;
   } catch (e: any) {
     if (Platform.OS === 'web' && e instanceof TypeError) {
-      console.warn(`CORS Error, retrying with local Nginx proxy for: ${url}`);
+      console.warn(`CORS Error for: ${url}`);
+      
+      // Try local CORS proxy server (run proxy-server.py alongside the app)
+      const localProxyUrl = `${window.location.protocol}//${window.location.hostname}:9001/proxy/${url}`;
       try {
-        // Try the local Nginx proxy (works in Docker/production deployment)
-        // We use `window.location.origin` to ensure it works on whichever port/host the app is served
-        // Note: The URL is NOT encoded here because Nginx intercepts the path directly via regex match.
-        // E.g., /proxy/http://example.com/api?user=1&pass=2 is matched as target_url=http://example.com/api?user=1&pass=2
-        const localProxyUrl = `${window.location.origin}/proxy/${url}`;
-        const localProxyResponse = await fetch(localProxyUrl, options);
-        return localProxyResponse;
-      } catch (localProxyError) {
-        console.error("Local proxy fetch failed (ensure you are running the Docker container)", localProxyError);
-        throw new Error(i18n.t('corsError'));
+        console.log(`Trying local CORS proxy: ${localProxyUrl}...`);
+        const response = await fetch(localProxyUrl, options);
+        if (response.ok) {
+          console.log(`Local CORS proxy succeeded`);
+          return response;
+        }
+      } catch (proxyError: any) {
+        console.warn(`Local CORS proxy failed: ${proxyError.message}`);
       }
+      
+      // Try public CORS proxies as fallback
+      const corsProxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      ];
+      
+      for (const proxyUrl of corsProxies) {
+        try {
+          console.log(`Trying CORS proxy: ${proxyUrl.split('?')[0]}...`);
+          const response = await fetch(proxyUrl, options);
+          if (response.ok) {
+            console.log(`CORS proxy succeeded`);
+            return response;
+          }
+        } catch (proxyError) {
+          console.warn(`CORS proxy failed, trying next...`);
+        }
+      }
+      
+      throw new Error(i18n.t('corsError'));
     }
     throw e;
   }
@@ -58,11 +107,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [movies, setMovies] = useState<Movie[]>([]);
   const [series, setSeries] = useState<Series[]>([]);
   const [currentStream, setCurrentStream] = useState<{ url: string; id: string; } | null>(null);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [recentlyWatched, setRecentlyWatched] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [recentlyWatched, setRecentlyWatched] = useState<RecentlyWatchedItem[]>([]);
   const [epg, setEpg] = useState<Record<string, EPGProgram[]>>({});
   const [pin, setPin] = useState<string | null>(null);
   const [isAdultUnlocked, setIsAdultUnlocked] = useState<boolean>(false);
+  const [lockedChannels, setLockedChannels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,7 +143,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const favoritesJson = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
         if (favoritesJson) {
           try {
-            const storedFavorites = JSON.parse(favoritesJson);
+            const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
             setFavorites(storedFavorites);
           } catch (parseError) {
              console.error("Favorites data corrupted, cleaning up...", parseError);
@@ -105,7 +155,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const recentlyWatchedJson = await AsyncStorage.getItem(RECENTLY_WATCHED_KEY);
         if (recentlyWatchedJson) {
           try {
-            const storedRecents = JSON.parse(recentlyWatchedJson);
+            const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
             setRecentlyWatched(storedRecents);
           } catch (parseError) {
             console.error("Recently watched data corrupted, cleaning up...", parseError);
@@ -117,6 +167,18 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedPin = await AsyncStorage.getItem(PIN_STORAGE_KEY);
         if (storedPin) {
            setPin(storedPin);
+        }
+
+        const lockedJson = await AsyncStorage.getItem(LOCKED_CHANNELS_KEY);
+        if (lockedJson) {
+          try {
+            const storedLocked: string[] = JSON.parse(lockedJson);
+            setLockedChannels(storedLocked);
+          } catch (parseError) {
+            console.error("Locked channels data corrupted, cleaning up...", parseError);
+            await AsyncStorage.removeItem(LOCKED_CHANNELS_KEY);
+            setLockedChannels([]);
+          }
         }
       } catch (e) {
         console.error("Failed to load data from storage", e);
@@ -177,7 +239,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await loadM3U(profile.url);
       }
       else if (profile.type === 'xtream') {
-
         await loadXtream(profile);
       }
       else if (profile.type === 'stalker') {
@@ -207,6 +268,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadEPG = async () => {
     if (!currentProfile) return;
 
+    console.log('[EPG] Starting EPG load...');
     const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
 
     try {
@@ -216,6 +278,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cachedEpg = JSON.parse(cachedEpgStr);
         if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
           // Re-hydrate Date objects
+          console.log('[EPG] Using cached EPG data');
           const hydratedEpg: Record<string, EPGProgram[]> = {};
           for (const channelId in cachedEpg.data) {
             hydratedEpg[channelId] = cachedEpg.data[channelId].map((p: any) => ({
@@ -242,29 +305,44 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (epgUrl) {
-        const epgData = await parseXMLTV(epgUrl);
+        console.log('[EPG] Fetching EPG from:', epgUrl);
+        
+        // Use CORS proxy for fetching EPG
+        const response = await fetchWithProxy(epgUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch EPG: ${response.status}`);
+        }
+        
+        const xmlData = await response.text();
+        console.log('[EPG] Received XML data, length:', xmlData.length);
+        
+        // Parse the XML data
+        const epgData = parseXMLTVFromString(xmlData);
+        console.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
+        
         const newEpg: Record<string, EPGProgram[]> = {};
         for (const channelId in epgData) {
           newEpg[channelId] = epgData[channelId].map((p: any) => ({
             id: Math.random().toString(),
             channelId: p.channelId,
-            title: p.title,
-            description: p.description,
+            title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
+            description: decodeBase64IfNeeded(p.description || ''),
             start: p.start,
             end: p.end,
           }));
         }
         setEpg(newEpg);
+        console.log('[EPG] EPG loaded successfully');
 
-        // Save to cache without stringifying huge objects repeatedly
-        // Fast JSON serialization is key here, we rely on the JS engine
         await AsyncStorage.setItem(storageKey, JSON.stringify({
           timestamp: Date.now(),
           data: newEpg
         }));
+      } else {
+        console.log('[EPG] No EPG URL available');
       }
     } catch (e) {
-      console.error("Failed to load EPG", e);
+      console.error("[EPG] Failed to load EPG", e);
     }
   };
 
@@ -276,7 +354,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       m3uContent = await response.text();
     } catch (fetchError: any) {
       console.error("Network error fetching M3U:", fetchError);
-      // fetchWithProxy already throws i18n.t('corsError') on web CORS failures
       throw new Error(fetchError.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('m3uDownloadError'));
     }
 
@@ -361,31 +438,26 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { channels, movies, series };
   };
 
-  // --- NOUVELLE LOGIQUE DE CHARGEMENT XTREAM ---
   const loadXtream = async (profile: IPTVProfile) => {
-    // S'assurer que le profil est de type Xtream
     if (profile.type !== 'xtream') return;
 
-    // Support backward compatibility for profiles stored with `serverUrl`
     const { url: serverUrlProp, username, password } = profile;
     const serverUrl = serverUrlProp || (profile as any).serverUrl;
     if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const baseUrl = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
 
-    // 0. Pré-vérification (IPTV-Manager)
-    // The PR #430 introduces both /cpp and /player_api.php?action=cpp endpoints returning `true`.
-    // We use /cpp here as a clean health-check before doing any authentication.
+    // Pre-check for IPTV-Manager specific endpoint (optional)
+    // Standard Xtream Codes servers work without this
     const preCheckUrl = `${cleanServerUrl}/cpp`;
     const fallbackPreCheckUrl = `${cleanServerUrl}/player_api.php?action=cpp`;
 
     let isIptvManager = false;
-    let preCheckStatus = 0;
+    let preCheckFailed = false;
 
-    const performPreCheck = async (url: string) => {
+    const performPreCheck = async (url: string): Promise<boolean> => {
       try {
         const response = await fetchWithProxy(url);
-        preCheckStatus = response.status;
         if (response.ok) {
           const text = await response.text();
           if (text.trim() === 'true' || text.trim() === '1') {
@@ -399,38 +471,32 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (e: any) {
-        console.error(`Pre-check failed for ${url}:`, e);
-        if (e.message === i18n.t('corsError')) throw e;
+        console.warn(`Pre-check failed for ${url}:`, e.message);
+        // Don't throw on CORS error - we'll try the standard API instead
       }
       return false;
     };
 
-    // Try primary endpoint first
+    // Try pre-check but don't block on failure
     try {
       isIptvManager = await performPreCheck(preCheckUrl);
-    } catch (e: any) {
-      if (e.message === i18n.t('corsError')) throw e;
-    }
-
-    // If primary fails, try fallback endpoint
-    if (!isIptvManager) {
-      try {
+      if (!isIptvManager) {
         isIptvManager = await performPreCheck(fallbackPreCheckUrl);
-      } catch (e: any) {
-        if (e.message === i18n.t('corsError')) throw e;
       }
+    } catch (e: any) {
+      console.warn('IPTV-Manager pre-check error:', e.message);
+      preCheckFailed = true;
     }
 
-    if (!isIptvManager) {
-      if (preCheckStatus !== 0 && preCheckStatus !== 200) {
-        throw new Error(i18n.t('serverNotCompatible', { status: preCheckStatus }));
-      }
-      throw new Error(i18n.t('notIptvManager'));
+    // If pre-check failed due to CORS, we still try the standard API
+    // If pre-check succeeded but returned false, it's not an IPTV-Manager server
+    // but it might still be a valid Xtream Codes server
+    if (!isIptvManager && !preCheckFailed) {
+      console.log('Server is not an IPTV-Manager instance, trying standard Xtream Codes API...');
     }
 
-    // 1. Authentification
     let authResponse;
-    let liveExtension = 'ts'; // Default to 'ts' if not provided
+    let liveExtension = 'ts';
     try {
       authResponse = await fetchWithProxy(baseUrl);
       if (!authResponse.ok) throw new Error(i18n.t('serverError', { status: authResponse.status }));
@@ -440,7 +506,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(i18n.t('authFailed'));
       }
 
-      // Extract allowed output format for Live TV URLs (e.g., 'ts' or 'm3u8')
       if (authData.user_info.allowed_output_formats && Array.isArray(authData.user_info.allowed_output_formats)) {
         const formats = authData.user_info.allowed_output_formats;
         if (formats.includes('ts')) {
@@ -452,19 +517,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } catch (e: any) {
-      // 🛡️ SECURITY: Prevent leaking credentials from the URL in e.message to the UI
       console.error("Network error during Xtream auth:", e);
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('connectionFailed'));
     }
 
-    // 2. Fetch Categories
     const liveCategoriesUrl = `${baseUrl}&action=get_live_categories`;
     const vodCategoriesUrl = `${baseUrl}&action=get_vod_categories`;
     const seriesCategoriesUrl = `${baseUrl}&action=get_series_categories`;
-
-    // We only fetch categories right now so we don't block the UI with 10k+ streams immediately
-    // For a real production app, we would lazily fetch streams per category using `&category_id=X`
-    // when a user clicks a category. But to fix the grouping and adult checks quickly here:
 
     try {
       const [liveCatRes, vodCatRes, seriesCatRes] = await Promise.all([
@@ -491,7 +550,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       processCats(vodCatData);
       processCats(seriesCatData);
 
-      // 3. Fetch streams (Optimally this should be paginated, doing all at once is heavy)
       const allStreamsUrl = `${baseUrl}&action=get_live_streams`;
       const vodStreamsUrl = `${baseUrl}&action=get_vod_streams`;
       const seriesStreamsUrl = `${baseUrl}&action=get_series`;
@@ -506,11 +564,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const vodData = await vodRes.json();
       const seriesData = await seriesRes.json();
 
-      // 4. Parser les données
       const parsedChannels: Channel[] = Array.isArray(liveData) ? liveData.map((channel: any): Channel => {
         const catInfo = categoryMap.get(String(channel.category_id)) || { name: 'Live TV', isAdult: false };
 
-        // Sometimes stream_type is returned as 'live' instead of an extension. Fallback to our dynamic format if so.
         let extension = channel.stream_type;
         if (!extension || extension === 'live') {
           extension = liveExtension;
@@ -523,6 +579,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logo: channel.stream_icon,
           group: catInfo.name,
           tvgId: channel.epg_channel_id,
+          epgChannelId: channel.epg_channel_id,
+          streamId: channel.stream_id,
+          categoryId: String(channel.category_id),
+          containerExtension: extension,
           isAdult: catInfo.isAdult
         };
       }) : [];
@@ -536,6 +596,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           streamUrl: `${cleanServerUrl}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${movie.stream_id}.${movie.container_extension}`,
           cover: movie.stream_icon,
           group: catInfo.name,
+          categoryId: String(movie.category_id),
+          containerExtension: movie.container_extension,
           isAdult: catInfo.isAdult
         };
       }) : [];
@@ -548,6 +610,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: series.name,
           cover: series.cover,
           group: catInfo.name,
+          categoryId: String(series.category_id),
           seasons: [],
           isAdult: catInfo.isAdult
         };
@@ -555,7 +618,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSeries(parsedSeries);
 
     } catch (e: any) {
-      // 🛡️ SECURITY: e.message might contain sensitive URLs
       console.error("Error fetching Xtream streams", e);
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
@@ -596,16 +658,16 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return null;
   };
-  // --- FIN DE LA LOGIQUE XTREAM ---
 
   const playStream = (stream: { url: string; id: string; }) => {
     setCurrentStream(stream);
   };
 
-  const addFavorite = async (id: string) => {
+  // --- Favorites with full metadata (Flutter migration) ---
+  const addFavorite = async (item: FavoriteItem) => {
     try {
-      if (!favorites.includes(id)) {
-        const newFavorites = [...favorites, id];
+      if (!favorites.some(f => f.id === item.id && f.type === item.type)) {
+        const newFavorites = [item, ...favorites];
         setFavorites(newFavorites);
         await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavorites));
       }
@@ -616,7 +678,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeFavorite = async (id: string) => {
     try {
-      const newFavorites = favorites.filter(favId => favId !== id);
+      const newFavorites = favorites.filter(favItem => favItem.id !== id);
       setFavorites(newFavorites);
       await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavorites));
     } catch (e) {
@@ -625,12 +687,15 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isFavorite = (id: string) => {
-    return favorites.includes(id);
+    return favorites.some(f => f.id === id);
   };
 
-  const addRecentlyWatched = async (id: string) => {
+  // --- Recently Watched with progress (Flutter migration) ---
+  const addRecentlyWatched = async (item: RecentlyWatchedItem) => {
     try {
-      const newRecents = [id, ...recentlyWatched.filter(recentId => recentId !== id)].slice(0, 10); // Keep last 10
+      // Remove existing entry for this item
+      const filtered = recentlyWatched.filter(r => !(r.id === item.id && r.type === item.type));
+      const newRecents = [item, ...filtered].slice(0, 50); // Keep last 50
       setRecentlyWatched(newRecents);
       await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(newRecents));
     } catch (e) {
@@ -638,6 +703,65 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updatePlaybackPosition = async (id: string, position: number, duration?: number) => {
+    try {
+      const index = recentlyWatched.findIndex(r => r.id === id);
+      if (index >= 0) {
+        const item = recentlyWatched[index];
+        recentlyWatched[index] = {
+          ...item,
+          lastWatchedAt: Date.now(),
+          position,
+          duration: duration ?? item.duration,
+        };
+        setRecentlyWatched([...recentlyWatched]);
+        await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(recentlyWatched));
+      }
+    } catch (e) {
+      console.error("Error updating playback position", e);
+    }
+  };
+
+  const removeRecentlyWatched = async (id: string) => {
+    try {
+      const newRecents = recentlyWatched.filter(r => r.id !== id);
+      setRecentlyWatched(newRecents);
+      await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(newRecents));
+    } catch (e) {
+      console.error("Error removing from recently watched", e);
+    }
+  };
+
+  // --- Channel Lock/Unlock (Flutter migration) ---
+  const lockChannel = async (id: string) => {
+    try {
+      if (!lockedChannels.includes(id)) {
+        const newLocked = [...lockedChannels, id];
+        setLockedChannels(newLocked);
+        await AsyncStorage.setItem(LOCKED_CHANNELS_KEY, JSON.stringify(newLocked));
+      }
+    } catch (e) {
+      console.error("Error locking channel", e);
+    }
+  };
+
+  const unlockChannel = async (id: string) => {
+    try {
+      if (lockedChannels.includes(id)) {
+        const newLocked = lockedChannels.filter(chId => chId !== id);
+        setLockedChannels(newLocked);
+        await AsyncStorage.setItem(LOCKED_CHANNELS_KEY, JSON.stringify(newLocked));
+      }
+    } catch (e) {
+      console.error("Error unlocking channel", e);
+    }
+  };
+
+  const isChannelLocked = (id: string) => {
+    return lockedChannels.includes(id);
+  };
+
+  // --- PIN Management ---
   const setPinCode = async (newPin: string | null) => {
     try {
        setPin(newPin);
@@ -690,6 +814,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeFavorite,
         isFavorite,
         addRecentlyWatched,
+        updatePlaybackPosition,
+        removeRecentlyWatched,
         setPinCode,
         unlockAdultContent,
         lockAdultContent,
@@ -697,6 +823,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loadEPG,
         getSeriesInfo,
         getVodInfo,
+        lockedChannels,
+        lockChannel,
+        unlockChannel,
+        isChannelLocked,
       }}
     >
       {children}

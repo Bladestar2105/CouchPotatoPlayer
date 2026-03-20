@@ -8,14 +8,14 @@ export interface ParsedProgram {
   channelId: string;
 }
 
-export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProgram[]>> => {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch XMLTV: ${response.status}`);
-    }
-    const xmlData = await response.text();
+/**
+ * Parse XMLTV data from a string (already fetched)
+ * This is the main parsing function that takes XML string as input
+ */
+export const parseXMLTVFromString = (xmlData: string): Record<string, ParsedProgram[]> => {
+  const epgData: Record<string, ParsedProgram[]> = {};
 
+  try {
     const parser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '@_',
@@ -23,13 +23,14 @@ export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProg
     });
 
     const parsed = parser.parse(xmlData);
-    const epgData: Record<string, ParsedProgram[]> = {};
 
     if (!parsed || !parsed.tv || !parsed.tv.programme) {
+      console.log('[EPG Parser] No programme data found in XMLTV');
       return epgData;
     }
 
     const programmes = Array.isArray(parsed.tv.programme) ? parsed.tv.programme : [parsed.tv.programme];
+    console.log(`[EPG Parser] Found ${programmes.length} programmes`);
 
     programmes.forEach((prog: any) => {
       const channelId = prog['@_channel'];
@@ -64,10 +65,29 @@ export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProg
       epgData[key].sort((a, b) => a.start.getTime() - b.start.getTime());
     });
 
+    console.log(`[EPG Parser] Grouped into ${Object.keys(epgData).length} channels`);
     return epgData;
 
   } catch (error) {
-    console.error("Error parsing XMLTV:", error);
+    console.error("[EPG Parser] Error parsing XMLTV:", error);
+    return epgData;
+  }
+};
+
+/**
+ * Parse XMLTV from URL (fetches internally - use only when CORS is not an issue)
+ * @deprecated Use parseXMLTVFromString with fetched data instead
+ */
+export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProgram[]>> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch XMLTV: ${response.status}`);
+    }
+    const xmlData = await response.text();
+    return parseXMLTVFromString(xmlData);
+  } catch (error) {
+    console.error("Error fetching/parsing XMLTV:", error);
     return {};
   }
 };

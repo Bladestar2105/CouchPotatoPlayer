@@ -1,17 +1,16 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, ScrollView, Platform, Animated } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
-import { Channel } from '../types';
+import { Channel, FavoriteItem, RecentlyWatchedItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 const defaultLogo = require('../assets/icon.png');
 const TIMELINE_HOUR_WIDTH = 200; // pixels per hour
-const EPG_START_HOUR = 0;
-const EPG_END_HOUR = 24;
 
 const LiveTVFlow = () => {
-  const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG } = useIPTV();
+  const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
 
@@ -34,7 +33,6 @@ const LiveTVFlow = () => {
     return Object.keys(groupMap).sort().map(title => ({ title, data: groupMap[title] }));
   }, [channels, isAdultUnlocked, pin]);
 
-  // Default select first group
   useEffect(() => {
     if (groups.length > 0 && !selectedGroup) {
       setSelectedGroup(groups[0].title);
@@ -77,7 +75,21 @@ const LiveTVFlow = () => {
       {/* Main Content - Channel List & EPG Timeline */}
       <View style={styles.mainContent}>
         {selectedChannels.length > 0 ? (
-           <EPGTimeline channels={selectedChannels} playStream={playStream} epg={epg} colors={colors} navigation={navigation} />
+           <EPGTimeline 
+             channels={selectedChannels} 
+             playStream={playStream} 
+             epg={epg} 
+             colors={colors} 
+             navigation={navigation}
+             lockChannel={lockChannel}
+             unlockChannel={unlockChannel}
+             isChannelLocked={isChannelLocked}
+             addFavorite={addFavorite}
+             removeFavorite={removeFavorite}
+             isFavorite={isFavorite}
+             addRecentlyWatched={addRecentlyWatched}
+             pin={pin}
+           />
         ) : (
           <View style={styles.centeredContainer}>
             <Text style={{ color: colors.textSecondary }}>No channels available</Text>
@@ -88,23 +100,99 @@ const LiveTVFlow = () => {
   );
 };
 
-// Two-dimensional EPG timeline grid
-const EPGTimeline = ({ channels, playStream, epg, colors, navigation }: any) => {
+// Two-dimensional EPG timeline grid with synchronized scrolling
+const EPGTimeline = ({ channels, playStream, epg, colors, navigation, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, pin }: any) => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const headerScrollRef = useRef<ScrollView>(null);
+  const rowScrollRefs = useRef<{ [key: string]: ScrollView }>({});
+  const isScrollingHeader = useRef(false);
+  const isScrollingRow = useRef(false);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
+  // Synchronized scrolling
+  const handleHeaderScroll = (event: any) => {
+    if (isScrollingRow.current) return;
+    isScrollingHeader.current = true;
+    const scrollX = event.nativeEvent.contentOffset.x;
+    Object.values(rowScrollRefs.current).forEach(ref => {
+      if (ref) {
+        ref.scrollTo({ x: scrollX, animated: false });
+      }
+    });
+    setTimeout(() => { isScrollingHeader.current = false; }, 50);
+  };
+
+  const handleRowScroll = (event: any) => {
+    if (isScrollingHeader.current) return;
+    isScrollingRow.current = true;
+    const scrollX = event.nativeEvent.contentOffset.x;
+    if (headerScrollRef.current) {
+      headerScrollRef.current.scrollTo({ x: scrollX, animated: false });
+    }
+    setTimeout(() => { isScrollingRow.current = false; }, 50);
+  };
+
   const handleChannelPress = (channel: Channel) => {
+    // Check if channel is locked
+    if (isChannelLocked(channel.id)) {
+      // TODO: Show PIN dialog
+      alert('This channel is locked. Please unlock it first.');
+      return;
+    }
+    
     playStream({ url: channel.url, id: channel.id });
+    
+    // Add to recently watched
+    addRecentlyWatched({
+      id: channel.id,
+      type: 'live',
+      name: channel.name,
+      icon: channel.logo,
+      extension: 'm3u8',
+      lastWatchedAt: Date.now(),
+    });
+    
     navigation.navigate('Player');
   };
 
-  // Generate hour headers (00:00 to 23:00)
+  const handleLockToggle = (channel: Channel) => {
+    if (!pin) {
+      alert('Please set up a PIN in Settings first.');
+      return;
+    }
+    if (isChannelLocked(channel.id)) {
+      // TODO: Show PIN dialog to unlock
+      unlockChannel(channel.id);
+    } else {
+      lockChannel(channel.id);
+    }
+  };
+
+  const handleFavoriteToggle = (channel: Channel) => {
+    if (isFavorite(channel.id)) {
+      removeFavorite(channel.id);
+    } else {
+      addFavorite({
+        id: channel.id,
+        type: 'live',
+        name: channel.name,
+        icon: channel.logo,
+        categoryId: channel.categoryId,
+        addedAt: Date.now(),
+      });
+    }
+  };
+
+  // Generate hour headers based on current time
+  const baseTime = new Date();
+  baseTime.setHours(0, 0, 0, 0);
+  
   const hours = Array.from({ length: 24 }).map((_, i) => {
-    const d = new Date();
+    const d = new Date(baseTime);
     d.setHours(i, 0, 0, 0);
     return d;
   });
@@ -114,22 +202,39 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation }: any) => 
     const endHourOffset = end.getHours() + (end.getMinutes() / 60);
     const width = (endHourOffset - startHourOffset) * TIMELINE_HOUR_WIDTH;
     const left = startHourOffset * TIMELINE_HOUR_WIDTH;
-    return { left, width };
+    return { left, width: Math.max(width, 50) };
   };
 
   // Calculate current time line position
   const currentHourOffset = currentTime.getHours() + (currentTime.getMinutes() / 60);
   const currentTimeLineLeft = currentHourOffset * TIMELINE_HOUR_WIDTH;
 
+  // Get EPG key for channel (Flutter migration)
+  const getEpgKey = (channel: Channel): string => {
+    if (channel.epgChannelId && channel.epgChannelId.length > 0) {
+      return channel.epgChannelId;
+    }
+    return channel.tvgId || channel.id;
+  };
+
   return (
     <View style={styles.timelineContainer}>
       {/* Header with Hours */}
       <View style={{ flexDirection: 'row' }}>
-         <View style={[styles.channelColumnHeader, { backgroundColor: colors.surface, borderRightColor: colors.divider }]} />
-         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, backgroundColor: colors.surface }}>
+         <View style={[styles.channelColumnHeader, { backgroundColor: colors.surface, borderRightColor: colors.divider }]}>
+           <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold' }}>CHANNELS</Text>
+         </View>
+         <ScrollView 
+           horizontal 
+           showsHorizontalScrollIndicator={false} 
+           style={{ flex: 1, backgroundColor: colors.surface }}
+           ref={headerScrollRef}
+           onScroll={handleHeaderScroll}
+           scrollEventThrottle={16}
+         >
             <View style={{ flexDirection: 'row', height: 40, alignItems: 'center' }}>
               {hours.map((h, i) => (
-                <View key={i} style={{ width: TIMELINE_HOUR_WIDTH, paddingLeft: 8 }}>
+                <View key={i} style={{ width: TIMELINE_HOUR_WIDTH, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: colors.divider }}>
                   <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
                     {h.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
@@ -142,23 +247,66 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation }: any) => 
       {/* Main Grid */}
       <ScrollView style={{ flex: 1 }}>
         {channels.map((channel: Channel) => {
-          const channelEpg = epg[channel.tvgId || channel.id] || [];
+          const epgKey = getEpgKey(channel);
+          const channelEpg = epg[epgKey] || [];
+          const isLocked = isChannelLocked(channel.id);
+          const isFav = isFavorite(channel.id);
 
           return (
             <View key={channel.id} style={[styles.timelineRow, { borderBottomColor: colors.divider }]}>
               {/* Left Column: Channel Info */}
-              <TouchableOpacity
-                style={[styles.channelColumn, { backgroundColor: colors.card, borderRightColor: colors.divider }]}
-                onPress={() => handleChannelPress(channel)}
-              >
-                <Image source={channel.logo ? { uri: channel.logo } : defaultLogo} style={styles.channelLogo} resizeMode="contain" />
-                <Text style={{ color: colors.text, fontSize: 12, marginLeft: 8, flex: 1 }} numberOfLines={2}>
-                  {channel.name}
-                </Text>
-              </TouchableOpacity>
+              <View style={[styles.channelColumn, { backgroundColor: isLocked ? colors.surface : colors.card, borderRightColor: colors.divider }]}>
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                  onPress={() => handleChannelPress(channel)}
+                  disabled={isLocked}
+                >
+                  {isLocked ? (
+                    <Icon name="lock" size={24} color={colors.textSecondary} style={{ width: 40, height: 30 }} />
+                  ) : (
+                    <Image source={channel.logo ? { uri: channel.logo } : defaultLogo} style={styles.channelLogo} resizeMode="contain" />
+                  )}
+                  <Text style={{ color: isLocked ? colors.textSecondary : colors.text, fontSize: 12, marginLeft: 8, flex: 1 }} numberOfLines={2}>
+                    {channel.name}
+                  </Text>
+                </TouchableOpacity>
+                
+                {/* Action Buttons */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity
+                    onPress={() => handleFavoriteToggle(channel)}
+                    style={{ padding: 4 }}
+                  >
+                    <Icon 
+                      name={isFav ? 'favorite' : 'favorite-border'} 
+                      size={18} 
+                      color={isFav ? '#FF4444' : colors.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                  {pin && (
+                    <TouchableOpacity
+                      onPress={() => handleLockToggle(channel)}
+                      style={{ padding: 4 }}
+                    >
+                      <Icon 
+                        name={isLocked ? 'lock' : 'lock-open'} 
+                        size={18} 
+                        color={isLocked ? '#FF4444' : colors.textSecondary} 
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
 
               {/* Right Column: EPG Scrollable Row */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, backgroundColor: colors.background }}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                style={{ flex: 1, backgroundColor: colors.background }}
+                ref={(ref) => { if (ref) rowScrollRefs.current[channel.id] = ref; }}
+                onScroll={handleRowScroll}
+                scrollEventThrottle={16}
+              >
                 <View style={{ width: 24 * TIMELINE_HOUR_WIDTH, height: 60, position: 'relative' }}>
                   {channelEpg.map((prog: any, idx: number) => {
                     const { left, width } = getEpgBlockStyle(prog.start, prog.end);
@@ -171,15 +319,18 @@ const EPGTimeline = ({ channels, playStream, epg, colors, navigation }: any) => 
                           styles.epgBlock,
                           {
                             left,
-                            width: width - 2, // 2px gap
-                            backgroundColor: isNow ? colors.primary : colors.surface,
-                            borderColor: colors.divider
+                            width: width - 2,
+                            backgroundColor: isNow ? colors.primary + '40' : colors.surface,
+                            borderColor: isNow ? colors.primary : colors.divider,
+                            borderWidth: isNow ? 2 : 1,
                           }
                         ]}
                         onPress={() => {}}
                       >
-                        <Text style={{ color: isNow ? '#FFF' : colors.text, fontSize: 12, fontWeight: 'bold' }} numberOfLines={1}>{prog.title}</Text>
-                        <Text style={{ color: isNow ? 'rgba(255,255,255,0.7)' : colors.textSecondary, fontSize: 10 }} numberOfLines={1}>
+                        <Text style={{ color: isNow ? '#FFF' : colors.text, fontSize: 11, fontWeight: isNow ? 'bold' : 'normal' }} numberOfLines={1}>
+                          {prog.title}
+                        </Text>
+                        <Text style={{ color: isNow ? 'rgba(255,255,255,0.7)' : colors.textSecondary, fontSize: 9 }} numberOfLines={1}>
                           {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                       </TouchableOpacity>
@@ -227,6 +378,8 @@ const styles = StyleSheet.create({
     width: 220,
     height: 40,
     borderRightWidth: 1,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
   },
   timelineRow: {
     flexDirection: 'row',
@@ -250,7 +403,6 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 4,
     padding: 6,
-    borderWidth: 1,
     justifyContent: 'center',
   },
   currentTimeLine: {
