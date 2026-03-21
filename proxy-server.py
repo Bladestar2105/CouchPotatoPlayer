@@ -12,6 +12,15 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/proxy/'):
             url = self.path[7:]  # Remove '/proxy/' prefix
+
+            # SSRF mitigation: Only proxy http and https schemes
+            if not url.startswith('http://') and not url.startswith('https://'):
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"error": "Invalid URL scheme. Must be http:// or https://"}')
+                return
+
             try:
                 req = urllib.request.Request(url)
                 req.add_header('User-Agent', 'Mozilla/5.0')
@@ -28,7 +37,7 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(f'{{"error": "{str(e)}"}}'.encode())
+                self.wfile.write(b'{"error": "Proxy error occurred"}')
         else:
             self.send_response(404)
             self.end_headers()
