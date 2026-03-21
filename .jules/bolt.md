@@ -5,3 +5,7 @@
 ## 2024-10-25 - [Optimize EPG program lookups with binary search]
 **Learning:** Finding the current program using a linear O(N) search (e.g., `findIndex`) can be a bottleneck when dealing with large, sorted EPG arrays, especially when the search is executed frequently (like in rendering intervals or for multiple channels).
 **Action:** Use binary search utilities like `findCurrentProgramIndex` (which provides O(log N) complexity) instead of linear array methods (`findIndex`, `find`) for lookups on time-sorted program lists.
+
+## 2024-10-26 - [Debounce and cap array iterations for large list filtering]
+**Learning:** Running sequential `.filter().map()` operations on massive arrays (e.g., 100k+ channels, movies, and series) on every keystroke in a search input severely blocks the main thread, causing UI freezes. Broad queries (like "a") generate excessive allocations.
+**Action:** Always debounce text inputs that trigger heavy computations. For massive datasets, replace sequential array methods with a single-pass `for` loop and implement an early return (e.g., `if (results.length >= 100) break;`) to cap result generation, saving CPU time and preventing memory bloat.

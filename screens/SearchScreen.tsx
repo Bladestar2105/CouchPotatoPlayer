@@ -16,26 +16,56 @@ const SearchScreen = () => {
   const navigation = useNavigation<SearchScreenNavigationProp>();
 
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  // ⚡ Bolt: Debounce search input to prevent heavy UI blocking on every keystroke
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [query]);
 
   const searchResults = React.useMemo(() => {
-    if (!query) return [];
+    if (!debouncedQuery) return [];
 
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = debouncedQuery.toLowerCase();
+    const results: any[] = [];
+    // ⚡ Bolt: Capping max results at 100 to avoid excessive memory and render costs on broad queries (e.g., "a")
+    const MAX_RESULTS = 100;
 
-    const matchedChannels = channels
-      .filter(c => c.name.toLowerCase().includes(lowerQuery))
-      .map(c => ({ ...c, mediaType: 'live' }));
+    // ⚡ Bolt: Unified single-pass iterations instead of sequential .filter().map()
+    // Live Channels
+    for (let i = 0; i < channels.length; i++) {
+      if (results.length >= MAX_RESULTS) break;
+      if (channels[i].name.toLowerCase().includes(lowerQuery)) {
+        results.push({ ...channels[i], mediaType: 'live' });
+      }
+    }
 
-    const matchedMovies = movies
-      .filter(m => m.name.toLowerCase().includes(lowerQuery))
-      .map(m => ({ ...m, mediaType: 'movie' }));
+    // Movies
+    if (results.length < MAX_RESULTS) {
+      for (let i = 0; i < movies.length; i++) {
+        if (results.length >= MAX_RESULTS) break;
+        if (movies[i].name.toLowerCase().includes(lowerQuery)) {
+          results.push({ ...movies[i], mediaType: 'movie' });
+        }
+      }
+    }
 
-    const matchedSeries = series
-      .filter(s => s.name.toLowerCase().includes(lowerQuery))
-      .map(s => ({ ...s, mediaType: 'series' }));
+    // Series
+    if (results.length < MAX_RESULTS) {
+      for (let i = 0; i < series.length; i++) {
+        if (results.length >= MAX_RESULTS) break;
+        if (series[i].name.toLowerCase().includes(lowerQuery)) {
+          results.push({ ...series[i], mediaType: 'series' });
+        }
+      }
+    }
 
-    return [...matchedChannels, ...matchedMovies, ...matchedSeries];
-  }, [query, channels, movies, series]);
+    return results;
+  }, [debouncedQuery, channels, movies, series]);
 
   const handleItemPress = (item: any) => {
     if (item.mediaType === 'live') {
