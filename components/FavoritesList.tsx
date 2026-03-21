@@ -17,11 +17,10 @@ const FavoritesList = () => {
   const { colors } = useSettings();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
   const dimensions = useWindowDimensions();
-  const isTvMode = dimensions.width >= 1200;
   const [sortBy, setSortBy] = useState<SortOption>('added');
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
 
   const handlePress = (item: FavoriteItem) => {
-    // Add to recently watched
     addRecentlyWatched({
       id: item.id,
       type: item.type,
@@ -32,8 +31,6 @@ const FavoritesList = () => {
     });
 
     if (item.type === 'live') {
-      // For live channels, we need to get the URL from channels list
-      // For now, navigate to player with the ID
       playStream({ url: '', id: item.id });
       navigation.navigate('Player');
     } else if (item.type === 'vod') {
@@ -71,7 +68,6 @@ const FavoritesList = () => {
     }
   };
 
-  // Sort favorites based on selected option
   const sortedFavorites = useMemo(() => {
     const sorted = [...favorites];
     switch (sortBy) {
@@ -87,59 +83,69 @@ const FavoritesList = () => {
     }
   }, [favorites, sortBy]);
 
-  const renderItem = ({ item }: { item: FavoriteItem }) => (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card }]}
-      onPress={() => handlePress(item)}
-    >
-      <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
-        {item.icon ? (
-          <Image
-            source={{ uri: item.icon }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.placeholderImage}>
-            <Icon name={getTypeIcon(item.type)} size={32} color={colors.textSecondary} />
-          </View>
-        )}
-        {/* Type Badge */}
-        <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#4CAF50' : item.type === 'vod' ? '#2196F3' : '#FF9800' }]}>
-          <Icon name={getTypeIcon(item.type)} size={12} color="#FFF" />
-        </View>
-        {/* Remove Button */}
+  const renderItem = ({ item }: { item: FavoriteItem }) => {
+     const isFocused = focusedItemId === `${item.id}-${item.type}`;
+     return (
         <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => removeFavorite(item.id)}
-          accessibilityRole="button"
-          accessibilityLabel={`Remove ${item.name} from favorites`}
+          style={[
+              styles.card,
+              { backgroundColor: 'rgba(30,30,30,0.8)' },
+              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
+          ]}
+          onPress={() => handlePress(item)}
+          onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
+          onBlur={() => setFocusedItemId(null)}
         >
-          <Icon name="close" size={16} color="#FFF" />
+          <View style={[styles.imageContainer, { backgroundColor: '#1C1C1E' }]}>
+            {item.icon ? (
+              <Image
+                source={{ uri: item.icon }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <Icon name={getTypeIcon(item.type)} size={48} color={colors.textSecondary} />
+              </View>
+            )}
+            <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#4CAF50' : item.type === 'vod' ? '#2196F3' : '#FF9800' }]}>
+              <Icon name={getTypeIcon(item.type)} size={16} color="#FFF" />
+            </View>
+            <TouchableOpacity
+              style={styles.removeButton}
+              onPress={() => removeFavorite(item.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${item.name} from favorites`}
+            >
+              <Icon name="close" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.infoContainer}>
+             <Text style={[styles.name, { color: isFocused ? '#FFF' : '#AAA' }]} numberOfLines={2}>{item.name}</Text>
+             <Text style={[styles.typeLabel, { color: '#666' }]}>{getTypeLabel(item.type)}</Text>
+          </View>
         </TouchableOpacity>
-      </View>
-      <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
-      <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>{getTypeLabel(item.type)}</Text>
-    </TouchableOpacity>
-  );
+      );
+  };
 
   if (favorites.length === 0) {
     return (
-      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-        <Icon name="favorite-border" size={64} color={colors.textSecondary} />
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Keine Favoriten vorhanden.</Text>
-        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>Füge Kanäle, Filme oder Serien zu deinen Favoriten hinzu.</Text>
+      <View style={[styles.emptyContainer, { backgroundColor: 'transparent' }]}>
+        <Icon name="favorite-border" size={80} color={colors.textSecondary} />
+        <Text style={[styles.emptyText, { color: '#FFF' }]}>No Favorites Found</Text>
+        <Text style={[styles.emptyHint, { color: '#AAA' }]}>Add channels, movies, or series to your favorites to see them here.</Text>
       </View>
     );
   }
 
-  const numColumns = isTvMode ? 6 : 3;
+  const CARD_WIDTH = 160;
+  // Account for padding and sidebar width
+  const numColumns = Math.max(3, Math.floor((dimensions.width - 250 - 48) / (CARD_WIDTH + 16)));
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Sort Options Header */}
+    <View style={[styles.container, { backgroundColor: 'rgba(20,20,20,0.95)' }]}>
       <View style={styles.sortHeader}>
-        <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>Sort by:</Text>
+        <Text style={[styles.sortLabel, { color: '#AAA' }]}>Sort by:</Text>
         <View style={styles.sortButtons}>
           {[
             { key: 'added', label: 'Recently Added' },
@@ -151,11 +157,12 @@ const FavoritesList = () => {
               key={option.key}
               style={[
                 styles.sortButton,
-                { backgroundColor: sortBy === option.key ? colors.primary : colors.surface }
+                { backgroundColor: sortBy === option.key ? colors.primary : 'rgba(255,255,255,0.1)' }
               ]}
               onPress={() => setSortBy(option.key as SortOption)}
+              onFocus={() => setSortBy(option.key as SortOption)}
             >
-              <Text style={[styles.sortButtonText, { color: sortBy === option.key ? '#FFF' : colors.text }]}>
+              <Text style={[styles.sortButtonText, { color: sortBy === option.key ? '#FFF' : '#AAA' }]}>
                 {option.label}
               </Text>
             </TouchableOpacity>
@@ -168,7 +175,7 @@ const FavoritesList = () => {
         keyExtractor={(item) => `${item.id}-${item.type}`}
         renderItem={renderItem}
         numColumns={numColumns}
-        key={numColumns} // Force re-render when columns change
+        key={numColumns}
         contentContainerStyle={styles.listContainer}
         initialNumToRender={12}
         maxToRenderPerBatch={12}
@@ -190,35 +197,33 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   emptyText: {
-    fontSize: 18,
-    marginTop: 16,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 20,
     textAlign: 'center',
   },
   emptyHint: {
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 16,
+    marginTop: 10,
     textAlign: 'center',
-    opacity: 0.7,
   },
   listContainer: {
-    padding: 10,
+    padding: 24,
   },
   card: {
-    flex: 1,
-    margin: 5,
-    borderRadius: 8,
+    width: 160,
+    marginRight: 16,
+    marginBottom: 24,
+    borderRadius: 12,
     overflow: 'hidden',
-    alignItems: 'center',
-    padding: 10,
   },
   imageContainer: {
     width: '100%',
-    aspectRatio: 2 / 3,
-    borderRadius: 8,
-    marginBottom: 8,
+    aspectRatio: 16 / 9,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    position: 'relative',
   },
   image: {
     width: '100%',
@@ -234,9 +239,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -244,44 +249,49 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  infoContainer: {
+      padding: 12,
+  },
   name: {
-    fontSize: 12,
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
     marginBottom: 4,
   },
   typeLabel: {
-    fontSize: 10,
+    fontSize: 12,
   },
   sortHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   sortLabel: {
-    fontSize: 14,
+    fontSize: 16,
+    marginRight: 16,
   },
   sortButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
     flex: 1,
   },
   sortButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   sortButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
