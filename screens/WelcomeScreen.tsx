@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
@@ -83,6 +83,11 @@ const WelcomeScreen = () => {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Image
+            source={require('../assets/icon.png')}
+            style={styles.appLogo}
+            resizeMode="contain"
+          />
           <Text style={[styles.title, { color: colors.text }]}>CouchPotatoPlayer</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Welcome</Text>
 
@@ -211,6 +216,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
+  },
+  appLogo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,

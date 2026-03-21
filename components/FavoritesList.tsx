@@ -172,7 +172,7 @@ const FavoritesList = () => {
       
       <FlatList
         data={sortedFavorites}
-        keyExtractor={(item) => `${item.id}-${item.type}`}
+        keyExtractor={(item, index) => `${item.id || index}-${item.type || 'unknown'}`}
         renderItem={renderItem}
         numColumns={numColumns}
         key={numColumns}

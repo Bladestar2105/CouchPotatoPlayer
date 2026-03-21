@@ -163,7 +163,7 @@ const RecentlyWatchedList = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={recentlyWatched}
-        keyExtractor={(item) => `${item.id}-${item.type}`}
+        keyExtractor={(item, index) => `${item.id || index}-${item.type || 'unknown'}`}
         renderItem={renderItem}
         numColumns={numColumns}
         key={numColumns}
