@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import { XMLParser } from 'fast-xml-parser';
 import i18n from '../utils/i18n';
 import {
@@ -267,8 +268,19 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // 1. Try to load from cache
-      const cachedEpgStr = await AsyncStorage.getItem(storageKey);
+      let cachedEpgStr: string | null = null;
+      if (Platform.OS === 'web') {
+        cachedEpgStr = await AsyncStorage.getItem(storageKey);
+      } else {
+        const fileUri = `${((FileSystem as any).documentDirectory || '')}${storageKey}.json`;
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        if (fileInfo.exists) {
+          cachedEpgStr = await FileSystem.readAsStringAsync(fileUri);
+        }
+      }
+
       if (cachedEpgStr) {
+
         const cachedEpg = JSON.parse(cachedEpgStr);
         if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
           // Re-hydrate Date objects
@@ -334,10 +346,21 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setEpg(newEpg);
         console.log('[EPG] EPG loaded successfully');
 
-        await AsyncStorage.setItem(storageKey, JSON.stringify({
+        const epgCacheData = JSON.stringify({
           timestamp: Date.now(),
           data: newEpg
-        }));
+        });
+
+        if (Platform.OS === 'web') {
+          try {
+            await AsyncStorage.setItem(storageKey, epgCacheData);
+          } catch (storageError: any) {
+             console.warn('[EPG] Failed to save EPG to AsyncStorage (likely QuotaExceededError on web)', storageError);
+          }
+        } else {
+          const fileUri = `${((FileSystem as any).documentDirectory || '')}${storageKey}.json`;
+          await FileSystem.writeAsStringAsync(fileUri, epgCacheData);
+        }
       } else {
         console.log('[EPG] No EPG URL available');
       }

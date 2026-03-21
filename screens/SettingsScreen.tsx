@@ -5,6 +5,7 @@ import { useIPTV } from '../context/IPTVContext';
 import { useSettings, ThemeMode } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 const SettingsScreen = () => {
   const { currentProfile, profiles, pin, isAdultUnlocked, unlockAdultContent, lockAdultContent, removeProfile, loadProfile, unloadProfile } = useIPTV();
@@ -41,6 +42,15 @@ const SettingsScreen = () => {
                 const cacheKeys = keys.filter(k => k.startsWith('IPTV_EPG_'));
                 if (cacheKeys.length > 0) {
                    await AsyncStorage.multiRemove(cacheKeys);
+                }
+
+                // Also clear FileSystem cache
+                if (Platform.OS !== 'web' && ((FileSystem as any).documentDirectory || '')) {
+                   const files = await FileSystem.readDirectoryAsync(((FileSystem as any).documentDirectory || ''));
+                   const epgFiles = files.filter(f => f.startsWith('IPTV_EPG_') && f.endsWith('.json'));
+                   for (const file of epgFiles) {
+                      await FileSystem.deleteAsync(`${((FileSystem as any).documentDirectory || '')}${file}`, { idempotent: true });
+                   }
                 }
                 Alert.alert('Success', 'Cache cleared successfully.');
              } catch (e) {
