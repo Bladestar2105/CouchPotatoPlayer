@@ -126,13 +126,29 @@ const PlaylistManager = () => {
         <Text style={styles.profileType}>{item.type.toUpperCase()}</Text>
       </View>
       <View style={styles.profileActions}>
-        <TouchableOpacity style={[styles.actionButton, styles.loadButton]} onPress={() => handleLoadProfile(item)} disabled={isLoading}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.loadButton]}
+          onPress={() => handleLoadProfile(item)}
+          disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('load')} ${item.name}`}
+        >
           <Text style={styles.actionButtonText}>{t('load')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.editButton]} onPress={() => startEditing(item)}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.editButton]}
+          onPress={() => startEditing(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('edit')} ${item.name}`}
+        >
           <Text style={styles.actionButtonText}>{t('edit')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={() => handleDeleteProfile(item)}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={() => handleDeleteProfile(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('delete')} ${item.name}`}
+        >
           <Text style={styles.actionButtonText}>X</Text>
         </TouchableOpacity>
       </View>

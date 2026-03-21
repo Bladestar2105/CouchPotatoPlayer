@@ -8,3 +8,6 @@
 ## 2026-03-20 - Added accessibility labels to icon-only buttons
 **Learning:** Icon-only buttons wrapped in `TouchableOpacity` (like hamburger menus or icon selectors) do not inherently convey their purpose to screen readers. This makes navigation confusing for users who rely on assistive technologies.
 **Action:** Always add `accessibilityRole="button"` and a descriptive `accessibilityLabel` to icon-only `TouchableOpacity` instances to ensure they are properly read by screen readers.
+## 2026-03-21 - Added ARIA labels to Profile Action Buttons
+**Learning:** In CouchPotatoPlayer's settings and profile lists, generic action buttons like 'X' or 'Load' wrapped in `TouchableOpacity` can lack descriptive context for screen readers if they only contain short text or symbols. For example, a delete button showing 'X' is read generically.
+**Action:** Always add `accessibilityRole="button"` and a descriptive `accessibilityLabel` that includes the specific item's name (e.g., `Delete MyProfile`) to action buttons in dynamic lists to ensure screen reader users have full context.
