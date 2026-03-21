@@ -29,11 +29,11 @@ const MainLayout = () => {
 
   // Animation values for the sidebar expansion
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
-  const sidebarWidth = React.useRef(new Animated.Value(60)).current;
+  const sidebarWidth = React.useRef(new Animated.Value(80)).current;
 
   useEffect(() => {
     Animated.timing(sidebarWidth, {
-      toValue: isSidebarExpanded ? 200 : 60,
+      toValue: isSidebarExpanded ? 200 : 80,
       duration: 200,
       useNativeDriver: false,
     }).start();
@@ -155,13 +155,14 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any
         styles.menuItem,
         {
           backgroundColor: isFocused ? 'rgba(255, 255, 255, 0.2)' : (isActive ? 'rgba(0, 122, 255, 0.3)' : 'transparent'),
-          justifyContent: showLabel ? 'flex-start' : 'center'
+          justifyContent: showLabel ? 'flex-start' : 'center',
+          alignItems: 'center',
         }
       ]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Icon name={icon} size={24} color={isActive || isFocused ? '#FFF' : '#888'} style={showLabel ? styles.menuIcon : {}} />
+      <Icon name={icon} size={24} color={isActive || isFocused ? '#FFF' : '#888'} style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} />
       {showLabel && (
         <Text style={{ color: isActive || isFocused ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal' }} numberOfLines={1}>
           {label}
