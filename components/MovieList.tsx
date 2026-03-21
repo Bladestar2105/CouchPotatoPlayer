@@ -6,18 +6,21 @@ import { Movie } from '../types';
 import { useSettings } from '../context/SettingsContext';
 
 const defaultLogo = require('../assets/icon.png');
-const { width } = Dimensions.get('window');
 const POSTER_WIDTH = 120;
-// Calculate columns based on remaining width (sidebar is 250px)
-const numColumns = Math.max(3, Math.floor((width - 310) / (POSTER_WIDTH + 16)));
 
 const MovieList = () => {
   const { movies, isLoading, pin, isAdultUnlocked } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
+  const dimensions = Dimensions.get('window');
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedMovieId, setFocusedMovieId] = useState<string | null>(null);
+  const [showCategories, setShowCategories] = useState<boolean>(true);
+
+  // Mobile responsiveness
+  const isMobile = dimensions.width < 768;
+  const numColumns = Math.max(2, Math.floor((isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310) / (POSTER_WIDTH + 16)));
 
   const groups = useMemo(() => {
     if (movies.length === 0) return [];
@@ -39,6 +42,13 @@ const MovieList = () => {
     }
   }, [groups, selectedGroup]);
 
+  const handleGroupSelect = (title: string) => {
+    setSelectedGroup(title);
+    if (isMobile) {
+      setShowCategories(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: 'transparent' }]}>
@@ -54,7 +64,13 @@ const MovieList = () => {
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
-      <View style={[styles.categoriesSidebar, { backgroundColor: 'rgba(20,20,20,0.9)', borderRightColor: '#2C2C2E' }]}>
+      {showCategories && (
+      <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: 'rgba(20,20,20,0.9)', borderRightColor: '#2C2C2E' }]}>
+        {isMobile && (
+            <View style={{ padding: 16, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
+              <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
+            </View>
+        )}
         <FlatList
           data={groups}
           keyExtractor={(item) => item.title}
@@ -69,7 +85,7 @@ const MovieList = () => {
                     styles.categoryItem,
                     isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {}
                   ]}
-                  onPress={() => setSelectedGroup(item.title)}
+                  onPress={() => handleGroupSelect(item.title)}
                   onFocus={() => setSelectedGroup(item.title)}
                   accessibilityRole="button"
                   accessibilityLabel={`Select category ${item.title}`}
@@ -82,9 +98,19 @@ const MovieList = () => {
           }}
         />
       </View>
+      )}
 
       {/* Main Content - Movie Grid */}
-      <View style={[styles.mainContent, { backgroundColor: 'rgba(30,30,30,0.9)' }]}>
+      {(!isMobile || !showCategories) && (
+      <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: 'rgba(30,30,30,0.9)' }]}>
+        {isMobile && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
+              <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name="arrow-back" size={24} color="#FFF" />
+                <Text style={{ color: '#FFF', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
+              </TouchableOpacity>
+            </View>
+        )}
         {selectedMovies.length > 0 ? (
           <FlatList
             data={selectedMovies}
@@ -109,7 +135,7 @@ const MovieList = () => {
                     onBlur={() => setFocusedMovieId(null)}
                   >
                     <Image
-                      source={item.cover ? { uri: item.cover } : defaultLogo}
+                      source={item.cover && item.cover.startsWith('http') ? { uri: item.cover } : defaultLogo}
                       style={[
                           styles.poster,
                           { borderColor: isFocused ? colors.primary : colors.divider },
@@ -130,6 +156,7 @@ const MovieList = () => {
           </View>
         )}
       </View>
+      )}
     </View>
   );
 };

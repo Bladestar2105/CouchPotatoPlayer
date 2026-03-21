@@ -234,13 +234,9 @@ const LiveTVFlow = () => {
                        onFocus={() => setFocusedChannelId(item.id)}
                     >
                        <Image
-                           source={item.logo ? { uri: item.logo } : defaultLogo}
+                           source={item.logo && item.logo.startsWith('http') ? { uri: item.logo } : defaultLogo}
                            style={styles.channelLogo}
                            resizeMode="contain"
-                           onError={(e) => {
-                               // Optional: If an image fails to load, you might want to replace the source in state.
-                               // We rely on defaultLogo fallback via styling if it fully breaks, but React Native might show a blank space if not handled.
-                           }}
                            defaultSource={defaultLogo} // works on iOS for placeholders
                        />
                        <View style={{ flex: 1, marginLeft: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -272,7 +268,7 @@ const LiveTVFlow = () => {
                  {/* Focused Channel Header */}
                  <View style={styles.epgHeader}>
                      <Image
-                         source={focusedChannel.logo ? { uri: focusedChannel.logo } : defaultLogo}
+                         source={focusedChannel.logo && focusedChannel.logo.startsWith('http') ? { uri: focusedChannel.logo } : defaultLogo}
                          style={styles.epgHeaderLogo}
                          resizeMode="contain"
                          defaultSource={defaultLogo}
@@ -286,7 +282,7 @@ const LiveTVFlow = () => {
                  {focusedChannelEpg.length > 0 ? (
                      <FlatList
                          data={focusedChannelEpg}
-                         keyExtractor={(item, index) => `${item.id}-${index}`}
+                         keyExtractor={(item, index) => `${item.id || item.start?.getTime() || index}-${index}`}
                          renderItem={({ item }) => {
                              const now = new Date();
                              const isNow = now >= item.start && now < item.end;

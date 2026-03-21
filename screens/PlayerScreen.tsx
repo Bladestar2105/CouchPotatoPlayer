@@ -53,7 +53,15 @@ const PlayerScreen = () => {
      if (currentIdx === -1) return { currentProgram: null, nextProgram: null, progressPercent: 0 };
 
      const currentProgram = channelEpg[currentIdx];
-     const nextProgram = currentIdx + 1 < channelEpg.length ? channelEpg[currentIdx + 1] : null;
+
+     // Find the truly NEXT program (start time >= current end time)
+     let nextProgram = null;
+     for (let i = currentIdx + 1; i < channelEpg.length; i++) {
+         if (channelEpg[i].start.getTime() >= currentProgram.end.getTime()) {
+             nextProgram = channelEpg[i];
+             break;
+         }
+     }
 
      const totalDuration = currentProgram.end.getTime() - currentProgram.start.getTime();
      const elapsed = now.getTime() - currentProgram.start.getTime();
@@ -148,7 +156,7 @@ const PlayerScreen = () => {
           {currentChannel && (
               <View style={styles.bottomBar}>
                  <View style={styles.infoContainer}>
-                     <Image source={currentChannel.logo ? { uri: currentChannel.logo } : defaultLogo} style={styles.channelLogo} resizeMode="contain" />
+                     <Image source={currentChannel.logo && currentChannel.logo.startsWith('http') ? { uri: currentChannel.logo } : defaultLogo} style={styles.channelLogo} resizeMode="contain" />
 
                      <View style={styles.textContainer}>
                          <View style={styles.headerRow}>
