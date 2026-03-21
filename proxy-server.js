@@ -18,6 +18,14 @@ const server = http.createServer((req, res) => {
   
   if (req.url.startsWith('/proxy/')) {
     const targetUrl = req.url.substring(7);
+
+    // SSRF mitigation: Only proxy http and https schemes
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: 'Invalid URL scheme. Must be http:// or https://' }));
+      return;
+    }
+
     console.log('Proxying:', targetUrl);
     
     const parsedUrl = url.parse(targetUrl);
@@ -36,7 +44,7 @@ const server = http.createServer((req, res) => {
     proxyReq.on('error', (e) => {
       console.error('Proxy error:', e.message);
       res.writeHead(500);
-      res.end(JSON.stringify({ error: e.message }));
+      res.end(JSON.stringify({ error: 'Proxy error occurred' }));
     });
     
     req.pipe(proxyReq);

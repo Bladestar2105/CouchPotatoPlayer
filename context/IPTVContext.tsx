@@ -242,7 +242,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
     } catch (e: any) {
       console.error("Failed to load profile:", e);
-      setError(e.message || i18n.t('unknownError'));
+      setError(i18n.t('unknownError'));
     } finally {
       setIsLoading(false);
     }
@@ -299,6 +299,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (epgUrl) {
+        // SSRF mitigation: validate URL starts with http:// or https://
+        if (!/^https?:\/\//i.test(epgUrl.trim())) {
+          console.error('[EPG] Invalid EPG URL scheme. Must start with http:// or https://');
+          return;
+        }
+
         console.log('[EPG] Fetching EPG from:', epgUrl);
         
         // Use CORS proxy for fetching EPG
@@ -362,7 +368,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (parseError: any) {
       console.error("M3U parsing error:", parseError);
-      throw new Error(i18n.t('m3uFormatError', { message: parseError.message }));
+      throw new Error(i18n.t('m3uFormatError'));
     }
   };
 

@@ -32,6 +32,10 @@ const WelcomeScreen = () => {
       setError('URL must start with http:// or https://');
       return;
     }
+    if (type === 'm3u' && epgUrl && !/^https?:\/\//i.test(epgUrl.trim())) {
+      setError('EPG URL must start with http:// or https://');
+      return;
+    }
     if (type === 'xtream' && (!username || !password)) {
       setError('Username and Password are required for Xtream Codes.');
       return;
@@ -66,7 +70,7 @@ const WelcomeScreen = () => {
       await addProfile(newProfile);
       await loadProfile(newProfile);
     } catch (e: any) {
-      setError(e.message || 'Failed to add profile');
+      setError('Failed to add profile');
     } finally {
       setLoading(false);
     }
