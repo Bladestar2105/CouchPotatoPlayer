@@ -2,7 +2,6 @@
 
 [![Build Apps](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml/badge.svg)](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml)
 
-![Project Header Image](./assets/images/header.jpg)
 
 This is an open-source IPTV player for iOS, tvOS, Android, Android TV, and Web built with React Native and Expo.
 
