@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Channel } from '../types';
@@ -16,6 +16,11 @@ const LiveTVFlow = () => {
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
+
+  // For mobile devices, hide categories when a group is selected to give more space
+  const isTV = Platform.isTV || Platform.OS === 'tvos';
+  const isMobile = !isTV && Dimensions.get('window').width < 768;
+  const [showCategories, setShowCategories] = useState<boolean>(true);
 
   useEffect(() => {
     loadEPG();
@@ -54,6 +59,14 @@ const LiveTVFlow = () => {
          }
      }
   }, [selectedGroup]);
+
+  // Handle category selection and hide pane on mobile
+  const handleGroupSelect = (title: string) => {
+    setSelectedGroup(title);
+    if (isMobile) {
+      setShowCategories(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -133,9 +146,15 @@ const LiveTVFlow = () => {
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
 
       {/* LEFT PANE: Category Groups */}
-      <View style={[styles.categoriesSidebar, { backgroundColor: 'rgba(20,20,20,0.9)', borderRightColor: '#2C2C2E' }]}>
-        <FlatList
-          data={groups}
+      {showCategories && (
+        <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: 'rgba(20,20,20,0.9)', borderRightColor: '#2C2C2E' }]}>
+          {isMobile && (
+            <View style={{ padding: 16, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
+              <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
+            </View>
+          )}
+          <FlatList
+            data={groups}
           keyExtractor={(item) => item.title}
           initialNumToRender={15}
           maxToRenderPerBatch={10}
@@ -148,7 +167,7 @@ const LiveTVFlow = () => {
                     styles.categoryItem,
                     isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {}
                   ]}
-                  onPress={() => setSelectedGroup(item.title)}
+                  onPress={() => handleGroupSelect(item.title)}
                   onFocus={() => setSelectedGroup(item.title)}
                   accessibilityRole="button"
                   accessibilityLabel={`Select category ${item.title}`}
@@ -159,13 +178,23 @@ const LiveTVFlow = () => {
                 </TouchableOpacity>
               );
           }}
-        />
-      </View>
+          />
+        </View>
+      )}
 
       {/* MIDDLE PANE: Channel List */}
-      <View style={[styles.channelListPane, { backgroundColor: 'rgba(30,30,30,0.9)', borderRightColor: '#2C2C2E' }]}>
-        {selectedChannels.length > 0 ? (
-           <FlatList
+      {(!isMobile || !showCategories) && (
+        <View style={[styles.channelListPane, isMobile ? { flex: 1, width: 'auto', borderRightWidth: 0 } : { backgroundColor: 'rgba(30,30,30,0.9)', borderRightColor: '#2C2C2E' }]}>
+          {isMobile && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
+              <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name="arrow-back" size={24} color="#FFF" />
+                <Text style={{ color: '#FFF', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {selectedChannels.length > 0 ? (
+             <FlatList
               data={selectedChannels}
               keyExtractor={item => item.id}
               initialNumToRender={20}
@@ -204,7 +233,16 @@ const LiveTVFlow = () => {
                        }}
                        onFocus={() => setFocusedChannelId(item.id)}
                     >
-                       <Image source={item.logo ? { uri: item.logo } : defaultLogo} style={styles.channelLogo} resizeMode="contain" />
+                       <Image
+                           source={item.logo ? { uri: item.logo } : defaultLogo}
+                           style={styles.channelLogo}
+                           resizeMode="contain"
+                           onError={(e) => {
+                               // Optional: If an image fails to load, you might want to replace the source in state.
+                               // We rely on defaultLogo fallback via styling if it fully breaks, but React Native might show a blank space if not handled.
+                           }}
+                           defaultSource={defaultLogo} // works on iOS for placeholders
+                       />
                        <View style={{ flex: 1, marginLeft: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                            <View style={{ flex: 1 }}>
                                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: isPlaying ? 'bold' : 'normal' }} numberOfLines={1}>{item.name}</Text>
@@ -217,21 +255,28 @@ const LiveTVFlow = () => {
                     </TouchableOpacity>
                   );
               }}
-           />
-        ) : (
-          <View style={styles.centeredContainer}>
-            <Text style={{ color: colors.textSecondary }}>No channels available</Text>
-          </View>
-        )}
-      </View>
+             />
+          ) : (
+            <View style={styles.centeredContainer}>
+              <Text style={{ color: colors.textSecondary }}>No channels available</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* RIGHT PANE: EPG for Focused Channel */}
-      <View style={[styles.epgPane, { backgroundColor: 'rgba(20,20,20,0.95)' }]}>
+      {(!isMobile) && (
+        <View style={[styles.epgPane, { backgroundColor: 'rgba(20,20,20,0.95)' }]}>
          {focusedChannel ? (
              <View style={{ flex: 1 }}>
                  {/* Focused Channel Header */}
                  <View style={styles.epgHeader}>
-                     <Image source={focusedChannel.logo ? { uri: focusedChannel.logo } : defaultLogo} style={styles.epgHeaderLogo} resizeMode="contain" />
+                     <Image
+                         source={focusedChannel.logo ? { uri: focusedChannel.logo } : defaultLogo}
+                         style={styles.epgHeaderLogo}
+                         resizeMode="contain"
+                         defaultSource={defaultLogo}
+                     />
                      <View style={{ flex: 1 }}>
                         <Text style={{ color: '#FFF', fontSize: 22, fontWeight: 'bold' }}>{focusedChannel.name}</Text>
                      </View>
@@ -282,7 +327,8 @@ const LiveTVFlow = () => {
                  <Text style={{ color: '#666' }}>Select a channel to view EPG</Text>
              </View>
          )}
-      </View>
+        </View>
+      )}
 
       {/* Unlock PIN Dialog Overlay */}
       {unlockMode && (

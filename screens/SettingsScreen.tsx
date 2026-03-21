@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Platform, ActionSheetIOS } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings, ThemeMode } from '../context/SettingsContext';
@@ -89,6 +89,48 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleActionSheetTheme = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Dark', 'OLED Black', 'Light'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) setThemeMode('dark');
+          if (buttonIndex === 2) setThemeMode('oled');
+          if (buttonIndex === 3) setThemeMode('light');
+        }
+      );
+    }
+  };
+
+  const handleActionSheetBuffer = () => {
+    if (Platform.OS === 'ios') {
+      const options = ['Cancel', '8 MB', '16 MB', '32 MB', '64 MB', '128 MB'];
+      const values = [0, 8, 16, 32, 64, 128];
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 0 },
+        (buttonIndex) => {
+          if (buttonIndex > 0) setBufferSize(values[buttonIndex]);
+        }
+      );
+    }
+  };
+
+  const handleActionSheetUpdateInterval = () => {
+    if (Platform.OS === 'ios') {
+      const options = ['Cancel', '12 Hours', '24 Hours', '48 Hours'];
+      const values = [0, 12, 24, 48];
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 0 },
+        (buttonIndex) => {
+          if (buttonIndex > 0) handleSetUpdateInterval(values[buttonIndex]);
+        }
+      );
+    }
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.section}>
@@ -133,66 +175,81 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         {/* Theme Mode */}
-        <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-          <View style={styles.tileLeft}>
-            <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
-            <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode}</Text>
+        {Platform.OS === 'ios' ? (
+          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetTheme}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode}</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Edit</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode}</Text>
+            </View>
+            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+              <Picker selectedValue={themeMode} onValueChange={(val: ThemeMode) => setThemeMode(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
+                <Picker.Item label="Dark" value="dark" />
+                <Picker.Item label="OLED Black" value="oled" />
+                <Picker.Item label="Light" value="light" />
+              </Picker>
+            </View>
           </View>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
-            <Picker
-              selectedValue={themeMode}
-              onValueChange={(val: ThemeMode) => setThemeMode(val)}
-              style={[styles.picker, { color: colors.text }]}
-              dropdownIconColor={colors.text}
-            >
-              <Picker.Item label="Dark" value="dark" color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="OLED Black" value="oled" color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="Light" value="light" color={Platform.OS === 'ios' ? colors.text : undefined} />
-            </Picker>
-          </View>
-        </View>
+        )}
 
         {/* Buffer Size */}
-        <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-          <View style={styles.tileLeft}>
-            <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
-            <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+        {Platform.OS === 'ios' ? (
+          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetBuffer}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Edit</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+            </View>
+            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+              <Picker selectedValue={bufferSize} onValueChange={(val: number) => setBufferSize(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
+                <Picker.Item label="8 MB" value={8} />
+                <Picker.Item label="16 MB" value={16} />
+                <Picker.Item label="32 MB" value={32} />
+                <Picker.Item label="64 MB" value={64} />
+                <Picker.Item label="128 MB" value={128} />
+              </Picker>
+            </View>
           </View>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
-            <Picker
-              selectedValue={bufferSize}
-              onValueChange={(val: number) => setBufferSize(val)}
-              style={[styles.picker, { color: colors.text }]}
-              dropdownIconColor={colors.text}
-            >
-              <Picker.Item label="8 MB" value={8} color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="16 MB" value={16} color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="32 MB" value={32} color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="64 MB" value={64} color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="128 MB" value={128} color={Platform.OS === 'ios' ? colors.text : undefined} />
-            </Picker>
-          </View>
-        </View>
+        )}
 
         {/* Update Interval */}
-        <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-          <View style={styles.tileLeft}>
-            <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>
-            <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
+        {Platform.OS === 'ios' ? (
+          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetUpdateInterval}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Edit</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
+            </View>
+            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+              <Picker selectedValue={updateInterval} onValueChange={(val: number) => handleSetUpdateInterval(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
+                <Picker.Item label="12 Hours" value={12} />
+                <Picker.Item label="24 Hours" value={24} />
+                <Picker.Item label="48 Hours" value={48} />
+              </Picker>
+            </View>
           </View>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
-            <Picker
-              selectedValue={updateInterval}
-              onValueChange={(val: number) => handleSetUpdateInterval(val)}
-              style={[styles.picker, { color: colors.text }]}
-              dropdownIconColor={colors.text}
-            >
-              <Picker.Item label="12 Hours" value={12} color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="24 Hours" value={24} color={Platform.OS === 'ios' ? colors.text : undefined} />
-              <Picker.Item label="48 Hours" value={48} color={Platform.OS === 'ios' ? colors.text : undefined} />
-            </Picker>
-          </View>
-        </View>
+        )}
 
         {/* Clear Cache */}
         <TouchableOpacity

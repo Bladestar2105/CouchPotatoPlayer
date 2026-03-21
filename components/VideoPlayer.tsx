@@ -1,7 +1,13 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Text, Platform } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
 import { useIPTV } from '../context/IPTVContext';
+
+let VideoComponent: any;
+if (Platform.OS === 'web') {
+  VideoComponent = require('expo-av').Video;
+} else {
+  VideoComponent = require('react-native-vlc-media-player').VLCPlayer;
+}
 
 const VideoPlayer = () => {
   const { currentStream } = useIPTV();
@@ -18,14 +24,14 @@ const VideoPlayer = () => {
   return (
     <View style={styles.container}>
       {streamUrl ? (
-        <Video
+        <VideoComponent
           key={currentStream?.id}
           source={{ uri: streamUrl }}
+          autoplay={true}
+          shouldPlay={true}
           style={styles.video}
-          useNativeControls // Restoring native controls for VOD/catchup scrubbing since custom controls are complex to build reliably cross-platform
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay
-          isLooping={false}
+          resizeMode="contain"
+          useNativeControls={Platform.OS === 'web'}
         />
       ) : (
         <View style={styles.placeholder}>
