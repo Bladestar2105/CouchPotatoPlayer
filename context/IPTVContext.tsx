@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import { XMLParser } from 'fast-xml-parser';
 import i18n from '../utils/i18n';
 import {
   IPTVContextType,

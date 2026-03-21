@@ -92,7 +92,8 @@ export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProg
   }
 };
 
-const parseXMLDate = (dateString: string): Date | null => {
+const parseXMLDate = (inputDateString: string | number): Date | null => {
+  const dateString = String(inputDateString);
   if (dateString.length < 14) return null;
 
   try {
