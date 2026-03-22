@@ -349,6 +349,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const xmlData = await response.text();
         console.log('[EPG] Received XML data, length:', xmlData.length);
         
+        // Ensure that fast-xml-parser parses dates as string
         // Parse the XML data
         const epgData = parseXMLTVFromString(xmlData);
         console.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
