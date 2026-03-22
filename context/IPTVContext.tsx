@@ -103,6 +103,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lockedChannels, setLockedChannels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -216,13 +217,17 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loadProfile = async (profile: IPTVProfile) => {
-    setIsLoading(true);
-    setError(null);
-    setChannels([]);
-    setMovies([]);
-    setSeries([]);
-    setEpg({});
+  const loadProfile = async (profile: IPTVProfile, forceUpdate: boolean = false) => {
+    if (!forceUpdate) {
+        setIsLoading(true);
+        setError(null);
+        setChannels([]);
+        setMovies([]);
+        setSeries([]);
+        setEpg({});
+    } else {
+        setIsUpdating(true);
+    }
 
     try {
       // SSRF mitigation: validate URL starts with http:// or https://
@@ -239,7 +244,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isValidUrl(serverUrl)) {
           throw new Error('Invalid URL. Xtream server URL must start with http:// or https://');
         }
-        await loadXtream(profile);
+        await loadXtream(profile, forceUpdate);
       }
       else if (profile.type === 'stalker') {
         console.warn(i18n.t('stalkerNotImplemented'));
@@ -263,7 +268,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(i18n.t('unknownError'));
       }
     } finally {
-      setIsLoading(false);
+      if (forceUpdate) {
+         setIsUpdating(false);
+      } else {
+         setIsLoading(false);
+      }
     }
   };
 
@@ -485,8 +494,26 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { channels, movies, series };
   };
 
-  const loadXtream = async (profile: IPTVProfile) => {
+  const loadXtream = async (profile: IPTVProfile, forceUpdate: boolean = false) => {
     if (profile.type !== 'xtream') return;
+
+    const cacheKey = `XTREAM_CACHE_${profile.id}`;
+
+    if (!forceUpdate) {
+        // Try to load from cache first
+        try {
+            const cachedDataStr = await AsyncStorage.getItem(cacheKey);
+            if (cachedDataStr) {
+                const cachedData = JSON.parse(cachedDataStr);
+                setChannels(cachedData.channels || []);
+                setMovies(cachedData.movies || []);
+                setSeries(cachedData.series || []);
+                return; // Exit early if loaded from cache
+            }
+        } catch (e) {
+            console.error("Failed to read Xtream cache", e);
+        }
+    }
 
     const { url: serverUrlProp, username, password } = profile;
     const serverUrl = serverUrlProp || (profile as any).serverUrl;
@@ -615,6 +642,17 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }) : [];
       setSeries(parsedSeries);
+
+      // Save to cache
+      try {
+          await AsyncStorage.setItem(cacheKey, JSON.stringify({
+              channels: parsedChannels,
+              movies: parsedMovies,
+              series: parsedSeries
+          }));
+      } catch (e) {
+          console.error("Failed to save Xtream cache", e);
+      }
 
     } catch (e: any) {
       console.error("Error fetching Xtream streams", e);
@@ -849,6 +887,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isChannelLocked,
         getCatchupUrl,
         hasCatchup,
+        isUpdating,
+        setIsUpdating,
       }}
     >
       {children}

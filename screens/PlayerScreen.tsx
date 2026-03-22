@@ -143,10 +143,16 @@ const PlayerScreen = () => {
   };
 
   useEffect(() => {
+    let backHandler: any;
     if (isFocused) {
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
-      return () => backHandler.remove();
+      // Need a small timeout on TV to ensure we take priority over the global handler
+      setTimeout(() => {
+        backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
+      }, 100);
     }
+    return () => {
+       if (backHandler) backHandler.remove();
+    };
   }, [isFocused, navigation]);
 
   return (
