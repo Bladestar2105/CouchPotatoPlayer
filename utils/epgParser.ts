@@ -20,6 +20,7 @@ export const parseXMLTVFromString = (xmlData: string): Record<string, ParsedProg
       ignoreAttributes: false,
       attributeNamePrefix: '@_',
       processEntities: false,
+      parseAttributeValue: false, // Prevent converting large number strings (like '20260321140000') into numbers
     });
 
     const parsed = parser.parse(xmlData);

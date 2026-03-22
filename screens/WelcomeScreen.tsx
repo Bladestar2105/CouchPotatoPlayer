@@ -255,10 +255,10 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    padding: 14,
+    padding: Platform.isTV ? 20 : 14,
     borderRadius: 10,
     marginBottom: 14,
-    fontSize: 16,
+    fontSize: Platform.isTV ? 28 : 16,
     borderWidth: 1,
     borderColor: '#3C3C3E',
   },

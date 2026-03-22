@@ -134,8 +134,11 @@ const PlayerScreen = () => {
   const handleBack = () => {
      // Check if we came from Home where VideoPlayer is mounted in background
      // Normally we would just go back
-     navigation.goBack();
-     return true;
+     if (navigation.canGoBack()) {
+       navigation.goBack();
+       return true;
+     }
+     return false; // Let default behavior happen if we can't go back
   };
 
   useEffect(() => {
@@ -143,7 +146,7 @@ const PlayerScreen = () => {
       const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
       return () => backHandler.remove();
     }
-  }, [isFocused]);
+  }, [isFocused, navigation]);
 
   return (
     <View style={styles.container}>

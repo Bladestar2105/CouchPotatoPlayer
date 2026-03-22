@@ -79,8 +79,6 @@ const MainLayout = () => {
               <ScrollView
                 contentContainerStyle={{ paddingVertical: 16 }}
                 // TV focus interactions
-                onFocus={() => setIsSidebarExpanded(true)}
-                onBlur={() => setIsSidebarExpanded(false)}
               >
                 {/* On a TV, the sidebar auto-expands on focus, so the hamburger menu isn't strictly necessary, but helpful for mouse/touch */}
                 <TouchableOpacity
