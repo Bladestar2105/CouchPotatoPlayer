@@ -136,7 +136,7 @@ const WelcomeScreen = () => {
             placeholderTextColor={colors.textSecondary}
             value={name}
             onChangeText={setName}
-            autoFocus={true}
+            tvFocusable={true}
           />
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
@@ -147,6 +147,7 @@ const WelcomeScreen = () => {
             keyboardType="url"
             autoCapitalize="none"
             autoCorrect={false}
+            tvFocusable={true}
           />
 
           {type === 'xtream' ? (
@@ -159,6 +160,7 @@ const WelcomeScreen = () => {
                 onChangeText={setUsername}
                 autoCapitalize="none"
                 autoCorrect={false}
+                tvFocusable={true}
               />
               <TextInput
                 style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
@@ -167,6 +169,7 @@ const WelcomeScreen = () => {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                tvFocusable={true}
               />
             </>
           ) : (
@@ -179,6 +182,7 @@ const WelcomeScreen = () => {
               keyboardType="url"
               autoCapitalize="none"
               autoCorrect={false}
+              tvFocusable={true}
             />
           )}
 
