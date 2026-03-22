@@ -201,6 +201,29 @@ const HomeScreen = () => {
     }
   }, [isInitializing, isLoading, currentProfile, hasAdultContent, pin, navigation]);
 
+  // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
+  useEffect(() => {
+    // Prompt to update when a profile is successfully loaded and we haven't asked yet
+    if (currentProfile && !isInitializing && !isLoading && !hasPromptedUpdate) {
+      setHasPromptedUpdate(true);
+      // Wait a tick so the UI renders first
+      setTimeout(() => {
+         // Using standard Alert for simple yes/no
+         import('react-native').then(({ Alert }) => {
+            Alert.alert(
+               "Playlist aktualisieren?",
+               "Möchten Sie die Playlist und das EPG jetzt aktualisieren?",
+               [
+                 { text: "Nein", style: "cancel" },
+                 { text: "Ja", onPress: () => loadProfile(currentProfile, true) }
+               ],
+               { cancelable: true }
+            );
+         });
+      }, 500);
+    }
+  }, [currentProfile, isInitializing, isLoading, hasPromptedUpdate, loadProfile]);
+
   if (isInitializing || (isLoading && !currentProfile)) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
