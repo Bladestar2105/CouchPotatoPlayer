@@ -1,2 +1,4 @@
 patchedDependencies:
   react-native-vlc-media-player: patches/react-native-vlc-media-player.patch
+packages:
+  - '.'
