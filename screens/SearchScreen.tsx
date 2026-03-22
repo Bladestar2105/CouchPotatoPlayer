@@ -117,7 +117,6 @@ const SearchScreen = () => {
           placeholderTextColor={colors.textSecondary}
           value={query}
           onChangeText={setQuery}
-          autoFocus={true}
           autoCapitalize="none"
           autoCorrect={false}
           tvFocusable={true}

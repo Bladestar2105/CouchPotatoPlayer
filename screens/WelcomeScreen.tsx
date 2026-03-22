@@ -136,7 +136,6 @@ const WelcomeScreen = () => {
             placeholderTextColor={colors.textSecondary}
             value={name}
             onChangeText={setName}
-            autoFocus={true}
             tvFocusable={true}
           />
           <TextInput
