@@ -132,13 +132,14 @@ const PlayerScreen = () => {
   };
 
   const handleBack = () => {
-     // Check if we came from Home where VideoPlayer is mounted in background
-     // Normally we would just go back
+     // Apple TV Menu button shouldn't close the app from PlayerScreen.
      if (navigation.canGoBack()) {
        navigation.goBack();
        return true;
      }
-     return false; // Let default behavior happen if we can't go back
+     // Even if it can't go back, prevent default exit just in case the stack is weird
+     navigation.navigate('Home');
+     return true;
   };
 
   useEffect(() => {

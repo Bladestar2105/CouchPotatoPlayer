@@ -160,9 +160,9 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Icon name={icon} size={24} color={isActive || isFocused ? '#FFF' : '#888'} style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} />
+      <Icon name={icon} size={Platform.isTV ? 32 : 24} color={isActive || isFocused ? '#FFF' : '#888'} style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} />
       {showLabel && (
-        <Text style={{ color: isActive || isFocused ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal' }} numberOfLines={1}>
+        <Text style={{ color: isActive || isFocused ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal', fontSize: Platform.isTV ? 20 : 14 }} numberOfLines={1}>
           {label}
         </Text>
       )}

@@ -56,7 +56,8 @@ const SettingsScreen = () => {
 
                 // Also clear FileSystem cache
                 if (Platform.OS !== 'web') {
-                   const files = Paths.document.list();
+                   const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+                   const files = cacheDir.list();
                    const epgFiles = files.filter(f => f instanceof File && f.name.startsWith('IPTV_EPG_') && f.name.endsWith('.json'));
                    for (const file of epgFiles) {
                       file.delete();
