@@ -29,7 +29,7 @@ const MainLayout = () => {
 
   // Animation values for the sidebar expansion
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
-  const collapsedWidth = Platform.isTV ? 120 : 80;
+  const collapsedWidth = Platform.isTV ? 100 : 80;
   const expandedWidth = Platform.isTV ? 350 : 250;
   const sidebarWidth = React.useRef(new Animated.Value(collapsedWidth)).current;
 
@@ -236,6 +236,29 @@ const HomeScreen = () => {
   if (!currentProfile) {
     return <WelcomeScreen />;
   }
+
+  // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
+  useEffect(() => {
+    // Prompt to update when a profile is successfully loaded and we haven't asked yet
+    if (currentProfile && !isInitializing && !isLoading && !hasPromptedUpdate) {
+      setHasPromptedUpdate(true);
+      // Wait a tick so the UI renders first
+      setTimeout(() => {
+         // Using standard Alert for simple yes/no
+         import('react-native').then(({ Alert }) => {
+            Alert.alert(
+               "Playlist aktualisieren?",
+               "Möchten Sie die Playlist und das EPG jetzt aktualisieren?",
+               [
+                 { text: "Nein", style: "cancel" },
+                 { text: "Ja", onPress: () => loadProfile(currentProfile, true) }
+               ],
+               { cancelable: true }
+            );
+         });
+      }, 500);
+    }
+  }, [currentProfile, isInitializing, isLoading, hasPromptedUpdate, loadProfile]);
 
   if (!pin && hasAdultContent) {
     return (
