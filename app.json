@@ -35,6 +35,7 @@
       "bundler": "metro"
     },
     "plugins": [
+      "@react-native-tvos/config-tv",
       "expo-asset",
       "react-native-vlc-media-player",
       [
