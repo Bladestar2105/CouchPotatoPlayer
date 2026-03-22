@@ -27,15 +27,16 @@ echo "Assuming the project is correctly configured for tvOS natively in the /ios
 
 # Dynamically find the first available Apple TV simulator installed in Xcode
 echo "Finding an available Apple TV Simulator..."
-TV_SIMULATOR=$(xcrun simctl list devices | grep -i "Apple TV" | grep -v "unavailable" | head -n 1 | awk -F '[()]' '{print $1}' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+# We extract the exact device UDID (e.g. 12345678-1234-1234-1234-123456789012) using grep/regex
+TV_SIMULATOR_UDID=$(xcrun simctl list devices | grep -i "Apple TV" | grep -v "unavailable" | head -n 1 | grep -o -E '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
 
-if [ -z "$TV_SIMULATOR" ]; then
+if [ -z "$TV_SIMULATOR_UDID" ]; then
   echo "Error: No Apple TV simulator found! Please open Xcode -> Window -> Devices and Simulators and create one."
   exit 1
 fi
 
-echo "Found Simulator: $TV_SIMULATOR"
+echo "Found Simulator UDID: $TV_SIMULATOR_UDID"
 
 # Build for the Apple TV Simulator
 # Note: Expo Go does not run on Apple TV. This requires a custom native build via Prebuild.
-npx expo run:ios --device "$TV_SIMULATOR"
+npx expo run:ios --device "$TV_SIMULATOR_UDID"
