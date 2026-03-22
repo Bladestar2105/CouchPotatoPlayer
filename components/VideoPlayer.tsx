@@ -34,8 +34,8 @@ const VideoPlayer = () => {
               `--network-caching=${bufferSize * 1000}`,
               `--live-caching=${bufferSize * 1000}`,
               `--file-caching=${bufferSize * 1000}`,
-              '--drop-late-frames',
-              '--skip-frames'
+              '--clock-jitter=0',
+              '--clock-synchro=0'
             ]
           }}
           autoplay={true}

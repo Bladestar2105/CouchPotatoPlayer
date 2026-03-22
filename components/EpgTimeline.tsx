@@ -5,7 +5,7 @@ import Icon from '@expo/vector-icons/MaterialIcons';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTV } from '../context/IPTVContext';
 
-const PIXELS_PER_MINUTE = 4;
+const PIXELS_PER_MINUTE = Platform.isTV ? 8 : 4; // Stretch timeline for TV
 const HOUR_WIDTH = PIXELS_PER_MINUTE * 60;
 const TIMELINE_START_OFFSET_HOURS = 2; // Show x hours before now
 const TIMELINE_DURATION_HOURS = 24; // Total hours in timeline
@@ -60,9 +60,15 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
     for (let i = 0; i < TIMELINE_DURATION_HOURS; i++) {
       const d = new Date(timelineStart);
       d.setHours(d.getHours() + i);
+
+      const showDate = d.getHours() === 0 || i === 0;
+
       headers.push(
         <View key={i} style={[styles.timeHeaderItem, { width: HOUR_WIDTH }]}>
-          <Text style={styles.timeHeaderText}>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+          <Text style={styles.timeHeaderText}>
+            {showDate ? d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' - ' : ''}
+            {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
         </View>
       );
     }
@@ -81,7 +87,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <View style={styles.channelHeaderSpace}></View>
+        <View style={[styles.channelHeaderSpace, { width: Platform.isTV ? 160 : 120 }]}></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} ref={scrollViewRef} scrollEnabled={false} style={{flex: 1}}>
             <View style={{ width: totalWidth, flexDirection: 'row' }}>
                 {timeHeaders}
@@ -97,9 +103,9 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                 scrollViewRef.current.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
             }
         }} scrollEventThrottle={16}>
-          <View style={{ width: totalWidth + 120 }}>
+          <View style={{ width: totalWidth + (Platform.isTV ? 160 : 120) }}>
               {/* Vertical Time Line across all rows */}
-              <View style={[styles.currentTimeLine, { left: 120 + nowPosition }]} />
+              <View style={[styles.currentTimeLine, { left: (Platform.isTV ? 160 : 120) + nowPosition }]} />
 
               <FlatList
                  data={channels}
@@ -228,7 +234,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    height: 60,
+    height: Platform.isTV ? 80 : 60,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
@@ -236,7 +242,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   channelBox: {
-    width: 120,
+    width: Platform.isTV ? 160 : 120,
     padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
@@ -245,38 +251,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1C1E',
     position: 'absolute',
     left: 0,
-    height: 60,
+    height: Platform.isTV ? 80 : 60,
     zIndex: 10, // keep on top of scrolled content
   },
   channelLogo: {
-    width: 36,
-    height: 24,
+    width: Platform.isTV ? 48 : 36,
+    height: Platform.isTV ? 32 : 24,
     marginBottom: 2,
   },
   channelName: {
     color: '#FFF',
-    fontSize: 10,
+    fontSize: Platform.isTV ? 16 : 10,
     textAlign: 'center',
   },
   programsContainer: {
     flex: 1,
     position: 'relative',
-    marginLeft: 120, // offset for fixed channel box
+    marginLeft: Platform.isTV ? 160 : 120, // offset for fixed channel box
   },
   programBlock: {
     position: 'absolute',
-    height: 50,
+    height: Platform.isTV ? 70 : 50,
     top: 5,
     borderRadius: 4,
-    padding: 4,
+    padding: Platform.isTV ? 8 : 4,
     justifyContent: 'center',
   },
   programTitle: {
-    fontSize: 12,
+    fontSize: Platform.isTV ? 18 : 12,
     fontWeight: 'bold',
   },
   programTime: {
-    fontSize: 10,
+    fontSize: Platform.isTV ? 14 : 10,
     color: '#AAA',
     marginTop: 2,
   }
