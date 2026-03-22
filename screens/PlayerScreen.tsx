@@ -6,6 +6,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { Channel } from '../types';
+import { findCurrentProgramIndex } from '../utils/epgUtils';
 
 const defaultLogo = require('../assets/icon.png');
 
@@ -41,14 +42,9 @@ const PlayerScreen = () => {
      if (!channelEpg.length) return { currentProgram: null, nextProgram: null, progressPercent: 0 };
 
      const now = new Date();
-     let currentIdx = -1;
 
-     for (let i = 0; i < channelEpg.length; i++) {
-        if (now >= channelEpg[i].start && now < channelEpg[i].end) {
-            currentIdx = i;
-            break;
-        }
-     }
+     // ⚡ Bolt: Replace O(N) linear search with O(log N) binary search
+     const currentIdx = findCurrentProgramIndex(channelEpg, now);
 
      if (currentIdx === -1) return { currentProgram: null, nextProgram: null, progressPercent: 0 };
 
@@ -147,6 +143,7 @@ const PlayerScreen = () => {
               style={styles.backButton}
               onPress={handleBack}
               accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Icon name="arrow-back" size={28} color="#FFF" />
             </TouchableOpacity>
