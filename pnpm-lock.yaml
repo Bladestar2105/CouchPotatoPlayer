@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  react-native-vlc-media-player:
+    hash: ac414f8f882ba6ef8d18aab72f3f01060085f0ef1a1f8316b672a3b29b12888a
+    path: patches/react-native-vlc-media-player.patch
+
 importers:
 
   .:
@@ -115,7 +120,7 @@ importers:
         version: 6.19.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       react-native-vlc-media-player:
         specifier: ^1.0.96
-        version: 1.0.98
+        version: 1.0.98(patch_hash=ac414f8f882ba6ef8d18aab72f3f01060085f0ef1a1f8316b672a3b29b12888a)
       react-native-web:
         specifier: ^0.21.2
         version: 0.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -6280,7 +6285,7 @@ snapshots:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
 
-  react-native-vlc-media-player@1.0.98:
+  react-native-vlc-media-player@1.0.98(patch_hash=ac414f8f882ba6ef8d18aab72f3f01060085f0ef1a1f8316b672a3b29b12888a):
     dependencies:
       react-native-slider: 0.11.0
       react-native-vector-icons: 9.2.0

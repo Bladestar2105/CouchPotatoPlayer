@@ -29,7 +29,7 @@ const MainLayout = () => {
 
   // Animation values for the sidebar expansion
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
-  const collapsedWidth = Platform.isTV ? 100 : 80;
+  const collapsedWidth = Platform.isTV ? 120 : 80;
   const expandedWidth = Platform.isTV ? 350 : 250;
   const sidebarWidth = React.useRef(new Animated.Value(collapsedWidth)).current;
 
