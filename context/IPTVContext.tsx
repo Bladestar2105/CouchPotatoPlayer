@@ -88,6 +88,7 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
 const IPTVContext = createContext<IPTVContextType | undefined>(undefined);
 
 export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [profiles, setProfiles] = useState<IPTVProfile[]>([]);
   const [currentProfile, setCurrentProfile] = useState<IPTVProfile | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -169,6 +170,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (e) {
         console.error("Failed to load data from storage", e);
+      } finally {
+        setIsInitializing(false);
       }
     };
     loadDataFromStorage();
@@ -804,6 +807,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <IPTVContext.Provider
       value={{
+        isInitializing,
         profiles,
         currentProfile,
         channels,
