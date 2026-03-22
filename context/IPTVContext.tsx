@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { File, Directory, Paths } from 'expo-file-system';
+
 import i18n from '../utils/i18n';
 import {
   IPTVContextType,
@@ -285,9 +287,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (Platform.OS === 'web') {
         cachedEpgStr = await AsyncStorage.getItem(storageKey);
       } else {
-        const fileUri = `${((FileSystem as any).documentDirectory || '')}${storageKey}.json`;
+        const file = new File(Paths.document, `${storageKey}.json`);
         try {
-          cachedEpgStr = await FileSystem.readAsStringAsync(fileUri);
+          if (file.exists) {
+            cachedEpgStr = await file.text();
+          }
         } catch (e) {
           // File does not exist or cannot be read
         }
@@ -372,8 +376,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
              console.warn('[EPG] Failed to save EPG to AsyncStorage (likely QuotaExceededError on web)', storageError);
           }
         } else {
-          const fileUri = `${((FileSystem as any).documentDirectory || '')}${storageKey}.json`;
-          await FileSystem.writeAsStringAsync(fileUri, epgCacheData);
+          const file = new File(Paths.document, `${storageKey}.json`);
+          await file.write(epgCacheData);
         }
       } else {
         console.log('[EPG] No EPG URL available');
