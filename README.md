@@ -74,9 +74,8 @@ pnpm run build:android-sim
 **Apple TV (tvOS) Simulator**
 ```bash
 pnpm run build:tvos-sim
-# Note: For full, native tvOS support, install `react-native-tvos` locally by running: `pnpm install react-native@npm:react-native-tvos@latest`.
-# Our GitHub CI pipeline dynamically performs this substitution to build a true tvOS binary.
 ```
+*Note: Full, native tvOS support requires the `react-native-tvos` fork. To prevent this fork from breaking standard iOS builds and native modules (like Reanimated), our `build:tvos-sim` script automates this process. It will temporarily install the exact `react-native-tvos` version matching your project, build the Apple TV app, and safely revert back to standard `react-native` when finished.*
 
 **Android TV Emulator**
 ```bash
