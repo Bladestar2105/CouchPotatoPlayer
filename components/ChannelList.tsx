@@ -138,10 +138,6 @@ const LiveTVFlow = () => {
   };
 
   // ⚡ Bolt: Helper function to get current program using O(log N) binary search
-  const getCurrentProgram = (channelEpg: any[]) => {
-      const now = new Date();
-      return findCurrentProgram(channelEpg, now);
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
@@ -183,9 +179,9 @@ const LiveTVFlow = () => {
         </View>
       )}
 
-      {/* MIDDLE PANE: Channel List */}
+      {/* RIGHT PANE: EPG Grid Timeline */}
       {(!isMobile || !showCategories) && (
-        <View style={[styles.channelListPane, isMobile ? { flex: 1, width: 'auto', borderRightWidth: 0 } : { backgroundColor: 'rgba(30,30,30,0.9)', borderRightColor: '#2C2C2E' }]}>
+        <View style={[styles.epgPane, isMobile ? { flex: 1, width: 'auto', borderRightWidth: 0 } : { backgroundColor: 'rgba(30,30,30,0.9)', borderRightColor: '#2C2C2E' }]}>
           {isMobile && (
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
               <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -195,135 +191,18 @@ const LiveTVFlow = () => {
             </View>
           )}
           {selectedChannels.length > 0 ? (
-             <FlatList
-              data={selectedChannels}
-              keyExtractor={item => item.id}
-              initialNumToRender={20}
-              maxToRenderPerBatch={15}
-              windowSize={5}
-              renderItem={({ item }) => {
-                  const isFocused = focusedChannelId === item.id;
-                  const isPlaying = currentStream?.id === item.id;
-                  const epgKey = getEpgKey(item);
-                  const channelEpg = epg[epgKey] || [];
-                  const currentProg = getCurrentProgram(channelEpg);
-
-                  const isFav = isFavorite(item.id);
-
-                  return (
-                    <TouchableOpacity
-                       style={[
-                           styles.channelItem,
-                           isFocused ? { backgroundColor: 'rgba(255, 255, 255, 0.15)' } : {},
-                           isPlaying ? { borderLeftWidth: 4, borderLeftColor: colors.primary } : { borderLeftWidth: 4, borderLeftColor: 'transparent' }
-                       ]}
-                       onPress={() => handleChannelPress(item)}
-                       onLongPress={() => {
-                          if (isFav) {
-                              removeFavorite(item.id);
-                          } else {
-                              addFavorite({
-                                  id: item.id,
-                                  type: 'live',
-                                  name: item.name,
-                                  icon: item.logo,
-                                  categoryId: item.categoryId,
-                                  addedAt: Date.now(),
-                              });
-                          }
-                       }}
-                       onFocus={() => setFocusedChannelId(item.id)}
-                    >
-                       <Image
-                           source={item.logo && item.logo.startsWith('http') ? { uri: item.logo } : defaultLogo}
-                           style={styles.channelLogo}
-                           resizeMode="contain"
-                           defaultSource={defaultLogo} // works on iOS for placeholders
-                       />
-                       <View style={{ flex: 1, marginLeft: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                           <View style={{ flex: 1 }}>
-                               <Text style={{ color: '#FFF', fontSize: 16, fontWeight: isPlaying ? 'bold' : 'normal' }} numberOfLines={1}>{item.name}</Text>
-                               <Text style={{ color: '#AAA', fontSize: 12, marginTop: 4 }} numberOfLines={1}>
-                                   {currentProg ? currentProg.title : 'No EPG data'}
-                               </Text>
-                           </View>
-                           {isFav && <Icon name="star" size={16} color="#FFD700" />}
-                       </View>
-                    </TouchableOpacity>
-                  );
-              }}
+             <EpgTimeline
+                channels={selectedChannels}
+                onChannelPress={handleChannelPress}
+                focusedChannelId={focusedChannelId}
+                setFocusedChannelId={setFocusedChannelId}
+                currentStreamId={currentStream?.id}
              />
           ) : (
             <View style={styles.centeredContainer}>
-              <Text style={{ color: colors.textSecondary }}>No channels available</Text>
+              <Text style={{ color: colors.textSecondary }}>No channels available in this category</Text>
             </View>
           )}
-        </View>
-      )}
-
-      {/* RIGHT PANE: EPG for Focused Channel */}
-      {(!isMobile) && (
-        <View style={[styles.epgPane, { backgroundColor: 'rgba(20,20,20,0.95)' }]}>
-         {focusedChannel ? (
-             <View style={{ flex: 1 }}>
-                 {/* Focused Channel Header */}
-                 <View style={styles.epgHeader}>
-                     <Image
-                         source={focusedChannel.logo && focusedChannel.logo.startsWith('http') ? { uri: focusedChannel.logo } : defaultLogo}
-                         style={styles.epgHeaderLogo}
-                         resizeMode="contain"
-                         defaultSource={defaultLogo}
-                     />
-                     <View style={{ flex: 1 }}>
-                        <Text style={{ color: '#FFF', fontSize: 22, fontWeight: 'bold' }}>{focusedChannel.name}</Text>
-                     </View>
-                 </View>
-
-                 {/* EPG List */}
-                 {focusedChannelEpg.length > 0 ? (
-                     <FlatList
-                         data={focusedChannelEpg}
-                         keyExtractor={(item, index) => `${item.id || item.start?.getTime() || index}-${index}`}
-                         renderItem={({ item }) => {
-                             const now = new Date();
-                             const isNow = now >= item.start && now < item.end;
-                             const isPast = now >= item.end;
-
-                             const canCatchup = isPast && hasCatchup(focusedChannel) && item.end.getTime() > Date.now() - (focusedChannel.catchupDays || 0) * 24 * 60 * 60 * 1000;
-
-                             return (
-                                 <TouchableOpacity
-                                     style={[styles.epgRow, isNow ? { backgroundColor: 'rgba(0, 122, 255, 0.2)', borderLeftWidth: 3, borderLeftColor: colors.primary } : {}]}
-                                     onPress={() => handleEpgPress(focusedChannel, item)}
-                                 >
-                                     <View style={{ width: 60 }}>
-                                         <Text style={{ color: isPast ? '#666' : (isNow ? '#FFF' : '#AAA'), fontSize: 14 }}>
-                                             {item.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                         </Text>
-                                     </View>
-                                     <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                                         <Text style={{ color: isPast && !canCatchup ? '#666' : (isNow ? '#FFF' : '#DDD'), fontSize: 16, fontWeight: isNow ? 'bold' : 'normal', flex: 1 }} numberOfLines={2}>
-                                             {item.title}
-                                         </Text>
-                                         {canCatchup && !isNow && (
-                                            <Icon name="play-circle-outline" size={20} color={colors.primary} style={{ marginLeft: 8 }} />
-                                         )}
-                                     </View>
-                                 </TouchableOpacity>
-                             );
-                         }}
-                     />
-                 ) : (
-                     <View style={styles.centeredContainer}>
-                         <Text style={{ color: '#666' }}>No program information</Text>
-                     </View>
-                 )}
-             </View>
-         ) : (
-             <View style={styles.centeredContainer}>
-                 <Text style={{ color: '#666' }}>Select a channel to view EPG</Text>
-             </View>
-         )}
         </View>
       )}
 
