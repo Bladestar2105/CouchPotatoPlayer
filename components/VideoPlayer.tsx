@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
+import { useSettings } from '../context/SettingsContext';
 
 let VideoComponent: any;
 if (Platform.OS === 'web') {
@@ -11,6 +12,7 @@ if (Platform.OS === 'web') {
 
 const VideoPlayer = () => {
   const { currentStream } = useIPTV();
+  const { bufferSize } = useSettings();
 
   const streamUrl = useMemo(() => {
     if (!currentStream?.url) return null;
@@ -26,7 +28,16 @@ const VideoPlayer = () => {
       {streamUrl ? (
         <VideoComponent
           key={currentStream?.id}
-          source={{ uri: streamUrl }}
+          source={{
+            uri: streamUrl,
+            initOptions: [
+              `--network-caching=${bufferSize * 1000}`,
+              `--live-caching=${bufferSize * 1000}`,
+              `--file-caching=${bufferSize * 1000}`,
+              '--drop-late-frames',
+              '--skip-frames'
+            ]
+          }}
           autoplay={true}
           shouldPlay={true}
           style={styles.video}

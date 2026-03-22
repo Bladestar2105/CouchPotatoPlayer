@@ -166,11 +166,12 @@ const LiveTVFlow = () => {
                     isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {}
                   ]}
                   onPress={() => handleGroupSelect(item.title)}
-                  onFocus={() => setSelectedGroup(item.title)}
+                  // Don't automatically switch the right pane on focus; require an explicit press to avoid hanging the app.
+                  // onFocus={() => setSelectedGroup(item.title)}
                   accessibilityRole="button"
                   accessibilityLabel={`Select category ${item.title}`}
                 >
-                  <Text style={{ color: isSelected ? '#FFF' : '#AAA', fontWeight: isSelected ? 'bold' : 'normal', fontSize: 16 }}>
+                  <Text style={{ color: isSelected ? '#FFF' : '#AAA', fontWeight: isSelected ? 'bold' : 'normal', fontSize: Platform.isTV ? 20 : 16 }}>
                     {item.title}
                   </Text>
                 </TouchableOpacity>

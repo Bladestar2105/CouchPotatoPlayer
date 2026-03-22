@@ -1,6 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Platform, ActionSheetIOS } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+
+let ActionSheetIOS: any;
+if (Platform.OS === 'ios' && !Platform.isTV) {
+  try {
+    ActionSheetIOS = require('react-native').ActionSheetIOS;
+  } catch (e) {
+    // Ignore
+  }
+}
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings, ThemeMode } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
@@ -47,7 +56,8 @@ const SettingsScreen = () => {
 
                 // Also clear FileSystem cache
                 if (Platform.OS !== 'web') {
-                   const files = Paths.document.list();
+                   const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+                   const files = cacheDir.list();
                    const epgFiles = files.filter(f => f instanceof File && f.name.startsWith('IPTV_EPG_') && f.name.endsWith('.json'));
                    for (const file of epgFiles) {
                       file.delete();
@@ -101,13 +111,13 @@ const SettingsScreen = () => {
   };
 
   const handleActionSheetTheme = () => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === 'ios' && !Platform.isTV) {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options: ['Cancel', 'Dark', 'OLED Black', 'Light'],
           cancelButtonIndex: 0,
         },
-        (buttonIndex) => {
+        (buttonIndex: number) => {
           if (buttonIndex === 1) setThemeMode('dark');
           if (buttonIndex === 2) setThemeMode('oled');
           if (buttonIndex === 3) setThemeMode('light');
@@ -117,12 +127,12 @@ const SettingsScreen = () => {
   };
 
   const handleActionSheetBuffer = () => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === 'ios' && !Platform.isTV) {
       const options = ['Cancel', '8 MB', '16 MB', '32 MB', '64 MB', '128 MB'];
       const values = [0, 8, 16, 32, 64, 128];
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0 },
-        (buttonIndex) => {
+        (buttonIndex: number) => {
           if (buttonIndex > 0) setBufferSize(values[buttonIndex]);
         }
       );
@@ -130,12 +140,12 @@ const SettingsScreen = () => {
   };
 
   const handleActionSheetUpdateInterval = () => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === 'ios' && !Platform.isTV) {
       const options = ['Cancel', '12 Hours', '24 Hours', '48 Hours'];
       const values = [0, 12, 24, 48];
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0 },
-        (buttonIndex) => {
+        (buttonIndex: number) => {
           if (buttonIndex > 0) handleSetUpdateInterval(values[buttonIndex]);
         }
       );
@@ -186,7 +196,7 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         {/* Theme Mode */}
-        {Platform.OS === 'ios' ? (
+        {Platform.OS === 'ios' && !Platform.isTV ? (
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetTheme}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
@@ -211,7 +221,7 @@ const SettingsScreen = () => {
         )}
 
         {/* Buffer Size */}
-        {Platform.OS === 'ios' ? (
+        {Platform.OS === 'ios' && !Platform.isTV ? (
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetBuffer}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
@@ -238,7 +248,7 @@ const SettingsScreen = () => {
         )}
 
         {/* Update Interval */}
-        {Platform.OS === 'ios' ? (
+        {Platform.OS === 'ios' && !Platform.isTV ? (
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetUpdateInterval}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>

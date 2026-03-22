@@ -290,7 +290,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (Platform.OS === 'web') {
         cachedEpgStr = await AsyncStorage.getItem(storageKey);
       } else {
-        const file = new File(Paths.document, `${storageKey}.json`);
+        const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+        const file = new File(cacheDir, `${storageKey}.json`);
         try {
           if (file.exists) {
             cachedEpgStr = await file.text();
@@ -349,6 +350,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const xmlData = await response.text();
         console.log('[EPG] Received XML data, length:', xmlData.length);
         
+        // Ensure that fast-xml-parser parses dates as string
         // Parse the XML data
         const epgData = parseXMLTVFromString(xmlData);
         console.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
@@ -379,7 +381,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
              console.warn('[EPG] Failed to save EPG to AsyncStorage (likely QuotaExceededError on web)', storageError);
           }
         } else {
-          const file = new File(Paths.document, `${storageKey}.json`);
+          const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+          const file = new File(cacheDir, `${storageKey}.json`);
           await file.write(epgCacheData);
         }
       } else {
