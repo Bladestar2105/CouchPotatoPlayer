@@ -58,7 +58,9 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "expo-localization",
+      "expo-video"
     ]
   }
 }
