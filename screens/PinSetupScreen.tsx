@@ -90,6 +90,7 @@ const PinSetupScreen = () => {
         placeholder={setupMode ? "New PIN" : unlockMode ? "PIN Code" : "Current PIN"}
         placeholderTextColor="#888"
         autoFocus={true}
+        tvFocusable={true}
       />
 
       {!unlockMode && (
@@ -102,6 +103,7 @@ const PinSetupScreen = () => {
           onChangeText={setConfirmValue}
           placeholder={setupMode ? "Confirm PIN" : "New PIN (Optional)"}
           placeholderTextColor="#888"
+          tvFocusable={true}
         />
       )}
 

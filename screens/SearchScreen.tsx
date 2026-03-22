@@ -120,6 +120,7 @@ const SearchScreen = () => {
           autoFocus={true}
           autoCapitalize="none"
           autoCorrect={false}
+          tvFocusable={true}
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
