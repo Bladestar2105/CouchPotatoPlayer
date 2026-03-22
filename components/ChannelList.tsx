@@ -19,7 +19,7 @@ const LiveTVFlow = () => {
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
 
   // For mobile devices, hide categories when a group is selected to give more space
-  const isTV = Platform.isTV || Platform.OS === 'tvos';
+  const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
   const isMobile = !isTV && Dimensions.get('window').width < 768;
   const [showCategories, setShowCategories] = useState<boolean>(true);
 

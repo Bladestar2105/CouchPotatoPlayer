@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 
@@ -77,7 +77,7 @@ const PlayerScreen = () => {
 
   // Hide overlay on inactivity
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (showOverlay) {
         timer = setTimeout(() => {
             setShowOverlay(false);
@@ -135,7 +135,15 @@ const PlayerScreen = () => {
      // Check if we came from Home where VideoPlayer is mounted in background
      // Normally we would just go back
      navigation.goBack();
+     return true;
   };
+
+  useEffect(() => {
+    if (isFocused) {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
+      return () => backHandler.remove();
+    }
+  }, [isFocused]);
 
   return (
     <View style={styles.container}>

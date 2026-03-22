@@ -286,9 +286,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cachedEpgStr = await AsyncStorage.getItem(storageKey);
       } else {
         const fileUri = `${((FileSystem as any).documentDirectory || '')}${storageKey}.json`;
-        const fileInfo = await FileSystem.getInfoAsync(fileUri);
-        if (fileInfo.exists) {
+        try {
           cachedEpgStr = await FileSystem.readAsStringAsync(fileUri);
+        } catch (e) {
+          // File does not exist or cannot be read
         }
       }
 
