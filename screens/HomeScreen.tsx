@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -173,7 +173,7 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any
 };
 
 const HomeScreen = () => {
-  const { currentProfile, pin, channels, movies, series } = useIPTV();
+  const { isInitializing, currentProfile, pin, channels, movies, series, isLoading } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
 
@@ -182,10 +182,19 @@ const HomeScreen = () => {
   }, [channels, movies, series]);
 
   React.useEffect(() => {
-    if (currentProfile && !pin && hasAdultContent) {
+    if (!isInitializing && !isLoading && currentProfile && !pin && hasAdultContent) {
         navigation.navigate('PinSetup');
     }
-  }, [currentProfile, hasAdultContent, pin, navigation]);
+  }, [isInitializing, isLoading, currentProfile, hasAdultContent, pin, navigation]);
+
+  if (isInitializing || (isLoading && !currentProfile)) {
+    return (
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
+         <Image source={require('../assets/icon.png')} style={{ width: 150, height: 150, marginBottom: 20 }} resizeMode="contain" />
+         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!currentProfile) {
     return <WelcomeScreen />;

@@ -134,6 +134,7 @@ export type IPTVProfile = M3UProfile | XtreamProfile | StalkerProfile;
 export type ProfileType = IPTVProfile['type'];
 
 export type IPTVContextType = {
+  isInitializing: boolean;
   profiles: IPTVProfile[];
   currentProfile: IPTVProfile | null;
 
