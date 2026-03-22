@@ -1,8 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform } from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
+
+// Dynamically require expo-screen-orientation only if not on a TV
+let ScreenOrientation: any;
+if (!Platform.isTV) {
+  try {
+    ScreenOrientation = require('expo-screen-orientation');
+  } catch (e) {
+    // Fallback if missing
+  }
+}
 import { useIPTV } from '../context/IPTVContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { Channel } from '../types';
@@ -95,6 +104,9 @@ const PlayerScreen = () => {
 
   useEffect(() => {
     const setOrientation = async () => {
+      // Screen orientation does not apply to TV platforms
+      if (Platform.isTV || !ScreenOrientation) return;
+
       if (isFocused && Platform.OS !== 'web') {
         try {
             await ScreenOrientation.unlockAsync();
@@ -109,7 +121,7 @@ const PlayerScreen = () => {
     setOrientation();
 
     return () => {
-      if (Platform.OS !== 'web') {
+      if (!Platform.isTV && ScreenOrientation && Platform.OS !== 'web') {
           ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
       }
     };
