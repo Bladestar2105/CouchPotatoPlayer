@@ -30,25 +30,28 @@ const SearchScreen = () => {
   const searchResults = React.useMemo(() => {
     if (!debouncedQuery) return [];
 
-    const lowerQuery = debouncedQuery.toLowerCase();
+    // ⚡ Bolt: Escape regex special characters to prevent SyntaxError on query injection
+    const escapedQuery = debouncedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // ⚡ Bolt: Case-insensitive regex for faster searching without creating new strings
+    const regex = new RegExp(escapedQuery, 'i');
     const results: any[] = [];
     // ⚡ Bolt: Capping max results at 100 to avoid excessive memory and render costs on broad queries (e.g., "a")
     const MAX_RESULTS = 100;
 
-    // ⚡ Bolt: Unified single-pass iterations instead of sequential .filter().map()
+    // ⚡ Bolt: Unified single-pass iterations with cached lengths and regex
     // Live Channels
-    for (let i = 0; i < channels.length; i++) {
+    for (let i = 0, len = channels.length; i < len; i++) {
       if (results.length >= MAX_RESULTS) break;
-      if (channels[i].name.toLowerCase().includes(lowerQuery)) {
+      if (regex.test(channels[i].name)) {
         results.push({ ...channels[i], mediaType: 'live' });
       }
     }
 
     // Movies
     if (results.length < MAX_RESULTS) {
-      for (let i = 0; i < movies.length; i++) {
+      for (let i = 0, len = movies.length; i < len; i++) {
         if (results.length >= MAX_RESULTS) break;
-        if (movies[i].name.toLowerCase().includes(lowerQuery)) {
+        if (regex.test(movies[i].name)) {
           results.push({ ...movies[i], mediaType: 'movie' });
         }
       }
@@ -56,9 +59,9 @@ const SearchScreen = () => {
 
     // Series
     if (results.length < MAX_RESULTS) {
-      for (let i = 0; i < series.length; i++) {
+      for (let i = 0, len = series.length; i < len; i++) {
         if (results.length >= MAX_RESULTS) break;
-        if (series[i].name.toLowerCase().includes(lowerQuery)) {
+        if (regex.test(series[i].name)) {
           results.push({ ...series[i], mediaType: 'series' });
         }
       }
