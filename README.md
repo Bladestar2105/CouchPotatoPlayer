@@ -103,7 +103,7 @@ To install and test the app on a real Apple TV, you must compile it via Xcode us
     *   In the top bar of Xcode, select the `CouchPotatoPlayer` scheme (or the specific tvOS target if prompted).
     *   For the destination device, select your physical Apple TV that you paired earlier.
     *   Click the **Play** button (Run) or press `Cmd + R` to compile the app and install it on your device.
-    *   *Note: If the build fails because the dependencies reverted back to standard `react-native` after step 1, you can manually install the tvOS fork before building in Xcode by running `pnpm install react-native@npm:react-native-tvos@0.81.5-2` (check `scripts/build_tvos_sim.sh` for the exact version).*
+    *   *Note: If the build fails because the dependencies reverted back to standard `react-native` after step 1, you can manually install the tvOS fork before building in Xcode by running `pnpm install react-native@npm:react-native-tvos@0.84.1-0` (check `scripts/build_tvos_sim.sh` for the exact version).*
 
 **Android TV Emulator**
 ```bash
