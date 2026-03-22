@@ -143,6 +143,7 @@ const PlayerScreen = () => {
               style={styles.backButton}
               onPress={handleBack}
               accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Icon name="arrow-back" size={28} color="#FFF" />
             </TouchableOpacity>
