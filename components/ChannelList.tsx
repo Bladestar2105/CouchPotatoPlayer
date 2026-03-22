@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { findCurrentProgram } from '../utils/epgUtils';
 
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');
@@ -136,10 +137,10 @@ const LiveTVFlow = () => {
     }
   };
 
-  // Helper function to get current program
+  // ⚡ Bolt: Helper function to get current program using O(log N) binary search
   const getCurrentProgram = (channelEpg: any[]) => {
       const now = new Date();
-      return channelEpg.find(prog => now >= prog.start && now < prog.end);
+      return findCurrentProgram(channelEpg, now);
   };
 
   return (
