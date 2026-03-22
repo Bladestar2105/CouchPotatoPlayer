@@ -78,7 +78,8 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
       
       throw new Error(i18n.t('corsError'));
     }
-    throw e;
+    // Prevent raw fetch error messages from exposing sensitive URLs to callers/UI
+    throw new Error(i18n.t('networkError', { status: 'Failed' }));
   }
 };
 
@@ -242,7 +243,20 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
     } catch (e: any) {
       console.error("Failed to load profile:", e);
-      setError(i18n.t('unknownError'));
+      // Safely display specific, translated errors without leaking raw e.message
+      const errorMsg = e?.message;
+      if (errorMsg === i18n.t('corsError') ||
+          errorMsg === i18n.t('connectionFailed') ||
+          errorMsg === i18n.t('loadStreamsError') ||
+          errorMsg === i18n.t('authFailed') ||
+          errorMsg === i18n.t('m3uDownloadError') ||
+          errorMsg === i18n.t('m3uEmptyError') ||
+          errorMsg === i18n.t('m3uFormatError') ||
+          errorMsg?.startsWith('Invalid URL')) {
+        setError(errorMsg);
+      } else {
+        setError(i18n.t('unknownError'));
+      }
     } finally {
       setIsLoading(false);
     }

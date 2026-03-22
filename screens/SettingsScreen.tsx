@@ -155,11 +155,11 @@ const SettingsScreen = () => {
               </View>
               <View style={styles.tileRight}>
                 {!isCurrent && (
-                  <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton}>
+                  <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={`Load profile ${p.name}`}>
                     <Text style={{ color: colors.primary }}>Load</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton}>
+                <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={`Delete profile ${p.name}`}>
                   <Text style={{ color: colors.error }}>Delete</Text>
                 </TouchableOpacity>
               </View>
