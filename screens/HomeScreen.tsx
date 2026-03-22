@@ -173,20 +173,31 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any
 };
 
 const HomeScreen = () => {
-  const { currentProfile, profiles, pin, channels, movies, series } = useIPTV();
+  const { currentProfile, pin, channels, movies, series } = useIPTV();
+  const { colors } = useSettings();
   const navigation = useNavigation<any>();
 
+  const hasAdultContent = React.useMemo(() => {
+    return channels.some(c => c.isAdult) || movies.some(m => m.isAdult) || series.some(s => s.isAdult);
+  }, [channels, movies, series]);
+
   React.useEffect(() => {
-    if (currentProfile && !pin) {
-      const hasAdultContent = channels.some(c => c.isAdult) || movies.some(m => m.isAdult) || series.some(s => s.isAdult);
-      if (hasAdultContent) {
+    if (currentProfile && !pin && hasAdultContent) {
         navigation.navigate('PinSetup');
-      }
     }
-  }, [currentProfile, channels, movies, series, pin, navigation]);
+  }, [currentProfile, hasAdultContent, pin, navigation]);
 
   if (!currentProfile) {
     return <WelcomeScreen />;
+  }
+
+  // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
+  if (!pin && hasAdultContent) {
+    return (
+      <View style={[styles.centeredContainer, { backgroundColor: '#000' }]}>
+        <ActivityIndicator size="large" color="#2196F3" />
+      </View>
+    );
   }
 
   return <MainLayout />;
