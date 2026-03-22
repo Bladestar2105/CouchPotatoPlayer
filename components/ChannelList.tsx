@@ -171,7 +171,7 @@ const LiveTVFlow = () => {
                   accessibilityRole="button"
                   accessibilityLabel={`Select category ${item.title}`}
                 >
-                  <Text style={{ color: isSelected ? '#FFF' : '#AAA', fontWeight: isSelected ? 'bold' : 'normal', fontSize: Platform.isTV ? 20 : 16 }}>
+                  <Text style={{ color: isSelected ? '#FFF' : '#AAA', fontWeight: isSelected ? 'bold' : 'normal', fontSize: Platform.isTV ? 24 : 16 }}>
                     {item.title}
                   </Text>
                 </TouchableOpacity>
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoriesSidebar: {
-    width: 250,
+    width: Platform.isTV ? 350 : 250,
     borderRightWidth: 1,
   },
   categoryItem: {

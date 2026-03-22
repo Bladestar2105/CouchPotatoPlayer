@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../context/SettingsContext';
@@ -29,11 +29,13 @@ const MainLayout = () => {
 
   // Animation values for the sidebar expansion
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
-  const sidebarWidth = React.useRef(new Animated.Value(80)).current;
+  const collapsedWidth = Platform.isTV ? 100 : 80;
+  const expandedWidth = Platform.isTV ? 350 : 250;
+  const sidebarWidth = React.useRef(new Animated.Value(collapsedWidth)).current;
 
   useEffect(() => {
     Animated.timing(sidebarWidth, {
-      toValue: isSidebarExpanded ? 200 : 80,
+      toValue: isSidebarExpanded ? expandedWidth : collapsedWidth,
       duration: 200,
       useNativeDriver: false,
     }).start();
@@ -49,13 +51,9 @@ const MainLayout = () => {
 
   const handleTabPress = (tab: any) => {
     setActiveTab(tab);
-    if (isSmallScreen && isSidebarExpanded) {
-      setIsSidebarExpanded(false);
-    } else if (isSmallScreen && !isSidebarExpanded) {
-      // If clicking while collapsed, we just change tab. We don't auto-expand unless they click a hamburger menu
-      // Or we can say: clicking a tab ALWAYS collapses the menu on mobile.
-      setIsSidebarExpanded(false);
-    }
+
+    // Always collapse the menu when a tab is selected, on all platforms
+    setIsSidebarExpanded(false);
   };
 
   const renderContent = () => {
@@ -93,16 +91,16 @@ const MainLayout = () => {
 
                 {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
 
-                <SidebarItem icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
-                <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
-                <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
-                <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
-                <SidebarItem icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
-                <SidebarItem icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
-                <SidebarItem icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} />
+                <SidebarItem icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
+                <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
+                <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
+                <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
+                <SidebarItem icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
+                <SidebarItem icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
+                <SidebarItem icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
 
                 <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
-                {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>PROVIDERS</Text>}
+                {isSidebarExpanded && <Text style={[styles.sidebarSectionTitle, { fontSize: Platform.isTV ? 16 : 12 }]}>PROVIDERS</Text>}
 
                 {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;
@@ -141,14 +139,14 @@ const MainLayout = () => {
   );
 };
 
-const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any) => {
+const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlur }: any) => {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
     <TouchableOpacity
       onPress={onPress}
       onFocus={(e) => { setIsFocused(true); if (onFocus) onFocus(e); }}
-      onBlur={() => setIsFocused(false)}
+      onBlur={(e) => { setIsFocused(false); if (onBlur) onBlur(e); }}
       style={[
         styles.menuItem,
         {
@@ -160,9 +158,9 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Icon name={icon} size={Platform.isTV ? 32 : 24} color={isActive || isFocused ? '#FFF' : '#888'} style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} />
+      <Icon name={icon} size={Platform.isTV ? 40 : 24} color={isActive || isFocused ? '#FFF' : '#888'} style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} />
       {showLabel && (
-        <Text style={{ color: isActive || isFocused ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal', fontSize: Platform.isTV ? 20 : 14 }} numberOfLines={1}>
+        <Text style={{ color: isActive || isFocused ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal', fontSize: Platform.isTV ? 24 : 14 }} numberOfLines={1}>
           {label}
         </Text>
       )}
@@ -171,9 +169,27 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus }: any
 };
 
 const HomeScreen = () => {
-  const { isInitializing, currentProfile, pin, channels, movies, series, isLoading } = useIPTV();
+  const { isInitializing, currentProfile, pin, channels, movies, series, isLoading, isUpdating, loadProfile } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
+  const [hasPromptedUpdate, setHasPromptedUpdate] = useState(false);
+
+  // Prevent app from exiting when pressing back on the Home screen on Apple TV
+  useEffect(() => {
+    let backHandler: any;
+    if (isFocused && Platform.isTV) {
+      backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+         // Return true to prevent default exit.
+         // Optional: if you want back button to open sidebar when closed
+         // if (!isSidebarExpanded) setIsSidebarExpanded(true);
+         return true;
+      });
+    }
+    return () => {
+      if (backHandler) backHandler.remove();
+    };
+  }, [isFocused]);
 
   const hasAdultContent = React.useMemo(() => {
     return channels.some(c => c.isAdult) || movies.some(m => m.isAdult) || series.some(s => s.isAdult);
@@ -199,6 +215,28 @@ const HomeScreen = () => {
   }
 
   // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
+  useEffect(() => {
+    // Prompt to update when a profile is successfully loaded and we haven't asked yet
+    if (currentProfile && !isInitializing && !isLoading && !hasPromptedUpdate) {
+      setHasPromptedUpdate(true);
+      // Wait a tick so the UI renders first
+      setTimeout(() => {
+         // Using standard Alert for simple yes/no
+         import('react-native').then(({ Alert }) => {
+            Alert.alert(
+               "Playlist aktualisieren?",
+               "Möchten Sie die Playlist und das EPG jetzt aktualisieren?",
+               [
+                 { text: "Nein", style: "cancel" },
+                 { text: "Ja", onPress: () => loadProfile(currentProfile, true) }
+               ],
+               { cancelable: true }
+            );
+         });
+      }, 500);
+    }
+  }, [currentProfile, isInitializing, isLoading, hasPromptedUpdate, loadProfile]);
+
   if (!pin && hasAdultContent) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: '#000' }]}>
@@ -207,7 +245,17 @@ const HomeScreen = () => {
     );
   }
 
-  return <MainLayout />;
+  return (
+    <View style={{ flex: 1 }}>
+       <MainLayout />
+       {isUpdating && (
+          <View style={[StyleSheet.absoluteFill, styles.centeredContainer, { backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 999 }]}>
+             <ActivityIndicator size="large" color={colors.primary} />
+             <Text style={{ color: '#FFF', marginTop: 16, fontSize: 18 }}>Aktualisiere Playlist...</Text>
+          </View>
+       )}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

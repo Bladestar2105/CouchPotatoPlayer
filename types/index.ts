@@ -149,11 +149,13 @@ export type IPTVContextType = {
 
   isLoading: boolean;
   error: string | null;
+  isUpdating: boolean;
+  setIsUpdating: (val: boolean) => void;
 
   addProfile: (profile: IPTVProfile) => Promise<void>;
   removeProfile: (id: string) => Promise<void>;
   editProfile: (updatedProfile: IPTVProfile) => Promise<void>;
-  loadProfile: (profile: IPTVProfile) => Promise<void>;
+  loadProfile: (profile: IPTVProfile, forceUpdate?: boolean) => Promise<void>;
   unloadProfile: () => Promise<void>;
   setCurrentProfile: (profile: IPTVProfile | null) => void;
 
