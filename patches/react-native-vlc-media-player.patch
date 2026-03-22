@@ -1,0 +1,55 @@
+diff --git a/VLCPlayer.js b/VLCPlayer.js
+index 9b914420143b8f9b76d5d76e8aab5cc99cfcd5e3..21bba49a26167d56bc85b5c756c0384e30b0847e 100755
+--- a/VLCPlayer.js
++++ b/VLCPlayer.js
+@@ -1,13 +1,11 @@
+ import React from "react";
+-import ReactNative from "react-native";
++import { StyleSheet, requireNativeComponent, NativeModules, View, UIManager, findNodeHandle } from "react-native";
+
+ const { Component } = React;
+
+ import PropTypes from "prop-types";
+ import resolveAssetSource from "react-native/Libraries/Image/resolveAssetSource";
+
+-const { StyleSheet, requireNativeComponent, NativeModules, View, UIManager } = ReactNative;
+-
+ export default class VLCPlayer extends Component {
+   constructor(props, context) {
+     super(props, context);
+@@ -38,7 +36,7 @@ export default class VLCPlayer extends Component {
+
+   startRecording(path) {
+     UIManager.dispatchViewManagerCommand(
+-      ReactNative.findNodeHandle(this),
++      findNodeHandle(this),
+       UIManager.getViewManagerConfig('RCTVLCPlayer').Commands
+         .startRecording,
+       [path],
+@@ -47,7 +45,7 @@ export default class VLCPlayer extends Component {
+
+   stopRecording() {
+     UIManager.dispatchViewManagerCommand(
+-      ReactNative.findNodeHandle(this),
++      findNodeHandle(this),
+       UIManager.getViewManagerConfig('RCTVLCPlayer').Commands.stopRecording,
+       []
+     );
+@@ -55,7 +53,7 @@ export default class VLCPlayer extends Component {
+
+   stopPlayer() {
+     UIManager.dispatchViewManagerCommand(
+-      ReactNative.findNodeHandle(this),
++      findNodeHandle(this),
+       UIManager.getViewManagerConfig('RCTVLCPlayer').Commands.stopPlayer,
+       []
+     );
+@@ -63,7 +61,7 @@ export default class VLCPlayer extends Component {
+
+   snapshot(path) {
+     UIManager.dispatchViewManagerCommand(
+-      ReactNative.findNodeHandle(this),
++      findNodeHandle(this),
+       UIManager.getViewManagerConfig('RCTVLCPlayer').Commands.snapshot,
+       [path]
+     );

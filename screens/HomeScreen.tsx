@@ -29,7 +29,7 @@ const MainLayout = () => {
 
   // Animation values for the sidebar expansion
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
-  const collapsedWidth = Platform.isTV ? 100 : 80;
+  const collapsedWidth = Platform.isTV ? 120 : 80;
   const expandedWidth = Platform.isTV ? 350 : 250;
   const sidebarWidth = React.useRef(new Animated.Value(collapsedWidth)).current;
 
@@ -201,19 +201,6 @@ const HomeScreen = () => {
     }
   }, [isInitializing, isLoading, currentProfile, hasAdultContent, pin, navigation]);
 
-  if (isInitializing || (isLoading && !currentProfile)) {
-    return (
-      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
-         <Image source={require('../assets/icon.png')} style={{ width: 150, height: 150, marginBottom: 20 }} resizeMode="contain" />
-         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
-  if (!currentProfile) {
-    return <WelcomeScreen />;
-  }
-
   // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
   useEffect(() => {
     // Prompt to update when a profile is successfully loaded and we haven't asked yet
@@ -236,6 +223,19 @@ const HomeScreen = () => {
       }, 500);
     }
   }, [currentProfile, isInitializing, isLoading, hasPromptedUpdate, loadProfile]);
+
+  if (isInitializing || (isLoading && !currentProfile)) {
+    return (
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
+         <Image source={require('../assets/icon.png')} style={{ width: 150, height: 150, marginBottom: 20 }} resizeMode="contain" />
+         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!currentProfile) {
+    return <WelcomeScreen />;
+  }
 
   if (!pin && hasAdultContent) {
     return (
