@@ -18,6 +18,101 @@ interface EpgTimelineProps {
   currentStreamId: string | undefined;
 }
 
+interface EpgRowItemProps {
+    channel: Channel;
+    programs: EPGProgram[];
+    isFocused: boolean;
+    isPlaying: boolean;
+    isFav: boolean;
+    colors: any;
+    onChannelPress: (channel: Channel) => void;
+    setFocusedChannelId: (id: string) => void;
+    addFavorite: (item: any) => void;
+    removeFavorite: (id: string) => void;
+    now: Date;
+    timelineStart: Date;
+    timelineEnd: Date;
+}
+
+const defaultLogo = require('../assets/icon.png');
+
+// ⚡ Bolt: React.memo() prevents unnecessary re-renders of the complex EPG rows during scrolling and state updates
+const EpgRowItem = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, onChannelPress, setFocusedChannelId, addFavorite, removeFavorite, now, timelineStart, timelineEnd }: EpgRowItemProps) => {
+    return (
+        <View style={[styles.row, isFocused && styles.rowFocused]}>
+            {/* Channel Info Fixed on Left */}
+            <TouchableOpacity
+                style={[styles.channelBox, isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary }]}
+                onPress={() => onChannelPress(channel)}
+                onFocus={() => setFocusedChannelId(channel.id)}
+                onLongPress={() => {
+                   if (isFav) removeFavorite(channel.id);
+                   else addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
+                }}
+            >
+                <Image
+                    source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : defaultLogo}
+                    style={styles.channelLogo}
+                    resizeMode="contain"
+                    defaultSource={defaultLogo}
+                />
+              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 20 : 14 }]} numberOfLines={1}>{channel.name}</Text>
+            </TouchableOpacity>
+
+            {/* Programs Timeline */}
+            <View style={styles.programsContainer}>
+                {programs.map((prog: EPGProgram, idx: number) => {
+                    // Calculate boundaries
+                    const startMs = prog.start.getTime();
+                    const endMs = prog.end.getTime();
+
+                    // Skip if fully outside timeline
+                    if (endMs <= timelineStart.getTime() || startMs >= timelineEnd.getTime()) return null;
+
+                    const renderStartMs = Math.max(startMs, timelineStart.getTime());
+                    const renderEndMs = Math.min(endMs, timelineEnd.getTime());
+
+                    const leftOffset = ((renderStartMs - timelineStart.getTime()) / 60000) * PIXELS_PER_MINUTE;
+                    const width = ((renderEndMs - renderStartMs) / 60000) * PIXELS_PER_MINUTE;
+
+                    const isNow = now >= prog.start && now < prog.end;
+                    const isPast = now >= prog.end;
+
+                    return (
+                        <TouchableOpacity
+                            key={`${channel.id}-${idx}`}
+                            style={[
+                                styles.programBlock,
+                                { left: leftOffset, width: Math.max(width - 2, 2) },
+                                isNow ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : (isPast ? { backgroundColor: 'rgba(50,50,50,0.8)' } : { backgroundColor: 'rgba(80,80,80,0.8)' })
+                            ]}
+                            onPress={() => {
+                                if (isNow) onChannelPress(channel);
+                            }}
+                        >
+                            <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 20 : 14 }]} numberOfLines={1}>{prog.title}</Text>
+                            <Text style={[styles.programTime, { fontSize: Platform.isTV ? 16 : 12 }]} numberOfLines={1}>
+                                {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </View>
+    );
+}, (prevProps, nextProps) => {
+    // Custom comparison to ensure we only re-render when necessary props change
+    return prevProps.isFocused === nextProps.isFocused &&
+           prevProps.isPlaying === nextProps.isPlaying &&
+           prevProps.isFav === nextProps.isFav &&
+           prevProps.programs === nextProps.programs &&
+           prevProps.colors === nextProps.colors &&
+           prevProps.channel === nextProps.channel &&
+           prevProps.now.getTime() === nextProps.now.getTime() &&
+           prevProps.timelineStart.getTime() === nextProps.timelineStart.getTime() &&
+           prevProps.timelineEnd.getTime() === nextProps.timelineEnd.getTime();
+});
+
 const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, focusedChannelId, setFocusedChannelId, currentStreamId }) => {
   const { epg, hasCatchup, getCatchupUrl, isFavorite, addFavorite, removeFavorite } = useIPTV();
   const { colors } = useSettings();
@@ -82,8 +177,6 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
     return channel.tvgId || channel.id;
   };
 
-  const defaultLogo = require('../assets/icon.png'); // fallback
-
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -122,66 +215,21 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                     const isFav = isFavorite(channel.id);
 
                     return (
-                        <View style={[styles.row, isFocused && styles.rowFocused]}>
-                            {/* Channel Info Fixed on Left */}
-                            <TouchableOpacity
-                                style={[styles.channelBox, isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary }]}
-                                onPress={() => onChannelPress(channel)}
-                                onFocus={() => setFocusedChannelId(channel.id)}
-                                onLongPress={() => {
-                                   if (isFav) removeFavorite(channel.id);
-                                   else addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
-                                }}
-                            >
-                                <Image
-                                    source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : defaultLogo}
-                                    style={styles.channelLogo}
-                                    resizeMode="contain"
-                                    defaultSource={defaultLogo}
-                                />
-                              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 20 : 14 }]} numberOfLines={1}>{channel.name}</Text>
-                            </TouchableOpacity>
-
-                            {/* Programs Timeline */}
-                            <View style={styles.programsContainer}>
-                                {programs.map((prog, idx) => {
-                                    // Calculate boundaries
-                                    const startMs = prog.start.getTime();
-                                    const endMs = prog.end.getTime();
-
-                                    // Skip if fully outside timeline
-                                    if (endMs <= timelineStart.getTime() || startMs >= timelineEnd.getTime()) return null;
-
-                                    const renderStartMs = Math.max(startMs, timelineStart.getTime());
-                                    const renderEndMs = Math.min(endMs, timelineEnd.getTime());
-
-                                    const leftOffset = ((renderStartMs - timelineStart.getTime()) / 60000) * PIXELS_PER_MINUTE;
-                                    const width = ((renderEndMs - renderStartMs) / 60000) * PIXELS_PER_MINUTE;
-
-                                    const isNow = now >= prog.start && now < prog.end;
-                                    const isPast = now >= prog.end;
-
-                                    return (
-                                        <TouchableOpacity
-                                            key={`${channel.id}-${idx}`}
-                                            style={[
-                                                styles.programBlock,
-                                                { left: leftOffset, width: Math.max(width - 2, 2) },
-                                                isNow ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : (isPast ? { backgroundColor: 'rgba(50,50,50,0.8)' } : { backgroundColor: 'rgba(80,80,80,0.8)' })
-                                            ]}
-                                            onPress={() => {
-                                                if (isNow) onChannelPress(channel);
-                                            }}
-                                        >
-                                            <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 20 : 14 }]} numberOfLines={1}>{prog.title}</Text>
-                                            <Text style={[styles.programTime, { fontSize: Platform.isTV ? 16 : 12 }]} numberOfLines={1}>
-                                                {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </View>
+                        <EpgRowItem
+                            channel={channel}
+                            programs={programs}
+                            isFocused={isFocused}
+                            isPlaying={isPlaying}
+                            isFav={isFav}
+                            colors={colors}
+                            onChannelPress={onChannelPress}
+                            setFocusedChannelId={setFocusedChannelId}
+                            addFavorite={addFavorite}
+                            removeFavorite={removeFavorite}
+                            now={now}
+                            timelineStart={timelineStart}
+                            timelineEnd={timelineEnd}
+                        />
                     );
                  }}
               />
