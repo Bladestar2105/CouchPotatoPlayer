@@ -97,7 +97,7 @@ const FavoritesList = () => {
           onBlur={() => setFocusedItemId(null)}
         >
           <View style={[styles.imageContainer, { backgroundColor: '#1C1C1E' }]}>
-            {item.icon ? (
+            {item.icon && item.icon.startsWith('http') ? (
               <Image
                 source={{ uri: item.icon }}
                 style={styles.image}

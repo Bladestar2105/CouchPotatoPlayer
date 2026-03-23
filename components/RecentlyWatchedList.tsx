@@ -86,7 +86,7 @@ const RecentlyWatchedList = () => {
         onPress={() => handlePress(item)}
       >
         <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
-          {item.icon ? (
+          {item.icon && item.icon.startsWith('http') ? (
             <Image
               source={{ uri: item.icon }}
               style={styles.image}
