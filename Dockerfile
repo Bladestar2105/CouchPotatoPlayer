@@ -10,6 +10,9 @@ COPY package*.json pnpm-lock.yaml ./
 # Install pnpm
 RUN npm install -g pnpm
 
+# Copy patches for pnpm.patchedDependencies
+COPY patches ./patches
+
 # Install dependencies (ignoring pure React Native / native issues since we just build web)
 RUN pnpm install
 
