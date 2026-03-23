@@ -13,8 +13,6 @@ if (Platform.OS === 'ios' && !Platform.isTV) {
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings, ThemeMode } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Paths, Directory, File } from 'expo-file-system';
@@ -22,7 +20,7 @@ import { Paths, Directory, File } from 'expo-file-system';
 const SettingsScreen = () => {
   const { currentProfile, profiles, pin, isAdultUnlocked, unlockAdultContent, lockAdultContent, removeProfile, loadProfile, unloadProfile } = useIPTV();
   const { colors, themeMode, setThemeMode, bufferSize, setBufferSize } = useSettings();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
 
   const [updateInterval, setUpdateInterval] = React.useState<number>(24);
 

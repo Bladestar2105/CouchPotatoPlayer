@@ -3,7 +3,8 @@ import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDim
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList, RecentlyWatchedItem } from '../types';
+import { RootStackParamList } from '../App';
+import { RecentlyWatchedItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 
@@ -85,7 +86,7 @@ const RecentlyWatchedList = () => {
         onPress={() => handlePress(item)}
       >
         <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
-          {item.icon && item.icon.startsWith('http') ? (
+          {item.icon ? (
             <Image
               source={{ uri: item.icon }}
               style={styles.image}

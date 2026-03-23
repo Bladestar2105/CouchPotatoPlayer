@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Fla
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { Movie, RootStackParamList } from '../types';
+import { Movie } from '../types';
 import { useSettings } from '../context/SettingsContext';
 
 const defaultLogo = require('../assets/icon.png');
@@ -13,7 +12,7 @@ const POSTER_WIDTH = 120;
 const MovieList = () => {
   const { movies, isLoading, pin, isAdultUnlocked } = useIPTV();
   const { colors } = useSettings();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
   const dimensions = Dimensions.get('window');
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);

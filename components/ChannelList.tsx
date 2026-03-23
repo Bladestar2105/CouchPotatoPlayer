@@ -2,8 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { Channel, RootStackParamList } from '../types';
+import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { findCurrentProgram } from '../utils/epgUtils';
@@ -15,7 +14,7 @@ const { height } = Dimensions.get('window');
 const LiveTVFlow = () => {
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
   const { colors } = useSettings();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);

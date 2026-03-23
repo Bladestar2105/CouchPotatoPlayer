@@ -100,7 +100,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Install tvOS Fork
         run: |
-          pnpm install -w react-native@npm:react-native-tvos@0.84.1-0
+          pnpm install -w react-native@npm:react-native-tvos@0.81.5-2
       - name: Fix pnpm react-native symlink for podspecs
         run: |
           # Create a symlink in the isolated pnpm node_modules directory so that

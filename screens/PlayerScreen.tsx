@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
 
 // Dynamically require expo-screen-orientation only if not on a TV
 let ScreenOrientation: any;
@@ -15,14 +14,14 @@ if (!Platform.isTV) {
 }
 import { useIPTV } from '../context/IPTVContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { Channel, RootStackParamList } from '../types';
+import { Channel } from '../types';
 import { findCurrentProgramIndex } from '../utils/epgUtils';
 
 const defaultLogo = require('../assets/icon.png');
 
 const PlayerScreen = () => {
   const isFocused = useIsFocused();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
   const { currentStream, addRecentlyWatched, channels, epg } = useIPTV();
 
   // TiviMate-style info overlay state

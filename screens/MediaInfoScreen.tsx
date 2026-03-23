@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList, Series } from '../types';
+import { RootStackParamList } from '../App';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
+import { Series } from '../types';
 
 type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
 
@@ -12,7 +13,7 @@ const defaultLogo = require('../assets/icon.png');
 
 const MediaInfoScreen = () => {
   const route = useRoute<MediaInfoRouteProp>();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
   const { id, type, title, cover, streamUrl } = route.params;
   const { getVodInfo, getSeriesInfo, playStream, series } = useIPTV();
   const { colors } = useSettings();
@@ -65,7 +66,7 @@ const MediaInfoScreen = () => {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Image
-          source={cover && cover.startsWith('http') ? { uri: cover } : defaultLogo}
+          source={cover ? { uri: cover } : defaultLogo}
           style={styles.cover}
           resizeMode="cover"
         />
