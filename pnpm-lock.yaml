@@ -134,6 +134,9 @@ importers:
       '@expo/config-plugins':
         specifier: ^55.0.7
         version: 55.0.7
+      '@react-native/codegen':
+        specifier: ^0.84.1
+        version: 0.84.1(@babel/core@7.29.0)
       '@types/react':
         specifier: ~19.2.0
         version: 19.2.14
@@ -143,6 +146,9 @@ importers:
       '@types/react-native-vector-icons':
         specifier: ^6.4.18
         version: 6.4.18
+      hermes-compiler:
+        specifier: ^250829098.0.2
+        version: 250829098.0.2
       typescript:
         specifier: ~5.9.2
         version: 5.9.3
@@ -1836,6 +1842,9 @@ packages:
   hasown@2.0.2:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
+
+  hermes-compiler@250829098.0.2:
+    resolution: {integrity: sha512-9+la7TeGGZg5Cj0UV5MbqhqyT/Hd/PUlQZ3Uhggy0jiaiG2qxFJbi/uGWALTqa7GwETyQa4A7ngus1A1aXA8QQ==}
 
   hermes-compiler@250829098.0.9:
     resolution: {integrity: sha512-hZ5O7PDz1vQ99TS7HD3FJ9zVynfU1y+VWId6U1Pldvd8hmAYrNec/XLPYJKD3dLOW6NXak6aAQAuMuSo3ji0tQ==}
@@ -5323,6 +5332,8 @@ snapshots:
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
+
+  hermes-compiler@250829098.0.2: {}
 
   hermes-compiler@250829098.0.9: {}
 
