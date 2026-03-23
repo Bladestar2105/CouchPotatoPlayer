@@ -9,6 +9,3 @@
 ## 2024-10-26 - [Debounce and cap array iterations for large list filtering]
 **Learning:** Running sequential `.filter().map()` operations on massive arrays (e.g., 100k+ channels, movies, and series) on every keystroke in a search input severely blocks the main thread, causing UI freezes. Broad queries (like "a") generate excessive allocations.
 **Action:** Always debounce text inputs that trigger heavy computations. For massive datasets, replace sequential array methods with a single-pass `for` loop and implement an early return (e.g., `if (results.length >= 100) break;`) to cap result generation, saving CPU time and preventing memory bloat.
-## $(date +%Y-%m-%d) - [Extract and memoize complex FlatList items to prevent unnecessary re-renders]
-**Learning:** React Native's `FlatList` suffers severe performance degradation when its `renderItem` is an inline function returning complex components (like multi-program EPG timeline rows), causing every row to re-render whenever the parent list state (e.g., current time) changes.
-**Action:** Always extract complex `renderItem` components into their own dedicated files or separate variable components outside the parent component. Wrap the extracted component in `React.memo()` with a custom comparator function to explicitly control re-renders and drastically improve scrolling performance.

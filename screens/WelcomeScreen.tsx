@@ -191,7 +191,6 @@ const WelcomeScreen = () => {
             style={[styles.loginButton, { backgroundColor: colors.primary }]}
             onPress={handleLogin}
             disabled={loading}
-            accessibilityRole="button"
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
