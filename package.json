@@ -61,6 +61,11 @@
     "typescript": "~5.9.2"
   },
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "expo-modules-core": "55.0.16"
+    }
+  },
   "expo": {
     "install": {
       "exclude": [
