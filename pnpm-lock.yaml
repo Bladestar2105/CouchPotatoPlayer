@@ -134,6 +134,9 @@ importers:
       '@expo/config-plugins':
         specifier: ^55.0.7
         version: 55.0.7
+      '@react-native/codegen':
+        specifier: ^0.84.1
+        version: 0.84.1(@babel/core@7.29.0)
       '@types/react':
         specifier: ~19.2.0
         version: 19.2.14
