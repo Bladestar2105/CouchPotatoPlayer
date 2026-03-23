@@ -8,6 +8,9 @@ overrides:
   expo-modules-core: 55.0.16
 
 patchedDependencies:
+  expo-modules-core@55.0.16:
+    hash: 7e6968c5f0653d063376e3f482179cad01031ab0321543ac5b3350e05066f831
+    path: patches/expo-modules-core@55.0.16.patch
   react-native-vlc-media-player:
     hash: c259fddbe04dd08fa6e1ec6b4bb646a29d3057ee0a1596cc4411849886bce2a1
     path: patches/react-native-vlc-media-player.patch
@@ -5139,7 +5142,7 @@ snapshots:
       - supports-color
       - typescript
 
-  expo-modules-core@55.0.16(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3):
+  expo-modules-core@55.0.16(patch_hash=7e6968c5f0653d063376e3f482179cad01031ab0321543ac5b3350e05066f831)(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3):
     dependencies:
       invariant: 2.2.4
       react: 19.2.3
@@ -5200,7 +5203,7 @@ snapshots:
       expo-font: 55.0.4(expo@55.0.8)(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       expo-keep-awake: 55.0.4(expo@55.0.8)(react@19.2.3)
       expo-modules-autolinking: 55.0.11(typescript@5.9.3)
-      expo-modules-core: 55.0.16(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
+      expo-modules-core: 55.0.16(patch_hash=7e6968c5f0653d063376e3f482179cad01031ab0321543ac5b3350e05066f831)(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       pretty-format: 29.7.0
       react: 19.2.3
       react-native: 0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)

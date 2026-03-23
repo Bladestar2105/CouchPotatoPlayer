@@ -66,6 +66,10 @@
   "pnpm": {
     "overrides": {
       "expo-modules-core": "55.0.16"
+    },
+    "patchedDependencies": {
+      "react-native-vlc-media-player": "patches/react-native-vlc-media-player.patch",
+      "expo-modules-core@55.0.16": "patches/expo-modules-core@55.0.16.patch"
     }
   },
   "expo": {
