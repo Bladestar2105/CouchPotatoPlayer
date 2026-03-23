@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useIPTV } from '../context/IPTVContext';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { ScrollView } from 'react-native-gesture-handler';
+import { RootStackParamList } from '../types';
 
 import WelcomeScreen from './WelcomeScreen';
 import ChannelList from '../components/ChannelList';
@@ -22,7 +24,7 @@ const MainLayout = () => {
   const { colors } = useSettings();
   const { channels, movies, series, isLoading, profiles, currentProfile, loadProfile } = useIPTV();
   const dimensions = useWindowDimensions();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search'>('channels');
@@ -171,7 +173,7 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
 const HomeScreen = () => {
   const { isInitializing, currentProfile, pin, channels, movies, series, isLoading, isUpdating, loadProfile } = useIPTV();
   const { colors } = useSettings();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const isFocused = useIsFocused();
   const [hasPromptedUpdate, setHasPromptedUpdate] = useState(false);
 

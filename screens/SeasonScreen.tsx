@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../App';
-import { Season, Episode } from '../types';
+import { RootStackParamList, Season, Episode } from '../types';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 

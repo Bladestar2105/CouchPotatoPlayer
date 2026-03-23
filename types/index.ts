@@ -191,3 +191,14 @@ export type IPTVContextType = {
   getCatchupUrl: (channel: Channel, startTime: Date, endTime: Date) => string | null;
   hasCatchup: (channel: Channel) => boolean;
 };
+
+// Mettre à jour la liste des écrans (SAUF Splash)
+export type RootStackParamList = {
+  Home: undefined;
+  Player: undefined;
+  Season: { series: Series };
+  Episode: { season: Season };
+  PinSetup: undefined;
+  Search: undefined;
+  MediaInfo: { id: string; type: 'vod' | 'series'; title: string; cover?: string; streamUrl?: string; };
+};
