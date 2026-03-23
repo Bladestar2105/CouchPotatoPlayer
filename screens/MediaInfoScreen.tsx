@@ -66,7 +66,7 @@ const MediaInfoScreen = () => {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Image
-          source={cover ? { uri: cover } : defaultLogo}
+          source={cover && cover.startsWith('http') ? { uri: cover } : defaultLogo}
           style={styles.cover}
           resizeMode="cover"
         />

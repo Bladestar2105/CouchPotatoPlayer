@@ -94,7 +94,7 @@ const SearchScreen = () => {
         <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
           <Image
             style={styles.logo}
-            source={cover ? { uri: cover } : defaultLogo}
+            source={cover && cover.startsWith('http') ? { uri: cover } : defaultLogo}
             defaultSource={defaultLogo}
             resizeMode="contain"
           />
