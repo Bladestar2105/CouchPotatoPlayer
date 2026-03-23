@@ -3,8 +3,7 @@ import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDim
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../App';
-import { FavoriteItem } from '../types';
+import { RootStackParamList, FavoriteItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 

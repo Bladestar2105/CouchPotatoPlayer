@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../App';
+import { RootStackParamList, Series } from '../types';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
-import { Series } from '../types';
 
 type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
 
@@ -13,7 +12,7 @@ const defaultLogo = require('../assets/icon.png');
 
 const MediaInfoScreen = () => {
   const route = useRoute<MediaInfoRouteProp>();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { id, type, title, cover, streamUrl } = route.params;
   const { getVodInfo, getSeriesInfo, playStream, series } = useIPTV();
   const { colors } = useSettings();

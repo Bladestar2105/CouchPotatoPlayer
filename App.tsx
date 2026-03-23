@@ -16,18 +16,7 @@ import EpisodeScreen from './screens/EpisodeScreen';
 import PinSetupScreen from './screens/PinSetupScreen';
 import MediaInfoScreen from './screens/MediaInfoScreen';
 import SearchScreen from './screens/SearchScreen';
-import { Series, Season, Channel } from './types';
-
-// Mettre à jour la liste des écrans (SAUF Splash)
-export type RootStackParamList = {
-  Home: undefined;
-  Player: undefined;
-  Season: { series: Series };
-  Episode: { season: Season };
-  PinSetup: undefined;
-  Search: undefined;
-  MediaInfo: { id: string; type: 'vod' | 'series'; title: string; cover?: string; streamUrl?: string; };
-};
+import { Series, Season, Channel, RootStackParamList } from './types';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
