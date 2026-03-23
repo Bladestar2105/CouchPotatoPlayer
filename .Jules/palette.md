@@ -11,3 +11,7 @@
 ## 2026-03-21 - Added ARIA labels to Profile Action Buttons
 **Learning:** In CouchPotatoPlayer's settings and profile lists, generic action buttons like 'X' or 'Load' wrapped in `TouchableOpacity` can lack descriptive context for screen readers if they only contain short text or symbols. For example, a delete button showing 'X' is read generically.
 **Action:** Always add `accessibilityRole="button"` and a descriptive `accessibilityLabel` that includes the specific item's name (e.g., `Delete MyProfile`) to action buttons in dynamic lists to ensure screen reader users have full context.
+
+## 2024-03-23 - Avoided Redundant Accessibility Labels on Text Buttons
+**Learning:** In React Native, adding an `accessibilityLabel` that exactly matches the nested `<Text>` content inside a `TouchableOpacity` (e.g., `<TouchableOpacity accessibilityLabel="Login"><Text>Login</Text></TouchableOpacity>`) is redundant. Screen readers automatically read the nested text by default.
+**Action:** Focus on adding `accessibilityRole="button"` to ensure the element is correctly identified as interactive. Reserve `accessibilityLabel` for icon-only buttons or situations where the visible text doesn't provide enough context (e.g., "X" for delete).

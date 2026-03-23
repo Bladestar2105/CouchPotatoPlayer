@@ -125,7 +125,7 @@ const SearchScreen = () => {
           tvFocusable={true}
         />
         {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
+          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel="Clear search">
             <Text style={{ color: colors.textSecondary }}>Clear</Text>
           </TouchableOpacity>
         )}
