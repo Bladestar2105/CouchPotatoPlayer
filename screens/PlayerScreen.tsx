@@ -27,6 +27,18 @@ const PlayerScreen = () => {
   // TiviMate-style info overlay state
   const [showOverlay, setShowOverlay] = useState(false);
 
+  // Memoize handleBack to prevent unnecessary re-renders
+  const handleBack = React.useCallback(() => {
+    // Apple TV Menu button shouldn't close the app from PlayerScreen.
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+    // Even if it can't go back, prevent default exit just in case the stack is weird
+    navigation.navigate('Home');
+    return true;
+  }, [navigation]);
+
   // Get full channel details for HUD
   const currentChannel = useMemo(() => {
      if (!currentStream?.id) return null;
@@ -131,29 +143,17 @@ const PlayerScreen = () => {
     setShowOverlay(prev => !prev);
   };
 
-  const handleBack = () => {
-     // Apple TV Menu button shouldn't close the app from PlayerScreen.
-     if (navigation.canGoBack()) {
-       navigation.goBack();
-       return true;
-     }
-     // Even if it can't go back, prevent default exit just in case the stack is weird
-     navigation.navigate('Home');
-     return true;
-  };
-
   useEffect(() => {
-    let backHandler: any;
-    if (isFocused) {
-      // Need a small timeout on TV to ensure we take priority over the global handler
-      setTimeout(() => {
-        backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
-      }, 100);
-    }
+    if (!isFocused) return;
+    
+    // On Apple TV, the Menu button triggers hardwareBackPress
+    // We need to register the handler immediately without timeout
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
+    
     return () => {
-       if (backHandler) backHandler.remove();
+      backHandler.remove();
     };
-  }, [isFocused, navigation]);
+  }, [isFocused, navigation, handleBack]);
 
   return (
     <View style={styles.container}>
