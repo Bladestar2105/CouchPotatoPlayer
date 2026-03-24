@@ -29,27 +29,34 @@ const LiveTVFlow = () => {
   }, []);
 
   const groups = useMemo(() => {
-    if (channels.length === 0) return [];
+    const len = channels.length;
+    if (len === 0) return [];
 
-    // ⚡ Bolt: Consolidated filter and reduce into a single pass to save CPU and memory allocations
     const groupMap: Record<string, Channel[]> = {};
-    for (let i = 0; i < channels.length; i++) {
+    const hasPin = !!pin;
+
+    for (let i = 0; i < len; i++) {
       const channel = channels[i];
-      if (!channel.isAdult || isAdultUnlocked || !pin) {
-        const g = channel.group || 'Unknown';
-        if (!groupMap[g]) groupMap[g] = [];
+      // Skip restricted content early in the loop to avoid redundant filtering
+      if (channel.isAdult && !isAdultUnlocked && hasPin) {
+        continue;
+      }
+
+      const g = channel.group || 'Unknown';
+      if (groupMap[g] === undefined) {
+        groupMap[g] = [channel];
+      } else {
         groupMap[g].push(channel);
       }
     }
 
-    // ⚡ Bolt: Pre-allocate array and use manual loop instead of .map() for massive datasets
-    const keys = Object.keys(groupMap).sort();
-    const result = new Array(keys.length);
-    for (let i = 0; i < keys.length; i++) {
-      const title = keys[i];
+    const titles = Object.keys(groupMap).sort();
+    const titlesLen = titles.length;
+    const result = new Array(titlesLen);
+    for (let i = 0; i < titlesLen; i++) {
+      const title = titles[i];
       result[i] = { title, data: groupMap[title] };
     }
-
     return result;
   }, [channels, isAdultUnlocked, pin]);
 
