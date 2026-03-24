@@ -52,8 +52,30 @@ const MainLayout = () => {
   const handleTabPress = (tab: any) => {
     setActiveTab(tab);
 
-    // Always collapse the menu when a tab is selected, on all platforms
-    setIsSidebarExpanded(false);
+    // On TV, do not forcefully collapse the menu immediately on press.
+    // Let the focus/blur events handle expansion logically so spatial
+    // navigation isn't interrupted.
+    if (!Platform.isTV) {
+      setIsSidebarExpanded(false);
+    }
+  };
+
+  const sidebarTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleSidebarFocus = () => {
+    if (sidebarTimeoutRef.current) {
+      clearTimeout(sidebarTimeoutRef.current);
+    }
+    setIsSidebarExpanded(true);
+  };
+
+  const handleSidebarBlur = () => {
+    if (sidebarTimeoutRef.current) {
+      clearTimeout(sidebarTimeoutRef.current);
+    }
+    sidebarTimeoutRef.current = setTimeout(() => {
+      setIsSidebarExpanded(false);
+    }, 200); // Small delay to allow focus to move to another sidebar item without collapsing
   };
 
   const renderContent = () => {
@@ -81,7 +103,8 @@ const MainLayout = () => {
                 {/* On a TV, the sidebar auto-expands on focus, so the hamburger menu isn't strictly necessary, but helpful for mouse/touch */}
                 <TouchableOpacity
                   onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
-                  onFocus={() => setIsSidebarExpanded(true)}
+                  onFocus={Platform.isTV ? handleSidebarFocus : undefined}
+                  onBlur={Platform.isTV ? handleSidebarBlur : undefined}
                   style={[styles.menuItem, { justifyContent: 'center' }]}
                   accessibilityRole="button"
                   accessibilityLabel="Toggle Sidebar"
@@ -91,13 +114,13 @@ const MainLayout = () => {
 
                 {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
 
-                <SidebarItem icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
-                <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
-                <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
-                <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
-                <SidebarItem icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
-                <SidebarItem icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
-                <SidebarItem icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} onFocus={() => setIsSidebarExpanded(true)} onBlur={() => {}} />
+                <SidebarItem icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} onFocus={Platform.isTV ? handleSidebarFocus : undefined} onBlur={Platform.isTV ? handleSidebarBlur : undefined} />
+                <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} onFocus={Platform.isTV ? handleSidebarFocus : undefined} onBlur={Platform.isTV ? handleSidebarBlur : undefined} />
+                <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} onFocus={Platform.isTV ? handleSidebarFocus : undefined} onBlur={Platform.isTV ? handleSidebarBlur : undefined} />
+                <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} onFocus={Platform.isTV ? handleSidebarFocus : undefined} onBlur={Platform.isTV ? handleSidebarBlur : undefined} />
+                <SidebarItem icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} onFocus={Platform.isTV ? handleSidebarFocus : undefined} onBlur={Platform.isTV ? handleSidebarBlur : undefined} />
+                <SidebarItem icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} onFocus={Platform.isTV ? handleSidebarFocus : undefined} onBlur={Platform.isTV ? handleSidebarBlur : undefined} />
+                <SidebarItem icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} onFocus={Platform.isTV ? handleSidebarFocus : undefined} onBlur={Platform.isTV ? handleSidebarBlur : undefined} />
 
                 <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
                 {isSidebarExpanded && <Text style={[styles.sidebarSectionTitle, { fontSize: Platform.isTV ? 16 : 12 }]}>PROVIDERS</Text>}
@@ -118,7 +141,8 @@ const MainLayout = () => {
                   isActive={isCurrent}
                   onPress={() => loadProfile(p)}
                   showLabel={isSidebarExpanded}
-                  onFocus={() => setIsSidebarExpanded(true)}
+                  onFocus={Platform.isTV ? handleSidebarFocus : undefined}
+                  onBlur={Platform.isTV ? handleSidebarBlur : undefined}
                 />
               );
             })}

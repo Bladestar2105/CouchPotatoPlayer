@@ -204,6 +204,21 @@ const SettingsScreen = () => {
             </View>
             <Text style={{ color: colors.primary }}>Edit</Text>
           </TouchableOpacity>
+        ) : Platform.isTV ? (
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => {
+              const themes: ThemeMode[] = ['dark', 'oled', 'light'];
+              const nextIndex = (themes.indexOf(themeMode) + 1) % themes.length;
+              setThemeMode(themes[nextIndex]);
+            }}
+          >
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode}</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Toggle</Text>
+          </TouchableOpacity>
         ) : (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
@@ -228,6 +243,21 @@ const SettingsScreen = () => {
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
             </View>
             <Text style={{ color: colors.primary }}>Edit</Text>
+          </TouchableOpacity>
+        ) : Platform.isTV ? (
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => {
+              const sizes = [8, 16, 32, 64, 128];
+              const nextIndex = (sizes.indexOf(bufferSize) + 1) % sizes.length;
+              setBufferSize(sizes[nextIndex]);
+            }}
+          >
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Toggle</Text>
           </TouchableOpacity>
         ) : (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
@@ -255,6 +285,21 @@ const SettingsScreen = () => {
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
             </View>
             <Text style={{ color: colors.primary }}>Edit</Text>
+          </TouchableOpacity>
+        ) : Platform.isTV ? (
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => {
+              const intervals = [12, 24, 48];
+              const nextIndex = (intervals.indexOf(updateInterval) + 1) % intervals.length;
+              handleSetUpdateInterval(intervals[nextIndex]);
+            }}
+          >
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Toggle</Text>
           </TouchableOpacity>
         ) : (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
