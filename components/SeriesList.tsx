@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,28 @@ import { useSettings } from '../context/SettingsContext';
 
 const defaultLogo = require('../assets/icon.png');
 const POSTER_WIDTH = 120;
+
+const CategoryItem = ({ title, count, isSelected, onPress, onFocus, colors }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any }) => {
+    const [isFocused, setIsFocused] = useState(false);
+    return (
+        <TouchableOpacity
+            style={[
+                styles.categoryItem,
+                isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {},
+                isFocused ? { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderColor: colors.primary, borderWidth: 2 } : { borderWidth: 2, borderColor: 'transparent' }
+            ]}
+            onPress={onPress}
+            onFocus={() => { setIsFocused(true); onFocus(); }}
+            onBlur={() => setIsFocused(false)}
+            accessibilityRole="button"
+            accessibilityLabel={`Select category ${title}`}
+        >
+            <Text style={{ color: isSelected || isFocused ? '#FFF' : '#AAA', fontWeight: isSelected || isFocused ? 'bold' : 'normal', fontSize: Platform.isTV ? 16 : 16 }}>
+                {title} ({count})
+            </Text>
+        </TouchableOpacity>
+    );
+};
 
 const SeriesList = () => {
   const { series, isLoading, pin, isAdultUnlocked } = useIPTV();
@@ -93,20 +115,14 @@ const SeriesList = () => {
           renderItem={({ item }) => {
               const isSelected = selectedGroup === item.title;
               return (
-                <TouchableOpacity
-                  style={[
-                    styles.categoryItem,
-                    isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {}
-                  ]}
+                <CategoryItem
+                  title={item.title}
+                  count={item.data.length}
+                  isSelected={isSelected}
                   onPress={() => handleGroupSelect(item.title)}
                   onFocus={() => setSelectedGroup(item.title)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Select category ${item.title}`}
-                >
-                  <Text style={{ color: isSelected ? '#FFF' : '#AAA', fontWeight: isSelected ? 'bold' : 'normal', fontSize: 16 }}>
-                    {item.title} ({item.data.length})
-                  </Text>
-                </TouchableOpacity>
+                  colors={colors}
+                />
               );
           }}
         />
