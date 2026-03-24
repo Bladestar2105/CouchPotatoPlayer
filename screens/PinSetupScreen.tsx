@@ -11,9 +11,11 @@ const PinSetupScreen = () => {
   const [unlockMode, setUnlockMode] = useState(!!pin && !isAdultUnlocked);
 
   const handleAction = async () => {
+    const isStrict4Digits = (val: string) => /^\d{4}$/.test(val);
+
     if (setupMode) {
-      if (inputValue.length !== 4) {
-         Alert.alert('Error', 'The PIN code must be 4 digits.');
+      if (!isStrict4Digits(inputValue)) {
+         Alert.alert('Error', 'The PIN code must be exactly 4 digits (0-9).');
          return;
       }
       if (inputValue !== confirmValue) {
@@ -54,8 +56,8 @@ const PinSetupScreen = () => {
          Alert.alert('Success', 'PIN code removed.');
       } else {
          // Change PIN
-         if (confirmValue.length !== 4) {
-            Alert.alert('Error', 'New PIN must be 4 digits.');
+         if (!isStrict4Digits(confirmValue)) {
+            Alert.alert('Error', 'New PIN must be exactly 4 digits (0-9).');
             return;
          }
          await setPinCode(confirmValue);
@@ -82,11 +84,11 @@ const PinSetupScreen = () => {
 
       <TextInput
         style={styles.input}
-        keyboardType="numeric"
+        keyboardType="number-pad"
         secureTextEntry
         maxLength={4}
         value={inputValue}
-        onChangeText={setInputValue}
+        onChangeText={(text) => setInputValue(text.replace(/[^0-9]/g, ''))}
         placeholder={setupMode ? "New PIN" : unlockMode ? "PIN Code" : "Current PIN"}
         placeholderTextColor="#888"
         tvFocusable={true}
@@ -96,11 +98,11 @@ const PinSetupScreen = () => {
       {!unlockMode && (
         <TextInput
           style={styles.input}
-          keyboardType="numeric"
+          keyboardType="number-pad"
           secureTextEntry
           maxLength={4}
           value={confirmValue}
-          onChangeText={setConfirmValue}
+          onChangeText={(text) => setConfirmValue(text.replace(/[^0-9]/g, ''))}
           placeholder={setupMode ? "Confirm PIN" : "New PIN (Optional)"}
           placeholderTextColor="#888"
           tvFocusable={true}
