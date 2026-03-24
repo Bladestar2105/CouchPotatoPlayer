@@ -1,0 +1,20 @@
+CREATE TABLE epgProgram (
+    id TEXT NOT NULL PRIMARY KEY,
+    channelId TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    startUnix INTEGER NOT NULL,
+    endUnix INTEGER NOT NULL
+);
+
+CREATE INDEX epgProgram_channelId ON epgProgram(channelId);
+
+insertEPG:
+INSERT OR REPLACE INTO epgProgram(id, channelId, title, description, startUnix, endUnix)
+VALUES (?, ?, ?, ?, ?, ?);
+
+getEPGForChannel:
+SELECT * FROM epgProgram WHERE channelId = ? ORDER BY startUnix ASC;
+
+clearEPG:
+DELETE FROM epgProgram;
