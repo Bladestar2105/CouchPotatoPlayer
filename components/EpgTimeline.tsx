@@ -26,7 +26,7 @@ const ProgramBlock = ({ prog, channel, isNow, isPast, leftOffset, width, colors,
                 styles.programBlock,
                 { left: leftOffset, width: Math.max(width - 2, 2) },
                 isNow ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : (isPast ? { backgroundColor: 'rgba(50,50,50,0.8)' } : { backgroundColor: 'rgba(80,80,80,0.8)' }),
-                isProgramFocused && { borderWidth: 2, borderColor: colors.primary }
+                isProgramFocused && { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderWidth: 2, borderColor: colors.primary }
             ]}
             onFocus={() => setIsProgramFocused(true)}
             onBlur={() => setIsProgramFocused(false)}
@@ -149,7 +149,11 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                         <View style={[styles.row, isFocused && styles.rowFocused]}>
                             {/* Channel Info Fixed on Left */}
                             <TouchableOpacity
-                                style={[styles.channelBox, isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary }, isFocused && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+                                style={[
+                                    styles.channelBox,
+                                    isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary },
+                                    isFocused && { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderWidth: 2, borderColor: colors.primary }
+                                ]}
                                 onPress={() => onChannelPress(channel)}
                                 onFocus={() => setFocusedChannelId(channel.id)}
                                 onLongPress={() => {

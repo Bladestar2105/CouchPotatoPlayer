@@ -11,14 +11,14 @@ import EpgTimeline from './EpgTimeline';
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');
 
-const CategoryItem = ({ title, isSelected, onPress }: { title: string, isSelected: boolean, onPress: () => void }) => {
+const CategoryItem = ({ title, isSelected, onPress, colors }: { title: string, isSelected: boolean, onPress: () => void, colors: any }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
             style={[
                 styles.categoryItem,
                 isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {},
-                isFocused ? { backgroundColor: 'rgba(255, 255, 255, 0.2)' } : {}
+                isFocused ? { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderColor: colors.primary, borderWidth: 2 } : { borderWidth: 2, borderColor: 'transparent' }
             ]}
             onPress={onPress}
             onFocus={() => setIsFocused(true)}
@@ -205,6 +205,7 @@ const LiveTVFlow = () => {
                       title={item.title}
                       isSelected={isSelected}
                       onPress={() => handleGroupSelect(item.title)}
+                      colors={colors}
                   />
               );
           }}
