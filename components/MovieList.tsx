@@ -25,15 +25,27 @@ const MovieList = () => {
 
   const groups = useMemo(() => {
     if (movies.length === 0) return [];
-    const safeMovies = movies.filter(c => !c.isAdult || isAdultUnlocked || !pin);
-    const groupMap = safeMovies.reduce((acc, movie) => {
-      const g = movie.group || 'Unknown';
-      if (!acc[g]) acc[g] = [];
-      acc[g].push(movie);
-      return acc;
-    }, {} as Record<string, Movie[]>);
 
-    return Object.keys(groupMap).sort().map(title => ({ title, data: groupMap[title] }));
+    // ⚡ Bolt: Consolidated filter and reduce into a single pass to save CPU and memory allocations
+    const groupMap: Record<string, Movie[]> = {};
+    for (let i = 0; i < movies.length; i++) {
+      const movie = movies[i];
+      if (!movie.isAdult || isAdultUnlocked || !pin) {
+        const g = movie.group || 'Unknown';
+        if (!groupMap[g]) groupMap[g] = [];
+        groupMap[g].push(movie);
+      }
+    }
+
+    // ⚡ Bolt: Pre-allocate array and use manual loop instead of .map() for massive datasets
+    const keys = Object.keys(groupMap).sort();
+    const result = new Array(keys.length);
+    for (let i = 0; i < keys.length; i++) {
+      const title = keys[i];
+      result[i] = { title, data: groupMap[title] };
+    }
+
+    return result;
   }, [movies, isAdultUnlocked, pin]);
 
   // Default select first group
