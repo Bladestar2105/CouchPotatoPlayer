@@ -11,6 +11,28 @@ import EpgTimeline from './EpgTimeline';
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');
 
+const CategoryItem = ({ title, isSelected, onPress }: { title: string, isSelected: boolean, onPress: () => void }) => {
+    const [isFocused, setIsFocused] = useState(false);
+    return (
+        <TouchableOpacity
+            style={[
+                styles.categoryItem,
+                isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {},
+                isFocused ? { backgroundColor: 'rgba(255, 255, 255, 0.2)' } : {}
+            ]}
+            onPress={onPress}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            accessibilityRole="button"
+            accessibilityLabel={`Select category ${title}`}
+        >
+            <Text style={{ color: isSelected || isFocused ? '#FFF' : '#AAA', fontWeight: isSelected || isFocused ? 'bold' : 'normal', fontSize: Platform.isTV ? 16 : 16 }}>
+                {title}
+            </Text>
+        </TouchableOpacity>
+    );
+};
+
 const LiveTVFlow = () => {
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
   const { colors } = useSettings();
@@ -179,21 +201,11 @@ const LiveTVFlow = () => {
           renderItem={({ item }) => {
               const isSelected = selectedGroup === item.title;
               return (
-                <TouchableOpacity
-                  style={[
-                    styles.categoryItem,
-                    isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {}
-                  ]}
-                  onPress={() => handleGroupSelect(item.title)}
-                  // Don't automatically switch the right pane on focus; require an explicit press to avoid hanging the app.
-                  // onFocus={() => setSelectedGroup(item.title)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Select category ${item.title}`}
-                >
-                  <Text style={{ color: isSelected ? '#FFF' : '#AAA', fontWeight: isSelected ? 'bold' : 'normal', fontSize: Platform.isTV ? 24 : 16 }}>
-                    {item.title}
-                  </Text>
-                </TouchableOpacity>
+                  <CategoryItem
+                      title={item.title}
+                      isSelected={isSelected}
+                      onPress={() => handleGroupSelect(item.title)}
+                  />
               );
           }}
           />
