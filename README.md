@@ -1,219 +1,116 @@
-# CouchPotatoPlayer: A React Native IPTV Player
+# CouchPotatoPlayer: Kotlin Multiplatform IPTV Player
 
 [![Build Apps](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml/badge.svg)](https://github.com/Bladestar2105/CouchPotatoPlayer/actions/workflows/build-apps.yml)
 
+Welcome to **CouchPotatoPlayer**, an open-source IPTV player currently undergoing a major architecture migration from React Native to **Kotlin Multiplatform (KMP)** and **Compose Multiplatform**.
 
-This is an open-source IPTV player for iOS, tvOS, Android, Android TV, and Web built with React Native and Expo.
+This project provides a native, high-performance video streaming experience across a variety of platforms:
+*   **Android** (Mobile & Tablet)
+*   **Android TV**
+*   **iOS** (iPhone & iPad)
+*   **tvOS** (Apple TV)
+*   **Web** (via Kotlin/Wasm)
 
 ---
 
-## 🏗 Architecture & Limitations
+## 🏗 Architecture & Technologies
 
-**IMPORTANT: EXPO GO IS NOT SUPPORTED**
-
-This project relies on native video player libraries (e.g., `react-native-vlc-media-player`, `react-native-video`) to handle complex streaming protocols (like Xtream codes) and codecs that the standard Expo `av` package struggles with.
-
-Because of these native code dependencies, **you cannot run this project using the standard Expo Go app.**
-
-You must build a **Custom Development Client** (Prebuild) for your target device or simulator.
+CouchPotatoPlayer is built using modern Kotlin multiplatform tools:
+*   **UI:** Compose Multiplatform (shared UI across Android, iOS, and Web).
+*   **Networking:** Ktor.
+*   **Local Storage:** SQLDelight (SQLite) and Multiplatform Settings.
+*   **Media Playback:** Native players via `expect/actual` Compose components (LibVLC for Android/Android TV, MobileVLCKit for iOS/tvOS).
+*   **State Management:** ViewModels and StateFlow.
+*   **Navigation:** Voyager.
 
 ---
 
 ## 🛠 Prerequisites
 
-Before compiling the app for any platform, ensure your local development environment is set up:
+Before compiling the app, ensure your local development environment is set up:
 
-*   **Node.js**: Node 20+ required.
-*   **pnpm**: Exclusively used for package management. Installed via `npm install -g pnpm`.
-*   **Expo CLI**: Installed via `pnpm install -g expo-cli`.
-*   **Git**: For version control.
-
-### iOS / Apple TV (tvOS) Specific Prerequisites (macOS Only)
-*   **Xcode**: Installed via the Mac App Store.
-*   **CocoaPods**: Installed via `sudo gem install cocoapods` or Homebrew.
-*   **Watchman**: Installed via `brew install watchman`.
-*   **Apple Developer Account**: Required if you want to test the application on a physical Apple TV device (a free account is sufficient).
-
-### Android / Android TV Specific Prerequisites
-*   **Android Studio**: Installed with the Android SDK and SDK Command-line Tools.
-*   **Java Development Kit (JDK)**: JDK 17 is recommended.
-*   **Android Emulators**: Create a standard mobile emulator and an Android TV emulator in the Android Studio Device Manager.
+*   **Java Development Kit (JDK):** JDK 17 is recommended.
+*   **Kotlin Plugin:** Ensure your IDE has the latest Kotlin plugin installed.
+*   **Android Studio (Koala or newer):** Recommended for Android and general Kotlin development.
+*   **Xcode (macOS only):** Required for building the iOS and tvOS targets.
+*   **CocoaPods (macOS only):** Required for iOS/tvOS native dependencies (installed via `sudo gem install cocoapods` or Homebrew).
 
 ---
 
 ## 🚀 Getting Started & Compilation
 
-We have provided convenient pnpm scripts to quickly build and launch the app on your preferred simulator.
-
-### 1. First-Time Setup
-
-Clone the repository and install the dependencies:
+Clone the repository to get started:
 
 ```bash
 git clone https://github.com/Bladestar2105/CouchPotatoPlayer.git
 cd CouchPotatoPlayer
-pnpm install
 ```
 
-### 2. Building for Simulators (Local Compilation)
+The project uses Gradle wrapper, so you don't need to install Gradle manually.
 
-These commands will use Expo Prebuild to generate the native `/ios` and `/android` directories, compile the native code locally, and launch the custom dev client on your simulator.
+### 1. Android & Android TV
 
-**iOS Simulator (Mobile/Tablet)**
+To build and run on an Android emulator or a physical device:
+
+1.  Open an Android Emulator (Mobile or TV) via Android Studio Device Manager.
+2.  Run the helper script or use Gradle directly:
+
 ```bash
-pnpm run build:ios-sim
-# Alternatively: npx expo run:ios
+# Using the helper script:
+./scripts/run_android.sh
+
+# Or using Gradle directly:
+./gradlew :composeApp:installDebug
+./gradlew :composeApp:launchDebug
 ```
 
-**Android Emulator (Mobile/Tablet)**
+Alternatively, simply open the project in **Android Studio** and click the **Run** button (Play icon) with `composeApp` selected.
+
+### 2. iOS & Apple TV (tvOS)
+
+*(macOS required)*
+
+To build and test on Apple devices:
+
+1.  Ensure you have an iOS/tvOS simulator running or a physical device connected and provisioned in Xcode.
+2.  The KMP plugin uses CocoaPods for native dependencies (`MobileVLCKit`).
+3.  First, run the Gradle task to build the framework:
+
 ```bash
-# Ensure your Android emulator is running in Android Studio first
-pnpm run build:android-sim
-# Alternatively: npx expo run:android
+# Build the framework for simulator (or use iosArm64 for physical device)
+./gradlew :composeApp:iosSimulatorArm64Binaries
 ```
 
-**Apple TV (tvOS) Simulator**
+To run the full application:
+1. Navigate to the generated Xcode project (typically `composeApp/iosApp/iosApp.xcworkspace`).
+2. Open it in Xcode.
+3. Select your target (iOS Simulator or Apple TV Simulator).
+4. Click **Run** (`Cmd + R`).
+
+### 3. Web (Kotlin/Wasm)
+
+To launch the web version in a local development server with hot-reloading:
+
 ```bash
-pnpm run build:tvos-sim
+# Using the helper script:
+./scripts/run_web.sh
+
+# Or using Gradle directly:
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun --continuous
 ```
-*Note: Full, native tvOS support requires the `react-native-tvos` fork. To prevent this fork from breaking standard iOS builds and native modules (like Reanimated), our `build:tvos-sim` script automates this process. It will temporarily install the exact `react-native-tvos` version matching your project, build the Apple TV app, and safely revert back to standard `react-native` when finished.*
+The server will start, and a browser window should automatically open (typically `http://localhost:8080`).
 
-**Testing on a Physical Apple TV (Hardware)**
-To install and test the app on a real Apple TV, you must compile it via Xcode using your Apple Developer Account.
-
-1.  **Prepare the tvOS project**: Run the tvOS build script once so the native tvOS project is generated and the correct `react-native-tvos` dependencies are installed:
-    ```bash
-    pnpm run build:tvos-sim
-    ```
-2.  **Open the project in Xcode**:
-    ```bash
-    open ios/CouchPotatoPlayer.xcworkspace
-    ```
-3.  **Connect your Apple TV to Xcode**:
-    *   Ensure your Mac and Apple TV are on the **same Wi-Fi network**.
-    *   On your Apple TV, go to **Settings > Remotes and Devices > Remote App and Devices**.
-    *   In Xcode on your Mac, go to **Window > Devices and Simulators**.
-    *   Your Apple TV should appear under the "Discovered" section. Select it and pair it using the code displayed on your TV screen.
-4.  **Configure Code Signing**:
-    *   In Xcode, select the `CouchPotatoPlayer` project in the left navigator.
-    *   Go to the **Signing & Capabilities** tab.
-    *   Select your Apple Developer Account under the **Team** dropdown. (If you don't have one added, go to Xcode Preferences > Accounts and sign in with your Apple ID).
-    *   Xcode will automatically generate the required provisioning profiles.
-5.  **Build and Run**:
-    *   In the top bar of Xcode, select the `CouchPotatoPlayer` scheme (or the specific tvOS target if prompted).
-    *   For the destination device, select your physical Apple TV that you paired earlier.
-    *   Click the **Play** button (Run) or press `Cmd + R` to compile the app and install it on your device.
-    *   *Note: If the build fails because the dependencies reverted back to standard `react-native` after step 1, you can manually install the tvOS fork before building in Xcode by running `pnpm install react-native@npm:react-native-tvos@0.81.5-2` (check `scripts/build_tvos_sim.sh` for the exact version).*
-
-**Android TV Emulator**
+To build an optimized production bundle:
 ```bash
-# Ensure your Android TV emulator is running in Android Studio first
-pnpm run build:android-tv-sim
+./gradlew :composeApp:wasmJsBrowserDistribution
 ```
-
-**Web (Development & Production)**
-To start the development server for the web:
-```bash
-pnpm run build:web
-# Alternatively: npx expo start --web
-```
-To export a production-ready static web bundle:
-```bash
-npx expo export -p web
-```
-
-### 3. Building with EAS (Expo Application Services)
-
-If you do not have Xcode or Android Studio installed locally, you can use Expo's cloud build servers to generate a dev client.
-
-1.  Log in to Expo: `npx expo login`
-2.  Build for iOS Simulator: `eas build --profile development --platform ios --type simulator`
-3.  Build for Android Emulator: `eas build --profile development --platform android`
-4.  Once EAS finishes, download the generated `.tar.gz` (iOS) or `.apk` (Android) and drag-and-drop it onto your running simulator. Start the local server with `npx expo start --dev-client`.
+The output will be in `composeApp/build/dist/wasmJs/productionExecutable/`.
 
 ---
 
-## 🐳 Docker Deployment (Web)
+## 🚧 Migration Status
 
-We provide an easy way to deploy the web version of the CouchPotatoPlayer using Docker and Docker Compose. This is especially useful for managing deployments via Portainer.
-
-### Using Docker Compose
-
-1.  Clone this repository or copy the `docker-compose.yml` file to your server.
-2.  *Note: Depending on where your GitHub repository is hosted, you may need to update the `image` field in `docker-compose.yml` to point to your specific GHCR namespace (e.g., `ghcr.io/bladestar2105/couchpotatoplayer-web:latest`). A tag for each branch exists, and the `latest` tag always points to the newest build from any branch.*
-3.  Run the following command in the directory containing `docker-compose.yml`:
-
-```bash
-docker-compose up -d
-```
-
-### Using Portainer
-
-**Recommended Method (Repository)**
-Deploying directly from the repository avoids copy-paste errors (such as missing characters when pasting into the Web editor).
-
-1.  Open your Portainer dashboard.
-2.  Go to **Stacks** and click **Add stack**.
-3.  Name the stack (e.g., `couchpotatoplayer`).
-4.  Select **Repository** as the build method.
-5.  Repository URL: `https://github.com/Bladestar2105/CouchPotatoPlayer.git`
-6.  Compose path: `docker-compose.yml`
-7.  Click **Deploy the stack**.
-
-*Alternative Method (Web Editor)*
-1.  Open your Portainer dashboard.
-2.  Go to **Stacks** and click **Add stack**.
-3.  Name the stack (e.g., `couchpotatoplayer`).
-4.  Copy and paste the following contents into the Web editor:
-```yml
-version: '3.8'
-
-services:
-  couchpotatoplayer:
-    image: ghcr.io/bladestar2105/couchpotatoplayer-web:latest
-    container_name: couchpotatoplayer
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-```
-5.  Click **Deploy the stack**.
-
-The application will be accessible on port `8080` (e.g., `http://localhost:8080`).
-
----
-
-## 🚀 Feature Roadmap / To-Do List
-
-We are actively developing this player. Help on any of these items is welcome!
-
-### Core API & Parsers
-* `[ ]` **Implement Xtream Codes API:**
-    * Add "Xtream Codes" as a profile type in the `PlaylistManager`.
-    * Create a service (`xtreamService.ts`) to handle the login (Server, User, Pass).
-    * Fetch and parse categories (Live, VOD, Series) from the Xtream API.
-    * Fetch and parse the stream lists for each category.
-* `[ ]` **Implement Stalker Portal API:**
-    * Add "Stalker (MAC)" as a profile type.
-    * Create a service (`stalkerService.ts`) to handle portal login (Portal URL, MAC Address).
-    * Parse the Stalker JSON-RPC responses for channels.
-* `[ ]` **Implement EPG Parser:**
-    * Fetch the `epg_url` provided by the M3U or Xtream API.
-    * Parse the `XMLTV` data using `fast-xml-parser` (already in package.json).
-    * Store and display EPG data (current/next program) for channels.
-* `[ ]` **Video Player Consolidation:**
-    * Standardize the video playback architecture. Evaluate `expo-video`, `react-native-video`, and `react-native-vlc-media-player` to determine the single best dependency for broad codec and streaming protocol support.
-
-### UI / UX
-* `[ ]` **Implement Tabbed Navigation:** On the `HomeScreen`, replace the single `ChannelList` with a Tab Navigator to show:
-    * "Live TV" (`ChannelList`)
-    * "Movies" (`MovieList`)
-    * "Series" (`SeriesList`)
-* `[ ]` **Create `MovieList` / `SeriesList`:** Create new components to display the lists of movies and series from the context.
-* `[ ]` **Profile Editing:** Add an "Edit" button next to "Delete" in the `PlaylistManager`.
-
----
+This repository recently migrated from a React Native implementation to this new KMP structure. You can view the ongoing tasks in `MIGRATION_TODO.md`.
 
 ## 🤝 How to Contribute
 
@@ -221,8 +118,6 @@ We are actively developing this player. Help on any of these items is welcome!
 2.  Create a new branch (`git checkout -b feature/my-new-feature`).
 3.  Make your changes.
 4.  **Submit a Pull Request** with a clear description of what you've done.
-
----
 
 ## 📄 License
 
