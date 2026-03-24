@@ -25,15 +25,27 @@ const SeriesList = () => {
 
   const groups = useMemo(() => {
     if (series.length === 0) return [];
-    const safeSeries = series.filter(c => !c.isAdult || isAdultUnlocked || !pin);
-    const groupMap = safeSeries.reduce((acc, s) => {
-      const g = s.group || 'Unknown';
-      if (!acc[g]) acc[g] = [];
-      acc[g].push(s);
-      return acc;
-    }, {} as Record<string, Series[]>);
 
-    return Object.keys(groupMap).sort().map(title => ({ title, data: groupMap[title] }));
+    // ⚡ Bolt: Consolidated filter and reduce into a single pass to save CPU and memory allocations
+    const groupMap: Record<string, Series[]> = {};
+    for (let i = 0; i < series.length; i++) {
+      const s = series[i];
+      if (!s.isAdult || isAdultUnlocked || !pin) {
+        const g = s.group || 'Unknown';
+        if (!groupMap[g]) groupMap[g] = [];
+        groupMap[g].push(s);
+      }
+    }
+
+    // ⚡ Bolt: Pre-allocate array and use manual loop instead of .map() for massive datasets
+    const keys = Object.keys(groupMap).sort();
+    const result = new Array(keys.length);
+    for (let i = 0; i < keys.length; i++) {
+      const title = keys[i];
+      result[i] = { title, data: groupMap[title] };
+    }
+
+    return result;
   }, [series, isAdultUnlocked, pin]);
 
   // Default select first group

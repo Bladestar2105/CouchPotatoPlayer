@@ -137,6 +137,7 @@ const WelcomeScreen = () => {
             value={name}
             onChangeText={setName}
             tvFocusable={true}
+            autoFocus={!Platform.isTV}
           />
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}

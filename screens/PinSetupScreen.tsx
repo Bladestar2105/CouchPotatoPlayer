@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Text, TextInput, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 
 const PinSetupScreen = () => {
@@ -90,6 +90,7 @@ const PinSetupScreen = () => {
         placeholder={setupMode ? "New PIN" : unlockMode ? "PIN Code" : "Current PIN"}
         placeholderTextColor="#888"
         tvFocusable={true}
+        autoFocus={!Platform.isTV}
       />
 
       {!unlockMode && (
