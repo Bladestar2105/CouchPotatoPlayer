@@ -120,7 +120,7 @@ const SeriesList = () => {
                   count={item.data.length}
                   isSelected={isSelected}
                   onPress={() => handleGroupSelect(item.title)}
-                  onFocus={() => setSelectedGroup(item.title)}
+                  onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
                   colors={colors}
                 />
               );
