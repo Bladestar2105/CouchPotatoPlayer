@@ -26,7 +26,14 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    console.log('Proxying:', targetUrl);
+    try {
+      const u = new URL(targetUrl);
+      if (u.searchParams.has('username')) u.searchParams.set('username', '***');
+      if (u.searchParams.has('password')) u.searchParams.set('password', '***');
+      console.log('Proxying:', u.toString());
+    } catch (e) {
+      console.log('Proxying:', targetUrl.replace(/(username|password)=([^&]+)/gi, '$1=***'));
+    }
     
     const parsedUrl = url.parse(targetUrl);
     const protocol = parsedUrl.protocol === 'https:' ? https : http;

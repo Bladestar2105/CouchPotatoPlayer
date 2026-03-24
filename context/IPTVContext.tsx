@@ -33,6 +33,22 @@ const EPG_STORAGE_KEY_PREFIX = 'IPTV_EPG_';
 const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
+ * Sanitizes a URL by removing sensitive query parameters (username, password)
+ */
+const sanitizeUrl = (urlStr: string): string => {
+  if (!urlStr) return urlStr;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.searchParams.has('username')) parsed.searchParams.set('username', '***');
+    if (parsed.searchParams.has('password')) parsed.searchParams.set('password', '***');
+    return parsed.toString();
+  } catch (e) {
+    // Fallback if URL parsing fails (e.g. invalid URL or partial path)
+    return urlStr.replace(/(username|password)=([^&]+)/gi, '$1=***');
+  }
+};
+
+/**
  * Decode Base64 string if needed (Flutter migration)
  * Xtream EPG sometimes returns base64-encoded titles
  */
@@ -68,7 +84,7 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
       // The nginx proxy is available at /proxy/ endpoint
       const proxyUrl = `/proxy/${url}`;
       try {
-        console.log(`Using nginx proxy for: ${url}`);
+        console.log(`Using nginx proxy for: ${sanitizeUrl(url)}`);
         const response = await fetch(proxyUrl, options);
         if (response.ok) {
           console.log(`Nginx proxy succeeded`);
@@ -348,7 +364,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        console.log('[EPG] Fetching EPG from:', epgUrl);
+        console.log('[EPG] Fetching EPG from:', sanitizeUrl(epgUrl));
         
         // Use CORS proxy for fetching EPG
         const response = await fetchWithProxy(epgUrl);
