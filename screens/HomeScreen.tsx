@@ -41,6 +41,8 @@ const MainLayout = () => {
     }).start();
   }, [isSidebarExpanded]);
 
+  const sidebarTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
   if (isLoading) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
@@ -59,8 +61,6 @@ const MainLayout = () => {
       setIsSidebarExpanded(false);
     }
   };
-
-  const sidebarTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleSidebarFocus = () => {
     if (sidebarTimeoutRef.current) {
