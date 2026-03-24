@@ -1,4 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
+import Logger from './logger';
 
 export interface ParsedProgram {
   start: Date;
@@ -26,12 +27,12 @@ export const parseXMLTVFromString = (xmlData: string): Record<string, ParsedProg
     const parsed = parser.parse(xmlData);
 
     if (!parsed || !parsed.tv || !parsed.tv.programme) {
-      console.log('[EPG Parser] No programme data found in XMLTV');
+      Logger.log('[EPG Parser] No programme data found in XMLTV');
       return epgData;
     }
 
     const programmes = Array.isArray(parsed.tv.programme) ? parsed.tv.programme : [parsed.tv.programme];
-    console.log(`[EPG Parser] Found ${programmes.length} programmes`);
+    Logger.log(`[EPG Parser] Found ${programmes.length} programmes`);
 
     programmes.forEach((prog: any) => {
       const channelId = prog['@_channel'];
@@ -66,7 +67,7 @@ export const parseXMLTVFromString = (xmlData: string): Record<string, ParsedProg
       epgData[key].sort((a, b) => a.start.getTime() - b.start.getTime());
     });
 
-    console.log(`[EPG Parser] Grouped into ${Object.keys(epgData).length} channels`);
+    Logger.log(`[EPG Parser] Grouped into ${Object.keys(epgData).length} channels`);
     return epgData;
 
   } catch (error) {

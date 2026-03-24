@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { File, Directory, Paths } from 'expo-file-system';
 
 import i18n from '../utils/i18n';
+import Logger from '../utils/logger';
 import {
   IPTVContextType,
   IPTVProfile,
@@ -68,10 +69,10 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
       // The nginx proxy is available at /proxy/ endpoint
       const proxyUrl = `/proxy/${url}`;
       try {
-        console.log(`Using nginx proxy for: ${url}`);
+        Logger.log(`Using nginx proxy for: ${url}`);
         const response = await fetch(proxyUrl, options);
         if (response.ok) {
-          console.log(`Nginx proxy succeeded`);
+          Logger.log(`Nginx proxy succeeded`);
           return response;
         }
       } catch (proxyError: any) {
@@ -290,7 +291,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadEPG = async () => {
     if (!currentProfile) return;
 
-    console.log('[EPG] Starting EPG load...');
+    Logger.log('[EPG] Starting EPG load...');
     const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
 
     try {
@@ -315,7 +316,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cachedEpg = JSON.parse(cachedEpgStr);
         if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
           // Re-hydrate Date objects
-          console.log('[EPG] Using cached EPG data');
+          Logger.log('[EPG] Using cached EPG data');
           const hydratedEpg: Record<string, EPGProgram[]> = {};
           for (const channelId in cachedEpg.data) {
             hydratedEpg[channelId] = cachedEpg.data[channelId].map((p: any) => ({
@@ -348,7 +349,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        console.log('[EPG] Fetching EPG from:', epgUrl);
+        Logger.log('[EPG] Fetching EPG from:', epgUrl);
         
         // Use CORS proxy for fetching EPG
         const response = await fetchWithProxy(epgUrl);
@@ -357,12 +358,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         const xmlData = await response.text();
-        console.log('[EPG] Received XML data, length:', xmlData.length);
+        Logger.log('[EPG] Received XML data, length:', xmlData.length);
         
         // Ensure that fast-xml-parser parses dates as string
         // Parse the XML data
         const epgData = parseXMLTVFromString(xmlData);
-        console.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
+        Logger.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
         
         const newEpg: Record<string, EPGProgram[]> = {};
         for (const channelId in epgData) {
@@ -376,7 +377,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }));
         }
         setEpg(newEpg);
-        console.log('[EPG] EPG loaded successfully');
+        Logger.log('[EPG] EPG loaded successfully');
 
         const epgCacheData = JSON.stringify({
           timestamp: Date.now(),
@@ -395,7 +396,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await file.write(epgCacheData);
         }
       } else {
-        console.log('[EPG] No EPG URL available');
+        Logger.log('[EPG] No EPG URL available');
       }
     } catch (e) {
       console.error("[EPG] Failed to load EPG", e);
