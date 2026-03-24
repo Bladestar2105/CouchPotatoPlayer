@@ -5,6 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { Episode } from '../types';
 import { useIPTV } from '../context/IPTVContext';
+import Logger from '../utils/logger';
 import { useSettings } from '../context/SettingsContext';
 
 type EpisodeScreenRouteProp = RouteProp<RootStackParamList, 'Episode'>;
@@ -19,7 +20,7 @@ const EpisodeScreen = () => {
   const { season } = route.params;
 
   const handleEpisodePress = (episode: Episode) => {
-    console.log('CLIC SUR ÉPISODE:', episode.name);
+    Logger.log('CLIC SUR ÉPISODE:', episode.name);
     playStream({ url: episode.streamUrl, id: episode.id });
     navigation.navigate('Player');
   };
