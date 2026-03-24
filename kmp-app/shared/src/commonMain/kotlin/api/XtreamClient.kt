@@ -15,6 +15,22 @@ class XtreamClient(private val client: HttpClient = createHttpClient()) {
 
     suspend fun authenticate(profile: IPTVProfile.XtreamProfile): Boolean {
         return try {
+            // First, pre-check if the server is an IPTV-Manager instance
+            val isIptvManager: Boolean = try {
+                client.get("${profile.url}/player_api.php") {
+                    parameter("action", "cpp")
+                }.body()
+            } catch (e: Exception) {
+                Logger.error("Server is not an IPTV-Manager instance or /cpp endpoint failed.", e)
+                false
+            }
+
+            if (!isIptvManager) {
+                Logger.error("Authentication rejected: Target server is not an IPTV-Manager instance.")
+                return false
+            }
+
+            // Proceed with normal authentication
             val response: Map<String, Any> = client.get("${profile.url}/player_api.php") {
                 parameter("username", profile.username)
                 parameter("password", profile.password)
