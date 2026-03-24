@@ -383,7 +383,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newEpg: Record<string, EPGProgram[]> = {};
         for (const channelId in epgData) {
           newEpg[channelId] = epgData[channelId].map((p: any) => ({
-            id: Math.random().toString(),
+            // Use cryptographically secure UUID if available, fallback for older environments
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(),
             channelId: p.channelId,
             title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
             description: decodeBase64IfNeeded(p.description || ''),
