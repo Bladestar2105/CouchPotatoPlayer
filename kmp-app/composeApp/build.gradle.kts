@@ -2,6 +2,7 @@ plugins {
     kotlin("multiplatform")
     id("com.android.application")
     id("org.jetbrains.compose")
+    kotlin("native.cocoapods")
 }
 
 kotlin {
@@ -13,10 +14,31 @@ kotlin {
         }
     }
 
+    cocoapods {
+        summary = "ComposeApp UI module"
+        homepage = "https://github.com/couchpotatoplayer"
+        version = "1.0.0"
+        ios.deploymentTarget = "14.0"
+        osx.deploymentTarget = "11.0"
+        tvos.deploymentTarget = "14.0"
+
+        pod("MobileVLCKit") {
+            version = "~> 3.5.1"
+        }
+
+        framework {
+            baseName = "ComposeApp"
+            isStatic = true
+        }
+    }
+
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
+        tvosX64(),
+        tvosArm64(),
+        tvosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
@@ -43,6 +65,9 @@ kotlin {
         androidMain.dependencies {
             implementation("androidx.compose.ui:ui-tooling:1.6.0")
             implementation("androidx.activity:activity-compose:1.8.2")
+
+            // VLC for Android / Android TV
+            implementation("org.videolan.android:libvlc-all:3.6.0-eap4")
         }
     }
 }

@@ -22,6 +22,10 @@ Due to the immense size of the application and the complexity of native media pl
 * **Basic UI Shell:**
   * Created a simple Compose Multiplatform entry point (`App.kt`) demonstrating a Scaffold, TopAppBar, and Button ready to connect to ViewModel logic.
 
+* **Native Media Player Implementation:**
+  * Configured `build.gradle.kts` files to integrate `org.videolan.android:libvlc-all` for Android and Cocoapods `MobileVLCKit` for iOS/tvOS.
+  * Created an `expect/actual` Compose Multiplatform VideoPlayer component mapping `AndroidView` (LibVLC) and `UIKitView` (VLCMediaPlayer) respectively.
+
 ---
 
 ## 🚧 What Needs To Be Done (Subsequent Steps)
@@ -48,16 +52,10 @@ The following lists the required steps to fully transition the React Native app 
 * Replace `@react-navigation/stack` and `@react-navigation/drawer` with a KMP-friendly navigator like **Voyager** or **Decompose**.
 * Map out the routing for `HomeScreen`, `LiveTvScreen`, `SettingsScreen`, etc.
 
-### 6. Native Media Player (The Hardest Part)
-* Compose Multiplatform does not have a cross-platform VLC or ExoPlayer built in.
-* You must implement an `expect/actual` composable for the Video Player:
-  * **Android/Android TV:** Wrap `libvlc-all` or `ExoPlayer` inside an AndroidView in Compose.
-  * **iOS/tvOS:** Wrap `MobileVLCKit` or `AVPlayer` inside a `UIKitView`.
-
-### 7. TV Platform Focus Management (D-Pad)
+### 6. TV Platform Focus Management (D-Pad)
 * Replace React Native TVOS's custom focus modifiers.
 * In Compose, you must leverage `Modifier.focusable()`, `Modifier.onFocusChanged()`, and manage spatial focus using `FocusRequester` specifically optimized for Android TV and Apple TV remotes.
 
-### 8. Full UI Re-implementation
+### 7. Full UI Re-implementation
 * Manually translate all React Native components (`FlatList`, `BottomSheet`, Modals) into Compose `LazyColumn`, `ModalBottomSheet`, etc.
 * Re-implement the EPG timeline view, which requires complex custom layout measurements in Compose.
