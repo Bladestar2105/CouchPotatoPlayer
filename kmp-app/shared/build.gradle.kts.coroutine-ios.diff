@@ -1,0 +1,16 @@
+<<<<<<< SEARCH
+        iosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:2.3.11")
+            implementation("app.cash.sqldelight:native-driver:2.0.1")
+        }
+=======
+        iosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:2.3.11")
+            implementation("app.cash.sqldelight:native-driver:2.0.1")
+        }
+
+        // Ensure dispatchers are available for common
+        commonMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+        }
+>>>>>>> REPLACE

@@ -1,0 +1,28 @@
+<<<<<<< SEARCH
+            implementation("io.github.pdvrieze.xmlutil:serialization:0.86.3")
+            // Settings storage (alternative to AsyncStorage / expo-file-system)
+            implementation("com.russhwolf:multiplatform-settings:1.1.1")
+        }
+    }
+}
+=======
+            implementation("io.github.pdvrieze.xmlutil:serialization:0.86.3")
+            // Settings storage (alternative to AsyncStorage / expo-file-system)
+            implementation("com.russhwolf:multiplatform-settings:1.1.1")
+
+            // Ktor for Networking
+            implementation("io.ktor:ktor-client-core:2.3.11")
+            implementation("io.ktor:ktor-client-content-negotiation:2.3.11")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.11")
+        }
+
+        androidMain.dependencies {
+            implementation("io.ktor:ktor-client-okhttp:2.3.11")
+        }
+
+        iosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:2.3.11")
+        }
+    }
+}
+>>>>>>> REPLACE

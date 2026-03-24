@@ -4,6 +4,39 @@ import models.EPGProgram
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.Serializable
+import nl.adaptivity.xmlutil.serialization.XML
+import nl.adaptivity.xmlutil.serialization.XmlElement
+import nl.adaptivity.xmlutil.serialization.XmlSerialName
+import nl.adaptivity.xmlutil.serialization.XmlValue
+
+@Serializable
+@XmlSerialName("tv", namespace = "", prefix = "")
+data class Tv(
+    val programmes: List<Programme> = emptyList()
+)
+
+@Serializable
+@XmlSerialName("programme", namespace = "", prefix = "")
+data class Programme(
+    val start: String,
+    val stop: String,
+    val channel: String,
+    val title: Title,
+    val desc: Desc? = null
+)
+
+@Serializable
+@XmlSerialName("title", namespace = "", prefix = "")
+data class Title(
+    @XmlValue val value: String = ""
+)
+
+@Serializable
+@XmlSerialName("desc", namespace = "", prefix = "")
+data class Desc(
+    @XmlValue val value: String = ""
+)
 
 /**
  * Kotlin Multiplatform migration for `epgParser.ts`.
@@ -11,6 +44,11 @@ import kotlinx.datetime.toLocalDateTime
  * Actual XML parsing in KMP requires `xmlutil` or native platform implementations.
  */
 object EpgParser {
+
+    private val xml = XML {
+        autoPolymorphic = true
+        unknownChildHandler = { _, _, _, _, _ -> emptyList() } // Ignore unknown XML tags
+    }
 
     /**
      * Parses the XMLTV date string into a Kotlinx DateTime Unix Timestamp (Long).
@@ -77,14 +115,36 @@ object EpgParser {
     }
 
     /**
-     * Stub for parsing XML string.
-     * In a full implementation, use `io.github.pdvrieze.xmlutil` to deserialize the string.
+     * Parse XMLTV string using xmlutil and map to EPGProgram models.
      */
     fun parseXMLTVFromString(xmlData: String): Map<String, List<EPGProgram>> {
-        Logger.log("Parsing XMLTV data (STUBBED)")
+        Logger.log("Parsing XMLTV data")
         val epgData = mutableMapOf<String, MutableList<EPGProgram>>()
 
-        // TODO: Implement KMP XML parsing logic here mapping `<programme>` nodes to EPGProgram
+        try {
+            val tv = xml.decodeFromString(Tv.serializer(), xmlData)
+
+            for (prog in tv.programmes) {
+                val startUnix = parseXMLDate(prog.start) ?: continue
+                val endUnix = parseXMLDate(prog.stop) ?: continue
+
+                // Use a secure unique ID mapping fallback
+                val programId = "${prog.channel}_$startUnix"
+
+                val epgProgram = EPGProgram(
+                    id = programId,
+                    channelId = prog.channel,
+                    title = prog.title.value,
+                    description = prog.desc?.value ?: "",
+                    startUnix = startUnix,
+                    endUnix = endUnix
+                )
+
+                epgData.getOrPut(prog.channel) { mutableListOf() }.add(epgProgram)
+            }
+        } catch (e: Exception) {
+            Logger.error("Failed to parse XMLTV", e)
+        }
 
         return epgData
     }
