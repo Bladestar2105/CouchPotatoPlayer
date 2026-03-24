@@ -18,6 +18,30 @@ interface EpgTimelineProps {
   currentStreamId: string | undefined;
 }
 
+const ProgramBlock = ({ prog, channel, isNow, isPast, leftOffset, width, colors, onChannelPress }: any) => {
+    const [isProgramFocused, setIsProgramFocused] = useState(false);
+    return (
+        <TouchableOpacity
+            style={[
+                styles.programBlock,
+                { left: leftOffset, width: Math.max(width - 2, 2) },
+                isNow ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : (isPast ? { backgroundColor: 'rgba(50,50,50,0.8)' } : { backgroundColor: 'rgba(80,80,80,0.8)' }),
+                isProgramFocused && { borderWidth: 2, borderColor: colors.primary }
+            ]}
+            onFocus={() => setIsProgramFocused(true)}
+            onBlur={() => setIsProgramFocused(false)}
+            onPress={() => {
+                if (isNow) onChannelPress(channel);
+            }}
+        >
+            <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{prog.title}</Text>
+            <Text style={[styles.programTime, { fontSize: Platform.isTV ? 14 : 12 }]} numberOfLines={1}>
+                {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+        </TouchableOpacity>
+    );
+};
+
 const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, focusedChannelId, setFocusedChannelId, currentStreamId }) => {
   const { epg, hasCatchup, getCatchupUrl, isFavorite, addFavorite, removeFavorite } = useIPTV();
   const { colors } = useSettings();
@@ -125,7 +149,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                         <View style={[styles.row, isFocused && styles.rowFocused]}>
                             {/* Channel Info Fixed on Left */}
                             <TouchableOpacity
-                                style={[styles.channelBox, isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary }]}
+                                style={[styles.channelBox, isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary }, isFocused && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
                                 onPress={() => onChannelPress(channel)}
                                 onFocus={() => setFocusedChannelId(channel.id)}
                                 onLongPress={() => {
@@ -139,7 +163,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                                     resizeMode="contain"
                                     defaultSource={defaultLogo}
                                 />
-                              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 20 : 14 }]} numberOfLines={1}>{channel.name}</Text>
+                              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{channel.name}</Text>
                             </TouchableOpacity>
 
                             {/* Programs Timeline */}
@@ -162,22 +186,17 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                                     const isPast = now >= prog.end;
 
                                     return (
-                                        <TouchableOpacity
+                                        <ProgramBlock
                                             key={`${channel.id}-${idx}`}
-                                            style={[
-                                                styles.programBlock,
-                                                { left: leftOffset, width: Math.max(width - 2, 2) },
-                                                isNow ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : (isPast ? { backgroundColor: 'rgba(50,50,50,0.8)' } : { backgroundColor: 'rgba(80,80,80,0.8)' })
-                                            ]}
-                                            onPress={() => {
-                                                if (isNow) onChannelPress(channel);
-                                            }}
-                                        >
-                                            <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 20 : 14 }]} numberOfLines={1}>{prog.title}</Text>
-                                            <Text style={[styles.programTime, { fontSize: Platform.isTV ? 16 : 12 }]} numberOfLines={1}>
-                                                {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </Text>
-                                        </TouchableOpacity>
+                                            prog={prog}
+                                            channel={channel}
+                                            isNow={isNow}
+                                            isPast={isPast}
+                                            leftOffset={leftOffset}
+                                            width={width}
+                                            colors={colors}
+                                            onChannelPress={onChannelPress}
+                                        />
                                     );
                                 })}
                             </View>
@@ -278,7 +297,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   programTitle: {
-    fontSize: Platform.isTV ? 18 : 12,
+    fontSize: Platform.isTV ? 16 : 12,
     fontWeight: 'bold',
   },
   programTime: {

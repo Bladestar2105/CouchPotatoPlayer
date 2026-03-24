@@ -520,7 +520,21 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!forceUpdate) {
         // Try to load from cache first
         try {
-            const cachedDataStr = await AsyncStorage.getItem(cacheKey);
+            let cachedDataStr: string | null = null;
+            if (Platform.OS === 'web') {
+              cachedDataStr = await AsyncStorage.getItem(cacheKey);
+            } else {
+              const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+              const file = new File(cacheDir, `${cacheKey}.json`);
+              try {
+                if (file.exists) {
+                  cachedDataStr = await file.text();
+                }
+              } catch (e) {
+                // File does not exist or cannot be read
+              }
+            }
+
             if (cachedDataStr) {
                 const cachedData = JSON.parse(cachedDataStr);
                 setChannels(cachedData.channels || []);
@@ -663,11 +677,19 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Save to cache
       try {
-          await AsyncStorage.setItem(cacheKey, JSON.stringify({
+          const cacheDataStr = JSON.stringify({
               channels: parsedChannels,
               movies: parsedMovies,
               series: parsedSeries
-          }));
+          });
+
+          if (Platform.OS === 'web') {
+            await AsyncStorage.setItem(cacheKey, cacheDataStr);
+          } else {
+            const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+            const file = new File(cacheDir, `${cacheKey}.json`);
+            await file.write(cacheDataStr);
+          }
       } catch (e) {
           console.error("Failed to save Xtream cache", e);
       }
