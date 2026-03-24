@@ -183,7 +183,7 @@ const PlaylistManager = () => {
         value={name}
         onChangeText={setName}
         placeholderTextColor="#888"
-        autoFocus={true}
+        autoFocus={!Platform.isTV}
       />
 
       {profileType === 'm3u' && (

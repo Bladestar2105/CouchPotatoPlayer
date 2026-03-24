@@ -29,16 +29,35 @@ const LiveTVFlow = () => {
   }, []);
 
   const groups = useMemo(() => {
-    if (channels.length === 0) return [];
-    const safeChannels = channels.filter(c => !c.isAdult || isAdultUnlocked || !pin);
-    const groupMap = safeChannels.reduce((acc, channel) => {
-      const g = channel.group || 'Unknown';
-      if (!acc[g]) acc[g] = [];
-      acc[g].push(channel);
-      return acc;
-    }, {} as Record<string, Channel[]>);
+    const len = channels.length;
+    if (len === 0) return [];
 
-    return Object.keys(groupMap).sort().map(title => ({ title, data: groupMap[title] }));
+    const groupMap: Record<string, Channel[]> = {};
+    const hasPin = !!pin;
+
+    for (let i = 0; i < len; i++) {
+      const channel = channels[i];
+      // Skip restricted content early in the loop to avoid redundant filtering
+      if (channel.isAdult && !isAdultUnlocked && hasPin) {
+        continue;
+      }
+
+      const g = channel.group || 'Unknown';
+      if (groupMap[g] === undefined) {
+        groupMap[g] = [channel];
+      } else {
+        groupMap[g].push(channel);
+      }
+    }
+
+    const titles = Object.keys(groupMap).sort();
+    const titlesLen = titles.length;
+    const result = new Array(titlesLen);
+    for (let i = 0; i < titlesLen; i++) {
+      const title = titles[i];
+      result[i] = { title, data: groupMap[title] };
+    }
+    return result;
   }, [channels, isAdultUnlocked, pin]);
 
   useEffect(() => {

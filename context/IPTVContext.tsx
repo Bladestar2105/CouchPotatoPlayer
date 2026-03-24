@@ -34,6 +34,22 @@ const EPG_STORAGE_KEY_PREFIX = 'IPTV_EPG_';
 const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
+ * Sanitizes a URL by removing sensitive query parameters (username, password)
+ */
+const sanitizeUrl = (urlStr: string): string => {
+  if (!urlStr) return urlStr;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.searchParams.has('username')) parsed.searchParams.set('username', '***');
+    if (parsed.searchParams.has('password')) parsed.searchParams.set('password', '***');
+    return parsed.toString();
+  } catch (e) {
+    // Fallback if URL parsing fails (e.g. invalid URL or partial path)
+    return urlStr.replace(/(username|password)=([^&]+)/gi, '$1=***');
+  }
+};
+
+/**
  * Decode Base64 string if needed (Flutter migration)
  * Xtream EPG sometimes returns base64-encoded titles
  */
@@ -368,7 +384,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newEpg: Record<string, EPGProgram[]> = {};
         for (const channelId in epgData) {
           newEpg[channelId] = epgData[channelId].map((p: any) => ({
-            id: Math.random().toString(),
+            // Use cryptographically secure UUID if available, fallback for older environments
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(),
             channelId: p.channelId,
             title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
             description: decodeBase64IfNeeded(p.description || ''),
