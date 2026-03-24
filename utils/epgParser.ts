@@ -99,13 +99,18 @@ const parseXMLDate = (inputDateString: string | number): Date | null => {
 
   try {
     const year = parseInt(dateString.substring(0, 4), 10);
-    const month = parseInt(dateString.substring(4, 6), 10) - 1; // JS months are 0-indexed
+    const monthIdx = parseInt(dateString.substring(4, 6), 10) - 1; // JS months are 0-indexed
     const day = parseInt(dateString.substring(6, 8), 10);
     const hour = parseInt(dateString.substring(8, 10), 10);
     const min = parseInt(dateString.substring(10, 12), 10);
     const sec = parseInt(dateString.substring(12, 14), 10);
 
-    let date = new Date(Date.UTC(year, month, day, hour, min, sec));
+    // Basic range validation to prevent auto-rollover
+    if (monthIdx < 0 || monthIdx > 11 || day < 1 || day > 31 || hour < 0 || hour > 23 || min < 0 || min > 59 || sec < 0 || sec > 59) {
+      return null;
+    }
+
+    let date = new Date(Date.UTC(year, monthIdx, day, hour, min, sec));
 
     if (dateString.length >= 19) {
       const offsetSign = dateString.substring(15, 16);
@@ -121,8 +126,14 @@ const parseXMLDate = (inputDateString: string | number): Date | null => {
       }
     }
 
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+
     return date;
   } catch (e) {
     return null;
   }
 };
+
+export const _test_parseXMLDate = parseXMLDate;
