@@ -20,3 +20,10 @@ Thumbs.db
 .env
 .env.*
 *.local
+# Gradle build directories
+build/
+.gradle/
+**/build/
+build/
+.gradle/
+**/build/
