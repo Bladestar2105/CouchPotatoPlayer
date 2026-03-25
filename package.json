@@ -30,7 +30,7 @@
     "expo-asset": "~12.0.9",
     "expo-av": "~16.0.7",
     "expo-build-properties": "~1.0.10",
-    "expo-crypto": "^55.0.10",
+    "expo-crypto": "^15.0.8",
     "expo-dev-client": "~6.0.16",
     "expo-file-system": "~19.0.17",
     "expo-localization": "~17.0.8",
