@@ -4,6 +4,13 @@ echo "Building and launching tvOS Simulator..."
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
 
+# Ensure any .npmrc changes (like public-hoist-pattern) are fully applied first
+echo "Ensuring base dependencies are installed and properly hoisted..."
+if ! pnpm install; then
+  echo "Error: Failed to install base dependencies."
+  exit 1
+fi
+
 # Set trap to ensure react-native is reverted to standard even if script is aborted or fails
 trap 'echo "Reverting react-native to standard after tvOS build..."; pnpm install -w react-native@0.81.5' EXIT
 
