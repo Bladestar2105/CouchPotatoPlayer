@@ -52,7 +52,13 @@ echo "⚠️ IMPORTANT: Please build and run your app on the Apple TV in Xcode."
 echo "When you are completely finished, press ENTER to revert the dependencies"
 echo "back to standard react-native."
 echo "================================================================"
-read -r -p "Press ENTER to revert and exit..."
+# If we are in CI or non-interactive terminal, pause so logs can be checked, else use read
+if [ -n "$CI" ]; then
+  echo "CI environment detected. Pausing for 60 seconds before reverting..."
+  sleep 60
+else
+  read -r -p "Press ENTER to revert and exit..." || true
+fi
 
 echo "Reverting react-native to standard after tvOS build..."
 pnpm install -w react-native@0.81.5
