@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text, TextInput, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
+import bcrypt from 'bcryptjs';
 
 const PinSetupScreen = () => {
   const { pin, setPinCode, unlockAdultContent, isAdultUnlocked, lockAdultContent } = useIPTV();
@@ -40,7 +41,7 @@ const PinSetupScreen = () => {
       }
     } else {
       // Manage existing PIN (Change or Remove)
-      if (inputValue !== pin) {
+      if (pin && !bcrypt.compareSync(inputValue, pin)) {
          Alert.alert('Error', 'Incorrect PIN code.');
          return;
       }
