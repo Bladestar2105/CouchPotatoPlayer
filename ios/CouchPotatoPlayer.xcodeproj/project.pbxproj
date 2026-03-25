@@ -265,9 +265,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
-				TARGETED_DEVICE_FAMILY = 3;
-				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 15.1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				CODE_SIGN_ENTITLEMENTS = CouchPotatoPlayer/CouchPotatoPlayer.entitlements;
 			};
 			name = Debug;
@@ -295,9 +293,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "CouchPotatoPlayer/CouchPotatoPlayer-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
-				TARGETED_DEVICE_FAMILY = 3;
-				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 15.1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				CODE_SIGN_ENTITLEMENTS = CouchPotatoPlayer/CouchPotatoPlayer.entitlements;
 			};
 			name = Release;
@@ -357,7 +353,7 @@
 				LIBRARY_SEARCH_PATHS = "\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = appletvos;
+				SDKROOT = iphoneos;
 			};
 			name = Debug;
 		};
@@ -408,7 +404,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				SDKROOT = appletvos;
+				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

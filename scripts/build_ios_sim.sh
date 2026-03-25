@@ -4,6 +4,13 @@ echo "Building and launching iOS Simulator..."
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
 
+# Ensure any .npmrc changes (like public-hoist-pattern) are fully applied first
+echo "Ensuring base dependencies are installed and properly hoisted..."
+if ! pnpm install; then
+  echo "Error: Failed to install base dependencies."
+  exit 1
+fi
+
 # Rebuild the standard iOS project in case we previously built for tvOS
 export EXPO_TV=0
 npx expo prebuild --clean --platform ios
