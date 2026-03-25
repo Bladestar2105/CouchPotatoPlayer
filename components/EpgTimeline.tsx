@@ -18,6 +18,10 @@ interface EpgTimelineProps {
   currentStreamId: string | undefined;
 }
 
+// ⚡ Bolt: Cache Intl.DateTimeFormat instance to avoid slow initialization overhead on every render
+const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const formatTime = (d: Date) => timeFormatter.format(d);
+
 const ProgramBlock = ({ prog, channel, isNow, isPast, leftOffset, width, colors, onChannelPress }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
     return (
@@ -36,7 +40,7 @@ const ProgramBlock = ({ prog, channel, isNow, isPast, leftOffset, width, colors,
         >
             <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{prog.title}</Text>
             <Text style={[styles.programTime, { fontSize: Platform.isTV ? 14 : 12 }]} numberOfLines={1}>
-                {prog.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {prog.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {formatTime(prog.start)} - {formatTime(prog.end)}
             </Text>
         </TouchableOpacity>
     );
@@ -91,7 +95,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
         <View key={i} style={[styles.timeHeaderItem, { width: HOUR_WIDTH }]}>
           <Text style={styles.timeHeaderText}>
             {showDate ? d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' - ' : ''}
-            {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {formatTime(d)}
           </Text>
         </View>
       );
