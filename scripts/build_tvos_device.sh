@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "Building and launching tvOS Simulator..."
+echo "Preparing tvOS environment for Hardware Device build..."
 
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
@@ -10,9 +10,6 @@ if ! pnpm install; then
   echo "Error: Failed to install base dependencies."
   exit 1
 fi
-
-# Set trap to ensure react-native is reverted to standard even if script is aborted or fails
-trap 'echo "Reverting react-native to standard after tvOS build..."; pnpm install -w react-native@0.81.5' EXIT
 
 echo "Swapping standard react-native for react-native-tvos temporarily for build..."
 # We will temporarily alias react-native to react-native-tvos matching our RN version (0.81.5)
@@ -36,20 +33,26 @@ rm -rf ios
 echo "Re-generating the native iOS directory specifically for tvOS..."
 # The @react-native-tvos/config-tv plugin in app.json reads EXPO_TV to configure tvOS schemes
 export EXPO_TV=1
-npx expo prebuild --clean --platform ios
-
-# Dynamically find the first available Apple TV simulator installed in Xcode
-echo "Finding an available Apple TV Simulator..."
-# We extract the exact device UDID (e.g. 12345678-1234-1234-1234-123456789012) using grep/regex
-TV_SIMULATOR_UDID=$(xcrun simctl list devices | grep -i "Apple TV" | grep -v "unavailable" | head -n 1 | grep -o -E '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
-
-if [ -z "$TV_SIMULATOR_UDID" ]; then
-  echo "Error: No Apple TV simulator found! Please open Xcode -> Window -> Devices and Simulators and create one."
+if ! npx expo prebuild --clean --platform ios; then
+  echo "Error: Failed to prebuild the tvOS project."
+  echo "Reverting react-native to standard..."
+  pnpm install -w react-native@0.81.5
   exit 1
 fi
 
-echo "Found Simulator UDID: $TV_SIMULATOR_UDID"
+echo "Generating ios/.xcode.env.local to ensure Node is found during Xcode build phases..."
+echo "export NODE_BINARY=\$(command -v node)" > ios/.xcode.env.local
 
-# Build for the Apple TV Simulator
-# Note: Expo Go does not run on Apple TV. This requires a custom native build via Prebuild.
-npx expo run:ios --device "$TV_SIMULATOR_UDID"
+echo "Environment prepared! Opening Xcode workspace..."
+open ios/CouchPotatoPlayer.xcworkspace
+
+echo ""
+echo "================================================================"
+echo "⚠️ IMPORTANT: Please build and run your app on the Apple TV in Xcode."
+echo "When you are completely finished, press ENTER to revert the dependencies"
+echo "back to standard react-native."
+echo "================================================================"
+read -r -p "Press ENTER to revert and exit..."
+
+echo "Reverting react-native to standard after tvOS build..."
+pnpm install -w react-native@0.81.5

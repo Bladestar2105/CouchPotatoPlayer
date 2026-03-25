@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "build:ios-sim": "./scripts/build_ios_sim.sh",
     "build:tvos-sim": "./scripts/build_tvos_sim.sh",
+    "build:tvos-device": "./scripts/build_tvos_device.sh",
     "build:android-sim": "./scripts/build_android_sim.sh",
     "build:android-tv-sim": "./scripts/build_android_tv_sim.sh",
     "build:web": "./scripts/build_web.sh"
