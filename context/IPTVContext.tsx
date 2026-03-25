@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import bcrypt from 'bcryptjs';
 import * as FileSystem from 'expo-file-system/legacy';
 import { File, Directory, Paths } from 'expo-file-system';
 
@@ -841,10 +842,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- PIN Management ---
   const setPinCode = async (newPin: string | null) => {
     try {
-       setPin(newPin);
        if (newPin) {
-          await AsyncStorage.setItem(PIN_STORAGE_KEY, newPin);
+          const salt = bcrypt.genSaltSync(10);
+          const hashedPin = bcrypt.hashSync(newPin, salt);
+          setPin(hashedPin);
+          await AsyncStorage.setItem(PIN_STORAGE_KEY, hashedPin);
        } else {
+          setPin(null);
           await AsyncStorage.removeItem(PIN_STORAGE_KEY);
           setIsAdultUnlocked(false);
        }
@@ -854,7 +858,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const unlockAdultContent = (pinInput: string) => {
-     if (pin === pinInput) {
+     if (pin && bcrypt.compareSync(pinInput, pin)) {
         setIsAdultUnlocked(true);
         return true;
      }
