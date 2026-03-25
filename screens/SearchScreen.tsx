@@ -87,6 +87,8 @@ const SearchScreen = () => {
       <TouchableOpacity
         style={[styles.item, { borderBottomColor: colors.divider }]}
         onPress={() => handleItemPress(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`Select ${item.name}`}
       >
         <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
           <Image
@@ -115,6 +117,7 @@ const SearchScreen = () => {
           style={[styles.input, { color: colors.text }]}
           placeholder="Search channels, movies, series..."
           placeholderTextColor={colors.textSecondary}
+          accessibilityLabel="Search query"
           value={query}
           onChangeText={setQuery}
           autoCapitalize="none"
@@ -123,7 +126,7 @@ const SearchScreen = () => {
           autoFocus={!Platform.isTV}
         />
         {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
+          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel="Clear search query">
             <Text style={{ color: colors.textSecondary }}>Clear</Text>
           </TouchableOpacity>
         )}
