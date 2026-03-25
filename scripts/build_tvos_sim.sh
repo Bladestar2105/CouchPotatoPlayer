@@ -30,6 +30,9 @@ if [ -d "$RN_TVOS_DIR" ]; then
   fi
 fi
 
+echo "Cleaning existing ios directory to prevent ENOTEMPTY errors..."
+rm -rf ios
+
 echo "Re-generating the native iOS directory specifically for tvOS..."
 # The @react-native-tvos/config-tv plugin in app.json reads EXPO_TV to configure tvOS schemes
 export EXPO_TV=1

@@ -11,6 +11,9 @@ if ! pnpm install; then
   exit 1
 fi
 
+echo "Cleaning existing ios directory to prevent ENOTEMPTY errors..."
+rm -rf ios
+
 # Rebuild the standard iOS project in case we previously built for tvOS
 export EXPO_TV=0
 npx expo prebuild --clean --platform ios

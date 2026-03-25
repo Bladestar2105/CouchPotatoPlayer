@@ -27,10 +27,18 @@ if [ -d "$RN_TVOS_DIR" ]; then
   fi
 fi
 
+echo "Cleaning existing ios directory to prevent ENOTEMPTY errors..."
+rm -rf ios
+
 echo "Re-generating the native iOS directory specifically for tvOS..."
 # The @react-native-tvos/config-tv plugin in app.json reads EXPO_TV to configure tvOS schemes
 export EXPO_TV=1
-npx expo prebuild --clean --platform ios
+if ! npx expo prebuild --clean --platform ios; then
+  echo "Error: Failed to prebuild the tvOS project."
+  echo "Reverting react-native to standard..."
+  pnpm install -w react-native@0.81.5
+  exit 1
+fi
 
 echo "Generating ios/.xcode.env.local to ensure Node is found during Xcode build phases..."
 echo "export NODE_BINARY=\$(command -v node)" > ios/.xcode.env.local
