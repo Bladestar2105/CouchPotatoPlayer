@@ -3,9 +3,6 @@ set -e
 
 echo "Starting Android application on default connected device/emulator..."
 
-# Build and install the app
-./gradlew :composeApp:installDebug
-
 # Try to find adb
 ADB_CMD=""
 if command -v adb >/dev/null 2>&1; then
@@ -33,5 +30,16 @@ if [ -z "$ADB_CMD" ]; then
     echo "or define sdk.dir in local.properties."
     exit 1
 fi
+
+# Check for connected devices before attempting to build
+DEVICE_COUNT=$("$ADB_CMD" devices | grep -v "^List" | grep -v "^$" | grep -v "^\*" | wc -l)
+if [ "$DEVICE_COUNT" -eq 0 ]; then
+    echo "Error: No connected Android devices or emulators found."
+    echo "Please connect a device or start an emulator and try again."
+    exit 1
+fi
+
+# Build and install the app
+./gradlew :composeApp:installDebug
 
 "$ADB_CMD" shell am start -n com.couchpotatoplayer.composeapp/com.couchpotatoplayer.composeapp.MainActivity
