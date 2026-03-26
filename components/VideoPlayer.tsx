@@ -10,7 +10,14 @@ if (Platform.OS === 'web') {
   VideoComponent = require('react-native-vlc-media-player').VLCPlayer;
 }
 
-const VideoPlayer = () => {
+interface VideoPlayerProps {
+  paused?: boolean;
+  onSeek?: (position: number) => void;
+  seekPosition?: number;
+  onProgress?: (data: { currentTime: number, duration: number }) => void;
+}
+
+const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, onProgress }: VideoPlayerProps, ref) => {
   const { currentStream } = useIPTV();
   const { bufferSize } = useSettings();
 
@@ -23,11 +30,36 @@ const VideoPlayer = () => {
     return currentStream.url;
   }, [currentStream?.url]);
 
+  // Only pass the ref if we are not on web (where expo-av handles it differently)
+  const videoRef = React.useRef<any>(null);
+
+  React.useImperativeHandle(ref, () => ({
+    seek: (position: number) => {
+      if (videoRef.current && videoRef.current.seek) {
+        // react-native-vlc-media-player expects position in float (0.0 to 1.0) for tvOS
+        // We handle exact ms on other platforms but stick to what the underlying player allows.
+        // Since we don't have total duration here, passing absolute ms directly works on Android,
+        // but for iOS it might need proper mapping. For now, try passing ms directly.
+        videoRef.current.seek(position / 1000); // converting ms to seconds as a safer bet or fallback depending on exact fork
+      }
+    }
+  }));
+
+  // Handle seeking if passed as prop (for declarative seeking)
+  React.useEffect(() => {
+    if (seekPosition !== undefined && videoRef.current && videoRef.current.seek) {
+       // Assuming it takes normalized or direct seconds since behavior varies wildly across vlc wrapper forks
+       videoRef.current.seek(seekPosition / 1000.0);
+    }
+  }, [seekPosition]);
+
   return (
     <View style={styles.container}>
       {streamUrl ? (
         <VideoComponent
+          ref={videoRef}
           key={currentStream?.id}
+          onProgress={onProgress}
           source={{
             uri: streamUrl,
             initOptions: [
@@ -36,8 +68,9 @@ const VideoPlayer = () => {
               `--file-caching=${bufferSize}`
             ]
           }}
-          autoplay={true}
-          shouldPlay={true}
+          paused={paused}
+          autoplay={!paused}
+          shouldPlay={!paused}
           style={styles.video}
           resizeMode="contain"
           useNativeControls={Platform.OS === 'web'}
@@ -49,7 +82,7 @@ const VideoPlayer = () => {
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

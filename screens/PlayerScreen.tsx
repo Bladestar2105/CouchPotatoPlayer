@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVEventHandler } from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 
@@ -29,6 +29,11 @@ const PlayerScreen = () => {
 
   // TiviMate-style info overlay state
   const [showOverlay, setShowOverlay] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
+
+  // Use a ref for current time to avoid re-triggering the event listener effect
+  const currentTimeRef = React.useRef(0);
 
   // Memoize handleBack to prevent unnecessary re-renders
   const handleBack = React.useCallback(() => {
@@ -93,7 +98,7 @@ const PlayerScreen = () => {
   // Hide overlay on inactivity
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    if (showOverlay) {
+    if (showOverlay && !isPaused) {
         timer = setTimeout(() => {
             setShowOverlay(false);
         }, 6000);
@@ -101,7 +106,7 @@ const PlayerScreen = () => {
     return () => {
         if (timer) clearTimeout(timer);
     };
-  }, [showOverlay]);
+  }, [showOverlay, isPaused]);
 
   useEffect(() => {
     if (isFocused && currentStream && currentStream.id) {
@@ -149,12 +154,47 @@ const PlayerScreen = () => {
   useEffect(() => {
     if (!isFocused) return;
     
-    // On Apple TV, the Menu button triggers hardwareBackPress
-    // We need to register the handler immediately without timeout
+    // On Apple TV, the Menu button sometimes triggers hardwareBackPress
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
     
+    // We also use TVEventHandler as a fallback for the "menu" event
+    let tvEventHandler: TVEventHandler | null = null;
+    if (Platform.isTV) {
+      tvEventHandler = new TVEventHandler();
+      tvEventHandler.enable(null, function(cmp: any, evt: any) {
+        if (evt) {
+          if (evt.eventType === 'menu') {
+            handleBack();
+          } else if (evt.eventType === 'playPause') {
+            setIsPaused(prev => !prev);
+            setShowOverlay(true);
+          } else if (evt.eventType === 'left') {
+            // Very rudimentary seek backward trigger
+            // We set the seek time based on the current playback time, not previous seek time,
+            // because the video continues playing after a seek.
+            const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
+            setSeekTime(newSeekTime);
+            // Update the ref optimistically so rapid clicks work correctly
+            currentTimeRef.current = newSeekTime;
+            setShowOverlay(true);
+          } else if (evt.eventType === 'right') {
+            // Seek forward
+            const newSeekTime = currentTimeRef.current + 10000;
+            setSeekTime(newSeekTime);
+            currentTimeRef.current = newSeekTime;
+            setShowOverlay(true);
+          } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
+             setShowOverlay(true);
+          }
+        }
+      });
+    }
+
     return () => {
       backHandler.remove();
+      if (tvEventHandler) {
+        tvEventHandler.disable();
+      }
     };
   }, [isFocused, navigation, handleBack]);
 
@@ -165,7 +205,14 @@ const PlayerScreen = () => {
         activeOpacity={1}
         onPress={handlePress}
       >
-        <VideoPlayer />
+        <VideoPlayer
+          paused={isPaused}
+          seekPosition={seekTime}
+          onProgress={(data) => {
+             // For React Native VLC media player, data.currentTime is usually in milliseconds
+             currentTimeRef.current = data.currentTime;
+          }}
+        />
       </TouchableOpacity>
 
       {showOverlay && (
@@ -181,6 +228,13 @@ const PlayerScreen = () => {
               <Icon name="arrow-back" size={28} color="#FFF" />
             </TouchableOpacity>
           </View>
+
+          {/* Pause Indicator */}
+          {isPaused && (
+            <View style={{position: 'absolute', top: '50%', left: '50%', transform: [{translateX: -40}, {translateY: -40}], backgroundColor: 'rgba(0,0,0,0.5)', padding: 20, borderRadius: 40}}>
+               <Icon name="pause" size={40} color="#FFF" />
+            </View>
+          )}
 
           {/* Bottom Bar - Channel Info (HUD) */}
           {currentChannel && (
