@@ -82,7 +82,7 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
