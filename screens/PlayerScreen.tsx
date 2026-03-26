@@ -19,6 +19,9 @@ import { findCurrentProgramIndex } from '../utils/epgUtils';
 
 const defaultLogo = require('../assets/icon.png');
 
+// ⚡ Bolt: Cache Intl.DateTimeFormat instance to avoid slow initialization overhead on every render
+const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+
 const PlayerScreen = () => {
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
@@ -188,7 +191,7 @@ const PlayerScreen = () => {
                      <View style={styles.textContainer}>
                          <View style={styles.headerRow}>
                             <Text style={styles.channelName}>{currentChannel.name}</Text>
-                            <Text style={styles.timeText}>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                            <Text style={styles.timeText}>{timeFormatter.format(new Date())}</Text>
                          </View>
 
                          {currentProgram ? (
@@ -197,19 +200,19 @@ const PlayerScreen = () => {
 
                                 <View style={styles.progressRow}>
                                     <Text style={styles.programTimeText}>
-                                        {currentProgram.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {timeFormatter.format(currentProgram.start)}
                                     </Text>
                                     <View style={styles.progressBarContainer}>
                                         <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
                                     </View>
                                     <Text style={styles.programTimeText}>
-                                        {currentProgram.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {timeFormatter.format(currentProgram.end)}
                                     </Text>
                                 </View>
 
                                 {nextProgram && (
                                     <Text style={styles.nextProgramText} numberOfLines={1}>
-                                        Next: {nextProgram.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {nextProgram.title}
+                                        Next: {timeFormatter.format(nextProgram.start)} - {nextProgram.title}
                                     </Text>
                                 )}
                             </View>
