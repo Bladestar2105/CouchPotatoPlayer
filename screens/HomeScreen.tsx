@@ -54,28 +54,29 @@ const MainLayout = () => {
   const handleTabPress = (tab: any) => {
     setActiveTab(tab);
 
-    // On TV, do not forcefully collapse the menu immediately on press.
-    // Let the focus/blur events handle expansion logically so spatial
-    // navigation isn't interrupted.
-    if (!Platform.isTV) {
-      setIsSidebarExpanded(false);
-    }
+    // Force collapse the menu when a tab is explicitly pressed (selected)
+    setIsSidebarExpanded(false);
   };
 
   const handleSidebarFocus = () => {
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
-    setIsSidebarExpanded(true);
+    if (!isSidebarExpanded) {
+       setIsSidebarExpanded(true);
+    }
   };
 
   const handleSidebarBlur = () => {
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
+    // We increase the timeout significantly for Apple TV so spatial
+    // navigation up/down doesn't trigger collapse. It will only collapse
+    // if the user moves focus entirely to the main content pane and stays there.
     sidebarTimeoutRef.current = setTimeout(() => {
       setIsSidebarExpanded(false);
-    }, 200); // Small delay to allow focus to move to another sidebar item without collapsing
+    }, 1000);
   };
 
   const renderContent = () => {
