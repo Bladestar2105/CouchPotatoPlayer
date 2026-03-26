@@ -151,6 +151,12 @@ const SeriesList = () => {
             maxToRenderPerBatch={12}
             windowSize={5}
             removeClippedSubviews={true}
+            getItemLayout={(data, index) => {
+               // Calculate row height based on poster + margins.
+               const rowHeight = (POSTER_WIDTH * 1.5) + 8 + 16 + 24; // poster height + margin + text + bottom margin
+               const rowIndex = Math.floor(index / numColumns);
+               return { length: rowHeight, offset: rowHeight * rowIndex, index };
+            }}
             renderItem={({ item }) => {
                 const isFocused = focusedSeriesId === item.id;
                 return (

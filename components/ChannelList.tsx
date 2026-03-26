@@ -198,6 +198,13 @@ const LiveTVFlow = () => {
           initialNumToRender={15}
           maxToRenderPerBatch={10}
           windowSize={5}
+          removeClippedSubviews={true}
+          getItemLayout={(data, index) => {
+             // Calculate row height: paddingVertical 18*2 = 36 + text approx 20 + 1 border = 57. Let's use 60 as a safe estimate or exact calculation.
+             // paddingVertical: 18 -> 36. Text fontSize: 16 -> line height ~ 20. Total ~ 56 + 1 (border).
+             const itemHeight = 57;
+             return { length: itemHeight, offset: itemHeight * index, index };
+          }}
           renderItem={({ item }) => {
               const isSelected = selectedGroup === item.title;
               return (
