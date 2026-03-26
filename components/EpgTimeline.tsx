@@ -22,7 +22,7 @@ interface EpgTimelineProps {
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 const formatTime = (d: Date) => timeFormatter.format(d);
 
-const ProgramBlock = ({ prog, channel, isNow, isPast, leftOffset, width, colors, onChannelPress }: any) => {
+const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, width, colors, onChannelPress }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -44,7 +44,81 @@ const ProgramBlock = ({ prog, channel, isNow, isPast, leftOffset, width, colors,
             </Text>
         </TouchableOpacity>
     );
-};
+}, (prevProps, nextProps) => {
+    return prevProps.prog === nextProps.prog &&
+           prevProps.isNow === nextProps.isNow &&
+           prevProps.leftOffset === nextProps.leftOffset &&
+           prevProps.width === nextProps.width;
+});
+
+const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE }: any) => {
+    return (
+        <View style={[styles.row, isFocused && styles.rowFocused]}>
+            {/* Channel Info Fixed on Left */}
+            <TouchableOpacity
+                style={[
+                    styles.channelBox,
+                    isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary },
+                    isFocused && { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderWidth: 2, borderColor: colors.primary }
+                ]}
+                onPress={() => onChannelPress(channel)}
+                onFocus={() => setFocusedChannelId(channel.id)}
+                onLongPress={() => {
+                   if (isFav) removeFavorite(channel.id);
+                   else addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
+                }}
+            >
+                <Image
+                    source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : require('../assets/icon.png')}
+                    style={styles.channelLogo}
+                    resizeMode="contain"
+                    defaultSource={require('../assets/icon.png')}
+                />
+              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{channel.name}</Text>
+            </TouchableOpacity>
+
+            {/* Programs Timeline */}
+            <View style={styles.programsContainer}>
+                {programs.map((prog: any, idx: number) => {
+                    // Calculate boundaries
+                    const startMs = prog.start.getTime();
+                    const endMs = prog.end.getTime();
+
+                    // Skip if fully outside timeline
+                    if (endMs <= timelineStart.getTime() || startMs >= timelineEnd.getTime()) return null;
+
+                    const renderStartMs = Math.max(startMs, timelineStart.getTime());
+                    const renderEndMs = Math.min(endMs, timelineEnd.getTime());
+
+                    const leftOffset = ((renderStartMs - timelineStart.getTime()) / 60000) * PIXELS_PER_MINUTE;
+                    const width = ((renderEndMs - renderStartMs) / 60000) * PIXELS_PER_MINUTE;
+
+                    const isNow = now >= prog.start && now < prog.end;
+                    const isPast = now >= prog.end;
+
+                    return (
+                        <ProgramBlock
+                            key={`${channel.id}-${idx}`}
+                            prog={prog}
+                            channel={channel}
+                            isNow={isNow}
+                            isPast={isPast}
+                            leftOffset={leftOffset}
+                            width={width}
+                            colors={colors}
+                            onChannelPress={onChannelPress}
+                        />
+                    );
+                })}
+            </View>
+        </View>
+    );
+}, (prevProps, nextProps) => {
+    return prevProps.isFocused === nextProps.isFocused &&
+           prevProps.isPlaying === nextProps.isPlaying &&
+           prevProps.isFav === nextProps.isFav &&
+           prevProps.programs === nextProps.programs;
+});
 
 const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, focusedChannelId, setFocusedChannelId, currentStreamId }) => {
   const { epg, hasCatchup, getCatchupUrl, isFavorite, addFavorite, removeFavorite } = useIPTV();
@@ -125,7 +199,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
         </ScrollView>
       </View>
 
-      <ScrollView style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={true} onScroll={(e) => {
             if (scrollViewRef.current) {
                 scrollViewRef.current.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
@@ -142,6 +216,11 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                  maxToRenderPerBatch={10}
                  windowSize={5}
                  removeClippedSubviews={true}
+                 getItemLayout={(data, index) => ({
+                    length: Platform.isTV ? 80 : 60,
+                    offset: (Platform.isTV ? 80 : 60) * index,
+                    index,
+                 })}
                  renderItem={({ item: channel }) => {
                     const epgKey = getEpgKey(channel);
                     const programs = epg[epgKey] || [];
@@ -150,71 +229,29 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                     const isFav = isFavorite(channel.id);
 
                     return (
-                        <View style={[styles.row, isFocused && styles.rowFocused]}>
-                            {/* Channel Info Fixed on Left */}
-                            <TouchableOpacity
-                                style={[
-                                    styles.channelBox,
-                                    isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary },
-                                    isFocused && { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderWidth: 2, borderColor: colors.primary }
-                                ]}
-                                onPress={() => onChannelPress(channel)}
-                                onFocus={() => setFocusedChannelId(channel.id)}
-                                onLongPress={() => {
-                                   if (isFav) removeFavorite(channel.id);
-                                   else addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
-                                }}
-                            >
-                                <Image
-                                    source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : defaultLogo}
-                                    style={styles.channelLogo}
-                                    resizeMode="contain"
-                                    defaultSource={defaultLogo}
-                                />
-                              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{channel.name}</Text>
-                            </TouchableOpacity>
-
-                            {/* Programs Timeline */}
-                            <View style={styles.programsContainer}>
-                                {programs.map((prog, idx) => {
-                                    // Calculate boundaries
-                                    const startMs = prog.start.getTime();
-                                    const endMs = prog.end.getTime();
-
-                                    // Skip if fully outside timeline
-                                    if (endMs <= timelineStart.getTime() || startMs >= timelineEnd.getTime()) return null;
-
-                                    const renderStartMs = Math.max(startMs, timelineStart.getTime());
-                                    const renderEndMs = Math.min(endMs, timelineEnd.getTime());
-
-                                    const leftOffset = ((renderStartMs - timelineStart.getTime()) / 60000) * PIXELS_PER_MINUTE;
-                                    const width = ((renderEndMs - renderStartMs) / 60000) * PIXELS_PER_MINUTE;
-
-                                    const isNow = now >= prog.start && now < prog.end;
-                                    const isPast = now >= prog.end;
-
-                                    return (
-                                        <ProgramBlock
-                                            key={`${channel.id}-${idx}`}
-                                            prog={prog}
-                                            channel={channel}
-                                            isNow={isNow}
-                                            isPast={isPast}
-                                            leftOffset={leftOffset}
-                                            width={width}
-                                            colors={colors}
-                                            onChannelPress={onChannelPress}
-                                        />
-                                    );
-                                })}
-                            </View>
-                        </View>
+                        <EpgRow
+                            channel={channel}
+                            programs={programs}
+                            isFocused={isFocused}
+                            isPlaying={isPlaying}
+                            isFav={isFav}
+                            colors={colors}
+                            focusedChannelId={focusedChannelId}
+                            setFocusedChannelId={setFocusedChannelId}
+                            onChannelPress={onChannelPress}
+                            addFavorite={addFavorite}
+                            removeFavorite={removeFavorite}
+                            timelineStart={timelineStart}
+                            timelineEnd={timelineEnd}
+                            now={now}
+                            PIXELS_PER_MINUTE={PIXELS_PER_MINUTE}
+                        />
                     );
                  }}
               />
           </View>
         </ScrollView>
-      </ScrollView>
+      </View>
     </View>
   );
 };
