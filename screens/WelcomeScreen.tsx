@@ -134,6 +134,7 @@ const WelcomeScreen = () => {
             style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
             placeholder="Provider Name"
             placeholderTextColor={colors.textSecondary}
+            accessibilityLabel="Provider Name"
             value={name}
             onChangeText={setName}
             tvFocusable={true}
@@ -143,6 +144,7 @@ const WelcomeScreen = () => {
             style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
             placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
             placeholderTextColor={colors.textSecondary}
+            accessibilityLabel={type === 'xtream' ? "Server URL" : "M3U Playlist URL"}
             value={serverUrl}
             onChangeText={setServerUrl}
             keyboardType="url"
@@ -157,6 +159,7 @@ const WelcomeScreen = () => {
                 style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
                 placeholder="Username"
                 placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Username"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -167,6 +170,7 @@ const WelcomeScreen = () => {
                 style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
                 placeholder="Password"
                 placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -178,6 +182,7 @@ const WelcomeScreen = () => {
               style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
               placeholder="XMLTV EPG URL (Optional)"
               placeholderTextColor={colors.textSecondary}
+              accessibilityLabel="XMLTV EPG URL"
               value={epgUrl}
               onChangeText={setEpgUrl}
               keyboardType="url"

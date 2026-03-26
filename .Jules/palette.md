@@ -14,3 +14,7 @@
 ## 2026-03-21 - Added ARIA labels to Profile Action Buttons
 **Learning:** In CouchPotatoPlayer's settings and profile lists, generic action buttons like 'X' or 'Load' wrapped in `TouchableOpacity` can lack descriptive context for screen readers if they only contain short text or symbols. For example, a delete button showing 'X' is read generically.
 **Action:** Always add `accessibilityRole="button"` and a descriptive `accessibilityLabel` that includes the specific item's name (e.g., `Delete MyProfile`) to action buttons in dynamic lists to ensure screen reader users have full context.
+
+## 2026-03-26 - Added accessibility labels to TextInputs
+**Learning:** Text inputs that rely solely on `placeholder` text or surrounding text elements might not correctly announce their purpose to screen reader users depending on the platform's accessibility implementation (especially across iOS/Android/tvOS). Providing an explicit `accessibilityLabel` ensures the input's purpose is always clearly communicated.
+**Action:** Always add an `accessibilityLabel` to `TextInput` components to explicitly declare their purpose for screen readers, regardless of whether a visible label or placeholder is present.

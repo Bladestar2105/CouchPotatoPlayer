@@ -183,24 +183,25 @@ const PlaylistManager = () => {
         value={name}
         onChangeText={setName}
         placeholderTextColor="#888"
+        accessibilityLabel={t('profileName')}
         autoFocus={!Platform.isTV}
       />
 
       {profileType === 'm3u' && (
         <>
           <Text style={styles.label}>{t('m3uUrl')}</Text>
-          <TextInput style={styles.input} placeholder="http://..." value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" />
+          <TextInput style={styles.input} placeholder="http://..." value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" accessibilityLabel={t('m3uUrl')} />
         </>
       )}
 
       {profileType === 'xtream' && (
         <>
           <Text style={styles.label}>{t('serverUrl')}</Text>
-          <TextInput style={styles.input} placeholder="http://domaine.com:80" value={serverUrl} onChangeText={setServerUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" />
+          <TextInput style={styles.input} placeholder="http://domaine.com:80" value={serverUrl} onChangeText={setServerUrl} autoCapitalize="none" keyboardType="url" placeholderTextColor="#888" accessibilityLabel={t('serverUrl')} />
           <Text style={styles.label}>{t('username')}</Text>
-          <TextInput style={styles.input} placeholder={t('username')} value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#888" />
+          <TextInput style={styles.input} placeholder={t('username')} value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#888" accessibilityLabel={t('username')} />
           <Text style={styles.label}>{t('password')}</Text>
-          <TextInput style={styles.input} placeholder={t('password')} value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholderTextColor="#888" />
+          <TextInput style={styles.input} placeholder={t('password')} value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholderTextColor="#888" accessibilityLabel={t('password')} />
         </>
       )}
 
