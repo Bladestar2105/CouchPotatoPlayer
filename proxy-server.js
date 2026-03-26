@@ -49,7 +49,8 @@ const server = http.createServer((req, res) => {
     });
     
     proxyReq.on('error', (e) => {
-      console.error('Proxy error:', e.message);
+      // Prevent logging sensitive credentials via error messages
+      console.error('Proxy error:', e.message.replace(/(username|password)=([^&]+)/gi, '$1=***'));
       res.writeHead(500);
       res.end(JSON.stringify({ error: 'Proxy error occurred' }));
     });
