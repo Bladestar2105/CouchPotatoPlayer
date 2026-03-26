@@ -157,8 +157,44 @@ const PlayerScreen = () => {
     // On Apple TV, the Menu button sometimes triggers hardwareBackPress
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
     
+    // We also use TVEventHandler as a fallback for the "menu" event
+    let tvEventHandler: TVEventHandler | null = null;
+    if (Platform.isTV) {
+      tvEventHandler = new TVEventHandler();
+      tvEventHandler.enable(null, function(cmp: any, evt: any) {
+        if (evt) {
+          if (evt.eventType === 'menu') {
+            handleBack();
+          } else if (evt.eventType === 'playPause') {
+            setIsPaused(prev => !prev);
+            setShowOverlay(true);
+          } else if (evt.eventType === 'left') {
+            // Very rudimentary seek backward trigger
+            // We set the seek time based on the current playback time, not previous seek time,
+            // because the video continues playing after a seek.
+            const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
+            setSeekTime(newSeekTime);
+            // Update the ref optimistically so rapid clicks work correctly
+            currentTimeRef.current = newSeekTime;
+            setShowOverlay(true);
+          } else if (evt.eventType === 'right') {
+            // Seek forward
+            const newSeekTime = currentTimeRef.current + 10000;
+            setSeekTime(newSeekTime);
+            currentTimeRef.current = newSeekTime;
+            setShowOverlay(true);
+          } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
+             setShowOverlay(true);
+          }
+        }
+      });
+    }
+
     return () => {
       backHandler.remove();
+      if (tvEventHandler) {
+        tvEventHandler.disable();
+      }
     };
   }, [isFocused, navigation, handleBack]);
 
