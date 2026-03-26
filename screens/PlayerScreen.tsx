@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVEventHandler } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, useTVEventHandler } from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 
@@ -197,6 +197,35 @@ const PlayerScreen = () => {
       }
     };
   }, [isFocused, navigation, handleBack]);
+
+  // We also use useTVEventHandler as a fallback for the "menu" event and media controls
+  useTVEventHandler((evt: any) => {
+    if (!isFocused || !Platform.isTV || !evt) return;
+
+    if (evt.eventType === 'menu') {
+      handleBack();
+    } else if (evt.eventType === 'playPause') {
+      setIsPaused(prev => !prev);
+      setShowOverlay(true);
+    } else if (evt.eventType === 'left') {
+      // Very rudimentary seek backward trigger
+      // We set the seek time based on the current playback time, not previous seek time,
+      // because the video continues playing after a seek.
+      const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
+      setSeekTime(newSeekTime);
+      // Update the ref optimistically so rapid clicks work correctly
+      currentTimeRef.current = newSeekTime;
+      setShowOverlay(true);
+    } else if (evt.eventType === 'right') {
+      // Seek forward
+      const newSeekTime = currentTimeRef.current + 10000;
+      setSeekTime(newSeekTime);
+      currentTimeRef.current = newSeekTime;
+      setShowOverlay(true);
+    } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
+      setShowOverlay(true);
+    }
+  });
 
   return (
     <View style={styles.container}>

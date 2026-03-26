@@ -62,16 +62,21 @@ const MainLayout = () => {
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
-    setIsSidebarExpanded(true);
+    if (!isSidebarExpanded) {
+       setIsSidebarExpanded(true);
+    }
   };
 
   const handleSidebarBlur = () => {
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
+    // We increase the timeout significantly for Apple TV so spatial
+    // navigation up/down doesn't trigger collapse. It will only collapse
+    // if the user moves focus entirely to the main content pane and stays there.
     sidebarTimeoutRef.current = setTimeout(() => {
       setIsSidebarExpanded(false);
-    }, 500); // Increased delay to 500ms to prevent collapse during fast up/down navigation
+    }, 1000);
   };
 
   const renderContent = () => {
