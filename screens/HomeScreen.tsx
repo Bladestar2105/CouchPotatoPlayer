@@ -54,12 +54,8 @@ const MainLayout = () => {
   const handleTabPress = (tab: any) => {
     setActiveTab(tab);
 
-    // On TV, do not forcefully collapse the menu immediately on press.
-    // Let the focus/blur events handle expansion logically so spatial
-    // navigation isn't interrupted.
-    if (!Platform.isTV) {
-      setIsSidebarExpanded(false);
-    }
+    // Force collapse the menu when a tab is explicitly pressed (selected)
+    setIsSidebarExpanded(false);
   };
 
   const handleSidebarFocus = () => {
@@ -75,7 +71,7 @@ const MainLayout = () => {
     }
     sidebarTimeoutRef.current = setTimeout(() => {
       setIsSidebarExpanded(false);
-    }, 200); // Small delay to allow focus to move to another sidebar item without collapsing
+    }, 500); // Increased delay to 500ms to prevent collapse during fast up/down navigation
   };
 
   const renderContent = () => {
