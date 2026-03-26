@@ -61,7 +61,7 @@ To build and run on an Android emulator or a physical device:
 
 # Or using Gradle directly:
 ./gradlew :composeApp:installDebug
-./gradlew :composeApp:launchDebug
+adb shell am start -n com.couchpotatoplayer.composeapp/com.couchpotatoplayer.composeapp.MainActivity
 ```
 
 Alternatively, simply open the project in **Android Studio** and click the **Run** button (Play icon) with `composeApp` selected.
