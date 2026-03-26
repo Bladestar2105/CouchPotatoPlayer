@@ -47,7 +47,6 @@ object EpgParser {
 
     private val xml = XML {
         autoPolymorphic = true
-        unknownChildHandler = { _, _, _, _, _ -> emptyList() } // Ignore unknown XML tags
     }
 
     /**

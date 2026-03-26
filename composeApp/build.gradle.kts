@@ -68,9 +68,19 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             // Lifecycle and ViewModel
             implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
-            // Navigation (e.g. Voyager)
-            implementation("cafe.adriel.voyager:voyager-navigator:1.0.0")
-            implementation("cafe.adriel.voyager:voyager-transitions:1.0.0")
+            // Direct dependencies for transitive APIs from shared module
+            implementation("com.russhwolf:multiplatform-settings:1.3.0")
+            implementation("io.ktor:ktor-client-core:3.0.0")
+            implementation("io.ktor:ktor-client-content-negotiation:3.0.0")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+        }
+
+        val wasmJsMain by getting {
+            dependencies {
+                implementation("io.ktor:ktor-client-js:3.0.0")
+            }
         }
 
         androidMain.dependencies {
@@ -79,12 +89,6 @@ kotlin {
 
             // VLC for Android / Android TV
             implementation("org.videolan.android:libvlc-all:3.6.0-eap4")
-        }
-
-        val wasmJsMain by getting {
-            dependencies {
-                implementation(compose.html.core)
-            }
         }
     }
 }
