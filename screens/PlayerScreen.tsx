@@ -1,34 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
 
-// Dynamically require useTVEventHandler so it doesn't crash non-tvOS platforms
-let useTVEventHandler: any = null;
-if (Platform.isTV) {
-  try {
-    const rn = require('react-native');
-    if (rn.useTVEventHandler) {
-      useTVEventHandler = rn.useTVEventHandler;
-    } else if (rn.TVEventHandler) {
-      // Fallback for older react-native-tvos versions
-      useTVEventHandler = (callback: (evt: any) => void) => {
-        React.useEffect(() => {
-          let handler: any = null;
-          try {
-             handler = new rn.TVEventHandler();
-             handler.enable(null, function(cmp: any, evt: any) {
-                callback(evt);
-             });
-          } catch(e) {}
-          return () => {
-             if (handler && handler.disable) {
-               handler.disable();
-             }
-          };
-        }, [callback]);
-      };
-    }
-  } catch (e) {}
-}
+import * as ReactNative from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 
@@ -228,6 +201,9 @@ const PlayerScreen = () => {
   }, [isFocused, navigation, handleBack]);
 
   // We also use useTVEventHandler as a fallback for the "menu" event and media controls
+  // It must be called conditionally or optionally since it doesn't exist on standard react-native
+  const useTVEventHandler = (ReactNative as any).useTVEventHandler;
+
   if (useTVEventHandler) {
     useTVEventHandler((evt: any) => {
       if (!isFocused || !Platform.isTV || !evt) return;
