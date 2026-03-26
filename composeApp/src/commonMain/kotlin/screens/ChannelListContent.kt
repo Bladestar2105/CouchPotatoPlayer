@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import models.Channel
 import modifiers.tvFocusable
 import components.PinEntryDialog
@@ -54,9 +55,23 @@ fun ChannelListContent(channels: List<Channel>, onChannelSelect: (Channel) -> Un
                             }
                         }
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = channel.name, style = MaterialTheme.typography.titleMedium)
-                        Text(text = channel.group, style = MaterialTheme.typography.bodySmall)
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!channel.logo.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = channel.logo,
+                                contentDescription = "${channel.name} logo",
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .padding(end = 16.dp)
+                            )
+                        }
+                        Column {
+                            Text(text = channel.name, style = MaterialTheme.typography.titleMedium)
+                            Text(text = channel.group, style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }

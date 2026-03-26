@@ -10,6 +10,7 @@ import models.Movie
 import models.Series
 import models.IPTVProfile
 import utils.Logger
+import kotlinx.serialization.json.JsonObject
 
 class XtreamClient(private val client: HttpClient = createHttpClient()) {
 
@@ -31,7 +32,7 @@ class XtreamClient(private val client: HttpClient = createHttpClient()) {
             }
 
             // Proceed with normal authentication
-            val response: Map<String, Any> = client.get("${profile.url}/player_api.php") {
+            val response: JsonObject = client.get("${profile.url}/player_api.php") {
                 parameter("username", profile.username)
                 parameter("password", profile.password)
             }.body()
@@ -79,7 +80,8 @@ class XtreamClient(private val client: HttpClient = createHttpClient()) {
                     streamId = it.stream_id,
                     categoryId = it.category_id,
                     tvArchive = it.tv_archive,
-                    tvArchiveDuration = it.tv_archive_duration
+                    tvArchiveDuration = it.tv_archive_duration,
+                    isAdult = it.category_id?.lowercase()?.contains("xxx") == true || it.category_id?.lowercase()?.contains("adult") == true
                 )
             }
         } catch (e: Exception) {
@@ -120,7 +122,8 @@ class XtreamClient(private val client: HttpClient = createHttpClient()) {
                     cover = it.stream_icon,
                     group = it.category_id ?: "Uncategorized",
                     categoryId = it.category_id,
-                    containerExtension = it.container_extension
+                    containerExtension = it.container_extension,
+                    isAdult = it.category_id?.lowercase()?.contains("xxx") == true || it.category_id?.lowercase()?.contains("adult") == true
                 )
             }
         } catch (e: Exception) {
@@ -160,7 +163,8 @@ class XtreamClient(private val client: HttpClient = createHttpClient()) {
                     cover = it.cover ?: it.stream_icon,
                     group = it.category_id ?: "Uncategorized",
                     categoryId = it.category_id,
-                    seasons = emptyList() // Fetching detailed info would populate this
+                    seasons = emptyList(), // Fetching detailed info would populate this
+                    isAdult = it.category_id?.lowercase()?.contains("xxx") == true || it.category_id?.lowercase()?.contains("adult") == true
                 )
             }
         } catch (e: Exception) {

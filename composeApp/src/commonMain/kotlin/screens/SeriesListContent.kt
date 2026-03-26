@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import models.Series
 import modifiers.tvFocusable
 import components.PinEntryDialog
@@ -59,7 +61,16 @@ fun SeriesListContentList(series: List<Series>, onSeriesSelect: (Series) -> Unit
                         .aspectRatio(0.7f) // approximate poster aspect ratio
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = ser.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(8.dp))
+                        if (!ser.cover.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = ser.cover,
+                                contentDescription = "${ser.name} cover",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(text = ser.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(8.dp))
+                        }
                     }
                 }
             }
