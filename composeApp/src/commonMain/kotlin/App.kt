@@ -16,9 +16,20 @@ import screens.PlayerScreenContent
 import screens.ProfileSelectionScreenContent
 import screens.SettingsScreenContent
 import viewmodel.ProfileViewModel
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 
 @Composable
 fun App() {
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context)
+            .components {
+                add(KtorNetworkFetcherFactory())
+            }
+            .build()
+    }
+
     val navigationState = rememberNavigationState()
     val settingsRepository = remember { SettingsRepository() }
     val profileViewModel = remember { ProfileViewModel(settingsRepository) }

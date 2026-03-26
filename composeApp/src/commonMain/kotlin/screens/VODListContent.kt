@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import models.Movie
 import modifiers.tvFocusable
 import components.PinEntryDialog
@@ -59,7 +61,16 @@ fun VODListContent(movies: List<Movie>, onMovieSelect: (Movie) -> Unit) {
                         .aspectRatio(0.7f) // approximate poster aspect ratio
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = movie.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(8.dp))
+                        if (!movie.cover.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = movie.cover,
+                                contentDescription = "${movie.name} cover",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(text = movie.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(8.dp))
+                        }
                     }
                 }
             }
