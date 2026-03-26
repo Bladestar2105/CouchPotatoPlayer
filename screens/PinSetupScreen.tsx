@@ -92,6 +92,7 @@ const PinSetupScreen = () => {
         onChangeText={(text) => setInputValue(text.replace(/[^0-9]/g, ''))}
         placeholder={setupMode ? "New PIN" : unlockMode ? "PIN Code" : "Current PIN"}
         placeholderTextColor="#888"
+        accessibilityLabel={setupMode ? "New PIN" : unlockMode ? "PIN Code" : "Current PIN"}
         tvFocusable={true}
         autoFocus={!Platform.isTV}
       />
@@ -106,6 +107,7 @@ const PinSetupScreen = () => {
           onChangeText={(text) => setConfirmValue(text.replace(/[^0-9]/g, ''))}
           placeholder={setupMode ? "Confirm PIN" : "New PIN (Optional)"}
           placeholderTextColor="#888"
+          accessibilityLabel={setupMode ? "Confirm PIN" : "New PIN (Optional)"}
           tvFocusable={true}
         />
       )}
