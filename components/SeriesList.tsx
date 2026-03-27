@@ -9,7 +9,10 @@ import { useSettings } from '../context/SettingsContext';
 const defaultLogo = require('../assets/icon.png');
 const POSTER_WIDTH = 120;
 
-const CategoryItem = ({ title, count, isSelected, onPress, onFocus, colors }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any }) => {
+// ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
+// when selecting a new group. The custom comparison function ensures that inline functions like onPress
+// do not trigger re-renders.
+const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, colors }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -29,7 +32,9 @@ const CategoryItem = ({ title, count, isSelected, onPress, onFocus, colors }: { 
             </Text>
         </TouchableOpacity>
     );
-};
+}, (prevProps, nextProps) => {
+    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count;
+});
 
 const SeriesList = () => {
   const { series, isLoading, pin, isAdultUnlocked } = useIPTV();
