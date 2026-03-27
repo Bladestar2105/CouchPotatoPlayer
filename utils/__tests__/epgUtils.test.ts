@@ -1,3 +1,4 @@
+import { describe, test, expect } from "bun:test";
 import { findCurrentProgram, findCurrentProgramIndex } from '../epgUtils';
 import { EPGProgram } from '../../types';
 

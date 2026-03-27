@@ -1,3 +1,4 @@
+import { describe, test, expect } from "bun:test";
 import { _test_parseXMLDate as parseXMLDate } from '../epgParser';
 
 describe('parseXMLDate', () => {

@@ -237,7 +237,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Failed to remove profile", e);
     }
-  }, [profiles, currentProfile, unloadProfile]);
+  }, [profiles, currentProfile]);
 
   const editProfile = useCallback(async (updatedProfile: IPTVProfile) => {
     try {
@@ -312,7 +312,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
          setIsLoading(false);
       }
     }
-  }, [loadM3U, loadXtream]);
+  }, []);
 
   const unloadProfile = useCallback(async () => {
     setCurrentProfile(null);
@@ -465,7 +465,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Logger.error("M3U parsing error:", parseError);
       throw new Error(i18n.t('m3uFormatError'));
     }
-  }, [parseM3U]);
+  }, []);
 
   const parseM3U = useCallback((m3uContent: string): { channels: Channel[], movies: Movie[], series: Series[] } => {
     const lines = m3uContent.split('\n');
@@ -719,7 +719,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Logger.error("Error fetching Xtream streams", sanitizeError(e));
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
-  };
+  }, []);
 
   const getSeriesInfo = useCallback(async (seriesId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;

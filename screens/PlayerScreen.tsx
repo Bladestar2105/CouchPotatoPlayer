@@ -4,6 +4,7 @@ import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler 
 import * as ReactNative from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
+// @ts-ignore
 import { useTVEventHandler } from 'react-native';
 
 // Dynamically require expo-screen-orientation only if not on a TV
