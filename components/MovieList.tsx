@@ -66,7 +66,7 @@ const MovieList = () => {
     }
 
     // ⚡ Bolt: Pre-allocate array and use manual loop instead of .map() for massive datasets
-    const keys = Object.keys(groupMap).sort();
+    const keys = Object.keys(groupMap);
     const result = new Array(keys.length);
     for (let i = 0; i < keys.length; i++) {
       const title = keys[i];

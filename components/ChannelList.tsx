@@ -78,7 +78,7 @@ const LiveTVFlow = () => {
       }
     }
 
-    const titles = Object.keys(groupMap).sort();
+    const titles = Object.keys(groupMap);
     const titlesLen = titles.length;
     const result = new Array(titlesLen);
     for (let i = 0; i < titlesLen; i++) {
