@@ -30,9 +30,14 @@ const server = http.createServer((req, res) => {
       const u = new URL(targetUrl);
       if (u.searchParams.has('username')) u.searchParams.set('username', '***');
       if (u.searchParams.has('password')) u.searchParams.set('password', '***');
+      if (u.username) u.username = '***';
+      if (u.password) u.password = '***';
       console.log('Proxying:', u.toString());
     } catch (e) {
-      console.log('Proxying:', targetUrl.replace(/(username|password)=([^&]+)/gi, '$1=***'));
+      const masked = targetUrl
+        .replace(/:\/\/([^/]+)@/g, '://***@')
+        .replace(/([?&])(username|password)=([^&]*)/gi, '$1$2=***');
+      console.log('Proxying:', masked);
     }
     
     const parsedUrl = url.parse(targetUrl);
@@ -50,7 +55,10 @@ const server = http.createServer((req, res) => {
     
     proxyReq.on('error', (e) => {
       // Prevent logging sensitive credentials via error messages
-      console.error('Proxy error:', e.message.replace(/(username|password)=([^&]+)/gi, '$1=***'));
+      const maskedError = e.message
+        .replace(/:\/\/([^/]+)@/g, '://***@')
+        .replace(/([?&])(username|password)=([^&]*)/gi, '$1$2=***');
+      console.error('Proxy error:', maskedError);
       res.writeHead(500);
       res.end(JSON.stringify({ error: 'Proxy error occurred' }));
     });
