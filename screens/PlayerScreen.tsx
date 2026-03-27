@@ -4,6 +4,7 @@ import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler 
 import * as ReactNative from 'react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useTVEventHandler } from 'react-native';
 
 // Dynamically require expo-screen-orientation only if not on a TV
 let ScreenOrientation: any;
@@ -153,55 +154,44 @@ const PlayerScreen = () => {
     setShowOverlay(prev => !prev);
   };
 
-  // Refactored TVEventHandler to use the hook or direct method
+  const handleTVRemoteEvent = React.useCallback((evt: any) => {
+    if (!isFocused || !evt) return;
+
+    if (evt.eventType === 'menu') {
+      handleBack();
+    } else if (evt.eventType === 'playPause') {
+      setIsPaused(prev => !prev);
+      setShowOverlay(true);
+    } else if (evt.eventType === 'left') {
+      // Very rudimentary seek backward trigger
+      const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
+      setSeekTime(newSeekTime);
+      currentTimeRef.current = newSeekTime;
+      setShowOverlay(true);
+    } else if (evt.eventType === 'right') {
+      // Seek forward
+      const newSeekTime = currentTimeRef.current + 10000;
+      setSeekTime(newSeekTime);
+      currentTimeRef.current = newSeekTime;
+      setShowOverlay(true);
+    } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
+       setShowOverlay(true);
+    }
+  }, [isFocused, handleBack]);
+
+  // Use the standard hook provided by react-native for TV remote events
+  useTVEventHandler(handleTVRemoteEvent);
+
   useEffect(() => {
     if (!isFocused) return;
     
     // On Apple TV, the Menu button sometimes triggers hardwareBackPress
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
-    
-    // We also use TVEventHandler as a fallback for the "menu" event
-    let tvEventHandlerSubscription: any = null;
-    if (Platform.isTV) {
-      const TVEventHandler = (ReactNative as any).TVEventHandler;
-      if (TVEventHandler && typeof TVEventHandler.addListener === 'function') {
-        tvEventHandlerSubscription = TVEventHandler.addListener(function(evt: any) {
-          if (evt) {
-            if (evt.eventType === 'menu') {
-              handleBack();
-            } else if (evt.eventType === 'playPause') {
-              setIsPaused(prev => !prev);
-              setShowOverlay(true);
-            } else if (evt.eventType === 'left') {
-              // Very rudimentary seek backward trigger
-              // We set the seek time based on the current playback time, not previous seek time,
-              // because the video continues playing after a seek.
-              const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
-              setSeekTime(newSeekTime);
-              // Update the ref optimistically so rapid clicks work correctly
-              currentTimeRef.current = newSeekTime;
-              setShowOverlay(true);
-            } else if (evt.eventType === 'right') {
-              // Seek forward
-              const newSeekTime = currentTimeRef.current + 10000;
-              setSeekTime(newSeekTime);
-              currentTimeRef.current = newSeekTime;
-              setShowOverlay(true);
-            } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
-               setShowOverlay(true);
-            }
-          }
-        });
-      }
-    }
 
     return () => {
       backHandler.remove();
-      if (tvEventHandlerSubscription) {
-        tvEventHandlerSubscription.remove();
-      }
     };
-  }, [isFocused, navigation, handleBack]);
+  }, [isFocused, handleBack]);
 
   return (
     <View style={styles.container}>
