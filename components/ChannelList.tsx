@@ -99,7 +99,7 @@ const LiveTVFlow = () => {
      if (selectedGroup) {
          const currentChannels = groups.find(g => g.title === selectedGroup)?.data || [];
          if (currentChannels.length > 0) {
-            const playingInGroup = currentChannels.find(c => c.id === currentStream?.id);
+            const playingInGroup = currentChannels.find((c: any) => c.id === currentStream?.id);
             if (playingInGroup) {
                  setFocusedChannelId(playingInGroup.id);
             } else {
