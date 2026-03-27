@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from 'bcryptjs';
@@ -35,12 +35,21 @@ const EPG_STORAGE_KEY_PREFIX = 'IPTV_EPG_';
 const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
- * Sanitizes a URL by removing sensitive query parameters (username, password)
- */
-
-/**
  * Sanitizes error objects to prevent leaking sensitive URLs in logs
  */
+const sanitizeUrl = (urlStr: string): string => {
+  if (!urlStr) return urlStr;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.searchParams.has('username')) parsed.searchParams.set('username', '***');
+    if (parsed.searchParams.has('password')) parsed.searchParams.set('password', '***');
+    return parsed.toString();
+  } catch (e) {
+    // Fallback if URL parsing fails (e.g. invalid URL or partial path)
+    return urlStr.replace(/(username|password)=([^&]+)/gi, '$1=***');
+  }
+};
+
 const sanitizeError = (e: any): any => {
   if (!e) return e;
   if (typeof e === 'string') return sanitizeUrl(e);
@@ -56,19 +65,6 @@ const sanitizeError = (e: any): any => {
   return e;
 };
 
-const sanitizeUrl = (urlStr: string): string => {
-  if (!urlStr) return urlStr;
-  try {
-    const parsed = new URL(urlStr);
-    if (parsed.searchParams.has('username')) parsed.searchParams.set('username', '***');
-    if (parsed.searchParams.has('password')) parsed.searchParams.set('password', '***');
-    return parsed.toString();
-  } catch (e) {
-    // Fallback if URL parsing fails (e.g. invalid URL or partial path)
-    return urlStr.replace(/(username|password)=([^&]+)/gi, '$1=***');
-  }
-};
-
 /**
  * Decode Base64 string if needed (Flutter migration)
  * Xtream EPG sometimes returns base64-encoded titles
@@ -82,7 +78,7 @@ const decodeBase64IfNeeded = (text: string): string => {
       if (Platform.OS === 'web') {
         const decoded = atob(text);
         // Check if it's valid UTF-8
-        if (!decoded.includes('�')) {
+        if (!decoded.includes('')) {
           return decoded;
         }
       }
@@ -142,331 +138,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
-  useEffect(() => {
-    const loadDataFromStorage = async () => {
-      try {
-        const profilesJson = await AsyncStorage.getItem(PROFILES_STORAGE_KEY);
-        let loadedProfiles: IPTVProfile[] = [];
-        if (profilesJson) {
-          try {
-            loadedProfiles = JSON.parse(profilesJson);
-            setProfiles(loadedProfiles);
-          } catch (parseError) {
-            console.error("Profile data corrupted, cleaning up...", parseError);
-            await AsyncStorage.removeItem(PROFILES_STORAGE_KEY);
-            setProfiles([]);
-          }
-        }
-
-        const currentProfileId = await AsyncStorage.getItem(CURRENT_PROFILE_STORAGE_KEY);
-        if (currentProfileId && loadedProfiles.length > 0) {
-          const profileToLoad = loadedProfiles.find(p => p.id === currentProfileId);
-          if (profileToLoad) {
-            loadProfile(profileToLoad);
-          }
-        }
-
-        const favoritesJson = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
-        if (favoritesJson) {
-          try {
-            const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
-            setFavorites(storedFavorites);
-          } catch (parseError) {
-             console.error("Favorites data corrupted, cleaning up...", parseError);
-             await AsyncStorage.removeItem(FAVORITES_STORAGE_KEY);
-             setFavorites([]);
-          }
-        }
-
-        const recentlyWatchedJson = await AsyncStorage.getItem(RECENTLY_WATCHED_KEY);
-        if (recentlyWatchedJson) {
-          try {
-            const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
-            setRecentlyWatched(storedRecents);
-          } catch (parseError) {
-            console.error("Recently watched data corrupted, cleaning up...", parseError);
-            await AsyncStorage.removeItem(RECENTLY_WATCHED_KEY);
-            setRecentlyWatched([]);
-          }
-        }
-
-        const storedPin = await AsyncStorage.getItem(PIN_STORAGE_KEY);
-        if (storedPin) {
-           setPin(storedPin);
-        }
-
-        const lockedJson = await AsyncStorage.getItem(LOCKED_CHANNELS_KEY);
-        if (lockedJson) {
-          try {
-            const storedLocked: string[] = JSON.parse(lockedJson);
-            setLockedChannels(storedLocked);
-          } catch (parseError) {
-            console.error("Locked channels data corrupted, cleaning up...", parseError);
-            await AsyncStorage.removeItem(LOCKED_CHANNELS_KEY);
-            setLockedChannels([]);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load data from storage", e);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-    loadDataFromStorage();
-  }, []);
-
-  const addProfile = async (profile: IPTVProfile) => {
-    try {
-      const newProfiles = [...profiles, profile];
-      setProfiles(newProfiles);
-      await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles));
-    } catch (e) {
-      console.error("Failed to save profile", e);
-    }
-  };
-
-  const removeProfile = async (id: string) => {
-    try {
-      const newProfiles = profiles.filter(profile => profile.id !== id);
-      setProfiles(newProfiles);
-      await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles));
-      if (currentProfile?.id === id) {
-        unloadProfile();
-      }
-    } catch (e) {
-      console.error("Failed to remove profile", e);
-    }
-  };
-
-  const editProfile = async (updatedProfile: IPTVProfile) => {
-    try {
-      const newProfiles = profiles.map(profile =>
-        profile.id === updatedProfile.id ? updatedProfile : profile
-      );
-      setProfiles(newProfiles);
-      await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles));
-
-      if (currentProfile?.id === updatedProfile.id) {
-        setCurrentProfile(updatedProfile);
-      }
-    } catch (e) {
-      console.error("Failed to edit profile", e);
-    }
-  };
-
-  const loadProfile = async (profile: IPTVProfile, forceUpdate: boolean = false) => {
-    if (!forceUpdate) {
-        setIsLoading(true);
-        setError(null);
-        setChannels([]);
-        setMovies([]);
-        setSeries([]);
-        setEpg({});
-    } else {
-        setIsUpdating(true);
-    }
-
-    try {
-      // SSRF mitigation: validate URL starts with http:// or https://
-      const isValidUrl = (url: string) => /^https?:\/\//i.test(url.trim());
-
-      if (profile.type === 'm3u') {
-        if (!isValidUrl(profile.url)) {
-          throw new Error('Invalid URL. M3U URL must start with http:// or https://');
-        }
-        await loadM3U(profile.url.trim().replace(/\/+$/, ''));
-      }
-      else if (profile.type === 'xtream') {
-        const serverUrl = profile.url || (profile as any).serverUrl;
-        if (!isValidUrl(serverUrl)) {
-          throw new Error('Invalid URL. Xtream server URL must start with http:// or https://');
-        }
-        await loadXtream(profile, forceUpdate);
-      }
-      else if (profile.type === 'stalker') {
-        console.warn(i18n.t('stalkerNotImplemented'));
-      }
-      setCurrentProfile(profile);
-      await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
-    } catch (e: any) {
-      console.error("Failed to load profile:", sanitizeError(e));
-      // Safely display specific, translated errors without leaking raw e.message
-      const errorMsg = e?.message;
-      if (errorMsg === i18n.t('corsError') ||
-          errorMsg === i18n.t('connectionFailed') ||
-          errorMsg === i18n.t('loadStreamsError') ||
-          errorMsg === i18n.t('authFailed') ||
-          errorMsg === i18n.t('m3uDownloadError') ||
-          errorMsg === i18n.t('m3uEmptyError') ||
-          errorMsg === i18n.t('m3uFormatError') ||
-          errorMsg?.startsWith('Invalid URL')) {
-        setError(errorMsg);
-      } else {
-        setError(i18n.t('unknownError'));
-      }
-    } finally {
-      if (forceUpdate) {
-         setIsUpdating(false);
-      } else {
-         setIsLoading(false);
-      }
-    }
-  };
-
-  const unloadProfile = async () => {
-    setCurrentProfile(null);
-    setChannels([]);
-    setMovies([]);
-    setSeries([]);
-    setEpg({});
-    setError(null);
-    setCurrentStream(null);
-    await AsyncStorage.removeItem(CURRENT_PROFILE_STORAGE_KEY);
-  };
-
-  const loadEPG = async () => {
-    if (!currentProfile) return;
-
-    Logger.log('[EPG] Starting EPG load...');
-    const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
-
-    try {
-      // 1. Try to load from cache
-      let cachedEpgStr: string | null = null;
-      if (Platform.OS === 'web') {
-        cachedEpgStr = await AsyncStorage.getItem(storageKey);
-      } else {
-        const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
-        const file = new File(cacheDir, `${storageKey}.json`);
-        try {
-          if (file.exists) {
-            cachedEpgStr = await file.text();
-          }
-        } catch (e) {
-          // File does not exist or cannot be read
-        }
-      }
-
-      if (cachedEpgStr) {
-
-        const cachedEpg = JSON.parse(cachedEpgStr);
-        if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
-          // Re-hydrate Date objects
-          Logger.log('[EPG] Using cached EPG data');
-          const hydratedEpg: Record<string, EPGProgram[]> = {};
-          for (const channelId in cachedEpg.data) {
-            hydratedEpg[channelId] = cachedEpg.data[channelId].map((p: any) => ({
-              ...p,
-              start: new Date(p.start),
-              end: new Date(p.end),
-            }));
-          }
-          setEpg(hydratedEpg);
-          return;
-        }
-      }
-
-      // 2. Fetch fresh EPG
-      let epgUrl = '';
-      if (currentProfile.type === 'm3u' && currentProfile.epgUrl) {
-         epgUrl = currentProfile.epgUrl;
-      } else if (currentProfile.type === 'xtream') {
-        const { url: serverUrlProp, username, password } = currentProfile;
-        const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
-        if (!serverUrl) throw new Error("Server URL is missing from profile");
-        const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
-        epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
-      }
-
-      if (epgUrl) {
-        // SSRF mitigation: validate URL starts with http:// or https://
-        if (!/^https?:\/\//i.test(epgUrl.trim())) {
-          console.error('[EPG] Invalid EPG URL scheme. Must start with http:// or https://');
-          return;
-        }
-
-        Logger.log('[EPG] Fetching EPG from:', epgUrl);
-        
-        // Use CORS proxy for fetching EPG
-        const response = await fetchWithProxy(epgUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch EPG: ${response.status}`);
-        }
-        
-        const xmlData = await response.text();
-        Logger.log('[EPG] Received XML data, length:', xmlData.length);
-        
-        // Ensure that fast-xml-parser parses dates as string
-        // Parse the XML data
-        const epgData = parseXMLTVFromString(xmlData);
-        Logger.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
-        
-        const newEpg: Record<string, EPGProgram[]> = {};
-        for (const channelId in epgData) {
-          newEpg[channelId] = epgData[channelId].map((p: any) => ({
-            // Use cryptographically secure UUID if available, fallback for older environments
-            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(),
-            channelId: p.channelId,
-            title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
-            description: decodeBase64IfNeeded(p.description || ''),
-            start: p.start,
-            end: p.end,
-          }));
-        }
-        setEpg(newEpg);
-        Logger.log('[EPG] EPG loaded successfully');
-
-        const epgCacheData = JSON.stringify({
-          timestamp: Date.now(),
-          data: newEpg
-        });
-
-        if (Platform.OS === 'web') {
-          try {
-            await AsyncStorage.setItem(storageKey, epgCacheData);
-          } catch (storageError: any) {
-             console.warn('[EPG] Failed to save EPG to AsyncStorage (likely QuotaExceededError on web)', storageError);
-          }
-        } else {
-          const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
-          const file = new File(cacheDir, `${storageKey}.json`);
-          await file.write(epgCacheData);
-        }
-      } else {
-        Logger.log('[EPG] No EPG URL available');
-      }
-    } catch (e) {
-      console.error("[EPG] Failed to load EPG", sanitizeError(e));
-    }
-  };
-
-  const loadM3U = async (url: string) => {
-    let m3uContent = '';
-    try {
-      const response = await fetchWithProxy(url);
-      if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
-      m3uContent = await response.text();
-    } catch (fetchError: any) {
-      console.error("Network error fetching M3U:", sanitizeError(fetchError));
-      throw new Error(fetchError.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('m3uDownloadError'));
-    }
-
-    try {
-      const { channels, movies, series } = parseM3U(m3uContent);
-      setChannels(channels);
-      setMovies(movies);
-      setSeries(series);
-
-      if (channels.length === 0 && movies.length === 0 && series.length === 0) {
-        throw new Error(i18n.t('m3uEmptyError'));
-      }
-    } catch (parseError: any) {
-      console.error("M3U parsing error:", parseError);
-      throw new Error(i18n.t('m3uFormatError'));
-    }
-  };
-
-  const parseM3U = (m3uContent: string): { channels: Channel[], movies: Movie[], series: Series[] } => {
+  // Define helpers first
+  const parseM3U = useCallback((m3uContent: string): { channels: Channel[], movies: Movie[], series: Series[] } => {
     const lines = m3uContent.split('\n');
     const channels: Channel[] = [];
     const movies: Movie[] = [];
@@ -530,9 +203,35 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const series = Array.from(seriesMap.values());
     return { channels, movies, series };
-  };
+  }, []);
 
-  const loadXtream = async (profile: IPTVProfile, forceUpdate: boolean = false) => {
+  const loadM3U = useCallback(async (url: string) => {
+    let m3uContent = '';
+    try {
+      const response = await fetchWithProxy(url);
+      if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
+      m3uContent = await response.text();
+    } catch (fetchError: any) {
+      console.error("Network error fetching M3U:", sanitizeError(fetchError));
+      throw new Error(fetchError.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('m3uDownloadError'));
+    }
+
+    try {
+      const { channels, movies, series } = parseM3U(m3uContent);
+      setChannels(channels);
+      setMovies(movies);
+      setSeries(series);
+
+      if (channels.length === 0 && movies.length === 0 && series.length === 0) {
+        throw new Error(i18n.t('m3uEmptyError'));
+      }
+    } catch (parseError: any) {
+      console.error("M3U parsing error:", parseError);
+      throw new Error(i18n.t('m3uFormatError'));
+    }
+  }, [parseM3U]);
+
+  const loadXtream = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {
     if (profile.type !== 'xtream') return;
 
     const cacheKey = `XTREAM_CACHE_${profile.id}`;
@@ -568,7 +267,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const { url: serverUrlProp, username, password } = profile;
-    const serverUrl = serverUrlProp || (profile as any).serverUrl;
+    const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
     if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const baseUrl = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
@@ -718,9 +417,307 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error fetching Xtream streams", sanitizeError(e));
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
-  };
+  }, [currentProfile]);
 
-  const getSeriesInfo = async (seriesId: string): Promise<any> => {
+  const loadProfile = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {
+    if (!forceUpdate) {
+        setIsLoading(true);
+        setError(null);
+        setChannels([]);
+        setMovies([]);
+        setSeries([]);
+        setEpg({});
+    } else {
+        setIsUpdating(true);
+    }
+
+    try {
+      // SSRF mitigation: validate URL starts with http:// or https://
+      const isValidUrl = (url: string) => /^https?:\/\//i.test(url.trim());
+
+      if (profile.type === 'm3u') {
+        if (!isValidUrl(profile.url)) {
+          throw new Error('Invalid URL. M3U URL must start with http:// or https://');
+        }
+        await loadM3U(profile.url.trim().replace(/\/+$/, ''));
+      }
+      else if (profile.type === 'xtream') {
+        const serverUrl = profile.url || (profile as any).serverUrl;
+        if (!isValidUrl(serverUrl)) {
+          throw new Error('Invalid URL. Xtream server URL must start with http:// or https://');
+        }
+        await loadXtream(profile, forceUpdate);
+      }
+      else if (profile.type === 'stalker') {
+        console.warn(i18n.t('stalkerNotImplemented'));
+      }
+      setCurrentProfile(profile);
+      await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
+    } catch (e: any) {
+      console.error("Failed to load profile:", sanitizeError(e));
+      // Safely display specific, translated errors without leaking raw e.message
+      const errorMsg = e?.message;
+      if (errorMsg === i18n.t('corsError') ||
+          errorMsg === i18n.t('connectionFailed') ||
+          errorMsg === i18n.t('loadStreamsError') ||
+          errorMsg === i18n.t('authFailed') ||
+          errorMsg === i18n.t('m3uDownloadError') ||
+          errorMsg === i18n.t('m3uEmptyError') ||
+          errorMsg === i18n.t('m3uFormatError') ||
+          errorMsg?.startsWith('Invalid URL')) {
+        setError(errorMsg);
+      } else {
+        setError(i18n.t('unknownError'));
+      }
+    } finally {
+      if (forceUpdate) {
+         setIsUpdating(false);
+      } else {
+         setIsLoading(false);
+      }
+    }
+  }, [loadM3U, loadXtream]);
+
+  const unloadProfile = useCallback(async () => {
+    setCurrentProfile(null);
+    setChannels([]);
+    setMovies([]);
+    setSeries([]);
+    setEpg({});
+    setError(null);
+    setCurrentStream(null);
+    await AsyncStorage.removeItem(CURRENT_PROFILE_STORAGE_KEY);
+  }, []);
+
+  const addProfile = useCallback(async (profile: IPTVProfile) => {
+    try {
+      const newProfiles = [...profiles, profile];
+      setProfiles(newProfiles);
+      await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles));
+    } catch (e) {
+      console.error("Failed to save profile", e);
+    }
+  }, [profiles]);
+
+  const removeProfile = useCallback(async (id: string) => {
+    try {
+      const newProfiles = profiles.filter(profile => profile.id !== id);
+      setProfiles(newProfiles);
+      await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles));
+      if (currentProfile?.id === id) {
+        unloadProfile();
+      }
+    } catch (e) {
+      console.error("Failed to remove profile", e);
+    }
+  }, [profiles, currentProfile, unloadProfile]);
+
+  const editProfile = useCallback(async (updatedProfile: IPTVProfile) => {
+    try {
+      const newProfiles = profiles.map(profile =>
+        profile.id === updatedProfile.id ? updatedProfile : profile
+      );
+      setProfiles(newProfiles);
+      await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles));
+
+      if (currentProfile?.id === updatedProfile.id) {
+        setCurrentProfile(updatedProfile);
+      }
+    } catch (e) {
+      console.error("Failed to edit profile", e);
+    }
+  }, [profiles, currentProfile]);
+
+  useEffect(() => {
+    const loadDataFromStorage = async () => {
+      try {
+        const profilesJson = await AsyncStorage.getItem(PROFILES_STORAGE_KEY);
+        let loadedProfiles: IPTVProfile[] = [];
+        if (profilesJson) {
+          try {
+            loadedProfiles = JSON.parse(profilesJson);
+            setProfiles(loadedProfiles);
+          } catch (parseError) {
+            console.error("Profile data corrupted, cleaning up...", parseError);
+            await AsyncStorage.removeItem(PROFILES_STORAGE_KEY);
+            setProfiles([]);
+          }
+        }
+
+        const currentProfileId = await AsyncStorage.getItem(CURRENT_PROFILE_STORAGE_KEY);
+        if (currentProfileId && loadedProfiles.length > 0) {
+          const profileToLoad = loadedProfiles.find(p => p.id === currentProfileId);
+          if (profileToLoad) {
+            loadProfile(profileToLoad);
+          }
+        }
+
+        const favoritesJson = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
+        if (favoritesJson) {
+          try {
+            const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
+            setFavorites(storedFavorites);
+          } catch (parseError) {
+             console.error("Favorites data corrupted, cleaning up...", parseError);
+             await AsyncStorage.removeItem(FAVORITES_STORAGE_KEY);
+             setFavorites([]);
+          }
+        }
+
+        const recentlyWatchedJson = await AsyncStorage.getItem(RECENTLY_WATCHED_KEY);
+        if (recentlyWatchedJson) {
+          try {
+            const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
+            setRecentlyWatched(storedRecents);
+          } catch (parseError) {
+            console.error("Recently watched data corrupted, cleaning up...", parseError);
+            await AsyncStorage.removeItem(RECENTLY_WATCHED_KEY);
+            setRecentlyWatched([]);
+          }
+        }
+
+        const storedPin = await AsyncStorage.getItem(PIN_STORAGE_KEY);
+        if (storedPin) {
+           setPin(storedPin);
+        }
+
+        const lockedJson = await AsyncStorage.getItem(LOCKED_CHANNELS_KEY);
+        if (lockedJson) {
+          try {
+            const storedLocked: string[] = JSON.parse(lockedJson);
+            setLockedChannels(storedLocked);
+          } catch (parseError) {
+            console.error("Locked channels data corrupted, cleaning up...", parseError);
+            await AsyncStorage.removeItem(LOCKED_CHANNELS_KEY);
+            setLockedChannels([]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load data from storage", e);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    loadDataFromStorage();
+  }, [loadProfile]);
+
+  const loadEPG = useCallback(async () => {
+    if (!currentProfile) return;
+
+    Logger.log('[EPG] Starting EPG load...');
+    const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
+
+    try {
+      // 1. Try to load from cache
+      let cachedEpgStr: string | null = null;
+      if (Platform.OS === 'web') {
+        cachedEpgStr = await AsyncStorage.getItem(storageKey);
+      } else {
+        const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+        const file = new File(cacheDir, `${storageKey}.json`);
+        try {
+          if (file.exists) {
+            cachedEpgStr = await file.text();
+          }
+        } catch (e) {
+          // File does not exist or cannot be read
+        }
+      }
+
+      if (cachedEpgStr) {
+
+        const cachedEpg = JSON.parse(cachedEpgStr);
+        if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
+          // Re-hydrate Date objects
+          Logger.log('[EPG] Using cached EPG data');
+          const hydratedEpg: Record<string, EPGProgram[]> = {};
+          for (const channelId in cachedEpg.data) {
+            hydratedEpg[channelId] = cachedEpg.data[channelId].map((p: any) => ({
+              ...p,
+              start: new Date(p.start),
+              end: new Date(p.end),
+            }));
+          }
+          setEpg(hydratedEpg);
+          return;
+        }
+      }
+
+      // 2. Fetch fresh EPG
+      let epgUrl = '';
+      if (currentProfile.type === 'm3u' && currentProfile.epgUrl) {
+         epgUrl = currentProfile.epgUrl;
+      } else if (currentProfile.type === 'xtream') {
+        const { url: serverUrlProp, username, password } = currentProfile;
+        const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
+        if (!serverUrl) throw new Error("Server URL is missing from profile");
+        const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
+        epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
+      }
+
+      if (epgUrl) {
+        // SSRF mitigation: validate URL starts with http:// or https://
+        if (!/^https?:\/\//i.test(epgUrl.trim())) {
+          console.error('[EPG] Invalid EPG URL scheme. Must start with http:// or https://');
+          return;
+        }
+
+        Logger.log('[EPG] Fetching EPG from:', epgUrl);
+
+        // Use CORS proxy for fetching EPG
+        const response = await fetchWithProxy(epgUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch EPG: ${response.status}`);
+        }
+
+        const xmlData = await response.text();
+        Logger.log('[EPG] Received XML data, length:', xmlData.length);
+
+        // Ensure that fast-xml-parser parses dates as string
+        // Parse the XML data
+        const epgData = parseXMLTVFromString(xmlData);
+        Logger.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
+
+        const newEpg: Record<string, EPGProgram[]> = {};
+        for (const channelId in epgData) {
+          newEpg[channelId] = epgData[channelId].map((p: any) => ({
+            // Use cryptographically secure UUID if available, fallback for older environments
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(),
+            channelId: p.channelId,
+            title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
+            description: decodeBase64IfNeeded(p.description || ''),
+            start: p.start,
+            end: p.end,
+          }));
+        }
+        setEpg(newEpg);
+        Logger.log('[EPG] EPG loaded successfully');
+
+        const epgCacheData = JSON.stringify({
+          timestamp: Date.now(),
+          data: newEpg
+        });
+
+        if (Platform.OS === 'web') {
+          try {
+            await AsyncStorage.setItem(storageKey, epgCacheData);
+          } catch (storageError: any) {
+             console.warn('[EPG] Failed to save EPG to AsyncStorage (likely QuotaExceededError on web)', storageError);
+          }
+        } else {
+          const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+          const file = new File(cacheDir, `${storageKey}.json`);
+          await file.write(epgCacheData);
+        }
+      } else {
+        Logger.log('[EPG] No EPG URL available');
+      }
+    } catch (e) {
+      console.error("[EPG] Failed to load EPG", sanitizeError(e));
+    }
+  }, [currentProfile]);
+
+  const getSeriesInfo = useCallback(async (seriesId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;
     const { url: serverUrlProp, username, password } = currentProfile;
     const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
@@ -736,9 +733,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Failed to get series info:", sanitizeError(e));
     }
     return null;
-  };
+  }, [currentProfile]);
 
-  const getVodInfo = async (vodId: string): Promise<any> => {
+  const getVodInfo = useCallback(async (vodId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;
     const { url: serverUrlProp, username, password } = currentProfile;
     const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
@@ -754,14 +751,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Failed to get VOD info:", sanitizeError(e));
     }
     return null;
-  };
+  }, [currentProfile]);
 
-  const playStream = (stream: { url: string; id: string; }) => {
+  const playStream = useCallback((stream: { url: string; id: string; }) => {
     setCurrentStream(stream);
-  };
+  }, []);
 
   // --- Favorites with full metadata (Flutter migration) ---
-  const addFavorite = async (item: FavoriteItem) => {
+  const addFavorite = useCallback(async (item: FavoriteItem) => {
     try {
       if (!favorites.some(f => f.id === item.id && f.type === item.type)) {
         const newFavorites = [item, ...favorites];
@@ -771,9 +768,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Error adding to favorites", e);
     }
-  };
+  }, [favorites]);
 
-  const removeFavorite = async (id: string) => {
+  const removeFavorite = useCallback(async (id: string) => {
     try {
       const newFavorites = favorites.filter(favItem => favItem.id !== id);
       setFavorites(newFavorites);
@@ -781,14 +778,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Error removing from favorites", e);
     }
-  };
+  }, [favorites]);
 
-  const isFavorite = (id: string) => {
+  const isFavorite = useCallback((id: string) => {
     return favorites.some(f => f.id === id);
-  };
+  }, [favorites]);
 
   // --- Recently Watched with progress (Flutter migration) ---
-  const addRecentlyWatched = async (item: RecentlyWatchedItem) => {
+  const addRecentlyWatched = useCallback(async (item: RecentlyWatchedItem) => {
     try {
       // Remove existing entry for this item
       const filtered = recentlyWatched.filter(r => !(r.id === item.id && r.type === item.type));
@@ -798,9 +795,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Error adding to recently watched", e);
     }
-  };
+  }, [recentlyWatched]);
 
-  const updatePlaybackPosition = async (id: string, position: number, duration?: number) => {
+  const updatePlaybackPosition = useCallback(async (id: string, position: number, duration?: number) => {
     try {
       const index = recentlyWatched.findIndex(r => r.id === id);
       if (index >= 0) {
@@ -817,9 +814,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Error updating playback position", e);
     }
-  };
+  }, [recentlyWatched]);
 
-  const removeRecentlyWatched = async (id: string) => {
+  const removeRecentlyWatched = useCallback(async (id: string) => {
     try {
       const newRecents = recentlyWatched.filter(r => r.id !== id);
       setRecentlyWatched(newRecents);
@@ -827,10 +824,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Error removing from recently watched", e);
     }
-  };
+  }, [recentlyWatched]);
 
   // --- Channel Lock/Unlock (Flutter migration) ---
-  const lockChannel = async (id: string) => {
+  const lockChannel = useCallback(async (id: string) => {
     try {
       if (!lockedChannels.includes(id)) {
         const newLocked = [...lockedChannels, id];
@@ -840,9 +837,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Error locking channel", e);
     }
-  };
+  }, [lockedChannels]);
 
-  const unlockChannel = async (id: string) => {
+  const unlockChannel = useCallback(async (id: string) => {
     try {
       if (lockedChannels.includes(id)) {
         const newLocked = lockedChannels.filter(chId => chId !== id);
@@ -852,14 +849,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Error unlocking channel", e);
     }
-  };
+  }, [lockedChannels]);
 
-  const isChannelLocked = (id: string) => {
+  const isChannelLocked = useCallback((id: string) => {
     return lockedChannels.includes(id);
-  };
+  }, [lockedChannels]);
 
   // --- PIN Management ---
-  const setPinCode = async (newPin: string | null) => {
+  const setPinCode = useCallback(async (newPin: string | null) => {
     try {
        if (newPin) {
           const salt = bcrypt.genSaltSync(10);
@@ -874,22 +871,22 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
        console.error("Error configuring PIN code", e);
     }
-  };
+  }, []);
 
-  const unlockAdultContent = (pinInput: string) => {
+  const unlockAdultContent = useCallback((pinInput: string) => {
      if (pin && bcrypt.compareSync(pinInput, pin)) {
         setIsAdultUnlocked(true);
         return true;
      }
      return false;
-  };
+  }, [pin]);
 
-  const lockAdultContent = () => {
+  const lockAdultContent = useCallback(() => {
      setIsAdultUnlocked(false);
-  };
+  }, []);
 
   // --- Catchup/Archive Support ---
-  const getCatchupUrl = (channel: Channel, startTime: Date, endTime: Date): string | null => {
+  const getCatchupUrl = useCallback((channel: Channel, startTime: Date, endTime: Date): string | null => {
     if (!currentProfile || currentProfile.type !== 'xtream') {
       return null;
     }
@@ -902,58 +899,100 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       xtreamProfile.username,
       xtreamProfile.password || ''
     );
-  };
+  }, [currentProfile]);
 
-  const hasCatchup = (channel: Channel): boolean => {
+  const hasCatchup = useCallback((channel: Channel): boolean => {
     return hasCatchupSupport(channel);
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    isInitializing,
+    profiles,
+    currentProfile,
+    channels,
+    movies,
+    series,
+    currentStream,
+    favorites,
+    recentlyWatched,
+    pin,
+    isAdultUnlocked,
+    isLoading,
+    error,
+    addProfile,
+    removeProfile,
+    editProfile,
+    loadProfile,
+    unloadProfile,
+    setCurrentProfile,
+    playStream,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+    addRecentlyWatched,
+    updatePlaybackPosition,
+    removeRecentlyWatched,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    epg,
+    loadEPG,
+    getSeriesInfo,
+    getVodInfo,
+    lockedChannels,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+    getCatchupUrl,
+    hasCatchup,
+    isUpdating,
+    setIsUpdating,
+  }), [
+    isInitializing,
+    profiles,
+    currentProfile,
+    channels,
+    movies,
+    series,
+    currentStream,
+    favorites,
+    recentlyWatched,
+    pin,
+    isAdultUnlocked,
+    isLoading,
+    error,
+    addProfile,
+    removeProfile,
+    editProfile,
+    loadProfile,
+    unloadProfile,
+    setCurrentProfile,
+    playStream,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+    addRecentlyWatched,
+    updatePlaybackPosition,
+    removeRecentlyWatched,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    epg,
+    loadEPG,
+    getSeriesInfo,
+    getVodInfo,
+    lockedChannels,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+    getCatchupUrl,
+    hasCatchup,
+    isUpdating,
+    setIsUpdating,
+  ]);
 
   return (
-    <IPTVContext.Provider
-      value={{
-        isInitializing,
-        profiles,
-        currentProfile,
-        channels,
-        movies,
-        series,
-        currentStream,
-        favorites,
-        recentlyWatched,
-        pin,
-        isAdultUnlocked,
-        isLoading,
-        error,
-        addProfile,
-        removeProfile,
-        editProfile,
-        loadProfile,
-        unloadProfile,
-        setCurrentProfile,
-        playStream,
-        addFavorite,
-        removeFavorite,
-        isFavorite,
-        addRecentlyWatched,
-        updatePlaybackPosition,
-        removeRecentlyWatched,
-        setPinCode,
-        unlockAdultContent,
-        lockAdultContent,
-        epg,
-        loadEPG,
-        getSeriesInfo,
-        getVodInfo,
-        lockedChannels,
-        lockChannel,
-        unlockChannel,
-        isChannelLocked,
-        getCatchupUrl,
-        hasCatchup,
-        isUpdating,
-        setIsUpdating,
-      }}
-    >
+    <IPTVContext.Provider value={contextValue}>
       {children}
     </IPTVContext.Provider>
   );
