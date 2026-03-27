@@ -153,6 +153,7 @@ const PlayerScreen = () => {
     setShowOverlay(prev => !prev);
   };
 
+  // Refactored TVEventHandler to use the hook or direct method
   useEffect(() => {
     if (!isFocused) return;
     
@@ -160,45 +161,44 @@ const PlayerScreen = () => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
     
     // We also use TVEventHandler as a fallback for the "menu" event
-    let tvEventHandler: any = null;
+    let tvEventHandlerSubscription: any = null;
     if (Platform.isTV) {
-      const TVEventHandlerClass = (ReactNative as any).TVEventHandler;
-      if (TVEventHandlerClass) {
-        tvEventHandler = new TVEventHandlerClass();
-        tvEventHandler.enable(null, function(cmp: any, evt: any) {
+      const TVEventHandler = (ReactNative as any).TVEventHandler;
+      if (TVEventHandler && typeof TVEventHandler.addListener === 'function') {
+        tvEventHandlerSubscription = TVEventHandler.addListener(function(evt: any) {
           if (evt) {
             if (evt.eventType === 'menu') {
               handleBack();
             } else if (evt.eventType === 'playPause') {
-            setIsPaused(prev => !prev);
-            setShowOverlay(true);
-          } else if (evt.eventType === 'left') {
-            // Very rudimentary seek backward trigger
-            // We set the seek time based on the current playback time, not previous seek time,
-            // because the video continues playing after a seek.
-            const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
-            setSeekTime(newSeekTime);
-            // Update the ref optimistically so rapid clicks work correctly
-            currentTimeRef.current = newSeekTime;
-            setShowOverlay(true);
-          } else if (evt.eventType === 'right') {
-            // Seek forward
-            const newSeekTime = currentTimeRef.current + 10000;
-            setSeekTime(newSeekTime);
-            currentTimeRef.current = newSeekTime;
-            setShowOverlay(true);
-          } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
-             setShowOverlay(true);
+              setIsPaused(prev => !prev);
+              setShowOverlay(true);
+            } else if (evt.eventType === 'left') {
+              // Very rudimentary seek backward trigger
+              // We set the seek time based on the current playback time, not previous seek time,
+              // because the video continues playing after a seek.
+              const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
+              setSeekTime(newSeekTime);
+              // Update the ref optimistically so rapid clicks work correctly
+              currentTimeRef.current = newSeekTime;
+              setShowOverlay(true);
+            } else if (evt.eventType === 'right') {
+              // Seek forward
+              const newSeekTime = currentTimeRef.current + 10000;
+              setSeekTime(newSeekTime);
+              currentTimeRef.current = newSeekTime;
+              setShowOverlay(true);
+            } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
+               setShowOverlay(true);
+            }
           }
-        }
-      });
+        });
       }
     }
 
     return () => {
       backHandler.remove();
-      if (tvEventHandler) {
-        tvEventHandler.disable();
+      if (tvEventHandlerSubscription) {
+        tvEventHandlerSubscription.remove();
       }
     };
   }, [isFocused, navigation, handleBack]);
