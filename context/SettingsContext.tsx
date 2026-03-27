@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Logger from '../utils/logger';
 
 export type ThemeMode = 'dark' | 'oled' | 'light';
 
@@ -87,7 +88,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setBufferSizeState(parseInt(storedBuffer, 10));
         }
       } catch (e) {
-        console.error('Failed to load settings', e);
+        Logger.error('Failed to load settings', e);
       } finally {
         setIsReady(true);
       }
@@ -100,7 +101,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       await AsyncStorage.setItem('app_theme_mode', mode);
     } catch (e) {
-      console.error('Failed to save theme mode', e);
+      Logger.error('Failed to save theme mode', e);
     }
   };
 
@@ -109,7 +110,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       await AsyncStorage.setItem('app_buffer_size', size.toString());
     } catch (e) {
-      console.error('Failed to save buffer size', e);
+      Logger.error('Failed to save buffer size', e);
     }
   };
 

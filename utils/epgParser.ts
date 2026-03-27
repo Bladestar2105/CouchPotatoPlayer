@@ -71,7 +71,7 @@ export const parseXMLTVFromString = (xmlData: string): Record<string, ParsedProg
     return epgData;
 
   } catch (error) {
-    console.error("[EPG Parser] Error parsing XMLTV:", error);
+    Logger.error("[EPG Parser] Error parsing XMLTV:", error);
     return epgData;
   }
 };
@@ -89,7 +89,7 @@ export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProg
     const xmlData = await response.text();
     return parseXMLTVFromString(xmlData);
   } catch (error) {
-    console.error("Error fetching/parsing XMLTV:", error);
+    Logger.error("Error fetching/parsing XMLTV:", error);
     return {};
   }
 };
