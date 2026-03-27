@@ -176,7 +176,8 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
           alignItems: 'center',
         }
       ]}
-      accessibilityRole="button"
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
       accessibilityLabel={label}
     >
       <Icon name={icon} size={Platform.isTV ? 40 : 24} color={isActive || isFocused ? '#FFF' : '#888'} style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} />

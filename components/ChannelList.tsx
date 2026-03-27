@@ -23,7 +23,8 @@ const CategoryItem = ({ title, isSelected, onPress, colors }: { title: string, i
             onPress={onPress}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            accessibilityRole="button"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`Select category ${title}`}
         >
             <Text style={{ color: isSelected || isFocused ? '#FFF' : '#AAA', fontWeight: isSelected || isFocused ? 'bold' : 'normal', fontSize: Platform.isTV ? 16 : 16 }}>
