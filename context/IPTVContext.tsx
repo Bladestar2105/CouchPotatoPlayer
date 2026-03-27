@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from 'bcryptjs';
@@ -213,9 +213,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     loadDataFromStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addProfile = async (profile: IPTVProfile) => {
+  const addProfile = useCallback(async (profile: IPTVProfile) => {
     try {
       const newProfiles = [...profiles, profile];
       setProfiles(newProfiles);
@@ -223,9 +224,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Failed to save profile", e);
     }
-  };
+  }, [profiles]);
 
-  const removeProfile = async (id: string) => {
+  const removeProfile = useCallback(async (id: string) => {
     try {
       const newProfiles = profiles.filter(profile => profile.id !== id);
       setProfiles(newProfiles);
@@ -236,9 +237,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Failed to remove profile", e);
     }
-  };
+  }, [profiles, currentProfile, unloadProfile]);
 
-  const editProfile = async (updatedProfile: IPTVProfile) => {
+  const editProfile = useCallback(async (updatedProfile: IPTVProfile) => {
     try {
       const newProfiles = profiles.map(profile =>
         profile.id === updatedProfile.id ? updatedProfile : profile
@@ -252,9 +253,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Failed to edit profile", e);
     }
-  };
+  }, [profiles, currentProfile]);
 
-  const loadProfile = async (profile: IPTVProfile, forceUpdate: boolean = false) => {
+  const loadProfile = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {
     if (!forceUpdate) {
         setIsLoading(true);
         setError(null);
@@ -311,9 +312,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
          setIsLoading(false);
       }
     }
-  };
+  }, [loadM3U, loadXtream]);
 
-  const unloadProfile = async () => {
+  const unloadProfile = useCallback(async () => {
     setCurrentProfile(null);
     setChannels([]);
     setMovies([]);
@@ -322,9 +323,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     setCurrentStream(null);
     await AsyncStorage.removeItem(CURRENT_PROFILE_STORAGE_KEY);
-  };
+  }, []);
 
-  const loadEPG = async () => {
+  const loadEPG = useCallback(async () => {
     if (!currentProfile) return;
 
     Logger.log('[EPG] Starting EPG load...');
@@ -386,21 +387,21 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         Logger.log('[EPG] Fetching EPG from:', epgUrl);
-        
+
         // Use CORS proxy for fetching EPG
         const response = await fetchWithProxy(epgUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch EPG: ${response.status}`);
         }
-        
+
         const xmlData = await response.text();
         Logger.log('[EPG] Received XML data, length:', xmlData.length);
-        
+
         // Ensure that fast-xml-parser parses dates as string
         // Parse the XML data
         const epgData = parseXMLTVFromString(xmlData);
         Logger.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
-        
+
         const newEpg: Record<string, EPGProgram[]> = {};
         for (const channelId in epgData) {
           newEpg[channelId] = epgData[channelId].map((p: any) => ({
@@ -438,9 +439,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("[EPG] Failed to load EPG", sanitizeError(e));
     }
-  };
+  }, [currentProfile]);
 
-  const loadM3U = async (url: string) => {
+  const loadM3U = useCallback(async (url: string) => {
     let m3uContent = '';
     try {
       const response = await fetchWithProxy(url);
@@ -464,9 +465,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Logger.error("M3U parsing error:", parseError);
       throw new Error(i18n.t('m3uFormatError'));
     }
-  };
+  }, [parseM3U]);
 
-  const parseM3U = (m3uContent: string): { channels: Channel[], movies: Movie[], series: Series[] } => {
+  const parseM3U = useCallback((m3uContent: string): { channels: Channel[], movies: Movie[], series: Series[] } => {
     const lines = m3uContent.split('\n');
     const channels: Channel[] = [];
     const movies: Movie[] = [];
@@ -530,9 +531,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const series = Array.from(seriesMap.values());
     return { channels, movies, series };
-  };
+  }, []);
 
-  const loadXtream = async (profile: IPTVProfile, forceUpdate: boolean = false) => {
+  const loadXtream = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {
     if (profile.type !== 'xtream') return;
 
     const cacheKey = `XTREAM_CACHE_${profile.id}`;
@@ -720,7 +721,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const getSeriesInfo = async (seriesId: string): Promise<any> => {
+  const getSeriesInfo = useCallback(async (seriesId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;
     const { url: serverUrlProp, username, password } = currentProfile;
     const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
@@ -736,9 +737,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Logger.error("Failed to get series info:", sanitizeError(e));
     }
     return null;
-  };
+  }, [currentProfile]);
 
-  const getVodInfo = async (vodId: string): Promise<any> => {
+  const getVodInfo = useCallback(async (vodId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;
     const { url: serverUrlProp, username, password } = currentProfile;
     const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
@@ -754,14 +755,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Logger.error("Failed to get VOD info:", sanitizeError(e));
     }
     return null;
-  };
+  }, [currentProfile]);
 
-  const playStream = (stream: { url: string; id: string; }) => {
+  const playStream = useCallback((stream: { url: string; id: string; }) => {
     setCurrentStream(stream);
-  };
+  }, []);
 
   // --- Favorites with full metadata (Flutter migration) ---
-  const addFavorite = async (item: FavoriteItem) => {
+  const addFavorite = useCallback(async (item: FavoriteItem) => {
     try {
       if (!favorites.some(f => f.id === item.id && f.type === item.type)) {
         const newFavorites = [item, ...favorites];
@@ -771,9 +772,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error adding to favorites", e);
     }
-  };
+  }, [favorites]);
 
-  const removeFavorite = async (id: string) => {
+  const removeFavorite = useCallback(async (id: string) => {
     try {
       const newFavorites = favorites.filter(favItem => favItem.id !== id);
       setFavorites(newFavorites);
@@ -781,14 +782,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error removing from favorites", e);
     }
-  };
+  }, [favorites]);
 
-  const isFavorite = (id: string) => {
+  const isFavorite = useCallback((id: string) => {
     return favorites.some(f => f.id === id);
-  };
+  }, [favorites]);
 
   // --- Recently Watched with progress (Flutter migration) ---
-  const addRecentlyWatched = async (item: RecentlyWatchedItem) => {
+  const addRecentlyWatched = useCallback(async (item: RecentlyWatchedItem) => {
     try {
       // Remove existing entry for this item
       const filtered = recentlyWatched.filter(r => !(r.id === item.id && r.type === item.type));
@@ -798,9 +799,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error adding to recently watched", e);
     }
-  };
+  }, [recentlyWatched]);
 
-  const updatePlaybackPosition = async (id: string, position: number, duration?: number) => {
+  const updatePlaybackPosition = useCallback(async (id: string, position: number, duration?: number) => {
     try {
       const index = recentlyWatched.findIndex(r => r.id === id);
       if (index >= 0) {
@@ -817,9 +818,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error updating playback position", e);
     }
-  };
+  }, [recentlyWatched]);
 
-  const removeRecentlyWatched = async (id: string) => {
+  const removeRecentlyWatched = useCallback(async (id: string) => {
     try {
       const newRecents = recentlyWatched.filter(r => r.id !== id);
       setRecentlyWatched(newRecents);
@@ -827,10 +828,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error removing from recently watched", e);
     }
-  };
+  }, [recentlyWatched]);
 
   // --- Channel Lock/Unlock (Flutter migration) ---
-  const lockChannel = async (id: string) => {
+  const lockChannel = useCallback(async (id: string) => {
     try {
       if (!lockedChannels.includes(id)) {
         const newLocked = [...lockedChannels, id];
@@ -840,9 +841,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error locking channel", e);
     }
-  };
+  }, [lockedChannels]);
 
-  const unlockChannel = async (id: string) => {
+  const unlockChannel = useCallback(async (id: string) => {
     try {
       if (lockedChannels.includes(id)) {
         const newLocked = lockedChannels.filter(chId => chId !== id);
@@ -852,14 +853,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error unlocking channel", e);
     }
-  };
+  }, [lockedChannels]);
 
-  const isChannelLocked = (id: string) => {
+  const isChannelLocked = useCallback((id: string) => {
     return lockedChannels.includes(id);
-  };
+  }, [lockedChannels]);
 
   // --- PIN Management ---
-  const setPinCode = async (newPin: string | null) => {
+  const setPinCode = useCallback(async (newPin: string | null) => {
     try {
        if (newPin) {
           const salt = bcrypt.genSaltSync(10);
@@ -874,22 +875,22 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
        Logger.error("Error configuring PIN code", e);
     }
-  };
+  }, []);
 
-  const unlockAdultContent = (pinInput: string) => {
+  const unlockAdultContent = useCallback((pinInput: string) => {
      if (pin && bcrypt.compareSync(pinInput, pin)) {
         setIsAdultUnlocked(true);
         return true;
      }
      return false;
-  };
+  }, [pin]);
 
-  const lockAdultContent = () => {
+  const lockAdultContent = useCallback(() => {
      setIsAdultUnlocked(false);
-  };
+  }, []);
 
   // --- Catchup/Archive Support ---
-  const getCatchupUrl = (channel: Channel, startTime: Date, endTime: Date): string | null => {
+  const getCatchupUrl = useCallback((channel: Channel, startTime: Date, endTime: Date): string | null => {
     if (!currentProfile || currentProfile.type !== 'xtream') {
       return null;
     }
@@ -902,58 +903,100 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       xtreamProfile.username,
       xtreamProfile.password || ''
     );
-  };
+  }, [currentProfile]);
 
-  const hasCatchup = (channel: Channel): boolean => {
+  const hasCatchup = useCallback((channel: Channel): boolean => {
     return hasCatchupSupport(channel);
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    isInitializing,
+    profiles,
+    currentProfile,
+    channels,
+    movies,
+    series,
+    currentStream,
+    favorites,
+    recentlyWatched,
+    pin,
+    isAdultUnlocked,
+    isLoading,
+    error,
+    addProfile,
+    removeProfile,
+    editProfile,
+    loadProfile,
+    unloadProfile,
+    setCurrentProfile,
+    playStream,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+    addRecentlyWatched,
+    updatePlaybackPosition,
+    removeRecentlyWatched,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    epg,
+    loadEPG,
+    getSeriesInfo,
+    getVodInfo,
+    lockedChannels,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+    getCatchupUrl,
+    hasCatchup,
+    isUpdating,
+    setIsUpdating,
+  }), [
+    isInitializing,
+    profiles,
+    currentProfile,
+    channels,
+    movies,
+    series,
+    currentStream,
+    favorites,
+    recentlyWatched,
+    pin,
+    isAdultUnlocked,
+    isLoading,
+    error,
+    addProfile,
+    removeProfile,
+    editProfile,
+    loadProfile,
+    unloadProfile,
+    setCurrentProfile,
+    playStream,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+    addRecentlyWatched,
+    updatePlaybackPosition,
+    removeRecentlyWatched,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    epg,
+    loadEPG,
+    getSeriesInfo,
+    getVodInfo,
+    lockedChannels,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+    getCatchupUrl,
+    hasCatchup,
+    isUpdating,
+    setIsUpdating,
+  ]);
 
   return (
-    <IPTVContext.Provider
-      value={{
-        isInitializing,
-        profiles,
-        currentProfile,
-        channels,
-        movies,
-        series,
-        currentStream,
-        favorites,
-        recentlyWatched,
-        pin,
-        isAdultUnlocked,
-        isLoading,
-        error,
-        addProfile,
-        removeProfile,
-        editProfile,
-        loadProfile,
-        unloadProfile,
-        setCurrentProfile,
-        playStream,
-        addFavorite,
-        removeFavorite,
-        isFavorite,
-        addRecentlyWatched,
-        updatePlaybackPosition,
-        removeRecentlyWatched,
-        setPinCode,
-        unlockAdultContent,
-        lockAdultContent,
-        epg,
-        loadEPG,
-        getSeriesInfo,
-        getVodInfo,
-        lockedChannels,
-        lockChannel,
-        unlockChannel,
-        isChannelLocked,
-        getCatchupUrl,
-        hasCatchup,
-        isUpdating,
-        setIsUpdating,
-      }}
-    >
+    <IPTVContext.Provider value={contextValue}>
       {children}
     </IPTVContext.Provider>
   );
