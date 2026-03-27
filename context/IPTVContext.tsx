@@ -37,6 +37,25 @@ const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 /**
  * Sanitizes a URL by removing sensitive query parameters (username, password)
  */
+
+/**
+ * Sanitizes error objects to prevent leaking sensitive URLs in logs
+ */
+const sanitizeError = (e: any): any => {
+  if (!e) return e;
+  if (typeof e === 'string') return sanitizeUrl(e);
+  if (e instanceof Error) {
+    const sanitized = new Error(sanitizeUrl(e.message));
+    sanitized.stack = e.stack ? sanitizeUrl(e.stack) : undefined;
+    sanitized.name = e.name;
+    return sanitized;
+  }
+  if (typeof e === 'object' && e.message) {
+    return { ...e, message: sanitizeUrl(e.message) };
+  }
+  return e;
+};
+
 const sanitizeUrl = (urlStr: string): string => {
   if (!urlStr) return urlStr;
   try {
@@ -270,7 +289,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentProfile(profile);
       await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
     } catch (e: any) {
-      console.error("Failed to load profile:", e);
+      console.error("Failed to load profile:", sanitizeError(e));
       // Safely display specific, translated errors without leaking raw e.message
       const errorMsg = e?.message;
       if (errorMsg === i18n.t('corsError') ||
@@ -417,7 +436,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         Logger.log('[EPG] No EPG URL available');
       }
     } catch (e) {
-      console.error("[EPG] Failed to load EPG", e);
+      console.error("[EPG] Failed to load EPG", sanitizeError(e));
     }
   };
 
@@ -428,7 +447,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
       m3uContent = await response.text();
     } catch (fetchError: any) {
-      console.error("Network error fetching M3U:", fetchError);
+      console.error("Network error fetching M3U:", sanitizeError(fetchError));
       throw new Error(fetchError.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('m3uDownloadError'));
     }
 
@@ -576,7 +595,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } catch (e: any) {
-      console.error("Network error during Xtream auth:", e);
+      console.error("Network error during Xtream auth:", sanitizeError(e));
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('connectionFailed'));
     }
 
@@ -696,7 +715,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
     } catch (e: any) {
-      console.error("Error fetching Xtream streams", e);
+      console.error("Error fetching Xtream streams", sanitizeError(e));
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
   };
@@ -714,7 +733,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return await response.json();
       }
     } catch (e) {
-      console.error("Failed to get series info:", e);
+      console.error("Failed to get series info:", sanitizeError(e));
     }
     return null;
   };
@@ -732,7 +751,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return await response.json();
       }
     } catch (e) {
-      console.error("Failed to get VOD info:", e);
+      console.error("Failed to get VOD info:", sanitizeError(e));
     }
     return null;
   };
