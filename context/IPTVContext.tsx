@@ -152,7 +152,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             loadedProfiles = JSON.parse(profilesJson);
             setProfiles(loadedProfiles);
           } catch (parseError) {
-            console.error("Profile data corrupted, cleaning up...", parseError);
+            Logger.error("Profile data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(PROFILES_STORAGE_KEY);
             setProfiles([]);
           }
@@ -172,7 +172,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
             setFavorites(storedFavorites);
           } catch (parseError) {
-             console.error("Favorites data corrupted, cleaning up...", parseError);
+             Logger.error("Favorites data corrupted, cleaning up...", parseError);
              await AsyncStorage.removeItem(FAVORITES_STORAGE_KEY);
              setFavorites([]);
           }
@@ -184,7 +184,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
             setRecentlyWatched(storedRecents);
           } catch (parseError) {
-            console.error("Recently watched data corrupted, cleaning up...", parseError);
+            Logger.error("Recently watched data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(RECENTLY_WATCHED_KEY);
             setRecentlyWatched([]);
           }
@@ -201,13 +201,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const storedLocked: string[] = JSON.parse(lockedJson);
             setLockedChannels(storedLocked);
           } catch (parseError) {
-            console.error("Locked channels data corrupted, cleaning up...", parseError);
+            Logger.error("Locked channels data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(LOCKED_CHANNELS_KEY);
             setLockedChannels([]);
           }
         }
       } catch (e) {
-        console.error("Failed to load data from storage", e);
+        Logger.error("Failed to load data from storage", e);
       } finally {
         setIsInitializing(false);
       }
@@ -221,7 +221,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfiles(newProfiles);
       await AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles));
     } catch (e) {
-      console.error("Failed to save profile", e);
+      Logger.error("Failed to save profile", e);
     }
   };
 
@@ -234,7 +234,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unloadProfile();
       }
     } catch (e) {
-      console.error("Failed to remove profile", e);
+      Logger.error("Failed to remove profile", e);
     }
   };
 
@@ -250,7 +250,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentProfile(updatedProfile);
       }
     } catch (e) {
-      console.error("Failed to edit profile", e);
+      Logger.error("Failed to edit profile", e);
     }
   };
 
@@ -289,7 +289,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentProfile(profile);
       await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
     } catch (e: any) {
-      console.error("Failed to load profile:", sanitizeError(e));
+      Logger.error("Failed to load profile:", sanitizeError(e));
       // Safely display specific, translated errors without leaking raw e.message
       const errorMsg = e?.message;
       if (errorMsg === i18n.t('corsError') ||
@@ -381,7 +381,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (epgUrl) {
         // SSRF mitigation: validate URL starts with http:// or https://
         if (!/^https?:\/\//i.test(epgUrl.trim())) {
-          console.error('[EPG] Invalid EPG URL scheme. Must start with http:// or https://');
+          Logger.error('[EPG] Invalid EPG URL scheme. Must start with http:// or https://');
           return;
         }
 
@@ -436,7 +436,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         Logger.log('[EPG] No EPG URL available');
       }
     } catch (e) {
-      console.error("[EPG] Failed to load EPG", sanitizeError(e));
+      Logger.error("[EPG] Failed to load EPG", sanitizeError(e));
     }
   };
 
@@ -447,7 +447,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
       m3uContent = await response.text();
     } catch (fetchError: any) {
-      console.error("Network error fetching M3U:", sanitizeError(fetchError));
+      Logger.error("Network error fetching M3U:", sanitizeError(fetchError));
       throw new Error(fetchError.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('m3uDownloadError'));
     }
 
@@ -461,7 +461,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(i18n.t('m3uEmptyError'));
       }
     } catch (parseError: any) {
-      console.error("M3U parsing error:", parseError);
+      Logger.error("M3U parsing error:", parseError);
       throw new Error(i18n.t('m3uFormatError'));
     }
   };
@@ -563,7 +563,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return; // Exit early if loaded from cache
             }
         } catch (e) {
-            console.error("Failed to read Xtream cache", e);
+            Logger.error("Failed to read Xtream cache", e);
         }
     }
 
@@ -595,7 +595,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } catch (e: any) {
-      console.error("Network error during Xtream auth:", sanitizeError(e));
+      Logger.error("Network error during Xtream auth:", sanitizeError(e));
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('connectionFailed'));
     }
 
@@ -711,11 +711,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await file.write(cacheDataStr);
           }
       } catch (e) {
-          console.error("Failed to save Xtream cache", e);
+          Logger.error("Failed to save Xtream cache", e);
       }
 
     } catch (e: any) {
-      console.error("Error fetching Xtream streams", sanitizeError(e));
+      Logger.error("Error fetching Xtream streams", sanitizeError(e));
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
   };
@@ -733,7 +733,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return await response.json();
       }
     } catch (e) {
-      console.error("Failed to get series info:", sanitizeError(e));
+      Logger.error("Failed to get series info:", sanitizeError(e));
     }
     return null;
   };
@@ -751,7 +751,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return await response.json();
       }
     } catch (e) {
-      console.error("Failed to get VOD info:", sanitizeError(e));
+      Logger.error("Failed to get VOD info:", sanitizeError(e));
     }
     return null;
   };
@@ -769,7 +769,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavorites));
       }
     } catch (e) {
-      console.error("Error adding to favorites", e);
+      Logger.error("Error adding to favorites", e);
     }
   };
 
@@ -779,7 +779,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFavorites(newFavorites);
       await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavorites));
     } catch (e) {
-      console.error("Error removing from favorites", e);
+      Logger.error("Error removing from favorites", e);
     }
   };
 
@@ -796,7 +796,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRecentlyWatched(newRecents);
       await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(newRecents));
     } catch (e) {
-      console.error("Error adding to recently watched", e);
+      Logger.error("Error adding to recently watched", e);
     }
   };
 
@@ -815,7 +815,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(recentlyWatched));
       }
     } catch (e) {
-      console.error("Error updating playback position", e);
+      Logger.error("Error updating playback position", e);
     }
   };
 
@@ -825,7 +825,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRecentlyWatched(newRecents);
       await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(newRecents));
     } catch (e) {
-      console.error("Error removing from recently watched", e);
+      Logger.error("Error removing from recently watched", e);
     }
   };
 
@@ -838,7 +838,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await AsyncStorage.setItem(LOCKED_CHANNELS_KEY, JSON.stringify(newLocked));
       }
     } catch (e) {
-      console.error("Error locking channel", e);
+      Logger.error("Error locking channel", e);
     }
   };
 
@@ -850,7 +850,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await AsyncStorage.setItem(LOCKED_CHANNELS_KEY, JSON.stringify(newLocked));
       }
     } catch (e) {
-      console.error("Error unlocking channel", e);
+      Logger.error("Error unlocking channel", e);
     }
   };
 
@@ -872,7 +872,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAdultUnlocked(false);
        }
     } catch (e) {
-       console.error("Error configuring PIN code", e);
+       Logger.error("Error configuring PIN code", e);
     }
   };
 
