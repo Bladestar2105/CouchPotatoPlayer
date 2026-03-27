@@ -11,7 +11,10 @@ import EpgTimeline from './EpgTimeline';
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');
 
-const CategoryItem = ({ title, isSelected, onPress, colors }: { title: string, isSelected: boolean, onPress: () => void, colors: any }) => {
+// ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
+// when selecting a new group. The custom comparison function ensures that inline functions like onPress
+// do not trigger re-renders.
+const CategoryItem = React.memo(({ title, isSelected, onPress, colors }: { title: string, isSelected: boolean, onPress: () => void, colors: any }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -31,7 +34,9 @@ const CategoryItem = ({ title, isSelected, onPress, colors }: { title: string, i
             </Text>
         </TouchableOpacity>
     );
-};
+}, (prevProps, nextProps) => {
+    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected;
+});
 
 const LiveTVFlow = () => {
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
