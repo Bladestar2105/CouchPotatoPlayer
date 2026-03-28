@@ -37,6 +37,8 @@
     "plugins": [
       "./plugins/withPatchThirdPartyFabricComponents",
       "./plugins/withTVOSNativeEventEmitterPatch",
+      "./plugins/withFixHermescPath",
+      "./plugins/withFixSwiftImports",
       "@react-native-tvos/config-tv",
       "expo-asset",
       "react-native-vlc-media-player",
