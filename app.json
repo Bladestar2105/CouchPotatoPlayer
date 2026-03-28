@@ -41,6 +41,7 @@
       "./plugins/withFixSwiftImports",
       "@react-native-tvos/config-tv",
       "expo-asset",
+      "expo-video",
       "react-native-vlc-media-player",
       "react-native-video",
       [
