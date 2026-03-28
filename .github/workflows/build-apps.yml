@@ -33,11 +33,10 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Fix hermesc permissions (pnpm strips execute bit)
         run: |
-          HERMESC=$(find node_modules -path "*/hermes-compiler/*/hermesc" -type f 2>/dev/null | head -1)
-          if [ -n "$HERMESC" ]; then
-            chmod +x "$HERMESC"
-            echo "Fixed permissions on $HERMESC"
-          fi
+          find node_modules -name "hermesc" -type f 2>/dev/null | while read f; do
+            chmod +x "$f"
+            echo "Fixed permissions on $f"
+          done
       - name: Prebuild Android
         run: npx expo prebuild --platform android
       - name: Configure Gradle Memory

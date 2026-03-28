@@ -66,5 +66,19 @@
     "babel-preset-expo": "56.0.0-canary-20260305-5163746",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "ios": {
+        "exclude": [
+          "expo-av"
+        ]
+      },
+      "android": {
+        "exclude": [
+          "expo-av"
+        ]
+      }
+    }
+  }
 }
