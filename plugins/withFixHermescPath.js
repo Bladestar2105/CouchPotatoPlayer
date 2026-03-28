@@ -6,8 +6,11 @@
  * `react-native/sdks/hermesc/<platform>/hermesc`.
  *
  * The react-native-gradle-plugin's detectOSAwareHermesCommand() still looks
- * for the old path. This plugin patches android/app/build.gradle to explicitly
- * set `react.hermesCommand` to point to the hermes-compiler package binary.
+ * for hermesc at `react-native/sdks/hermesc/%OS-BIN%/hermesc`.
+ *
+ * This plugin creates symlinks at the expected location pointing to the
+ * actual hermesc binaries in the hermes-compiler package, and ensures
+ * they have execute permissions.
  */
 const { withDangerousMod } = require('expo/config-plugins');
 const fs = require('fs');
@@ -17,68 +20,60 @@ module.exports = function withFixHermescPath(config) {
   return withDangerousMod(config, [
     'android',
     async (config) => {
-      const buildGradlePath = path.join(
-        config.modRequest.platformProjectRoot,
-        'app',
-        'build.gradle'
-      );
-
-      if (!fs.existsSync(buildGradlePath)) {
-        console.warn('[withFixHermescPath] build.gradle not found, skipping patch');
-        return config;
-      }
-
-      let contents = fs.readFileSync(buildGradlePath, 'utf-8');
-
-      // Resolve the hermes-compiler package directory at prebuild time
-      let hermescDir;
+      // Find the react-native package directory
+      let rnDir;
       try {
-        const hermescPkgJson = require.resolve('hermes-compiler/package.json');
-        hermescDir = path.dirname(hermescPkgJson);
+        rnDir = path.dirname(require.resolve('react-native/package.json'));
       } catch (e) {
-        console.warn('[withFixHermescPath] hermes-compiler not found, skipping');
+        console.warn('[withFixHermescPath] react-native package not found, skipping');
         return config;
       }
 
-      // Determine the correct OS-specific binary path
-      const linuxBin = path.join(hermescDir, 'hermesc', 'linux64-bin', 'hermesc');
-      const osxBin = path.join(hermescDir, 'hermesc', 'osx-bin', 'hermesc');
+      // Find the hermes-compiler package directory
+      let hermescPkgDir;
+      try {
+        hermescPkgDir = path.dirname(require.resolve('hermes-compiler/package.json'));
+      } catch (e) {
+        console.warn('[withFixHermescPath] hermes-compiler package not found, skipping');
+        return config;
+      }
 
-      // Make both binaries executable
-      for (const bin of [linuxBin, osxBin]) {
-        if (fs.existsSync(bin)) {
-          fs.chmodSync(bin, 0o755);
-          console.log(`[withFixHermescPath] chmod +x ${bin}`);
+      const sdksDir = path.join(rnDir, 'sdks', 'hermesc');
+      const platforms = ['linux64-bin', 'osx-bin', 'win64-bin'];
+
+      for (const platform of platforms) {
+        const srcBin = path.join(hermescPkgDir, 'hermesc', platform, 'hermesc');
+        const targetDir = path.join(sdksDir, platform);
+        const targetBin = path.join(targetDir, 'hermesc');
+
+        if (!fs.existsSync(srcBin)) {
+          continue;
+        }
+
+        // Ensure target directory exists
+        fs.mkdirSync(targetDir, { recursive: true });
+
+        // Create symlink if target doesn't exist
+        if (!fs.existsSync(targetBin)) {
+          try {
+            fs.symlinkSync(srcBin, targetBin);
+            console.log(`[withFixHermescPath] Symlinked ${platform}/hermesc → ${srcBin}`);
+          } catch (e) {
+            // Fallback: copy the binary
+            fs.copyFileSync(srcBin, targetBin);
+            console.log(`[withFixHermescPath] Copied ${platform}/hermesc from ${srcBin}`);
+          }
+        }
+
+        // Ensure execute permission
+        try {
+          fs.chmodSync(targetBin, 0o755);
+          fs.chmodSync(srcBin, 0o755);
+        } catch (e) {
+          // ignore permission errors on Windows
         }
       }
 
-      // Add react.hermesCommand to the react {} block in build.gradle
-      // The react-native gradle plugin reads this property to find hermesc
-      const hermescRelPath = path.relative(
-        config.modRequest.platformProjectRoot,
-        path.join(hermescDir, 'hermesc')
-      );
-
-      const hermesCommandLine = `    hermesCommand = new File(["node", "--print", "require.resolve('hermes-compiler/package.json')"].execute(null, rootDir).text.trim()).parentFile.absolutePath + "/hermesc/%OS-BIN%/hermesc"`;
-
-      // Check if react {} block already has hermesCommand
-      if (contents.includes('hermesCommand')) {
-        // Replace existing hermesCommand
-        contents = contents.replace(
-          /hermesCommand\s*=\s*.*/,
-          hermesCommandLine.trim()
-        );
-        console.log('[withFixHermescPath] Updated existing hermesCommand in build.gradle');
-      } else {
-        // Insert hermesCommand into the react {} block
-        contents = contents.replace(
-          /react\s*\{/,
-          `react {\n${hermesCommandLine}`
-        );
-        console.log('[withFixHermescPath] Added hermesCommand to react {} block in build.gradle');
-      }
-
-      fs.writeFileSync(buildGradlePath, contents, 'utf-8');
       return config;
     },
   ]);
