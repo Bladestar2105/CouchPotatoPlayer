@@ -42,6 +42,7 @@
       "@react-native-tvos/config-tv",
       "expo-asset",
       "react-native-vlc-media-player",
+      "react-native-video",
       [
         "expo-build-properties",
         {
