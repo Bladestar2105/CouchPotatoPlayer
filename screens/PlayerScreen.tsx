@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
 
 
-import VideoPlayer from '../components/VideoPlayer';
+import VideoPlayer, { VideoMetadata } from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 // @ts-ignore
 import { useTVEventHandler } from 'react-native';
@@ -35,6 +35,7 @@ const PlayerScreen = () => {
   const [showOverlay, setShowOverlay] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
 
   // Use a ref for current time to avoid re-triggering the event listener effect
   const currentTimeRef = React.useRef(0);
@@ -118,6 +119,7 @@ const PlayerScreen = () => {
       });
       // Show overlay briefly when channel changes
       setShowOverlay(true);
+      setVideoMetadata(null); // Reset metadata on stream change
     }
   }, [isFocused, currentStream]);
 
@@ -203,6 +205,9 @@ const PlayerScreen = () => {
              // For React Native VLC media player, data.currentTime is usually in milliseconds
              currentTimeRef.current = data.currentTime;
           }}
+          onVideoLoad={(metadata) => {
+             setVideoMetadata(metadata);
+          }}
         />
       </TouchableOpacity>
 
@@ -235,7 +240,16 @@ const PlayerScreen = () => {
 
                      <View style={styles.textContainer}>
                          <View style={styles.headerRow}>
-                            <Text style={styles.channelName}>{currentChannel.name}</Text>
+                            <View style={styles.channelNameContainer}>
+                                <Text style={styles.channelName}>{currentChannel.name}</Text>
+                                {videoMetadata?.width && videoMetadata?.height && (
+                                    <View style={styles.metadataBadge}>
+                                        <Text style={styles.metadataText}>{videoMetadata.width}x{videoMetadata.height}</Text>
+                                        {videoMetadata.fps ? <Text style={styles.metadataText}> • {Math.round(videoMetadata.fps)} FPS</Text> : null}
+                                        {videoMetadata.bitrate ? <Text style={styles.metadataText}> • {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
+                                    </View>
+                                )}
+                            </View>
                             <Text style={styles.timeText}>{timeFormatter.format(new Date())}</Text>
                          </View>
 
@@ -321,10 +335,31 @@ const styles = StyleSheet.create({
       alignItems: 'baseline',
       marginBottom: 8,
   },
+  channelNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
+  },
   channelName: {
     color: '#FFF',
     fontSize: 28,
     fontWeight: 'bold',
+    marginRight: 12,
+  },
+  metadataBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  metadataText: {
+    color: '#DDD',
+    fontSize: 12,
+    fontWeight: '600',
   },
   timeText: {
       color: '#AAA',
