@@ -476,6 +476,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const channels: Channel[] = [];
     const movies: Movie[] = [];
     const seriesMap = new Map<string, Series>();
+    const seasonMaps = new Map<string, Map<number, Season>>();
     let currentItemInfo: { name: string, logo?: string, group: string, tvgId?: string } | null = null;
     const infoRegex = /#EXTINF:[-0-9]+(.*),(.*)/;
     const tvgIdRegex = /tvg-id="([^"]*)"/;
@@ -514,18 +515,19 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (!seriesMap.has(seriesName)) {
             seriesMap.set(seriesName, { id: seriesName, name: seriesName, cover: currentItemInfo.logo, group: currentItemInfo.group, seasons: [] });
+            seasonMaps.set(seriesName, new Map<number, Season>());
           }
           const currentSeries = seriesMap.get(seriesName)!;
+          const currentSeriesSeasonMap = seasonMaps.get(seriesName)!;
 
-          let currentSeason = currentSeries.seasons.find(s => s.seasonNumber === seasonNum);
+          let currentSeason = currentSeriesSeasonMap.get(seasonNum);
           if (!currentSeason) {
             currentSeason = { id: `${seriesName}-S${seasonNum}`, name: `Season ${seasonNum}`, seasonNumber: seasonNum, episodes: [] };
+            currentSeriesSeasonMap.set(seasonNum, currentSeason);
             currentSeries.seasons.push(currentSeason);
-            currentSeries.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
           }
 
           currentSeason.episodes.push({ id: url, name: episodeName, streamUrl: url, episodeNumber: episodeNum });
-          currentSeason.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
 
         } else {
           channels.push({ id: currentItemInfo.tvgId || url, name: currentItemInfo.name, url: url, logo: currentItemInfo.logo, group: currentItemInfo.group, tvgId: currentItemInfo.tvgId });
@@ -534,6 +536,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     const series = Array.from(seriesMap.values());
+    // Sort seasons and episodes after parsing is complete
+    series.forEach(s => {
+      s.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+      s.seasons.forEach(season => {
+        season.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
+      });
+    });
     return { channels, movies, series };
   }, []);
 
