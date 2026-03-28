@@ -784,9 +784,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [favorites]);
 
+  // ⚡ Bolt: Use a derived Set for O(1) favorite lookups instead of O(N) array.some()
+  // This drastically reduces main thread blocking when rendering thousands of channels in EpgTimeline
+  const favoritesSet = useMemo(() => new Set(favorites.map(f => f.id)), [favorites]);
+
   const isFavorite = useCallback((id: string) => {
-    return favorites.some(f => f.id === id);
-  }, [favorites]);
+    return favoritesSet.has(id);
+  }, [favoritesSet]);
 
   // --- Recently Watched with progress (Flutter migration) ---
   const addRecentlyWatched = useCallback(async (item: RecentlyWatchedItem) => {
