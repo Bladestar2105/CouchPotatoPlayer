@@ -62,10 +62,14 @@ const sanitizeUrl = (urlStr: string): string => {
     const parsed = new URL(urlStr);
     if (parsed.searchParams.has('username')) parsed.searchParams.set('username', '***');
     if (parsed.searchParams.has('password')) parsed.searchParams.set('password', '***');
+    if (parsed.username) parsed.username = '***';
+    if (parsed.password) parsed.password = '***';
     return parsed.toString();
   } catch (e) {
     // Fallback if URL parsing fails (e.g. invalid URL or partial path)
-    return urlStr.replace(/(username|password)=([^&]+)/gi, '$1=***');
+    return urlStr
+      .replace(/:\/\/([^/]+)@/g, '://***@')
+      .replace(/(username|password)=([^&]+)/gi, '$1=***');
   }
 };
 
