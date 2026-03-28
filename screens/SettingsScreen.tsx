@@ -15,7 +15,7 @@ import { useSettings, ThemeMode } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Paths, Directory, File } from 'expo-file-system';
+// Removed synchronous Paths/Directory/File imports — using async FileSystem API instead
 
 const SettingsScreen = () => {
   const { currentProfile, profiles, pin, isAdultUnlocked, unlockAdultContent, lockAdultContent, removeProfile, loadProfile, unloadProfile } = useIPTV();
@@ -54,13 +54,18 @@ const SettingsScreen = () => {
                    await AsyncStorage.multiRemove(cacheKeys);
                 }
 
-                // Also clear FileSystem cache
+                // ⚡ Perf: Use asynchronous file system operations to avoid
+                // blocking the JS thread and causing UI stuttering.
                 if (Platform.OS !== 'web') {
-                   const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
-                   const files = cacheDir.list();
-                   const epgFiles = files.filter(f => f instanceof File && f.name.startsWith('IPTV_EPG_') && f.name.endsWith('.json'));
-                   for (const file of epgFiles) {
-                      file.delete();
+                   const cacheDirUri = Platform.isTV
+                     ? FileSystem.cacheDirectory
+                     : FileSystem.documentDirectory;
+                   if (cacheDirUri) {
+                     const files = await FileSystem.readDirectoryAsync(cacheDirUri);
+                     const epgFiles = files.filter(f => f.startsWith('IPTV_EPG_') && f.endsWith('.json'));
+                     await Promise.all(
+                       epgFiles.map(f => FileSystem.deleteAsync(`${cacheDirUri}${f}`, { idempotent: true }))
+                     );
                    }
                 }
                 Alert.alert('Success', 'Cache cleared successfully.');

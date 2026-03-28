@@ -83,14 +83,9 @@ const PlayerScreen = () => {
 
      const currentProgram = channelEpg[currentIdx];
 
-     // Find the truly NEXT program (start time >= current end time)
-     let nextProgram = null;
-     for (let i = currentIdx + 1; i < channelEpg.length; i++) {
-         if (channelEpg[i].start.getTime() >= currentProgram.end.getTime()) {
-             nextProgram = channelEpg[i];
-             break;
-         }
-     }
+     // ⚡ Perf: Since channelEpg is sorted chronologically and currentIdx is known,
+     // the next program is simply the next contiguous element — O(1) instead of O(N).
+     const nextProgram = (currentIdx + 1 < channelEpg.length) ? channelEpg[currentIdx + 1] : null;
 
      const totalDuration = currentProgram.end.getTime() - currentProgram.start.getTime();
      const elapsed = now.getTime() - currentProgram.start.getTime();

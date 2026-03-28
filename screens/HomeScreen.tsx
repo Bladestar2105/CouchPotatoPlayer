@@ -213,8 +213,15 @@ const HomeScreen = () => {
     };
   }, [isFocused]);
 
+  // ⚡ Perf: Once adult content is detected, cache the result to avoid
+  // re-iterating potentially thousands of items on every collection change.
+  const hasAdultContentRef = React.useRef(false);
   const hasAdultContent = React.useMemo(() => {
-    return channels.some(c => c.isAdult) || movies.some(m => m.isAdult) || series.some(s => s.isAdult);
+    // Short-circuit: once we've found adult content, it won't disappear
+    if (hasAdultContentRef.current) return true;
+    const result = channels.some(c => c.isAdult) || movies.some(m => m.isAdult) || series.some(s => s.isAdult);
+    hasAdultContentRef.current = result;
+    return result;
   }, [channels, movies, series]);
 
   React.useEffect(() => {
