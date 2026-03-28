@@ -89,15 +89,29 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
     }
 
     if (playerType === 'native') {
+      // Extract type for react-native-video if stream is specific format
+      // .ts requires explicit type on iOS/tvOS often
+      let sourceType = undefined;
+      const lowerUrl = streamUrl?.toLowerCase() || '';
+      if (lowerUrl.includes('.m3u8')) sourceType = 'm3u8';
+      else if (lowerUrl.includes('.ts')) sourceType = 'ts';
+      else if (lowerUrl.includes('.mp4')) sourceType = 'mp4';
+
       return (
         <NativeVideoComponent
           ref={videoRef}
           key={currentStream?.id}
-          source={{ uri: streamUrl! }}
+          source={{
+            uri: streamUrl!,
+            type: sourceType
+          }}
           paused={paused}
           style={styles.video}
           resizeMode="contain"
           onProgress={onProgress}
+          onError={(error: any) => {
+            console.warn('[NativeVideoComponent] Playback error:', error);
+          }}
           onLoad={(payload: any) => {
             if (onVideoLoad && payload && payload.naturalSize) {
               onVideoLoad({
@@ -119,10 +133,14 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
     }
 
     // VLC Player
+    // The context gives us bufferSize. 32 milliseconds is too low for live streams on 4K.
+    // Ensure we send a meaningful value in milliseconds. If it's single digits or low, it might be meant as Seconds or Megabytes from an older config.
+    // Let's assume minimum 1000ms for safety.
+    const safeVlcBufferSizeMs = Math.max(bufferSize > 100 ? bufferSize : bufferSize * 1000, 1500);
     const vlcInitOptions = [
-      `--network-caching=${bufferSize}`,
-      `--live-caching=${bufferSize}`,
-      `--file-caching=${bufferSize}`,
+      `--network-caching=${safeVlcBufferSizeMs}`,
+      `--live-caching=${safeVlcBufferSizeMs}`,
+      `--file-caching=${safeVlcBufferSizeMs}`,
       vlcHardwareAcceleration ? '--avcodec-hw=any' : '--avcodec-hw=none'
     ];
 

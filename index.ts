@@ -1,3 +1,4 @@
+import '@expo/metro-runtime';
 import { registerRootComponent } from 'expo';
 import bcrypt from 'bcryptjs';
 import * as Crypto from 'expo-crypto';
