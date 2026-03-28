@@ -4,8 +4,9 @@ FROM node:20-alpine AS build
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json and pnpm lockfile
+# Copy package.json, pnpm lockfile, and patches
 COPY package*.json pnpm-lock.yaml ./
+COPY patches/ ./patches/
 
 # Install pnpm
 RUN npm install -g pnpm
