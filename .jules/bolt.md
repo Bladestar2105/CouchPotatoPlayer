@@ -16,3 +16,7 @@
 ## 2024-10-28 - [Avoid toLocaleTimeString in hot render paths]
 **Learning:** `Date.prototype.toLocaleTimeString()` uses the Intl API internally, which comes with significant overhead. Calling it thousands of times within the render cycle of a virtualized list or a dense grid (like an EPG timeline) creates a measurable UI bottleneck and blocks the main thread. A manual formatter loses user's locale formatting (e.g. 12h vs 24h formats).
 **Action:** In high-frequency rendering components that need simple date formatting (like `HH:MM`), instantiate `Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' })` once outside the component and reuse its `.format()` method to safely preserve locale while gaining a massive performance boost.
+
+## 2024-10-29 - [Optimize high-frequency array searches with Sets]
+**Learning:** Using `Array.prototype.some()` inside a hot render path (like `isFavorite` called for every channel rendered in an EPG timeline or list) causes O(N) lookups that block the main thread. With 10,000 channels and 1,000 favorites, this scales terribly and creates severe stuttering.
+**Action:** When a boolean check (like "is this item in a list?") is executed repeatedly during render cycles, convert the source array into a `Set` using `useMemo` (e.g., `new Set(items.map(i => i.id))`). This upgrades the lookup from O(N) to O(1) via `Set.prototype.has()`, drastically improving rendering performance for large lists.
