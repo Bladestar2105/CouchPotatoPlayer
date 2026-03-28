@@ -103,10 +103,7 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
           key={currentStream?.id}
           source={{
             uri: streamUrl!,
-            type: sourceType,
-            headers: {
-              'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
-            }
+            type: sourceType
           }}
           paused={paused}
           style={styles.video}
@@ -126,8 +123,8 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
             }
           }}
           bufferConfig={{
-            minBufferMs: bufferSize * 1000,
-            maxBufferMs: bufferSize * 2000,
+            minBufferMs: Math.max(bufferSize > 100 ? bufferSize : bufferSize * 100, 1500),
+            maxBufferMs: Math.max(bufferSize > 100 ? bufferSize * 2 : bufferSize * 200, 3000),
             bufferForPlaybackMs: 2500,
             bufferForPlaybackAfterRebufferMs: 5000
           }}
