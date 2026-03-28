@@ -135,8 +135,8 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
     // VLC Player
     // The context gives us bufferSize. 32 milliseconds is too low for live streams on 4K.
     // Ensure we send a meaningful value in milliseconds. If it's single digits or low, it might be meant as Seconds or Megabytes from an older config.
-    // Let's assume minimum 1000ms for safety.
-    const safeVlcBufferSizeMs = Math.max(bufferSize > 100 ? bufferSize : bufferSize * 1000, 1500);
+    // Let's assume minimum 1000ms for safety. We map the MB value (e.g., 32) to roughly 100x ms so it's around 3200ms instead of 32 seconds (32000ms) which breaks sync.
+    const safeVlcBufferSizeMs = Math.max(bufferSize > 100 ? bufferSize : bufferSize * 100, 1500);
     const vlcInitOptions = [
       `--network-caching=${safeVlcBufferSizeMs}`,
       `--live-caching=${safeVlcBufferSizeMs}`,
