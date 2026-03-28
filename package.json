@@ -80,5 +80,10 @@
         ]
       }
     }
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@react-native-picker/picker@2.11.1": "patches/@react-native-picker__picker@2.11.1.patch"
+    }
   }
 }

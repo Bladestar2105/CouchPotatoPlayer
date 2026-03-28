@@ -7,12 +7,13 @@ const path = require("path");
  * ExpoModulesProvider.swift (auto-generated) uses `internal import Expo`
  * while AppDelegate.swift uses `import Expo` (implicitly public/internal).
  *
- * The conflict arises because the AppDelegate class and its methods are
- * declared `public`, but when Expo is imported as `internal` elsewhere,
- * Swift 6 requires consistency.
+ * Additionally, SDK 55+ removed `bindReactNativeFactory` — if the committed
+ * AppDelegate.swift still references it, we must remove that call.
  *
  * Fix: change `import Expo` to `internal import Expo` AND remove `public`
  * from the class and method declarations (make them internal to match).
+ * Also remove `bindReactNativeFactory(factory)` if present and update
+ * `@UIApplicationMain` to `@main`.
  */
 module.exports = function withFixSwiftImports(config) {
   return withDangerousMod(config, [
@@ -50,8 +51,17 @@ module.exports = function withFixSwiftImports(config) {
         content = content.replace(/public class AppDelegate/g, "class AppDelegate");
         content = content.replace(/public override func/g, "override func");
 
+        // 5. Remove `bindReactNativeFactory(factory)` (removed in SDK 55+)
+        content = content.replace(/^\s*bindReactNativeFactory\(factory\)\s*\n?/m, "");
+
+        // 6. Replace @UIApplicationMain with @main (Swift 5.3+ / SDK 55+)
+        content = content.replace(/@UIApplicationMain/g, "@main");
+
+        // Avoid double-internal (if prebuild already set internal)
+        content = content.replace(/internal internal import/g, "internal import");
+
         fs.writeFileSync(appDelegatePath, content);
-        console.log("[withFixSwiftImports] Patched AppDelegate.swift: made all imports internal, removed public modifiers");
+        console.log("[withFixSwiftImports] Patched AppDelegate.swift: made all imports internal, removed public modifiers, cleaned up SDK 55+ changes");
       } else {
         console.warn("[withFixSwiftImports] AppDelegate.swift not found at", appDelegatePath);
       }
