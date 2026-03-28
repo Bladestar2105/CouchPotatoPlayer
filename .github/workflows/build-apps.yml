@@ -33,8 +33,9 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Fix hermesc permissions (pnpm strips execute bit)
         run: |
-          find node_modules -name "hermesc" -type f 2>/dev/null | while read f; do
-            chmod +x "$f"
+          # Fix all hermesc binaries everywhere in node_modules (files and symlinks)
+          find node_modules -name "hermesc" 2>/dev/null | while read f; do
+            chmod +x "$f" 2>/dev/null || true
             echo "Fixed permissions on $f"
           done
       - name: Prebuild Android
