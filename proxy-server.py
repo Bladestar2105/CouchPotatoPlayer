@@ -8,7 +8,20 @@ import urllib.request
 import urllib.parse
 import sys
 
+ALLOWED_ORIGINS = [
+    'http://localhost:8081', # Expo web development
+    'http://localhost:8082', # Alternative development port
+    'http://localhost:3000', # Common React dev port
+    'http://localhost'      # Nginx/Docker default
+]
+
 class CORSProxyHandler(BaseHTTPRequestHandler):
+    def get_cors_origin(self):
+        origin = self.headers.get('Origin')
+        if origin in ALLOWED_ORIGINS:
+            return origin
+        return ""
+
     def do_GET(self):
         if self.path.startswith('/proxy/'):
             url = self.path[7:]  # Remove '/proxy/' prefix
@@ -26,9 +39,11 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 req.add_header('User-Agent', 'Mozilla/5.0')
                 with urllib.request.urlopen(req, timeout=30) as response:
                     self.send_response(200)
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    cors_origin = self.get_cors_origin()
+                    if cors_origin:
+                        self.send_header('Access-Control-Allow-Origin', cors_origin)
                     self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-                    self.send_header('Access-Control-Allow-Headers', '*')
+                    self.send_header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range')
                     content_type = response.headers.get('Content-Type', 'application/octet-stream')
                     self.send_header('Content-Type', content_type)
                     self.end_headers()
@@ -44,9 +59,11 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
     
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        cors_origin = self.get_cors_origin()
+        if cors_origin:
+            self.send_header('Access-Control-Allow-Origin', cors_origin)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', '*')
+        self.send_header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range')
         self.end_headers()
     
     def log_message(self, format, *args):
