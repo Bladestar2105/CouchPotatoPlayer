@@ -18,3 +18,7 @@
 ## 2026-03-26 - Added accessibility labels to TextInputs
 **Learning:** Text inputs that rely solely on `placeholder` text or surrounding text elements might not correctly announce their purpose to screen reader users depending on the platform's accessibility implementation (especially across iOS/Android/tvOS). Providing an explicit `accessibilityLabel` ensures the input's purpose is always clearly communicated.
 **Action:** Always add an `accessibilityLabel` to `TextInput` components to explicitly declare their purpose for screen readers, regardless of whether a visible label or placeholder is present.
+
+## 2026-03-28 - Added accessibility roles and labels to list items
+**Learning:** In media applications like CouchPotatoPlayer, list items representing media content (like seasons or episodes) wrapped in `TouchableOpacity` do not automatically declare themselves as buttons to screen readers. This leaves users of assistive technology without context on whether an item is actionable and what action it triggers.
+**Action:** Always add `accessibilityRole="button"`, a descriptive `accessibilityLabel` (e.g., `Episode: ${name}`), and an `accessibilityHint` (e.g., `Plays episode ${name}`) to interactive media list items to provide full context to screen reader users.
