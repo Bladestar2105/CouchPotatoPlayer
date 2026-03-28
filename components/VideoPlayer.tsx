@@ -5,7 +5,7 @@ import { useSettings } from '../context/SettingsContext';
 
 let VideoComponent: any;
 if (Platform.OS === 'web') {
-  VideoComponent = require('expo-av').Video;
+  VideoComponent = require('expo-video').VideoView;
 } else {
   VideoComponent = require('react-native-vlc-media-player').VLCPlayer;
 }
@@ -16,6 +16,49 @@ interface VideoPlayerProps {
   seekPosition?: number;
   onProgress?: (data: { currentTime: number, duration: number }) => void;
 }
+
+// Custom wrapper for expo-video to match the old api temporarily
+const WebVideoPlayer = React.forwardRef(({ source, paused, onProgress, style, ...props }: any, ref) => {
+  const { useVideoPlayer } = require('expo-video');
+  const player = useVideoPlayer(source?.uri || null, (p: any) => {
+    p.loop = false;
+    if (!paused) {
+      p.play();
+    }
+  });
+
+  React.useEffect(() => {
+    if (player) {
+      if (paused) {
+        player.pause();
+      } else {
+        player.play();
+      }
+    }
+  }, [paused, player]);
+
+  React.useImperativeHandle(ref, () => ({
+    seek: (position: number) => {
+      if (player) {
+        player.currentTime = position / 1000;
+      }
+    }
+  }));
+
+  // Simple polling for progress
+  React.useEffect(() => {
+    if (!player || !onProgress) return;
+    const interval = setInterval(() => {
+      if (player.status === 'readyToPlay' || player.status === 'playing') {
+        onProgress({ currentTime: player.currentTime * 1000, duration: player.duration * 1000 });
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [player, onProgress]);
+
+
+  return <VideoComponent player={player} style={style} nativeControls {...props} />;
+});
 
 const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, onProgress }: VideoPlayerProps, ref) => {
   const { currentStream } = useIPTV();
@@ -40,7 +83,7 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
         // We handle exact ms on other platforms but stick to what the underlying player allows.
         // Since we don't have total duration here, passing absolute ms directly works on Android,
         // but for iOS it might need proper mapping. For now, try passing ms directly.
-        videoRef.current.seek(position / 1000); // converting ms to seconds as a safer bet or fallback depending on exact fork
+        videoRef.current.seek(Platform.OS === 'web' ? position : position / 1000); // converting ms to seconds as a safer bet or fallback depending on exact fork
       }
     }
   }));
@@ -49,32 +92,43 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
   React.useEffect(() => {
     if (seekPosition !== undefined && videoRef.current && videoRef.current.seek) {
        // Assuming it takes normalized or direct seconds since behavior varies wildly across vlc wrapper forks
-       videoRef.current.seek(seekPosition / 1000.0);
+       videoRef.current.seek(Platform.OS === 'web' ? seekPosition : seekPosition / 1000.0);
     }
   }, [seekPosition]);
 
   return (
     <View style={styles.container}>
       {streamUrl ? (
-        <VideoComponent
-          ref={videoRef}
-          key={currentStream?.id}
-          onProgress={onProgress}
-          source={{
-            uri: streamUrl,
-            initOptions: [
-              `--network-caching=${bufferSize}`,
-              `--live-caching=${bufferSize}`,
-              `--file-caching=${bufferSize}`
-            ]
-          }}
-          paused={paused}
-          autoplay={!paused}
-          shouldPlay={!paused}
-          style={styles.video}
-          resizeMode="contain"
-          useNativeControls={Platform.OS === 'web'}
-        />
+        Platform.OS === 'web' ? (
+          <WebVideoPlayer
+             ref={videoRef}
+             key={currentStream?.id}
+             onProgress={onProgress}
+             source={{ uri: streamUrl }}
+             paused={paused}
+             style={styles.video}
+          />
+        ) : (
+          <VideoComponent
+            ref={videoRef}
+            key={currentStream?.id}
+            onProgress={onProgress}
+            source={{
+              uri: streamUrl,
+              initOptions: [
+                `--network-caching=${bufferSize}`,
+                `--live-caching=${bufferSize}`,
+                `--file-caching=${bufferSize}`
+              ]
+            }}
+            paused={paused}
+            autoplay={!paused}
+            shouldPlay={!paused}
+            style={styles.video}
+            resizeMode="contain"
+            useNativeControls={false}
+          />
+        )
       ) : (
         <View style={styles.placeholder}>
           {/* <Text style={styles.placeholderText}>No channel selected</Text> */}

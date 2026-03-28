@@ -60,11 +60,14 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "expo-localization",
+      "expo-sharing",
+      "expo-video"
     ],
     "autolinking": {
       "exclude": [
-        "expo-av"
+
       ]
     }
   }
