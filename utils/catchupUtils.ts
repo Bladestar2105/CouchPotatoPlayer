@@ -103,7 +103,7 @@ export const generateCatchupUrl = (
  */
 export const hasCatchupSupport = (channel: Channel): boolean => {
   return (
-    (channel.tvArchive === 1 || channel.tvArchive === 1) ||
+    (channel.tvArchive === 1) ||
     (channel.catchupDays !== undefined && channel.catchupDays > 0) ||
     (channel.tvArchiveDuration !== undefined && channel.tvArchiveDuration > 0)
   );
