@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
 
-import * as ReactNative from 'react-native';
+
 import VideoPlayer from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 // @ts-ignore
