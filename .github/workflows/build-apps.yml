@@ -10,7 +10,7 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  # ── Android Build (React Native Expo) ────────────────────────────────────
+  # ── Android Build (React Native Expo) ────────────────────────────────────────
   build-android:
     runs-on: ubuntu-latest
     steps:
@@ -31,6 +31,12 @@ jobs:
           java-version: '17'
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
+      - name: Fix hermesc execute permissions
+        run: |
+          # pnpm's content-addressable store can strip execute bits from binaries.
+          # Restore +x on the Hermes compiler so the Gradle bundle task can invoke it.
+          find node_modules -path "*/hermes-compiler/hermesc/linux64-bin/hermesc" -exec chmod +x {} \;
+          find node_modules -path "*/hermesc/linux64-bin/hermesc" -exec chmod +x {} \;
       - name: Prebuild Android
         run: npx expo prebuild --platform android
       - name: Configure Gradle Memory
@@ -45,9 +51,9 @@ jobs:
           name: app-release.apk
           path: android/app/build/outputs/apk/release/app-release.apk
 
-  # ── iOS Build (React Native Expo) ────────────────────────────────────────
+  # ── iOS Build (React Native Expo) ────────────────────────────────────────────
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm
@@ -79,11 +85,11 @@ jobs:
           name: ios-build.tar.gz
           path: ios-build.tar.gz
 
-  # ── tvOS Build (React Native Expo) ───────────────────────────────────────
+  # ── tvOS Build (React Native Expo) ───────────────────────────────────────────
   # We dynamically install react-native-tvos to generate the true tvOS targets
   # during prebuild, ensuring native compilation against the Apple TV SDK.
   build-tvos:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm
@@ -99,7 +105,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Install tvOS Fork
         run: |
-          pnpm install -w react-native@npm:react-native-tvos@0.81.5-2
+          pnpm install -w react-native@npm:react-native-tvos@0.84.1-0
       - name: Fix pnpm react-native symlink for podspecs
         run: |
           # Create a symlink in the isolated pnpm node_modules directory so that
@@ -127,7 +133,7 @@ jobs:
           name: tvos-build.tar.gz
           path: tvos-build.tar.gz
 
-  # ── Docker Build & Push (Web) ─────────────────────────────────
+  # ── Docker Build & Push (Web) ─────────────────────────────────────────
   build-docker:
     runs-on: ubuntu-latest
     permissions:
