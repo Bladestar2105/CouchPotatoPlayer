@@ -12,8 +12,8 @@ if ! pnpm install; then
 fi
 
 echo "Swapping standard react-native for react-native-tvos temporarily for build..."
-# We will temporarily alias react-native to react-native-tvos matching our RN version (0.81.5)
-pnpm install -w react-native@npm:react-native-tvos@0.81.5-2
+# We will temporarily alias react-native to react-native-tvos matching our RN version (0.84.1)
+pnpm install -w react-native@npm:react-native-tvos@0.84.1-0
 
 # Fix pnpm symlink resolution for iOS native modules (like RNGestureHandler)
 echo "Patching pnpm virtual store for react-native alias..."
@@ -36,7 +36,7 @@ export EXPO_TV=1
 if ! npx expo prebuild --clean --platform ios; then
   echo "Error: Failed to prebuild the tvOS project."
   echo "Reverting react-native to standard..."
-  pnpm install -w react-native@0.81.5
+  pnpm install -w react-native@0.84.1
   exit 1
 fi
 
@@ -67,4 +67,4 @@ else
 fi
 
 echo "Reverting react-native to standard after tvOS build..."
-pnpm install -w react-native@0.81.5
+pnpm install -w react-native@0.84.1

@@ -19,4 +19,4 @@ Thumbs.db
 # Fichiers d'environnement (TRÈS IMPORTANT)
 .env
 .env.*
-*.local
+*.localtodo.md
