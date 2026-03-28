@@ -65,6 +65,9 @@ const SeasonScreen = () => {
     <TouchableOpacity
       style={[styles.item, { borderBottomColor: colors.divider }]}
       onPress={() => handleSeasonPress(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`Season: ${item.name}`}
+      accessibilityHint={`Shows episodes for ${item.name}`}
     >
       <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
       <Text style={[styles.count, { color: colors.textSecondary }]}>{item.episodes.length} Episodes</Text>

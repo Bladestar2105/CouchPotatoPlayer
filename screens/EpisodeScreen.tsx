@@ -29,6 +29,9 @@ const EpisodeScreen = () => {
     <TouchableOpacity
       style={[styles.item, { borderBottomColor: colors.divider }]}
       onPress={() => handleEpisodePress(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`Episode: ${item.name}`}
+      accessibilityHint={`Plays episode ${item.name}`}
     >
       <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
     </TouchableOpacity>
