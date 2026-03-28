@@ -4,11 +4,27 @@ const url = require('url');
 
 const PORT = 9001;
 
+const ALLOWED_ORIGINS = [
+  'http://localhost:8081', // Expo web development
+  'http://localhost:8082', // Alternative development port
+  'http://localhost:3000', // Common React dev port
+  'http://localhost'      // Nginx/Docker default
+];
+
 const server = http.createServer((req, res) => {
+  const origin = req.headers.origin;
+
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // If no origin, it might be a direct request (not from a browser)
+    // We can still set a default or just omit it.
+    // For proxying we might want to allow it but not via CORS.
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range');
   
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
