@@ -52,6 +52,46 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
 });
 
 const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE }: any) => {
+    // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
+    // recalculating boundaries, offsets, and time comparisons on every render.
+    const programLayoutData = useMemo(() => {
+        const timelineStartMs = timelineStart.getTime();
+        const timelineEndMs = timelineEnd.getTime();
+        const nowMs = now.getTime();
+
+        const result: Array<{
+            prog: any;
+            idx: number;
+            leftOffset: number;
+            width: number;
+            isNow: boolean;
+            isPast: boolean;
+        }> = [];
+
+        for (let idx = 0; idx < programs.length; idx++) {
+            const prog = programs[idx];
+            const startMs = prog.start.getTime();
+            const endMs = prog.end.getTime();
+
+            // Skip if fully outside timeline
+            if (endMs <= timelineStartMs || startMs >= timelineEndMs) continue;
+
+            const renderStartMs = Math.max(startMs, timelineStartMs);
+            const renderEndMs = Math.min(endMs, timelineEndMs);
+
+            result.push({
+                prog,
+                idx,
+                leftOffset: ((renderStartMs - timelineStartMs) / 60000) * PIXELS_PER_MINUTE,
+                width: ((renderEndMs - renderStartMs) / 60000) * PIXELS_PER_MINUTE,
+                isNow: nowMs >= startMs && nowMs < endMs,
+                isPast: nowMs >= endMs,
+            });
+        }
+
+        return result;
+    }, [programs, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE]);
+
     return (
         <View style={[styles.row, isFocused && styles.rowFocused]}>
             {/* Channel Info Fixed on Left */}
@@ -79,37 +119,19 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
 
             {/* Programs Timeline */}
             <View style={styles.programsContainer}>
-                {programs.map((prog: any, idx: number) => {
-                    // Calculate boundaries
-                    const startMs = prog.start.getTime();
-                    const endMs = prog.end.getTime();
-
-                    // Skip if fully outside timeline
-                    if (endMs <= timelineStart.getTime() || startMs >= timelineEnd.getTime()) return null;
-
-                    const renderStartMs = Math.max(startMs, timelineStart.getTime());
-                    const renderEndMs = Math.min(endMs, timelineEnd.getTime());
-
-                    const leftOffset = ((renderStartMs - timelineStart.getTime()) / 60000) * PIXELS_PER_MINUTE;
-                    const width = ((renderEndMs - renderStartMs) / 60000) * PIXELS_PER_MINUTE;
-
-                    const isNow = now >= prog.start && now < prog.end;
-                    const isPast = now >= prog.end;
-
-                    return (
-                        <ProgramBlock
-                            key={`${channel.id}-${idx}`}
-                            prog={prog}
-                            channel={channel}
-                            isNow={isNow}
-                            isPast={isPast}
-                            leftOffset={leftOffset}
-                            width={width}
-                            colors={colors}
-                            onChannelPress={onChannelPress}
-                        />
-                    );
-                })}
+                {programLayoutData.map((item) => (
+                    <ProgramBlock
+                        key={`${channel.id}-${item.idx}`}
+                        prog={item.prog}
+                        channel={channel}
+                        isNow={item.isNow}
+                        isPast={item.isPast}
+                        leftOffset={item.leftOffset}
+                        width={item.width}
+                        colors={colors}
+                        onChannelPress={onChannelPress}
+                    />
+                ))}
             </View>
         </View>
     );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/logger';
 
@@ -116,12 +116,22 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const colors = getThemeColors(themeMode);
 
+  // ⚡ Perf: Memoize the context value object to prevent unnecessary re-renders
+  // of all consumer components when the provider re-renders.
+  const contextValue = useMemo(() => ({
+    themeMode,
+    setThemeMode,
+    colors,
+    bufferSize,
+    setBufferSize,
+  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize]);
+
   if (!isReady) {
     return null; // Or a splash screen / loader
   }
 
   return (
-    <SettingsContext.Provider value={{ themeMode, setThemeMode, colors, bufferSize, setBufferSize }}>
+    <SettingsContext.Provider value={contextValue}>
       {children}
     </SettingsContext.Provider>
   );
