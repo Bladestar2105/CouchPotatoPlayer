@@ -3,16 +3,46 @@ import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 
+// ---------------------------------------------------------------------------
+// Platform-gated player imports
+// ---------------------------------------------------------------------------
+// expo-video: used on tvOS (Platform.isTV) — AVKit-based, works on Apple TV
+// Simulator. react-native-video uses a lower-level AVPlayer pipeline that
+// triggers error -11850 ("Operation Stopped / server not correctly
+// configured") on the tvOS Simulator when Metal GPU access is restricted.
+let ExpoVideoView: any;
+let useExpoVideoPlayer: any;
+
+// expo-av (web only)
 let WebVideoComponent: any;
-let VLCPlayerComponent: any;
+
+// react-native-video (iOS phone/tablet & Android, NOT tvOS)
 let NativeVideoComponent: any;
+
+// react-native-vlc-media-player (Android & iOS phone/tablet, NOT tvOS)
+let VLCPlayerComponent: any;
 
 if (Platform.OS === 'web') {
   WebVideoComponent = require('expo-av').Video;
+} else if (Platform.isTV) {
+  // tvOS: use expo-video exclusively — it maps to AVPlayerViewController which
+  // is the recommended playback API for Apple TV.
+  try {
+    const expoVideo = require('expo-video');
+    ExpoVideoView = expoVideo.VideoView;
+    useExpoVideoPlayer = expoVideo.useVideoPlayer;
+  } catch (e) {
+    console.warn('[VideoPlayer] expo-video not available on tvOS:', e);
+  }
 } else {
+  // iOS (phone/tablet) and Android
   VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
   NativeVideoComponent = require('react-native-video').default;
 }
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface VideoMetadata {
   width?: number;
@@ -25,73 +55,165 @@ interface VideoPlayerProps {
   paused?: boolean;
   onSeek?: (position: number) => void;
   seekPosition?: number;
-  onProgress?: (data: { currentTime: number, duration: number }) => void;
+  onProgress?: (data: { currentTime: number; duration: number }) => void;
   onVideoLoad?: (metadata: VideoMetadata) => void;
 }
 
-const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, onProgress, onVideoLoad }: VideoPlayerProps, ref) => {
-  const { currentStream } = useIPTV();
-  const { bufferSize, playerType, vlcHardwareAcceleration } = useSettings();
+// ---------------------------------------------------------------------------
+// tvOS player sub-component (expo-video)
+// ---------------------------------------------------------------------------
+// Defined as a separate inner component so that `useExpoVideoPlayer` hook
+// is always called unconditionally at the top of a React component, avoiding
+// the "Rules of Hooks" violation that would happen if we called it
+// conditionally inside `renderPlayer`.
+const TVOSVideoPlayer = ({
+  streamUrl,
+  paused,
+  onProgress,
+  onVideoLoad,
+}: {
+  streamUrl: string;
+  paused: boolean;
+  onProgress?: VideoPlayerProps['onProgress'];
+  onVideoLoad?: VideoPlayerProps['onVideoLoad'];
+}) => {
+  if (!useExpoVideoPlayer || !ExpoVideoView) {
+    return (
+      <View style={styles.placeholder}>
+        <Text style={styles.placeholderText}>expo-video not available</Text>
+      </View>
+    );
+  }
 
-  const streamUrl = useMemo(() => {
-    if (!currentStream?.url) return null;
-    if (Platform.OS === 'web') {
-      // In web platform, redirect network requests through the proxy
-      return `/proxy/${currentStream.url}`;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const player = useExpoVideoPlayer(streamUrl, (p: any) => {
+    p.loop = false;
+    p.muted = false;
+    if (!paused) {
+      p.play();
     }
-    return currentStream.url;
-  }, [currentStream?.url]);
+  });
 
-  // Only pass the ref if we are not on web (where expo-av handles it differently)
-  const videoRef = React.useRef<any>(null);
-
-  React.useImperativeHandle(ref, () => ({
-    seek: (position: number) => {
-      if (videoRef.current && videoRef.current.seek) {
-        // react-native-vlc-media-player expects position in float (0.0 to 1.0) for tvOS
-        // We handle exact ms on other platforms but stick to what the underlying player allows.
-        // Since we don't have total duration here, passing absolute ms directly works on Android,
-        // but for iOS it might need proper mapping. For now, try passing ms directly.
-        videoRef.current.seek(position / 1000); // converting ms to seconds as a safer bet or fallback depending on exact fork
-      }
-    }
-  }));
-
-  // Handle seeking if passed as prop (for declarative seeking)
+  // Sync play/pause state
   React.useEffect(() => {
-    if (seekPosition !== undefined && videoRef.current && videoRef.current.seek) {
-       // Assuming it takes normalized or direct seconds since behavior varies wildly across vlc wrapper forks
-       if (Platform.OS !== 'web' && playerType === 'native') {
-          // react-native-video usually expects seconds
-          videoRef.current.seek(seekPosition / 1000.0);
-       } else {
-          videoRef.current.seek(seekPosition / 1000.0);
-       }
+    if (!player) return;
+    if (paused) {
+      player.pause();
+    } else {
+      player.play();
     }
-  }, [seekPosition, playerType]);
+  }, [paused, player]);
 
-  const renderPlayer = () => {
-    if (Platform.OS === 'web') {
+  // Forward progress events
+  React.useEffect(() => {
+    if (!player || !onProgress) return;
+    const interval = setInterval(() => {
+      try {
+        const currentTime = (player.currentTime ?? 0) * 1000; // seconds → ms
+        const duration = (player.duration ?? 0) * 1000;
+        onProgress({ currentTime, duration });
+      } catch (_) {}
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [player, onProgress]);
+
+  return (
+    <ExpoVideoView
+      player={player}
+      style={styles.video}
+      contentFit="contain"
+      nativeControls={false}
+      onPlaybackStatusUpdate={(status: any) => {
+        if (status && onVideoLoad && status.videoWidth && status.videoHeight) {
+          onVideoLoad({
+            width: status.videoWidth,
+            height: status.videoHeight,
+          });
+        }
+      }}
+    />
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main VideoPlayer component
+// ---------------------------------------------------------------------------
+
+const VideoPlayer = React.forwardRef(
+  (
+    {
+      paused = false,
+      onSeek,
+      seekPosition,
+      onProgress,
+      onVideoLoad,
+    }: VideoPlayerProps,
+    ref,
+  ) => {
+    const { currentStream } = useIPTV();
+    const { bufferSize, playerType, vlcHardwareAcceleration } = useSettings();
+
+    const streamUrl = useMemo(() => {
+      if (!currentStream?.url) return null;
+      if (Platform.OS === 'web') {
+        return `/proxy/${currentStream.url}`;
+      }
+      return currentStream.url;
+    }, [currentStream?.url]);
+
+    // Ref used by non-tvOS players for imperative seek
+    const videoRef = React.useRef<any>(null);
+
+    React.useImperativeHandle(ref, () => ({
+      seek: (position: number) => {
+        if (videoRef.current && videoRef.current.seek) {
+          videoRef.current.seek(position / 1000);
+        }
+      },
+    }));
+
+    // Declarative seeking for non-tvOS players
+    React.useEffect(() => {
+      if (seekPosition === undefined) return;
+      if (Platform.isTV) return; // tvOS uses expo-video which handles seek differently
+      if (videoRef.current && videoRef.current.seek) {
+        videoRef.current.seek(seekPosition / 1000.0);
+      }
+    }, [seekPosition]);
+
+    // -----------------------------------------------------------------------
+    // Render helpers
+    // -----------------------------------------------------------------------
+
+    const renderTVOSPlayer = () => {
+      if (!streamUrl) return null;
       return (
-        <WebVideoComponent
-          ref={videoRef}
-          key={currentStream?.id}
-          onProgress={onProgress}
-          source={{ uri: streamUrl! }}
+        <TVOSVideoPlayer
+          streamUrl={streamUrl}
           paused={paused}
-          autoplay={!paused}
-          shouldPlay={!paused}
-          style={styles.video}
-          resizeMode="contain"
-          useNativeControls={true}
+          onProgress={onProgress}
+          onVideoLoad={onVideoLoad}
         />
       );
-    }
+    };
 
-    if (playerType === 'native') {
-      // Extract type for react-native-video if stream is specific format
-      // .ts requires explicit type on iOS/tvOS often
-      let sourceType = undefined;
+    const renderWebPlayer = () => (
+      <WebVideoComponent
+        ref={videoRef}
+        key={currentStream?.id}
+        onProgress={onProgress}
+        source={{ uri: streamUrl! }}
+        paused={paused}
+        autoplay={!paused}
+        shouldPlay={!paused}
+        style={styles.video}
+        resizeMode="contain"
+        useNativeControls={true}
+      />
+    );
+
+    const renderNativePlayer = () => {
+      let sourceType: string | undefined;
       const lowerUrl = streamUrl?.toLowerCase() || '';
       if (lowerUrl.includes('.m3u8')) sourceType = 'm3u8';
       else if (lowerUrl.includes('.ts')) sourceType = 'ts';
@@ -101,10 +223,7 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
         <NativeVideoComponent
           ref={videoRef}
           key={currentStream?.id}
-          source={{
-            uri: streamUrl!,
-            type: sourceType
-          }}
+          source={{ uri: streamUrl!, type: sourceType }}
           paused={paused}
           style={styles.video}
           resizeMode="contain"
@@ -113,73 +232,92 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
             console.warn('[NativeVideoComponent] Playback error:', error);
           }}
           onLoad={(payload: any) => {
-            if (onVideoLoad && payload && payload.naturalSize) {
+            if (onVideoLoad && payload?.naturalSize) {
               onVideoLoad({
                 width: payload.naturalSize.width,
                 height: payload.naturalSize.height,
-                fps: payload.videoTrack ? payload.videoTrack.frameRate : undefined,
-                bitrate: payload.videoTrack ? payload.videoTrack.bitrate : undefined
+                fps: payload.videoTrack?.frameRate,
+                bitrate: payload.videoTrack?.bitrate,
               });
             }
           }}
           bufferConfig={{
-            minBufferMs: Math.max(bufferSize > 100 ? bufferSize : bufferSize * 100, 1500),
-            maxBufferMs: Math.max(bufferSize > 100 ? bufferSize * 2 : bufferSize * 200, 3000),
+            minBufferMs: Math.max(
+              bufferSize > 100 ? bufferSize : bufferSize * 100,
+              1500,
+            ),
+            maxBufferMs: Math.max(
+              bufferSize > 100 ? bufferSize * 2 : bufferSize * 200,
+              3000,
+            ),
             bufferForPlaybackMs: 2500,
-            bufferForPlaybackAfterRebufferMs: 5000
+            bufferForPlaybackAfterRebufferMs: 5000,
           }}
         />
       );
-    }
+    };
 
-    // VLC Player
-    // The context gives us bufferSize. 32 milliseconds is too low for live streams on 4K.
-    // Ensure we send a meaningful value in milliseconds. If it's single digits or low, it might be meant as Seconds or Megabytes from an older config.
-    // Let's assume minimum 1000ms for safety. We map the MB value (e.g., 32) to roughly 100x ms so it's around 3200ms instead of 32 seconds (32000ms) which breaks sync.
-    const safeVlcBufferSizeMs = Math.max(bufferSize > 100 ? bufferSize : bufferSize * 100, 1500);
-    const vlcInitOptions = [
-      `--network-caching=${safeVlcBufferSizeMs}`,
-      `--live-caching=${safeVlcBufferSizeMs}`,
-      `--file-caching=${safeVlcBufferSizeMs}`,
-      vlcHardwareAcceleration ? '--avcodec-hw=any' : '--avcodec-hw=none'
-    ];
+    const renderVLCPlayer = () => {
+      const safeVlcBufferSizeMs = Math.max(
+        bufferSize > 100 ? bufferSize : bufferSize * 100,
+        1500,
+      );
+      const vlcInitOptions = [
+        `--network-caching=${safeVlcBufferSizeMs}`,
+        `--live-caching=${safeVlcBufferSizeMs}`,
+        `--file-caching=${safeVlcBufferSizeMs}`,
+        vlcHardwareAcceleration ? '--avcodec-hw=any' : '--avcodec-hw=none',
+      ];
+
+      return (
+        <VLCPlayerComponent
+          ref={videoRef}
+          key={currentStream?.id}
+          onProgress={onProgress}
+          source={{ uri: streamUrl!, initOptions: vlcInitOptions }}
+          paused={paused}
+          autoplay={!paused}
+          style={styles.video}
+          resizeMode="contain"
+          onPlaying={(event: any) => {
+            if (onVideoLoad && event) {
+              onVideoLoad({
+                width: event.videoWidth || event.target?.videoWidth,
+                height: event.videoHeight || event.target?.videoHeight,
+              });
+            }
+          }}
+        />
+      );
+    };
+
+    const renderPlayer = () => {
+      if (!streamUrl) return null;
+
+      if (Platform.OS === 'web') return renderWebPlayer();
+
+      // tvOS: always use expo-video regardless of playerType setting —
+      // react-native-vlc-media-player has no tvOS binary and
+      // react-native-video triggers AVFoundation error -11850 on the
+      // Apple TV Simulator.
+      if (Platform.isTV) return renderTVOSPlayer();
+
+      // iOS (phone/tablet) & Android
+      if (playerType === 'native') return renderNativePlayer();
+      return renderVLCPlayer();
+    };
 
     return (
-      <VLCPlayerComponent
-        ref={videoRef}
-        key={currentStream?.id}
-        onProgress={onProgress}
-        source={{
-          uri: streamUrl!,
-          initOptions: vlcInitOptions
-        }}
-        paused={paused}
-        autoplay={!paused}
-        style={styles.video}
-        resizeMode="contain"
-        onPlaying={(event: any) => {
-          // VLC might send some metadata here, though often limited
-          if (onVideoLoad && event) {
-            onVideoLoad({
-              width: event.videoWidth || event.target?.videoWidth,
-              height: event.videoHeight || event.target?.videoHeight,
-            });
-          }
-        }}
-      />
+      <View style={styles.container}>
+        {streamUrl ? (
+          renderPlayer()
+        ) : (
+          <View style={styles.placeholder} />
+        )}
+      </View>
     );
-  };
-
-  return (
-    <View style={styles.container}>
-      {streamUrl ? renderPlayer() : (
-        <View style={styles.placeholder}>
-          {/* <Text style={styles.placeholderText}>No channel selected</Text> */}
-        </View>
-      )}
-    </View>
-  );
-});
+  },
+);
 
 const styles = StyleSheet.create({
   container: {

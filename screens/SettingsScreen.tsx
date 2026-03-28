@@ -172,6 +172,7 @@ const SettingsScreen = () => {
   };
 
   const getNativePlayerName = () => {
+    if (Platform.isTV) return 'AVKit (expo-video)';
     if (Platform.OS === 'ios') return 'Metal (Native)';
     if (Platform.OS === 'android') return 'ExoPlayer (Native)';
     return 'Native';
@@ -221,28 +222,25 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         {/* Video Player Engine */}
-        {Platform.OS === 'ios' && !Platform.isTV ? (
+        {/* On tvOS, expo-video is always used (react-native-vlc-media-player has
+            no tvOS binary and react-native-video triggers AVFoundation error
+            -11850 on the Apple TV Simulator). The setting is therefore read-only
+            on tvOS and VLC is not offered as an option. */}
+        {Platform.isTV ? (
+          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>AVKit (expo-video)</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary, fontSize: 11, marginTop: 2 }]}>tvOS always uses AVKit</Text>
+            </View>
+          </View>
+        ) : Platform.OS === 'ios' ? (
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetPlayerType}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{playerType === 'native' ? getNativePlayerName() : 'VLC'}</Text>
             </View>
             <Text style={{ color: colors.primary }}>Edit</Text>
-          </TouchableOpacity>
-        ) : Platform.isTV ? (
-          <TouchableOpacity
-            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => {
-              const types: PlayerType[] = ['native', 'vlc'];
-              const nextIndex = (types.indexOf(playerType) + 1) % types.length;
-              setPlayerType(types[nextIndex]);
-            }}
-          >
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{playerType === 'native' ? getNativePlayerName() : 'VLC'}</Text>
-            </View>
-            <Text style={{ color: colors.primary }}>Toggle</Text>
           </TouchableOpacity>
         ) : (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
@@ -259,8 +257,8 @@ const SettingsScreen = () => {
           </View>
         )}
 
-        {/* VLC Hardware Acceleration */}
-        {playerType === 'vlc' && (
+        {/* VLC Hardware Acceleration — not applicable on tvOS */}
+        {playerType === 'vlc' && !Platform.isTV && (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>VLC Hardware Acceleration</Text>

@@ -73,6 +73,12 @@
           "expo-av"
         ]
       },
+      "tvos": {
+        "exclude": [
+          "expo-av",
+          "react-native-vlc-media-player"
+        ]
+      },
       "android": {
         "exclude": [
           "expo-av"
