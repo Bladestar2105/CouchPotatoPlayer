@@ -103,7 +103,10 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
           key={currentStream?.id}
           source={{
             uri: streamUrl!,
-            type: sourceType
+            type: sourceType,
+            headers: {
+              'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
+            }
           }}
           paused={paused}
           style={styles.video}
