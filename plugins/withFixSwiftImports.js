@@ -28,33 +28,21 @@ module.exports = function withFixSwiftImports(config) {
       if (fs.existsSync(appDelegatePath)) {
         let content = fs.readFileSync(appDelegatePath, "utf-8");
 
-        // 1. Change `import Expo` to `internal import Expo`
+        // 1. Change `import` to `internal import` for key modules
         content = content.replace(
-          /^import Expo$/m,
-          "internal import Expo"
+          /^import (Expo|React|ReactAppDependencyProvider)\s*$/gm,
+          "internal import $1"
         );
 
-        // 2. Change `import React` to `internal import React` (same issue)
-        content = content.replace(
-          /^import React$/m,
-          "internal import React"
-        );
-
-        // 3. Change `import ReactAppDependencyProvider` to internal
-        content = content.replace(
-          /^import ReactAppDependencyProvider$/m,
-          "internal import ReactAppDependencyProvider"
-        );
-
-        // 4. Remove `public` from class and method declarations
+        // 2. Remove `public` from class and method declarations
         //    (they must be internal when the imports are internal)
-        content = content.replace(/public class AppDelegate/g, "class AppDelegate");
-        content = content.replace(/public override func/g, "override func");
+        content = content.replace(/\bpublic\s+(class|func|override\s+func)\b/g, "$1");
 
-        // 5. Remove `bindReactNativeFactory(factory)` (removed in SDK 55+)
-        content = content.replace(/^\s*bindReactNativeFactory\(factory\)\s*\n?/m, "");
+        // 3. Remove `bindReactNativeFactory(factory)` (removed in SDK 55+)
+        //    Handles optional `self.` and variable indentation
+        content = content.replace(/^\s*(self\.)?bindReactNativeFactory\(factory\)\s*[\r\n]*/gm, "");
 
-        // 6. Replace @UIApplicationMain with @main (Swift 5.3+ / SDK 55+)
+        // 4. Replace @UIApplicationMain with @main (Swift 5.3+ / SDK 55+)
         content = content.replace(/@UIApplicationMain/g, "@main");
 
         // Avoid double-internal (if prebuild already set internal)
