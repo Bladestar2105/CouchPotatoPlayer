@@ -11,7 +11,7 @@ if (Platform.OS === 'ios' && !Platform.isTV) {
   }
 }
 import { useIPTV } from '../context/IPTVContext';
-import { useSettings, ThemeMode } from '../context/SettingsContext';
+import { useSettings, ThemeMode, PlayerType } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -19,7 +19,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 const SettingsScreen = () => {
   const { currentProfile, profiles, pin, isAdultUnlocked, unlockAdultContent, lockAdultContent, removeProfile, loadProfile, unloadProfile } = useIPTV();
-  const { colors, themeMode, setThemeMode, bufferSize, setBufferSize } = useSettings();
+  const { colors, themeMode, setThemeMode, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration } = useSettings();
   const navigation = useNavigation<any>();
 
   const [updateInterval, setUpdateInterval] = React.useState<number>(24);
@@ -157,6 +157,26 @@ const SettingsScreen = () => {
     }
   };
 
+  const handleActionSheetPlayerType = () => {
+    if (Platform.OS === 'ios' && !Platform.isTV) {
+      const nativeLabel = 'Metal (Native)';
+      const options = ['Cancel', nativeLabel, 'VLC'];
+      const values: (PlayerType | null)[] = [null, 'native', 'vlc'];
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 0 },
+        (buttonIndex: number) => {
+          if (buttonIndex > 0 && values[buttonIndex]) setPlayerType(values[buttonIndex] as PlayerType);
+        }
+      );
+    }
+  };
+
+  const getNativePlayerName = () => {
+    if (Platform.OS === 'ios') return 'Metal (Native)';
+    if (Platform.OS === 'android') return 'ExoPlayer (Native)';
+    return 'Native';
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.section}>
@@ -199,6 +219,61 @@ const SettingsScreen = () => {
             </Text>
           </View>
         </TouchableOpacity>
+
+        {/* Video Player Engine */}
+        {Platform.OS === 'ios' && !Platform.isTV ? (
+          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetPlayerType}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{playerType === 'native' ? getNativePlayerName() : 'VLC'}</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Edit</Text>
+          </TouchableOpacity>
+        ) : Platform.isTV ? (
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => {
+              const types: PlayerType[] = ['native', 'vlc'];
+              const nextIndex = (types.indexOf(playerType) + 1) % types.length;
+              setPlayerType(types[nextIndex]);
+            }}
+          >
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{playerType === 'native' ? getNativePlayerName() : 'VLC'}</Text>
+            </View>
+            <Text style={{ color: colors.primary }}>Toggle</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{playerType === 'native' ? getNativePlayerName() : 'VLC'}</Text>
+            </View>
+            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+              <Picker selectedValue={playerType} onValueChange={(val: PlayerType) => setPlayerType(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
+                <Picker.Item label={getNativePlayerName()} value="native" />
+                <Picker.Item label="VLC" value="vlc" />
+              </Picker>
+            </View>
+          </View>
+        )}
+
+        {/* VLC Hardware Acceleration */}
+        {playerType === 'vlc' && (
+          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>VLC Hardware Acceleration</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>Improve performance on supported devices</Text>
+            </View>
+            <Switch
+              value={vlcHardwareAcceleration}
+              onValueChange={setVlcHardwareAcceleration}
+              trackColor={{ false: colors.divider, true: colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
+            />
+          </View>
+        )}
 
         {/* Theme Mode */}
         {Platform.OS === 'ios' && !Platform.isTV ? (

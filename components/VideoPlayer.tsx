@@ -3,11 +3,22 @@ import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 
-let VideoComponent: any;
+let WebVideoComponent: any;
+let VLCPlayerComponent: any;
+let NativeVideoComponent: any;
+
 if (Platform.OS === 'web') {
-  VideoComponent = require('expo-av').Video;
+  WebVideoComponent = require('expo-av').Video;
 } else {
-  VideoComponent = require('react-native-vlc-media-player').VLCPlayer;
+  VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
+  NativeVideoComponent = require('react-native-video').default;
+}
+
+export interface VideoMetadata {
+  width?: number;
+  height?: number;
+  fps?: number;
+  bitrate?: number;
 }
 
 interface VideoPlayerProps {
@@ -15,11 +26,12 @@ interface VideoPlayerProps {
   onSeek?: (position: number) => void;
   seekPosition?: number;
   onProgress?: (data: { currentTime: number, duration: number }) => void;
+  onVideoLoad?: (metadata: VideoMetadata) => void;
 }
 
-const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, onProgress }: VideoPlayerProps, ref) => {
+const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, onProgress, onVideoLoad }: VideoPlayerProps, ref) => {
   const { currentStream } = useIPTV();
-  const { bufferSize } = useSettings();
+  const { bufferSize, playerType, vlcHardwareAcceleration } = useSettings();
 
   const streamUrl = useMemo(() => {
     if (!currentStream?.url) return null;
@@ -49,33 +61,100 @@ const VideoPlayer = React.forwardRef(({ paused = false, onSeek, seekPosition, on
   React.useEffect(() => {
     if (seekPosition !== undefined && videoRef.current && videoRef.current.seek) {
        // Assuming it takes normalized or direct seconds since behavior varies wildly across vlc wrapper forks
-       videoRef.current.seek(seekPosition / 1000.0);
+       if (Platform.OS !== 'web' && playerType === 'native') {
+          // react-native-video usually expects seconds
+          videoRef.current.seek(seekPosition / 1000.0);
+       } else {
+          videoRef.current.seek(seekPosition / 1000.0);
+       }
     }
-  }, [seekPosition]);
+  }, [seekPosition, playerType]);
 
-  return (
-    <View style={styles.container}>
-      {streamUrl ? (
-        <VideoComponent
+  const renderPlayer = () => {
+    if (Platform.OS === 'web') {
+      return (
+        <WebVideoComponent
           ref={videoRef}
           key={currentStream?.id}
           onProgress={onProgress}
-          source={{
-            uri: streamUrl,
-            initOptions: [
-              `--network-caching=${bufferSize}`,
-              `--live-caching=${bufferSize}`,
-              `--file-caching=${bufferSize}`
-            ]
-          }}
+          source={{ uri: streamUrl! }}
           paused={paused}
           autoplay={!paused}
           shouldPlay={!paused}
           style={styles.video}
           resizeMode="contain"
-          useNativeControls={Platform.OS === 'web'}
+          useNativeControls={true}
         />
-      ) : (
+      );
+    }
+
+    if (playerType === 'native') {
+      return (
+        <NativeVideoComponent
+          ref={videoRef}
+          key={currentStream?.id}
+          source={{ uri: streamUrl! }}
+          paused={paused}
+          style={styles.video}
+          resizeMode="contain"
+          onProgress={onProgress}
+          onLoad={(payload: any) => {
+            if (onVideoLoad && payload && payload.naturalSize) {
+              onVideoLoad({
+                width: payload.naturalSize.width,
+                height: payload.naturalSize.height,
+                fps: payload.videoTrack ? payload.videoTrack.frameRate : undefined,
+                bitrate: payload.videoTrack ? payload.videoTrack.bitrate : undefined
+              });
+            }
+          }}
+          bufferConfig={{
+            minBufferMs: bufferSize * 1000,
+            maxBufferMs: bufferSize * 2000,
+            bufferForPlaybackMs: 2500,
+            bufferForPlaybackAfterRebufferMs: 5000
+          }}
+        />
+      );
+    }
+
+    // VLC Player
+    const vlcInitOptions = [
+      `--network-caching=${bufferSize}`,
+      `--live-caching=${bufferSize}`,
+      `--file-caching=${bufferSize}`,
+      vlcHardwareAcceleration ? '--avcodec-hw=any' : '--avcodec-hw=none'
+    ];
+
+    return (
+      <VLCPlayerComponent
+        ref={videoRef}
+        key={currentStream?.id}
+        onProgress={onProgress}
+        source={{
+          uri: streamUrl!,
+          initOptions: vlcInitOptions
+        }}
+        paused={paused}
+        autoplay={!paused}
+        style={styles.video}
+        resizeMode="contain"
+        onPlaying={(event: any) => {
+          // VLC might send some metadata here, though often limited
+          if (onVideoLoad && event) {
+            onVideoLoad({
+              width: event.videoWidth || event.target?.videoWidth,
+              height: event.videoHeight || event.target?.videoHeight,
+            });
+          }
+        }}
+      />
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      {streamUrl ? renderPlayer() : (
         <View style={styles.placeholder}>
           {/* <Text style={styles.placeholderText}>No channel selected</Text> */}
         </View>

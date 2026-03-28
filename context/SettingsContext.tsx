@@ -4,6 +4,8 @@ import Logger from '../utils/logger';
 
 export type ThemeMode = 'dark' | 'oled' | 'light';
 
+export type PlayerType = 'native' | 'vlc';
+
 export interface ThemeColors {
   background: string;
   card: string;
@@ -66,6 +68,10 @@ interface SettingsContextProps {
   colors: ThemeColors;
   bufferSize: number;
   setBufferSize: (size: number) => void;
+  playerType: PlayerType;
+  setPlayerType: (type: PlayerType) => void;
+  vlcHardwareAcceleration: boolean;
+  setVlcHardwareAcceleration: (enabled: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextProps | undefined>(undefined);
@@ -73,6 +79,8 @@ const SettingsContext = createContext<SettingsContextProps | undefined>(undefine
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
   const [bufferSize, setBufferSizeState] = useState<number>(32);
+  const [playerType, setPlayerTypeState] = useState<PlayerType>('native');
+  const [vlcHardwareAcceleration, setVlcHardwareAccelerationState] = useState<boolean>(true);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -86,6 +94,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const storedBuffer = await AsyncStorage.getItem('app_buffer_size');
         if (storedBuffer) {
           setBufferSizeState(parseInt(storedBuffer, 10));
+        }
+
+        const storedPlayerType = await AsyncStorage.getItem('app_player_type');
+        if (storedPlayerType === 'native' || storedPlayerType === 'vlc') {
+          setPlayerTypeState(storedPlayerType as PlayerType);
+        }
+
+        const storedVlcHwAccel = await AsyncStorage.getItem('app_vlc_hw_accel');
+        if (storedVlcHwAccel) {
+          setVlcHardwareAccelerationState(storedVlcHwAccel === 'true');
         }
       } catch (e) {
         Logger.error('Failed to load settings', e);
@@ -114,6 +132,24 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const setPlayerType = async (type: PlayerType) => {
+    setPlayerTypeState(type);
+    try {
+      await AsyncStorage.setItem('app_player_type', type);
+    } catch (e) {
+      Logger.error('Failed to save player type', e);
+    }
+  };
+
+  const setVlcHardwareAcceleration = async (enabled: boolean) => {
+    setVlcHardwareAccelerationState(enabled);
+    try {
+      await AsyncStorage.setItem('app_vlc_hw_accel', enabled.toString());
+    } catch (e) {
+      Logger.error('Failed to save vlc hw accel', e);
+    }
+  };
+
   const colors = getThemeColors(themeMode);
 
   // ⚡ Perf: Memoize the context value object to prevent unnecessary re-renders
@@ -124,7 +160,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     colors,
     bufferSize,
     setBufferSize,
-  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize]);
+    playerType,
+    setPlayerType,
+    vlcHardwareAcceleration,
+    setVlcHardwareAcceleration,
+  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration]);
 
   if (!isReady) {
     return null; // Or a splash screen / loader
