@@ -39,6 +39,7 @@
       "./plugins/withTVOSNativeEventEmitterPatch",
       "./plugins/withFixHermescPath",
       "./plugins/withFixSwiftImports",
+      "./plugins/withKSPlayer",
       "@react-native-tvos/config-tv",
       "expo-asset",
       "expo-video",

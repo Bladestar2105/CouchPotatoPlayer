@@ -16,12 +16,5 @@ Pod::Spec.new do |s|
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 
   s.dependency "React-Core"
-
-  # KSPlayer/MEPlayer is declared in the Podfile via :git => ... source.
-  # We cannot use s.dependency here because KSPlayer is not on the CocoaPods CDN.
-  # The Podfile explicitly declares the dependency, which will link the frameworks.
-  # 
-  # To ensure correct build order (KSPlayer must build before this module so that
-  # KSPlayer-Swift.h exists), we rely on the Podfile's explicit pod declarations.
-  # CocoaPods will process pods in the order they are declared in the Podfile.
+  s.dependency "KSPlayer/MEPlayer"
 end

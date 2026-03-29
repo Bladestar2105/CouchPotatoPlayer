@@ -39,14 +39,16 @@ target 'CouchPotatoPlayer' do
     ]
   end
 
-  config = use_native_modules!(config_command)
-
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
-  # ── KSPlayer (FFmpeg-based player for full IPTV format support on iOS/tvOS) ──
+  # ─── KSPlayer (FFmpeg-based player for full IPTV format support on iOS/tvOS) ───
   # KSPlayer/MEPlayer uses FFmpegKit which supports raw MPEG-TS and all FFmpeg formats.
   # This is required by the react-native-ksplayer native module.
+  #
+  # IMPORTANT: These pods MUST be declared BEFORE use_native_modules! because
+  # the react-native-ksplayer.podspec has s.dependency "KSPlayer/MEPlayer".
+  # CocoaPods needs to know about KSPlayer before evaluating the podspec.
   #
   # Dependency chain:
   #   react-native-ksplayer → KSPlayer/MEPlayer → FFmpegKit → Libass
@@ -63,6 +65,8 @@ target 'CouchPotatoPlayer' do
   pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
   # KSPlayer/MEPlayer: the /MEPlayer subspec includes FFmpegKit (KSMEPlayer backend)
   pod 'KSPlayer/MEPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+
+  config = use_native_modules!(config_command)
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -85,9 +89,7 @@ target 'CouchPotatoPlayer' do
     # to the framework search paths of react-native-ksplayer
     installer.pods_project.targets.each do |target|
       if target.name == 'react-native-ksplayer'
-        # Add framework search paths for KSPlayer and its dependencies
         target.build_configurations.each do |config|
-          # Add Pods/KSPlayer to framework search paths
           config.build_settings['FRAMEWORK_SEARCH_PATHS'] ||= ['$(inherited)']
           config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_ROOT)/KSPlayer'
           config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer'
