@@ -242,7 +242,7 @@ const PlayerScreen = () => {
                          <View style={styles.headerRow}>
                             <View style={styles.channelNameContainer}>
                                 <Text style={styles.channelName}>{currentChannel.name}</Text>
-                                {videoMetadata?.width && videoMetadata?.height && (
+                                {!!(videoMetadata?.width && videoMetadata?.height) && (
                                     <View style={styles.metadataBadge}>
                                         <Text style={styles.metadataText}>{videoMetadata.width}x{videoMetadata.height}</Text>
                                         {videoMetadata.fps ? <Text style={styles.metadataText}> • {Math.round(videoMetadata.fps)} FPS</Text> : null}
