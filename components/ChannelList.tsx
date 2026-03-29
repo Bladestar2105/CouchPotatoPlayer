@@ -241,6 +241,7 @@ const LiveTVFlow = () => {
              <EpgTimeline
                 channels={selectedChannels}
                 onChannelPress={handleChannelPress}
+                 onProgramPress={handleEpgPress}
                 focusedChannelId={focusedChannelId}
                 setFocusedChannelId={setFocusedChannelId}
                 currentStreamId={currentStream?.id}

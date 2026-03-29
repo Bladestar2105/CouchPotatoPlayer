@@ -160,9 +160,10 @@ export type IPTVContextType = {
   setCurrentProfile: (profile: IPTVProfile | null) => void;
 
   playStream: (stream: { url: string; id: string; }) => void;
+  stopStream: () => void;
 
   epg: Record<string, EPGProgram[]>;
-  loadEPG: () => Promise<void>;
+  loadEPG: (forceUpdate?: boolean) => Promise<void>;
 
   getSeriesInfo: (seriesId: string) => Promise<any>;
   getVodInfo: (vodId: string) => Promise<any>;

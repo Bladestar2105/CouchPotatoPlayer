@@ -38,7 +38,7 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minu
 const PlayerScreen = () => {
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
-  const { currentStream, addRecentlyWatched, channels, epg } = useIPTV();
+  const { currentStream, addRecentlyWatched, channels, epg, stopStream, playStream } = useIPTV();
 
   // TiviMate-style info overlay state
   const [showOverlay, setShowOverlay] = useState(false);
@@ -61,9 +61,10 @@ const PlayerScreen = () => {
     // Apple TV Menu button shouldn't close the app from PlayerScreen.
     // Explicitly navigating to "Home" instead of relying on "goBack()"
     // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
+    stopStream();
     navigation.navigate('Home');
     return true; // Return true to indicate we handled the back event
-  }, [navigation]);
+  }, [navigation, stopStream]);
 
   // Get full channel details for HUD
   const currentChannel = useMemo(() => {
@@ -194,10 +195,30 @@ const PlayerScreen = () => {
       setSeekTime(newSeekTime);
       currentTimeRef.current = newSeekTime;
       setShowOverlay(true);
+    } else if (evt.eventType === 'pageUp' || evt.eventType === 'channelUp') {
+       if (channels.length > 0 && currentStream) {
+           const currentIndex = channels.findIndex(c => c.id === currentStream.id);
+           if (currentIndex >= 0) {
+               const nextIndex = (currentIndex + 1) % channels.length;
+               const nextChannel = channels[nextIndex];
+               playStream({ url: nextChannel.url, id: nextChannel.id });
+               setShowOverlay(true);
+           }
+       }
+    } else if (evt.eventType === 'pageDown' || evt.eventType === 'channelDown') {
+       if (channels.length > 0 && currentStream) {
+           const currentIndex = channels.findIndex(c => c.id === currentStream.id);
+           if (currentIndex >= 0) {
+               const prevIndex = (currentIndex - 1 + channels.length) % channels.length;
+               const prevChannel = channels[prevIndex];
+               playStream({ url: prevChannel.url, id: prevChannel.id });
+               setShowOverlay(true);
+           }
+       }
     } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
        setShowOverlay(true);
     }
-  }, [isFocused, handleBack]);
+  }, [isFocused, handleBack, channels, currentStream, playStream]);
 
   // Use the standard hook provided by react-native for TV remote events
   useTVEventHandler(handleTVRemoteEvent);

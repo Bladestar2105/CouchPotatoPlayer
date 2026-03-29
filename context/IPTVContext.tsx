@@ -293,6 +293,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setCurrentProfile(profile);
       await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
+
+      if (forceUpdate) {
+        await loadEPG(true);
+      }
     } catch (e: any) {
       Logger.error("Failed to load profile:", sanitizeError(e));
       // Safely display specific, translated errors without leaking raw e.message
@@ -329,7 +333,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await AsyncStorage.removeItem(CURRENT_PROFILE_STORAGE_KEY);
   }, []);
 
-  const loadEPG = useCallback(async () => {
+  const loadEPG = useCallback(async (forceUpdate: boolean = false) => {
     if (!currentProfile) return;
 
     Logger.log('[EPG] Starting EPG load...');
@@ -338,24 +342,26 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // 1. Try to load from cache
       let cachedEpgStr: string | null = null;
-      if (Platform.OS === 'web') {
-        cachedEpgStr = await AsyncStorage.getItem(storageKey);
-      } else {
-        const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
-        const file = new File(cacheDir, `${storageKey}.json`);
-        try {
-          if (file.exists) {
-            cachedEpgStr = await file.text();
+      if (!forceUpdate) {
+        if (Platform.OS === 'web') {
+          cachedEpgStr = await AsyncStorage.getItem(storageKey);
+        } else {
+          const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+          const file = new File(cacheDir, `${storageKey}.json`);
+          try {
+            if (file.exists) {
+              cachedEpgStr = await file.text();
+            }
+          } catch (e) {
+            // File does not exist or cannot be read
           }
-        } catch (e) {
-          // File does not exist or cannot be read
         }
       }
 
       if (cachedEpgStr) {
 
         const cachedEpg = JSON.parse(cachedEpgStr);
-        if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS) {
+        if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS && !forceUpdate) {
           // Re-hydrate Date objects
           Logger.log('[EPG] Using cached EPG data');
           const hydratedEpg: Record<string, EPGProgram[]> = {};
@@ -774,6 +780,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentStream(stream);
   }, []);
 
+  const stopStream = useCallback(() => {
+    setCurrentStream(null);
+  }, []);
+
   // --- Favorites with full metadata (Flutter migration) ---
   const addFavorite = useCallback(async (item: FavoriteItem) => {
     try {
@@ -947,6 +957,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     unloadProfile,
     setCurrentProfile,
     playStream,
+    stopStream,
     addFavorite,
     removeFavorite,
     isFavorite,
@@ -989,6 +1000,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     unloadProfile,
     setCurrentProfile,
     playStream,
+    stopStream,
     addFavorite,
     removeFavorite,
     isFavorite,
