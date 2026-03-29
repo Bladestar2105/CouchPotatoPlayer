@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import UIKit
+import React
 
 @objc(SwiftTSPlayerView)
 class SwiftTSPlayerView: UIView {

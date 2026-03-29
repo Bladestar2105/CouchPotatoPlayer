@@ -9,7 +9,19 @@ class SwiftTSPlayerProxy: NSObject {
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "com.couchpotatoplayer.proxy")
     private let mapQueue = DispatchQueue(label: "com.couchpotatoplayer.proxy.mapQueue")
-    private var activeConnections: [NWConnection: ProxySessionDelegate] = [:]
+
+    // Use an Array of objects to avoid Hashable requirement on NWConnection
+    private var activeConnections: [ConnectionContext] = []
+
+    class ConnectionContext {
+        let connection: NWConnection
+        let delegate: ProxySessionDelegate
+
+        init(connection: NWConnection, delegate: ProxySessionDelegate) {
+            self.connection = connection
+            self.delegate = delegate
+        }
+    }
 
     @objc var port: UInt16 = 8080
     @objc var isRunning: Bool = false
@@ -48,9 +60,9 @@ class SwiftTSPlayerProxy: NSObject {
     @objc func stop() {
         listener?.cancel()
         listener = nil
-        for (connection, delegate) in activeConnections {
-            delegate.task?.cancel()
-            connection.cancel()
+        for context in activeConnections {
+            context.delegate.task?.cancel()
+            context.connection.cancel()
         }
         activeConnections.removeAll()
         mapQueue.sync {
@@ -98,15 +110,15 @@ class SwiftTSPlayerProxy: NSObject {
     }
 
     private func cleanupConnection(_ connection: NWConnection) {
-        if let delegate = activeConnections[connection] {
-            delegate.task?.cancel()
+        if let index = activeConnections.firstIndex(where: { $0.connection === connection }) {
+            activeConnections[index].delegate.task?.cancel()
+            activeConnections.remove(at: index)
         }
-        activeConnections.removeValue(forKey: connection)
     }
 
     private func receiveData(on connection: NWConnection) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] content, _, isComplete, error in
-            if let error = error {
+            if error != nil {
                 self?.cleanupConnection(connection)
                 connection.cancel()
                 return
@@ -198,7 +210,8 @@ class SwiftTSPlayerProxy: NSObject {
 
         let config = URLSessionConfiguration.default
         let delegate = ProxySessionDelegate(connection: connection)
-        self.activeConnections[connection] = delegate
+        let context = ConnectionContext(connection: connection, delegate: delegate)
+        self.activeConnections.append(context)
 
         let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
         let task = session.dataTask(with: request)
