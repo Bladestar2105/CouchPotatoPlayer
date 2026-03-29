@@ -46,10 +46,11 @@ const KSPLAYER_PODS = `  # ─── KSPlayer (FFmpeg-based player for full IPTV
 `;
 
 /**
- * Post-install hook to ensure react-native-ksplayer can find KSPlayer frameworks.
- * This adds the correct framework search paths.
+ * Post-install hook code to add to the post_install block.
+ * This will be inserted after the react_native_post_install call.
  */
-const KSPLAYER_POST_INSTALL = `    # Ensure react-native-ksplayer can find KSPlayer frameworks
+const KSPLAYER_POST_INSTALL = `
+    # Ensure react-native-ksplayer can find KSPlayer frameworks
     installer.pods_project.targets.each do |target|
       if target.name == 'react-native-ksplayer'
         target.build_configurations.each do |config|
@@ -63,31 +64,9 @@ const KSPLAYER_POST_INSTALL = `    # Ensure react-native-ksplayer can find KSPla
 
 /**
  * Adds KSPlayer pod declarations to the Podfile, before use_native_modules!
- * This is critical because use_native_modules! evaluates local podspecs,
- * and the react-native-ksplayer.podspec has s.dependency "KSPlayer/MEPlayer".
+ * Uses mergeContents which works on a single-line anchor.
  */
 function addKSPlayerPods(src) {
-  // First try to match after use_frameworks! lines
-  const frameworksPattern = /use_frameworks! :linkage => (?:podfile_properties|ENV)/;
-  const match = src.match(frameworksPattern);
-  
-  if (match) {
-    // Find the end of the use_frameworks! section (next blank line or end of line)
-    const afterFrameworks = src.substring(src.indexOf(match[0]) + match[0].length);
-    const endOfLine = afterFrameworks.indexOf('\n');
-    
-    return mergeContents({
-      tag: 'withKSPlayer-pods',
-      src,
-      newSrc: KSPLAYER_PODS,
-      // Insert after use_frameworks! lines
-      anchor: frameworksPattern,
-      offset: 2, // Skip past the two use_frameworks! lines
-      comment: '#',
-    });
-  }
-  
-  // Fallback: insert before use_native_modules!
   return mergeContents({
     tag: 'withKSPlayer-pods',
     src,
@@ -100,17 +79,86 @@ function addKSPlayerPods(src) {
 
 /**
  * Adds KSPlayer post-install hook to the Podfile's post_install block.
+ * 
+ * Since mergeContents only works with single-line anchors, we use a different approach:
+ * We find the post_install block and modify it directly using string manipulation.
+ * 
+ * The Expo-generated Podfile has this structure:
+ *   post_install do |installer|
+ *     react_native_post_install(
+ *       installer,
+ *       config[:reactNativePath],
+ *       :mac_catalyst_enabled => false,
+ *       :ccache_enabled => ccache_enabled?(podfile_properties),
+ *     )
+ *   end
+ * 
+ * We need to insert our code after the closing ) of react_native_post_install
+ * but before the closing 'end' of the post_install block.
  */
 function addKSPlayerPostInstall(src) {
-  return mergeContents({
-    tag: 'withKSPlayer-post-install',
-    src,
-    newSrc: KSPLAYER_POST_INSTALL,
-    // Insert after react_native_post_install call's closing paren
-    anchor: /\)\s*\n\s*# Ensure react-native-ksplayer|:\s*ccache_enabled/,
-    offset: 3,
-    comment: '#',
-  });
+  // Check if already present
+  if (src.includes("if target.name == 'react-native-ksplayer'")) {
+    return { contents: src };
+  }
+
+  // Find the post_install block
+  // Look for the pattern: post_install do |installer| ... end
+  // We need to find the matching 'end' for the post_install block
+  
+  // Strategy: Find the line with just ")" (closing the react_native_post_install call)
+  // and insert our code after it, before the next "end"
+  
+  const lines = src.split('\n');
+  let result = [];
+  let foundPostInstall = false;
+  let inserted = false;
+  let parenCount = 0;
+  let inReactNativePostInstall = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    result.push(line);
+    
+    // Track when we're inside post_install
+    if (line.includes('post_install do |installer|')) {
+      foundPostInstall = true;
+    }
+    
+    // Look for react_native_post_install call
+    if (foundPostInstall && line.includes('react_native_post_install(')) {
+      inReactNativePostInstall = true;
+      parenCount = 0;
+    }
+    
+    // Count parentheses to find the end of react_native_post_install call
+    if (inReactNativePostInstall) {
+      // Count opening parens
+      const openParens = (line.match(/\(/g) || []).length;
+      // Count closing parens
+      const closeParens = (line.match(/\)/g) || []).length;
+      parenCount += openParens - closeParens;
+      
+      // When parenCount goes back to 0 or negative, we've closed the call
+      if (parenCount <= 0) {
+        inReactNativePostInstall = false;
+        // Insert our code after this line, before the 'end'
+        if (!inserted) {
+          result.push(KSPLAYER_POST_INSTALL);
+          inserted = true;
+        }
+      }
+    }
+  }
+  
+  if (!inserted) {
+    throw new Error(
+      'Could not find the right place to insert post_install hook. ' +
+      'Make sure the Podfile has a post_install block with react_native_post_install call.'
+    );
+  }
+  
+  return { contents: result.join('\n') };
 }
 
 /**
@@ -141,7 +189,7 @@ module.exports = function withKSPlayer(config) {
       } catch (error) {
         if (error.code === 'ERR_NO_MATCH') {
           throw new Error(
-            `Cannot add KSPlayer pods to Podfile: could not find insertion anchor. ` +
+            `Cannot add KSPlayer pods to Podfile: could not find 'use_native_modules!' anchor. ` +
             `Please check your Podfile structure.`
           );
         }
@@ -154,14 +202,10 @@ module.exports = function withKSPlayer(config) {
           const postInstallResult = addKSPlayerPostInstall(contents);
           contents = postInstallResult.contents;
         } catch (error) {
-          if (error.code === 'ERR_NO_MATCH') {
-            console.warn(
-              '[withKSPlayer] Could not find post_install block to add framework search paths. ' +
-              'You may need to add them manually.'
-            );
-          } else {
-            throw error;
-          }
+          console.warn(
+            '[withKSPlayer] Could not add post_install hook: ' + error.message
+          );
+          // Don't throw - the pods are more important than the post_install hook
         }
       }
 
