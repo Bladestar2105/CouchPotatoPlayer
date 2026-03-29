@@ -160,9 +160,9 @@ const SettingsScreen = () => {
   const handleActionSheetPlayerType = () => {
     if (Platform.OS === 'ios' && !Platform.isTV) {
       const nativeLabel = 'Metal (Native)';
-      const avkitLabel = 'AVKit (Native TS Proxy)';
-      const options = ['Cancel', avkitLabel, nativeLabel, 'VLC'];
-      const values: (PlayerType | null)[] = [null, 'avkit', 'native', 'vlc'];
+      const avkitLabel = 'AVKit (HLS & MP4 only)';
+      const options = ['Cancel', 'VLC (All Formats)', avkitLabel, nativeLabel];
+      const values: (PlayerType | null)[] = [null, 'vlc', 'avkit', 'native'];
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0 },
         (buttonIndex: number) => {
@@ -173,15 +173,16 @@ const SettingsScreen = () => {
   };
 
   const getNativePlayerName = () => {
-    if (Platform.isTV) return 'AVKit (Native TS Proxy)';
+    if (Platform.isTV) return 'AVKit (HLS & MP4 only)';
     if (Platform.OS === 'ios') return 'Metal (Native)';
     if (Platform.OS === 'android') return 'ExoPlayer (Native)';
     return 'Native';
   };
 
   const getPlayerTypeName = (type: PlayerType) => {
-    if (type === 'avkit') return 'AVKit (Native TS Proxy)';
-    if (type === 'vlc') return 'VLC';
+    if (type === 'avkit') return 'AVKit (HLS & MP4 only)';
+    if (type === 'vlc') return 'VLC (All Formats)';
+    if (type === 'ksplayer') return 'KSPlayer (FFmpeg)';
     return getNativePlayerName();
   };
 
@@ -229,14 +230,13 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         {/* Video Player Engine */}
-        {/* On tvOS, AVKit (SwiftTSPlayer) is the default player engine.
-            VLC is also supported via TVVLCKit and uses the local TS proxy
-            for proper stream handling. */}
+        {/* On tvOS, VLC is the recommended default (plays all IPTV formats).
+            AVKit only supports HLS & MP4. KSPlayer uses FFmpeg for full format support. */}
         {Platform.isTV ? (
           <TouchableOpacity
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
             onPress={() => {
-              const options: PlayerType[] = ['avkit', 'vlc'];
+              const options: PlayerType[] = ['vlc', 'ksplayer', 'avkit'];
               const nextIndex = (options.indexOf(playerType) + 1) % options.length;
               setPlayerType(options[nextIndex]);
             }}
@@ -244,6 +244,11 @@ const SettingsScreen = () => {
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary, fontSize: 10, marginTop: 2 }]}>
+                {playerType === 'vlc' ? 'Recommended — plays all IPTV streams' :
+                 playerType === 'ksplayer' ? 'FFmpeg-based — plays all formats' :
+                 'HLS & MP4 only — TS streams auto-fallback to VLC'}
+              </Text>
             </View>
             <Text style={{ color: colors.primary }}>Toggle</Text>
           </TouchableOpacity>
@@ -270,8 +275,8 @@ const SettingsScreen = () => {
           </View>
         )}
 
-        {/* VLC Hardware Acceleration — shown when VLC is selected (including tvOS) */}
-        {playerType === 'vlc' && (
+        {/* Hardware Acceleration — shown when VLC or KSPlayer is selected (including tvOS) */}
+        {(playerType === 'vlc' || playerType === 'ksplayer') && (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>VLC Hardware Acceleration</Text>

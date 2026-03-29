@@ -13,17 +13,13 @@ class SwiftTSPlayerProxyModule: NSObject {
         SwiftTSPlayerProxy.shared.start()
     }
 
-    /// Register a stream for HLS-based playback (AVPlayer) and return the local m3u8 URL
-    @objc func registerStream(_ targetUrl: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        SwiftTSPlayerProxy.shared.start() // Ensure proxy is running
+    /// Register a stream and return a local proxy URL for pass-through playback.
+    /// Used by VLC/KSPlayer on Apple platforms for header forwarding & ATS bypass.
+    @objc func registerStream(_ targetUrl: String,
+                              resolver resolve: @escaping RCTPromiseResolveBlock,
+                              rejecter reject: @escaping RCTPromiseRejectBlock) {
+        SwiftTSPlayerProxy.shared.start()
         let localUrl = SwiftTSPlayerProxy.shared.registerStream(targetUrl: targetUrl)
-        resolve(localUrl)
-    }
-
-    /// Register a stream for direct TS pass-through (VLC) and return the local direct.ts URL
-    @objc func registerStreamDirect(_ targetUrl: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        SwiftTSPlayerProxy.shared.start() // Ensure proxy is running
-        let localUrl = SwiftTSPlayerProxy.shared.registerStreamDirect(targetUrl: targetUrl)
         resolve(localUrl)
     }
 }
