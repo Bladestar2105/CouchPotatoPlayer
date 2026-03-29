@@ -192,6 +192,38 @@ const SettingsScreen = () => {
     return getNativePlayerName();
   };
 
+  const handleToggleAdultContent = (value: boolean) => {
+    if (!value) {
+       lockAdultContent();
+       return;
+    }
+
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Enter PIN',
+        'Please enter your PIN to unlock adult content',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unlock',
+            onPress: (enteredPin?: string) => {
+               if (enteredPin) {
+                  const unlocked = unlockAdultContent(enteredPin);
+                  if (!unlocked) {
+                     Alert.alert('Error', 'Incorrect PIN code.');
+                  }
+               }
+            }
+          }
+        ],
+        'secure-text'
+      );
+    } else {
+       // Fallback for Android/Web where Alert.prompt is unsupported
+       navigation.navigate('PinSetup');
+    }
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.section}>
@@ -283,67 +315,91 @@ const SettingsScreen = () => {
 
         {/* Hardware Acceleration — shown when VLC is selected (including tvOS) */}
         {(playerType === 'vlc') && (
-          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => setVlcHardwareAcceleration(!vlcHardwareAcceleration)}
+            disabled={!Platform.isTV}
+          >
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Acceleration</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
                 Improve performance on supported devices
               </Text>
             </View>
-            <Switch
-              value={vlcHardwareAcceleration}
-              onValueChange={setVlcHardwareAcceleration}
-              trackColor={{ false: colors.divider, true: colors.primary }}
-              thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
-            />
-          </View>
+            <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+              <Switch
+                value={vlcHardwareAcceleration}
+                onValueChange={setVlcHardwareAcceleration}
+                trackColor={{ false: colors.divider, true: colors.primary }}
+                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
+              />
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* KSPlayer specific settings */}
         {(playerType === 'ksplayer') && (
           <>
-            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+            <TouchableOpacity
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+              onPress={() => setKsplayerHardwareDecode(!ksplayerHardwareDecode)}
+              disabled={!Platform.isTV}
+            >
               <View style={styles.tileLeft}>
                 <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Decoding</Text>
                 <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
                   VideoToolbox decoding (H.264/H.265)
                 </Text>
               </View>
-              <Switch
-                value={ksplayerHardwareDecode}
-                onValueChange={setKsplayerHardwareDecode}
-                trackColor={{ false: colors.divider, true: colors.primary }}
-                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
-              />
-            </View>
-            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+              <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+                <Switch
+                  value={ksplayerHardwareDecode}
+                  onValueChange={setKsplayerHardwareDecode}
+                  trackColor={{ false: colors.divider, true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
+                />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+              onPress={() => setKsplayerAsynchronousDecompression(!ksplayerAsynchronousDecompression)}
+              disabled={!Platform.isTV}
+            >
               <View style={styles.tileLeft}>
                 <Text style={[styles.tileTitle, { color: colors.text }]}>Asynchronous Decompression</Text>
                 <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
                   Improve performance for high-bitrate streams
                 </Text>
               </View>
-              <Switch
-                value={ksplayerAsynchronousDecompression}
-                onValueChange={setKsplayerAsynchronousDecompression}
-                trackColor={{ false: colors.divider, true: colors.primary }}
-                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
-              />
-            </View>
-            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+              <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+                <Switch
+                  value={ksplayerAsynchronousDecompression}
+                  onValueChange={setKsplayerAsynchronousDecompression}
+                  trackColor={{ false: colors.divider, true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
+                />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+              onPress={() => setKsplayerDisplayFrameRate(!ksplayerDisplayFrameRate)}
+              disabled={!Platform.isTV}
+            >
               <View style={styles.tileLeft}>
                 <Text style={[styles.tileTitle, { color: colors.text }]}>Adaptive Frame Rate</Text>
                 <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
                   Automatically adjust display frame rate
                 </Text>
               </View>
-              <Switch
-                value={ksplayerDisplayFrameRate}
-                onValueChange={setKsplayerDisplayFrameRate}
-                trackColor={{ false: colors.divider, true: colors.primary }}
-                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
-              />
-            </View>
+              <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+                <Switch
+                  value={ksplayerDisplayFrameRate}
+                  onValueChange={setKsplayerDisplayFrameRate}
+                  trackColor={{ false: colors.divider, true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
+                />
+              </View>
+            </TouchableOpacity>
           </>
         )}
 
@@ -484,47 +540,23 @@ const SettingsScreen = () => {
 
         {/* Show Adult Content */}
         {pin && (
-          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => handleToggleAdultContent(!isAdultUnlocked)}
+            disabled={!Platform.isTV}
+          >
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Show Adult Content</Text>
             </View>
-            <Switch
-              value={isAdultUnlocked}
-              onValueChange={(value) => {
-                if (!value) {
-                   lockAdultContent();
-                   return;
-                }
-
-                if (Platform.OS === 'ios') {
-                  Alert.prompt(
-                    'Enter PIN',
-                    'Please enter your PIN to unlock adult content',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Unlock',
-                        onPress: (enteredPin?: string) => {
-                           if (enteredPin) {
-                              const unlocked = unlockAdultContent(enteredPin);
-                              if (!unlocked) {
-                                 Alert.alert('Error', 'Incorrect PIN code.');
-                              }
-                           }
-                        }
-                      }
-                    ],
-                    'secure-text'
-                  );
-                } else {
-                   // Fallback for Android/Web where Alert.prompt is unsupported
-                   navigation.navigate('PinSetup');
-                }
-              }}
-              trackColor={{ false: colors.divider, true: colors.primary }}
-              thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (isAdultUnlocked ? colors.primary : '#f4f3f4')}
-            />
-          </View>
+            <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+              <Switch
+                value={isAdultUnlocked}
+                onValueChange={handleToggleAdultContent}
+                trackColor={{ false: colors.divider, true: colors.primary }}
+                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (isAdultUnlocked ? colors.primary : '#f4f3f4')}
+              />
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Logout */}
