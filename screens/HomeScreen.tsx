@@ -104,6 +104,8 @@ const MainLayout = () => {
                 {/* On a TV, the sidebar auto-expands on focus, so the hamburger menu isn't strictly necessary, but helpful for mouse/touch */}
                 <TouchableOpacity
                   onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                  onFocus={handleSidebarFocus}
+                  onBlur={handleSidebarBlur}
                   style={[styles.menuItem, { justifyContent: 'center' }]}
                   accessibilityRole="button"
                   accessibilityLabel="Toggle Sidebar"
@@ -113,13 +115,13 @@ const MainLayout = () => {
 
                 {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
 
-                <SidebarItem icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} />
-                <SidebarItem icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} />
-                <SidebarItem icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} />
-                <SidebarItem icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} />
-                <SidebarItem icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} />
-                <SidebarItem icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} />
-                <SidebarItem icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} />
+                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} />
+                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} />
+                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} />
+                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} />
+                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} />
+                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} />
+                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} />
 
                 <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
                 {isSidebarExpanded && <Text style={[styles.sidebarSectionTitle, { fontSize: Platform.isTV ? 16 : 12 }]}>PROVIDERS</Text>}
@@ -135,6 +137,8 @@ const MainLayout = () => {
               return (
                 <SidebarItem
                   key={p.id}
+                  onFocus={handleSidebarFocus}
+                  onBlur={handleSidebarBlur}
                   icon={iconName.replace('_', '-')}
                   label={p.name}
                   isActive={isCurrent}

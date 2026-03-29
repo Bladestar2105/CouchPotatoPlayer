@@ -14,7 +14,7 @@ const { height } = Dimensions.get('window');
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(({ title, isSelected, onPress, colors }: { title: string, isSelected: boolean, onPress: () => void, colors: any }) => {
+const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -29,6 +29,7 @@ const CategoryItem = React.memo(({ title, isSelected, onPress, colors }: { title
             accessibilityRole="tab"
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`Select category ${title}`}
+            hasTVPreferredFocus={hasTVPreferredFocus}
         >
             <Text style={{ color: isSelected || isFocused ? '#FFF' : '#AAA', fontWeight: isSelected || isFocused ? 'bold' : 'normal', fontSize: Platform.isTV ? 16 : 16 }}>
                 {title}
@@ -36,7 +37,7 @@ const CategoryItem = React.memo(({ title, isSelected, onPress, colors }: { title
         </TouchableOpacity>
     );
 }, (prevProps, nextProps) => {
-    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected;
+    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 });
 
 const LiveTVFlow = () => {
@@ -211,14 +212,16 @@ const LiveTVFlow = () => {
              const itemHeight = 57;
              return { length: itemHeight, offset: itemHeight * index, index };
           }}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
               const isSelected = selectedGroup === item.title;
+              const isFirstItem = index === 0;
               return (
                   <CategoryItem
                       title={item.title}
                       isSelected={isSelected}
                       onPress={() => handleGroupSelect(item.title)}
                       colors={colors}
+                      hasTVPreferredFocus={isFirstItem}
                   />
               );
           }}
