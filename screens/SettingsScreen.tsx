@@ -173,15 +173,15 @@ const SettingsScreen = () => {
   };
 
   const getNativePlayerName = () => {
-    if (Platform.isTV) return 'AVKit (Native TS Proxy)';
+    if (Platform.isTV) return 'AVKit (HLS & MP4)';
     if (Platform.OS === 'ios') return 'Metal (Native)';
     if (Platform.OS === 'android') return 'ExoPlayer (Native)';
     return 'Native';
   };
 
   const getPlayerTypeName = (type: PlayerType) => {
-    if (type === 'avkit') return 'AVKit (Native TS Proxy)';
-    if (type === 'vlc') return 'VLC';
+    if (type === 'avkit') return 'AVKit (HLS & MP4)';
+    if (type === 'vlc') return 'VLC (All Formats)';
     return getNativePlayerName();
   };
 
@@ -229,18 +229,28 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         {/* Video Player Engine */}
-        {/* On tvOS, expo-video is always used (react-native-vlc-media-player has
-            no tvOS binary and react-native-video triggers AVFoundation error
-            -11850 on the Apple TV Simulator). The setting is therefore read-only
-            on tvOS and VLC is not offered as an option. */}
+        {/* On tvOS, VLC is the primary player (handles raw TS streams).
+            AVKit only works with HLS (.m3u8) and MP4 — it CANNOT play
+            raw MPEG-TS which is what most IPTV streams use.
+            Smart fallback: if AVKit is chosen but stream is TS, VLC is used automatically. */}
         {Platform.isTV ? (
-          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => {
+              const options: PlayerType[] = ['vlc', 'avkit'];
+              const nextIndex = (options.indexOf(playerType) + 1) % options.length;
+              setPlayerType(options[nextIndex]);
+            }}
+          >
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>AVKit (Native TS Proxy)</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary, fontSize: 11, marginTop: 2 }]}>tvOS always uses AVKit</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary, fontSize: 11, marginTop: 2 }]}>
+                {playerType === 'vlc' ? 'Recommended — plays all IPTV streams' : 'HLS & MP4 only — TS streams auto-fallback to VLC'}
+              </Text>
             </View>
-          </View>
+            <Text style={{ color: colors.primary }}>Toggle</Text>
+          </TouchableOpacity>
         ) : Platform.OS === 'ios' ? (
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetPlayerType}>
             <View style={styles.tileLeft}>
@@ -264,8 +274,8 @@ const SettingsScreen = () => {
           </View>
         )}
 
-        {/* VLC Hardware Acceleration — not applicable on tvOS */}
-        {playerType === 'vlc' && !Platform.isTV && (
+        {/* VLC Hardware Acceleration — shown when VLC is selected (including tvOS) */}
+        {playerType === 'vlc' && (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>VLC Hardware Acceleration</Text>

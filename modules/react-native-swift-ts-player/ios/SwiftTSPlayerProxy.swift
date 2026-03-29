@@ -1,7 +1,14 @@
 import Foundation
-import AVFoundation
 import Network
 
+/// A lightweight local TCP proxy that forwards HTTP GET requests to remote
+/// IPTV stream URLs.  This is used by VLC (and potentially other players) on
+/// Apple platforms to ensure proper header forwarding and to work around
+/// App Transport Security restrictions for plain-HTTP streams.
+///
+/// **AVPlayer should NOT be pointed at this proxy for raw TS streams.**
+/// AVPlayer only supports HLS (.m3u8) and progressive MP4 natively.
+/// Raw MPEG-TS must be played through VLC / TVVLCKit.
 @objc(SwiftTSPlayerProxy)
 class SwiftTSPlayerProxy: NSObject {
     @objc static let shared = SwiftTSPlayerProxy()
@@ -10,14 +17,13 @@ class SwiftTSPlayerProxy: NSObject {
     private let queue = DispatchQueue(label: "com.couchpotatoplayer.proxy")
     private let mapQueue = DispatchQueue(label: "com.couchpotatoplayer.proxy.mapQueue")
 
-    // Use an Array of objects to avoid Hashable requirement on NWConnection
     private var activeConnections: [ConnectionContext] = []
 
     class ConnectionContext {
         let connection: NWConnection
-        let delegate: ProxySessionDelegate
+        let delegate: ProxySessionDelegate?
 
-        init(connection: NWConnection, delegate: ProxySessionDelegate) {
+        init(connection: NWConnection, delegate: ProxySessionDelegate? = nil) {
             self.connection = connection
             self.delegate = delegate
         }
@@ -26,8 +32,10 @@ class SwiftTSPlayerProxy: NSObject {
     @objc var port: UInt16 = 8080
     @objc var isRunning: Bool = false
 
-    // Mapping of uuids to target URLs
+    /// Maps UUID → remote stream URL
     private var streamMap: [String: String] = [:]
+
+    // MARK: - Lifecycle
 
     @objc func start() {
         if isRunning { return }
@@ -61,39 +69,40 @@ class SwiftTSPlayerProxy: NSObject {
         listener?.cancel()
         listener = nil
         for context in activeConnections {
-            context.delegate.task?.cancel()
+            context.delegate?.task?.cancel()
             context.connection.cancel()
         }
         activeConnections.removeAll()
-        mapQueue.sync {
-            streamMap.removeAll()
-        }
+        mapQueue.sync { streamMap.removeAll() }
         isRunning = false
     }
 
+    // MARK: - Stream Registration
+
+    /// Register a stream and return a local proxy URL.
+    /// The returned URL can be handed to VLC or any player that supports
+    /// raw TS / arbitrary HTTP streams.
     @objc func registerStream(targetUrl: String) -> String {
         let uuid = UUID().uuidString
         mapQueue.sync {
-            manageStreamMap()
+            pruneStreamMap()
             streamMap[uuid] = targetUrl
         }
-
-        // Return the local proxy URL for the m3u8 playlist
-        return "http://127.0.0.1:\(port)/\(uuid)/stream.m3u8"
+        return "http://127.0.0.1:\(port)/stream/\(uuid)"
     }
 
     // Caller must be on mapQueue
-    private func manageStreamMap() {
-        if streamMap.count > 10 {
+    private func pruneStreamMap() {
+        if streamMap.count > 20 {
             streamMap.removeAll()
         }
     }
 
-    private func getStreamUrl(for uuid: String) -> String? {
-        return mapQueue.sync {
-            return streamMap[uuid]
-        }
+    private func getTargetUrl(for uuid: String) -> String? {
+        return mapQueue.sync { streamMap[uuid] }
     }
+
+    // MARK: - Connection Handling
 
     private func handleConnection(_ connection: NWConnection) {
         connection.stateUpdateHandler = { [weak self] state in
@@ -111,13 +120,13 @@ class SwiftTSPlayerProxy: NSObject {
 
     private func cleanupConnection(_ connection: NWConnection) {
         if let index = activeConnections.firstIndex(where: { $0.connection === connection }) {
-            activeConnections[index].delegate.task?.cancel()
+            activeConnections[index].delegate?.task?.cancel()
             activeConnections.remove(at: index)
         }
     }
 
     private func receiveData(on connection: NWConnection) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] content, _, isComplete, error in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [weak self] content, _, _, error in
             if error != nil {
                 self?.cleanupConnection(connection)
                 connection.cancel()
@@ -128,10 +137,6 @@ class SwiftTSPlayerProxy: NSObject {
                let requestString = String(data: content, encoding: .utf8) {
                 self?.processRequest(requestString, connection: connection)
             }
-
-            // Do not cancel the connection on `isComplete` because the client may
-            // half-close the socket (EOF on receive) after sending the GET request,
-            // while still waiting to receive the proxied TS stream response.
         }
     }
 
@@ -151,87 +156,55 @@ class SwiftTSPlayerProxy: NSObject {
         let path = components[1]
         let pathWithoutQuery = path.components(separatedBy: "?").first ?? path
 
-        // Expected paths:
-        // /<uuid>/stream.m3u8
-        // /<uuid>/stream.ts
-
+        // Expected: /stream/<uuid>
         let pathComponents = pathWithoutQuery.components(separatedBy: "/").filter { !$0.isEmpty }
-        guard pathComponents.count == 2 else {
-            sendNotFoundResponse(to: connection)
+        guard pathComponents.count == 2, pathComponents[0] == "stream" else {
+            sendResponse(status: 404, body: "Not Found", to: connection)
             return
         }
 
-        let uuid = pathComponents[0]
-        let filename = pathComponents[1]
-
-        guard let targetUrlString = getStreamUrl(for: uuid), let targetUrl = URL(string: targetUrlString) else {
-            sendNotFoundResponse(to: connection)
+        let uuid = pathComponents[1]
+        guard let targetUrlString = getTargetUrl(for: uuid),
+              let targetUrl = URL(string: targetUrlString) else {
+            sendResponse(status: 404, body: "Stream not found", to: connection)
             return
         }
 
-        // Extract headers
+        // Extract request headers
         var headers: [String: String] = [:]
         for line in lines.dropFirst() {
             if line.isEmpty { break }
-            let headerComponents = line.split(separator: ":", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespaces) }
-            if headerComponents.count == 2 {
-                headers[headerComponents[0]] = headerComponents[1]
+            let parts = line.split(separator: ":", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespaces) }
+            if parts.count == 2 {
+                headers[parts[0]] = parts[1]
             }
         }
 
-        if filename == "stream.m3u8" {
-            // Serve a virtual M3U8 playlist that points to our local TS endpoint
-            servePlaylist(uuid: uuid, connection: connection)
-        } else if filename == "stream.ts" {
-            // Proxy the actual TS stream
-            proxyStream(to: targetUrl, headers: headers, connection: connection)
-        } else {
-            sendNotFoundResponse(to: connection)
-        }
+        proxyStream(to: targetUrl, headers: headers, connection: connection)
     }
 
-    private func servePlaylist(uuid: String, connection: NWConnection) {
-        // A VOD HLS playlist tricking AVPlayer to stream the infinite TS as a progressive file.
-        // This prevents AVPlayer from expecting a 10s segment and aborting or constantly polling.
-        let playlist = """
-        #EXTM3U
-        #EXT-X-VERSION:3
-        #EXT-X-TARGETDURATION:86400
-        #EXT-X-MEDIA-SEQUENCE:0
-        #EXT-X-PLAYLIST-TYPE:VOD
-        #EXTINF:86400.0,
-        stream.ts
-        #EXT-X-ENDLIST
-        """
-
-        let playlistData = playlist.data(using: .utf8)!
-        let response = "HTTP/1.1 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: \(playlistData.count)\r\nConnection: close\r\n\r\n"
-
-        var fullData = response.data(using: .utf8)!
-        fullData.append(playlistData)
-
-        connection.send(content: fullData, completion: .contentProcessed({ [weak self] _ in
-            self?.cleanupConnection(connection)
-            connection.cancel()
-        }))
-    }
+    // MARK: - Stream Proxying
 
     private func proxyStream(to url: URL, headers: [String: String], connection: NWConnection) {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
 
-        // Forward important client headers to the remote server
-        let headersToForward = ["Range", "User-Agent", "Accept", "Accept-Language"]
-        for headerKey in headersToForward {
-            if let headerValue = headers.first(where: { $0.key.caseInsensitiveCompare(headerKey) == .orderedSame })?.value {
-                request.setValue(headerValue, forHTTPHeaderField: headerKey)
+        // Forward select client headers
+        let forwardHeaders = ["Range", "Accept", "Accept-Language", "Accept-Encoding"]
+        for key in forwardHeaders {
+            if let value = headers.first(where: { $0.key.caseInsensitiveCompare(key) == .orderedSame })?.value {
+                request.setValue(value, forHTTPHeaderField: key)
             }
         }
 
         let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 86400 // Long-lived stream
+
         let delegate = ProxySessionDelegate(connection: connection)
         let context = ConnectionContext(connection: connection, delegate: delegate)
-        self.activeConnections.append(context)
+        activeConnections.append(context)
 
         let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
         let task = session.dataTask(with: request)
@@ -239,14 +212,31 @@ class SwiftTSPlayerProxy: NSObject {
         task.resume()
     }
 
-    private func sendNotFoundResponse(to connection: NWConnection) {
-        let response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-        connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed({ [weak self] _ in
+    // MARK: - Helpers
+
+    private func sendResponse(status: Int, body: String, to connection: NWConnection) {
+        let statusText: String
+        switch status {
+        case 200: statusText = "OK"
+        case 404: statusText = "Not Found"
+        case 500: statusText = "Internal Server Error"
+        default:  statusText = "Error"
+        }
+        let bodyData = body.data(using: .utf8) ?? Data()
+        let response = "HTTP/1.1 \(status) \(statusText)\r\nContent-Length: \(bodyData.count)\r\nConnection: close\r\n\r\n"
+        var fullData = response.data(using: .utf8)!
+        fullData.append(bodyData)
+        connection.send(content: fullData, completion: .contentProcessed({ [weak self] _ in
             self?.cleanupConnection(connection)
             connection.cancel()
         }))
     }
 }
+
+// MARK: - ProxySessionDelegate
+/// Forwards the remote HTTP response (headers + body) back to the local
+/// TCP client byte-for-byte.  Uses raw streaming (no chunked encoding) so
+/// that VLC receives an uninterrupted TS byte stream.
 
 class ProxySessionDelegate: NSObject, URLSessionDataDelegate {
     let connection: NWConnection
@@ -257,48 +247,51 @@ class ProxySessionDelegate: NSObject, URLSessionDataDelegate {
         self.connection = connection
     }
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        if !headersSent, let httpResponse = response as? HTTPURLResponse {
-            let statusCode = httpResponse.statusCode
-            let statusText = HTTPURLResponse.localizedString(forStatusCode: statusCode)
-            var headerString = "HTTP/1.1 \(statusCode) \(statusText)\r\n"
+    func urlSession(_ session: URLSession,
+                    dataTask: URLSessionDataTask,
+                    didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        guard !headersSent, let httpResponse = response as? HTTPURLResponse else {
+            completionHandler(.allow)
+            return
+        }
 
-            // Forward headers from remote server to client
-            let headersToExclude = ["Transfer-Encoding", "Content-Encoding"]
-            for (key, value) in httpResponse.allHeaderFields {
-                if let keyStr = key as? String, let valStr = value as? String {
-                    if !headersToExclude.contains(where: { $0.caseInsensitiveCompare(keyStr) == .orderedSame }) {
-                        headerString += "\(keyStr): \(valStr)\r\n"
-                    }
+        let statusCode = httpResponse.statusCode
+        let statusText = HTTPURLResponse.localizedString(forStatusCode: statusCode)
+        var headerString = "HTTP/1.1 \(statusCode) \(statusText)\r\n"
+
+        // Forward all headers except those that would confuse the local player
+        let skipHeaders: Set<String> = ["transfer-encoding", "content-encoding", "connection"]
+        for (key, value) in httpResponse.allHeaderFields {
+            if let k = key as? String, let v = value as? String {
+                if !skipHeaders.contains(k.lowercased()) {
+                    headerString += "\(k): \(v)\r\n"
                 }
             }
-
-            // Ensure necessary headers are present if missing
-            if httpResponse.allHeaderFields["Content-Type"] == nil {
-                headerString += "Content-Type: video/mp2t\r\n" // Force TS MIME type
-            }
-            if httpResponse.allHeaderFields["Connection"] == nil {
-                headerString += "Connection: keep-alive\r\n"
-            }
-            if httpResponse.allHeaderFields["Accept-Ranges"] == nil {
-                headerString += "Accept-Ranges: bytes\r\n"
-            }
-            headerString += "\r\n"
-
-            if let headerData = headerString.data(using: .utf8) {
-                connection.send(content: headerData, completion: .contentProcessed({ [weak self] error in
-                    if error != nil {
-                        self?.task?.cancel()
-                        self?.connection.cancel()
-                    }
-                }))
-            }
-            headersSent = true
         }
+
+        // Ensure Content-Type is set for TS streams
+        if httpResponse.allHeaderFields["Content-Type"] == nil {
+            headerString += "Content-Type: video/mp2t\r\n"
+        }
+        headerString += "Connection: close\r\n"
+        headerString += "\r\n"
+
+        if let data = headerString.data(using: .utf8) {
+            connection.send(content: data, completion: .contentProcessed({ [weak self] error in
+                if error != nil {
+                    self?.task?.cancel()
+                    self?.connection.cancel()
+                }
+            }))
+        }
+        headersSent = true
         completionHandler(.allow)
     }
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+    func urlSession(_ session: URLSession,
+                    dataTask: URLSessionDataTask,
+                    didReceive data: Data) {
         connection.send(content: data, completion: .contentProcessed({ [weak self] error in
             if error != nil {
                 self?.task?.cancel()
@@ -307,8 +300,12 @@ class ProxySessionDelegate: NSObject, URLSessionDataDelegate {
         }))
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        self.task?.cancel()
+    func urlSession(_ session: URLSession,
+                    task sessionTask: URLSessionTask,
+                    didCompleteWithError error: Error?) {
+        if let error = error, (error as NSError).code != NSURLErrorCancelled {
+            print("[SwiftTSPlayerProxy] Upstream ended: \(error.localizedDescription)")
+        }
         connection.cancel()
         session.invalidateAndCancel()
     }

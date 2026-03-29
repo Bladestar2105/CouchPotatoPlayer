@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/logger';
 
@@ -79,7 +80,7 @@ const SettingsContext = createContext<SettingsContextProps | undefined>(undefine
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
   const [bufferSize, setBufferSizeState] = useState<number>(32);
-  const [playerType, setPlayerTypeState] = useState<PlayerType>('native');
+  const [playerType, setPlayerTypeState] = useState<PlayerType>(Platform.isTV ? 'vlc' : 'native');
   const [vlcHardwareAcceleration, setVlcHardwareAccelerationState] = useState<boolean>(true);
   const [isReady, setIsReady] = useState(false);
 
