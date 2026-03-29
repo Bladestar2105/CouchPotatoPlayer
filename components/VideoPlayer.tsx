@@ -165,7 +165,7 @@ const VideoPlayer = React.forwardRef(
     ref,
   ) => {
     const { currentStream } = useIPTV();
-    const { bufferSize, playerType, vlcHardwareAcceleration } = useSettings();
+  const { bufferSize, playerType, vlcHardwareAcceleration, ksplayerHardwareDecode, ksplayerAsynchronousDecompression, ksplayerDisplayFrameRate } = useSettings();
 
     const streamUrl = useMemo(() => {
       if (!currentStream?.url) return null;
@@ -382,6 +382,9 @@ const VideoPlayer = React.forwardRef(
           style={styles.video}
           streamUrl={effectiveUrl}
           paused={paused}
+          hardwareDecode={ksplayerHardwareDecode}
+          asynchronousDecompression={ksplayerAsynchronousDecompression}
+          displayFrameRate={ksplayerDisplayFrameRate}
           onVideoLoad={(metadata) => {
             if (onVideoLoad) {
               onVideoLoad({
