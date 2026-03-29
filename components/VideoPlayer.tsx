@@ -1,37 +1,37 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Text, Platform } from 'react-native';
+import { View, StyleSheet, Text, Platform, NativeModules } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 
 // ---------------------------------------------------------------------------
 // Platform-gated player imports
 // ---------------------------------------------------------------------------
-// expo-video: used on tvOS (Platform.isTV) — AVKit-based, works on Apple TV
-// Simulator. react-native-video uses a lower-level AVPlayer pipeline that
-// triggers error -11850 ("Operation Stopped / server not correctly
-// configured") on the tvOS Simulator when Metal GPU access is restricted.
-let ExpoVideoView: any;
-let useExpoVideoPlayer: any;
-
 // expo-av (web only)
 let WebVideoComponent: any;
 
 // react-native-video (iOS phone/tablet & Android, NOT tvOS)
 let NativeVideoComponent: any;
 
-// react-native-vlc-media-player (Android & iOS phone/tablet, NOT tvOS)
+// react-native-vlc-media-player (Android, iOS phone/tablet, AND tvOS via TVVLCKit)
 let VLCPlayerComponent: any;
 
 if (Platform.OS === 'web') {
   WebVideoComponent = require('expo-av').Video;
 } else {
-  // Note: Instead of expo-video, we use a custom native SwiftTSPlayerView for Apple environments
-  // to support low-latency local TS proxies for IPTV playback.
-
-  // For iOS and Android, other native players are supported
-  if (!Platform.isTV) {
+  // VLC is available on all native platforms including tvOS (via TVVLCKit)
+  try {
     VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
-    NativeVideoComponent = require('react-native-video').default;
+  } catch (e) {
+    console.warn('[VideoPlayer] react-native-vlc-media-player not available:', e);
+  }
+
+  // react-native-video is only used on non-TV iOS and Android
+  if (!Platform.isTV) {
+    try {
+      NativeVideoComponent = require('react-native-video').default;
+    } catch (e) {
+      console.warn('[VideoPlayer] react-native-video not available:', e);
+    }
   }
 }
 
@@ -57,7 +57,7 @@ interface VideoPlayerProps {
 import { SwiftTSPlayer } from './SwiftTSPlayer';
 
 // ---------------------------------------------------------------------------
-// Apple environment custom player (SwiftTSPlayerView)
+// Apple environment custom player (SwiftTSPlayerView — AVKit via local proxy)
 // ---------------------------------------------------------------------------
 const AppleCustomVideoPlayer = ({
   streamUrl,
@@ -70,8 +70,6 @@ const AppleCustomVideoPlayer = ({
   onProgress?: VideoPlayerProps['onProgress'];
   onVideoLoad?: VideoPlayerProps['onVideoLoad'];
 }) => {
-  // Use a simple timer to emulate progress since the native view currently
-  // does not report progress directly, though it could be added to the module.
   React.useEffect(() => {
     if (!onProgress) return;
     let time = 0;
@@ -105,6 +103,36 @@ const AppleCustomVideoPlayer = ({
 };
 
 // ---------------------------------------------------------------------------
+// Helper: get a proxy URL for VLC on Apple platforms (tvOS / iOS)
+// The SwiftTSPlayerProxy provides a direct TS pass-through endpoint that
+// VLC can consume natively without the HLS segmentation layer.
+// ---------------------------------------------------------------------------
+const getVLCProxyUrl = async (url: string): Promise<string> => {
+  if (Platform.OS !== 'ios') return url;
+
+  // If the URL is already HLS or MP4, VLC can handle it directly
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.mp4')) {
+    return url;
+  }
+
+  // For raw TS streams on Apple platforms, route through the local Swift proxy
+  // using the direct pass-through endpoint. This ensures proper TS handling
+  // without the HLS segmentation overhead.
+  try {
+    const { SwiftTSPlayerProxyModule } = NativeModules;
+    if (SwiftTSPlayerProxyModule && SwiftTSPlayerProxyModule.registerStreamDirect) {
+      const proxyUrl = await SwiftTSPlayerProxyModule.registerStreamDirect(url);
+      return proxyUrl;
+    }
+  } catch (e) {
+    console.warn('[VideoPlayer] SwiftTSPlayerProxyModule not available for VLC, using direct URL');
+  }
+
+  return url;
+};
+
+// ---------------------------------------------------------------------------
 // Main VideoPlayer component
 // ---------------------------------------------------------------------------
 
@@ -130,6 +158,23 @@ const VideoPlayer = React.forwardRef(
       return currentStream.url;
     }, [currentStream?.url]);
 
+    // For VLC on Apple platforms, we need a proxy URL for raw TS streams
+    const [vlcStreamUrl, setVlcStreamUrl] = React.useState<string | null>(null);
+    React.useEffect(() => {
+      if (!streamUrl) {
+        setVlcStreamUrl(null);
+        return;
+      }
+      if (Platform.OS === 'ios' && playerType === 'vlc') {
+        let cancelled = false;
+        getVLCProxyUrl(streamUrl).then((proxyUrl) => {
+          if (!cancelled) setVlcStreamUrl(proxyUrl);
+        });
+        return () => { cancelled = true; };
+      }
+      setVlcStreamUrl(streamUrl);
+    }, [streamUrl, playerType]);
+
     // Ref used by non-tvOS players for imperative seek
     const videoRef = React.useRef<any>(null);
 
@@ -144,7 +189,8 @@ const VideoPlayer = React.forwardRef(
     // Declarative seeking for non-SwiftTS players
     React.useEffect(() => {
       if (seekPosition === undefined) return;
-      if (Platform.isTV || (Platform.OS === 'ios' && playerType === 'avkit')) return; // SwiftTSPlayer handles seek differently
+      // SwiftTSPlayer (avkit) handles seeking differently
+      if (playerType === 'avkit') return;
       if (videoRef.current && videoRef.current.seek) {
         videoRef.current.seek(seekPosition / 1000.0);
       }
@@ -227,6 +273,9 @@ const VideoPlayer = React.forwardRef(
     };
 
     const renderVLCPlayer = () => {
+      const effectiveUrl = vlcStreamUrl || streamUrl;
+      if (!effectiveUrl) return null;
+
       const safeVlcBufferSizeMs = Math.max(
         bufferSize > 100 ? bufferSize : bufferSize * 100,
         1500,
@@ -243,7 +292,7 @@ const VideoPlayer = React.forwardRef(
           ref={videoRef}
           key={currentStream?.id}
           onProgress={onProgress}
-          source={{ uri: streamUrl!, initOptions: vlcInitOptions }}
+          source={{ uri: effectiveUrl, initOptions: vlcInitOptions }}
           paused={paused}
           autoplay={!paused}
           style={styles.video}
@@ -265,15 +314,23 @@ const VideoPlayer = React.forwardRef(
 
       if (Platform.OS === 'web') return renderWebPlayer();
 
-      // tvOS: always use custom AVKit player
-      if (Platform.isTV) return renderAppleCustomPlayer();
+      // tvOS: player selection based on settings
+      if (Platform.isTV) {
+        if (playerType === 'vlc' && VLCPlayerComponent) return renderVLCPlayer();
+        // Default to AVKit (SwiftTSPlayer) on tvOS
+        return renderAppleCustomPlayer();
+      }
 
       // iOS (phone/tablet)
       if (Platform.OS === 'ios' && playerType === 'avkit') return renderAppleCustomPlayer();
+      if (Platform.OS === 'ios' && playerType === 'vlc' && VLCPlayerComponent) return renderVLCPlayer();
 
       // iOS (phone/tablet) & Android
       if (playerType === 'native') return renderNativePlayer();
-      return renderVLCPlayer();
+      if (playerType === 'vlc' && VLCPlayerComponent) return renderVLCPlayer();
+
+      // Fallback
+      return renderNativePlayer();
     };
 
     return (
