@@ -18,13 +18,10 @@ Pod::Spec.new do |s|
   s.dependency "React-Core"
 
   # KSPlayer/MEPlayer is declared in the Podfile via :git => ... source.
-  # We must also declare it as a dependency here so that CocoaPods generates
-  # the correct Xcode build order (KSPlayer compiles before react-native-ksplayer).
-  # Without this, Xcode tries to compile react-native-ksplayer in parallel with
-  # (or before) KSPlayer, causing "header 'KSPlayer-Swift.h' not found" errors
-  # because the Swift-generated header does not exist yet.
-  #
-  # NOTE: CocoaPods resolves this dependency from the Podfile's :git source for
-  # KSPlayer/MEPlayer — it does NOT require KSPlayer to be on the CocoaPods trunk CDN.
-  s.dependency "KSPlayer/MEPlayer"
+  # We cannot use s.dependency here because KSPlayer is not on the CocoaPods CDN.
+  # The Podfile explicitly declares the dependency, which will link the frameworks.
+  # 
+  # To ensure correct build order (KSPlayer must build before this module so that
+  # KSPlayer-Swift.h exists), we rely on the Podfile's explicit pod declarations.
+  # CocoaPods will process pods in the order they are declared in the Podfile.
 end

@@ -79,5 +79,20 @@ target 'CouchPotatoPlayer' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Ensure react-native-ksplayer can find KSPlayer frameworks
+    # KSPlayer is built as a static framework, so we need to add its build products
+    # to the framework search paths of react-native-ksplayer
+    installer.pods_project.targets.each do |target|
+      if target.name == 'react-native-ksplayer'
+        # Add framework search paths for KSPlayer and its dependencies
+        target.build_configurations.each do |config|
+          # Add Pods/KSPlayer to framework search paths
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] ||= ['$(inherited)']
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_ROOT)/KSPlayer'
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer'
+        end
+      end
+    end
   end
 end
