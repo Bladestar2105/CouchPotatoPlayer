@@ -129,10 +129,9 @@ class SwiftTSPlayerProxy: NSObject {
                 self?.processRequest(requestString, connection: connection)
             }
 
-            if isComplete {
-                self?.cleanupConnection(connection)
-                connection.cancel()
-            }
+            // Do not cancel the connection on `isComplete` because the client may
+            // half-close the socket (EOF on receive) after sending the GET request,
+            // while still waiting to receive the proxied TS stream response.
         }
     }
 
@@ -182,14 +181,17 @@ class SwiftTSPlayerProxy: NSObject {
     }
 
     private func servePlaylist(uuid: String, connection: NWConnection) {
-        // A simple live HLS playlist pointing to our proxied TS stream
+        // A VOD HLS playlist tricking AVPlayer to stream the infinite TS as a progressive file.
+        // This prevents AVPlayer from expecting a 10s segment and aborting or constantly polling.
         let playlist = """
         #EXTM3U
         #EXT-X-VERSION:3
-        #EXT-X-TARGETDURATION:10
+        #EXT-X-TARGETDURATION:86400
         #EXT-X-MEDIA-SEQUENCE:0
-        #EXTINF:10.0,
+        #EXT-X-PLAYLIST-TYPE:VOD
+        #EXTINF:86400.0,
         stream.ts
+        #EXT-X-ENDLIST
         """
 
         let playlistData = playlist.data(using: .utf8)!
