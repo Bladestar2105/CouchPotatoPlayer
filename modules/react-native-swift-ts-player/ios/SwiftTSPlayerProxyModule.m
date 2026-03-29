@@ -8,8 +8,4 @@ RCT_EXTERN_METHOD(registerStream:(NSString *)targetUrl
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(registerStreamDirect:(NSString *)targetUrl
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
-
 @end

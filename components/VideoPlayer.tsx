@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Text, Platform, NativeModules } from 'react-native';
+import { View, StyleSheet, Platform, NativeModules } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
+import { KSPlayerView } from './KSPlayerView';
 
 // ---------------------------------------------------------------------------
 // Platform-gated player imports
 // ---------------------------------------------------------------------------
+
 // expo-av (web only)
 let WebVideoComponent: any;
 
@@ -18,14 +20,14 @@ let VLCPlayerComponent: any;
 if (Platform.OS === 'web') {
   WebVideoComponent = require('expo-av').Video;
 } else {
-  // VLC is available on all native platforms including tvOS (via TVVLCKit)
+  // VLC is available on ALL native platforms including tvOS (via TVVLCKit)
   try {
     VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
   } catch (e) {
     console.warn('[VideoPlayer] react-native-vlc-media-player not available:', e);
   }
 
-  // react-native-video is only used on non-TV iOS and Android
+  // react-native-video is only available on non-TV platforms
   if (!Platform.isTV) {
     try {
       NativeVideoComponent = require('react-native-video').default;
@@ -33,6 +35,26 @@ if (Platform.OS === 'web') {
       console.warn('[VideoPlayer] react-native-video not available:', e);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Stream type detection
+// ---------------------------------------------------------------------------
+
+type StreamKind = 'hls' | 'mp4' | 'ts' | 'unknown';
+
+function detectStreamKind(url: string): StreamKind {
+  const lower = url.toLowerCase().split('?')[0].split('#')[0];
+  if (lower.includes('.m3u8') || lower.includes('/m3u8')) return 'hls';
+  if (lower.endsWith('.mp4') || lower.includes('.mp4?')) return 'mp4';
+  if (lower.endsWith('.ts') || lower.includes('.ts?') || lower.includes('/ts')) return 'ts';
+  // Many IPTV streams are raw TS without extension
+  return 'unknown';
+}
+
+/** AVPlayer can only handle HLS and MP4 natively */
+function canAVPlayerHandle(kind: StreamKind): boolean {
+  return kind === 'hls' || kind === 'mp4';
 }
 
 // ---------------------------------------------------------------------------
@@ -57,9 +79,9 @@ interface VideoPlayerProps {
 import { SwiftTSPlayer } from './SwiftTSPlayer';
 
 // ---------------------------------------------------------------------------
-// Apple environment custom player (SwiftTSPlayerView — AVKit via local proxy)
+// Apple AVPlayer component (HLS & MP4 ONLY)
 // ---------------------------------------------------------------------------
-const AppleCustomVideoPlayer = ({
+const AppleAVPlayer = ({
   streamUrl,
   paused,
   onProgress,
@@ -87,7 +109,7 @@ const AppleCustomVideoPlayer = ({
       streamUrl={streamUrl}
       paused={paused}
       style={styles.video}
-      onVideoLoad={(event) => {
+      onVideoLoad={(event: any) => {
         if (onVideoLoad && event.nativeEvent) {
           onVideoLoad({
             width: event.nativeEvent.width,
@@ -95,7 +117,7 @@ const AppleCustomVideoPlayer = ({
           });
         }
       }}
-      onVideoError={(event) => {
+      onVideoError={(event: any) => {
         console.warn('[SwiftTSPlayerView] Playback error:', event.nativeEvent?.error);
       }}
     />
@@ -103,30 +125,25 @@ const AppleCustomVideoPlayer = ({
 };
 
 // ---------------------------------------------------------------------------
-// Helper: get a proxy URL for VLC on Apple platforms (tvOS / iOS)
-// The SwiftTSPlayerProxy provides a direct TS pass-through endpoint that
-// VLC can consume natively without the HLS segmentation layer.
+// Helper: resolve proxy URL for VLC/KSPlayer on Apple platforms
 // ---------------------------------------------------------------------------
-const getVLCProxyUrl = async (url: string): Promise<string> => {
+const resolveProxyUrl = async (url: string): Promise<string> => {
   if (Platform.OS !== 'ios') return url;
 
-  // If the URL is already HLS or MP4, VLC can handle it directly
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.mp4')) {
-    return url;
-  }
+  // HLS and MP4 don't need proxy — players handle them directly
+  const kind = detectStreamKind(url);
+  if (kind === 'hls' || kind === 'mp4') return url;
 
-  // For raw TS streams on Apple platforms, route through the local Swift proxy
-  // using the direct pass-through endpoint. This ensures proper TS handling
-  // without the HLS segmentation overhead.
+  // For raw TS / unknown streams on Apple, route through the local Swift proxy
+  // for header forwarding and ATS bypass
   try {
     const { SwiftTSPlayerProxyModule } = NativeModules;
-    if (SwiftTSPlayerProxyModule && SwiftTSPlayerProxyModule.registerStreamDirect) {
-      const proxyUrl = await SwiftTSPlayerProxyModule.registerStreamDirect(url);
+    if (SwiftTSPlayerProxyModule?.registerStream) {
+      const proxyUrl = await SwiftTSPlayerProxyModule.registerStream(url);
       return proxyUrl;
     }
   } catch (e) {
-    console.warn('[VideoPlayer] SwiftTSPlayerProxyModule not available for VLC, using direct URL');
+    console.warn('[VideoPlayer] SwiftTSPlayerProxyModule not available, using direct URL');
   }
 
   return url;
@@ -158,52 +175,87 @@ const VideoPlayer = React.forwardRef(
       return currentStream.url;
     }, [currentStream?.url]);
 
-    // For VLC on Apple platforms, we need a proxy URL for raw TS streams
-    const [vlcStreamUrl, setVlcStreamUrl] = React.useState<string | null>(null);
+    // Detect stream kind
+    const streamKind = useMemo((): StreamKind => {
+      if (!streamUrl) return 'unknown';
+      return detectStreamKind(streamUrl);
+    }, [streamUrl]);
+
+    // Resolve proxy URL for VLC/KSPlayer on Apple platforms (async)
+    const [resolvedProxyUrl, setResolvedProxyUrl] = React.useState<string | null>(null);
     React.useEffect(() => {
       if (!streamUrl) {
-        setVlcStreamUrl(null);
+        setResolvedProxyUrl(null);
         return;
       }
-      if (Platform.OS === 'ios' && playerType === 'vlc') {
+      // Only VLC and KSPlayer need proxy resolution on Apple platforms
+      if (Platform.OS === 'ios' && (playerType === 'vlc' || playerType === 'ksplayer')) {
         let cancelled = false;
-        getVLCProxyUrl(streamUrl).then((proxyUrl) => {
-          if (!cancelled) setVlcStreamUrl(proxyUrl);
+        resolveProxyUrl(streamUrl).then((url) => {
+          if (!cancelled) setResolvedProxyUrl(url);
         });
         return () => { cancelled = true; };
       }
-      setVlcStreamUrl(streamUrl);
+      setResolvedProxyUrl(streamUrl);
     }, [streamUrl, playerType]);
 
-    // Ref used by non-tvOS players for imperative seek
+    // Determine the effective player to use (with smart fallback)
+    const effectivePlayer = useMemo(() => {
+      if (Platform.OS === 'web') return 'web';
+
+      if (Platform.isTV) {
+        // tvOS: if user chose avkit but stream is TS, auto-fallback to vlc
+        if (playerType === 'avkit' && canAVPlayerHandle(streamKind)) return 'avkit';
+        if (playerType === 'ksplayer') return 'ksplayer';
+        // Default: VLC for everything on tvOS (handles all formats)
+        return 'vlc';
+      }
+
+      // iOS (phone/tablet)
+      if (Platform.OS === 'ios') {
+        if (playerType === 'avkit' && canAVPlayerHandle(streamKind)) return 'avkit';
+        if (playerType === 'avkit' && !canAVPlayerHandle(streamKind)) {
+          // AVKit can't handle TS — auto-fallback
+          console.warn('[VideoPlayer] AVKit cannot play TS stream, falling back to VLC');
+          return 'vlc';
+        }
+        if (playerType === 'vlc') return 'vlc';
+        if (playerType === 'ksplayer') return 'ksplayer';
+        return 'native';
+      }
+
+      // Android
+      if (playerType === 'vlc') return 'vlc';
+      return 'native';
+    }, [playerType, streamKind]);
+
+    // Ref for imperative seek
     const videoRef = React.useRef<any>(null);
 
     React.useImperativeHandle(ref, () => ({
       seek: (position: number) => {
-        if (videoRef.current && videoRef.current.seek) {
+        if (videoRef.current?.seek) {
           videoRef.current.seek(position / 1000);
         }
       },
     }));
 
-    // Declarative seeking for non-SwiftTS players
     React.useEffect(() => {
       if (seekPosition === undefined) return;
-      // SwiftTSPlayer (avkit) handles seeking differently
-      if (playerType === 'avkit') return;
-      if (videoRef.current && videoRef.current.seek) {
+      if (effectivePlayer === 'avkit') return;
+      if (videoRef.current?.seek) {
         videoRef.current.seek(seekPosition / 1000.0);
       }
-    }, [seekPosition, playerType]);
+    }, [seekPosition, effectivePlayer]);
 
     // -----------------------------------------------------------------------
     // Render helpers
     // -----------------------------------------------------------------------
 
-    const renderAppleCustomPlayer = () => {
+    const renderAVPlayer = () => {
       if (!streamUrl) return null;
       return (
-        <AppleCustomVideoPlayer
+        <AppleAVPlayer
           streamUrl={streamUrl}
           paused={paused}
           onProgress={onProgress}
@@ -228,8 +280,10 @@ const VideoPlayer = React.forwardRef(
     );
 
     const renderNativePlayer = () => {
+      if (!NativeVideoComponent || !streamUrl) return null;
+
       let sourceType: string | undefined;
-      const lowerUrl = streamUrl?.toLowerCase() || '';
+      const lowerUrl = streamUrl.toLowerCase();
       if (lowerUrl.includes('.m3u8')) sourceType = 'm3u8';
       else if (lowerUrl.includes('.ts')) sourceType = 'ts';
       else if (lowerUrl.includes('.mp4')) sourceType = 'mp4';
@@ -238,7 +292,7 @@ const VideoPlayer = React.forwardRef(
         <NativeVideoComponent
           ref={videoRef}
           key={currentStream?.id}
-          source={{ uri: streamUrl!, type: sourceType }}
+          source={{ uri: streamUrl, type: sourceType }}
           paused={paused}
           style={styles.video}
           resizeMode="contain"
@@ -272,9 +326,9 @@ const VideoPlayer = React.forwardRef(
       );
     };
 
-    const renderVLCPlayer = () => {
-      const effectiveUrl = vlcStreamUrl || streamUrl;
-      if (!effectiveUrl) return null;
+    const renderVLCPlayer = (url?: string) => {
+      const effectiveUrl = url || resolvedProxyUrl || streamUrl;
+      if (!VLCPlayerComponent || !effectiveUrl) return null;
 
       const safeVlcBufferSizeMs = Math.max(
         bufferSize > 100 ? bufferSize : bufferSize * 100,
@@ -309,28 +363,65 @@ const VideoPlayer = React.forwardRef(
       );
     };
 
+    // KSPlayer — FFmpeg-based player via react-native-ksplayer native bridge.
+    // Supports raw MPEG-TS, HLS, MP4 and all FFmpeg formats on iOS & tvOS 13+.
+    // Uses the proxy URL so headers are forwarded correctly for IPTV streams.
+    const renderKSPlayer = () => {
+      const effectiveUrl = resolvedProxyUrl || streamUrl;
+      if (!effectiveUrl) return null;
+
+      // KSPlayerView is only available on iOS/tvOS; on other platforms fall back to VLC
+      if (Platform.OS !== 'ios') {
+        console.warn('[VideoPlayer] KSPlayer is only available on iOS/tvOS, falling back to VLC');
+        return renderVLCPlayer();
+      }
+
+      return (
+        <KSPlayerView
+          key={currentStream?.id}
+          style={styles.video}
+          streamUrl={effectiveUrl}
+          paused={paused}
+          onVideoLoad={(metadata) => {
+            if (onVideoLoad) {
+              onVideoLoad({
+                width: metadata.width,
+                height: metadata.height,
+              });
+            }
+          }}
+          onVideoError={(error) => {
+            console.warn('[KSPlayerView] Playback error:', error);
+          }}
+          onProgress={(data) => {
+            if (onProgress) {
+              onProgress({
+                currentTime: data.currentTime,
+                duration: data.duration,
+              });
+            }
+          }}
+        />
+      );
+    };
+
     const renderPlayer = () => {
       if (!streamUrl) return null;
 
-      if (Platform.OS === 'web') return renderWebPlayer();
-
-      // tvOS: player selection based on settings
-      if (Platform.isTV) {
-        if (playerType === 'vlc' && VLCPlayerComponent) return renderVLCPlayer();
-        // Default to AVKit (SwiftTSPlayer) on tvOS
-        return renderAppleCustomPlayer();
+      switch (effectivePlayer) {
+        case 'web':
+          return renderWebPlayer();
+        case 'avkit':
+          return renderAVPlayer();
+        case 'vlc':
+          return renderVLCPlayer();
+        case 'ksplayer':
+          return renderKSPlayer();
+        case 'native':
+          return renderNativePlayer();
+        default:
+          return renderNativePlayer();
       }
-
-      // iOS (phone/tablet)
-      if (Platform.OS === 'ios' && playerType === 'avkit') return renderAppleCustomPlayer();
-      if (Platform.OS === 'ios' && playerType === 'vlc' && VLCPlayerComponent) return renderVLCPlayer();
-
-      // iOS (phone/tablet) & Android
-      if (playerType === 'native') return renderNativePlayer();
-      if (playerType === 'vlc' && VLCPlayerComponent) return renderVLCPlayer();
-
-      // Fallback
-      return renderNativePlayer();
     };
 
     return (
@@ -361,9 +452,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
-  },
-  placeholderText: {
-    color: '#FFF',
   },
 });
 

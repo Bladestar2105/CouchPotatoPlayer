@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/logger';
 
 export type ThemeMode = 'dark' | 'oled' | 'light';
 
-export type PlayerType = 'native' | 'vlc' | 'avkit';
+export type PlayerType = 'native' | 'vlc' | 'avkit' | 'ksplayer';
 
 export interface ThemeColors {
   background: string;
@@ -79,7 +80,7 @@ const SettingsContext = createContext<SettingsContextProps | undefined>(undefine
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
   const [bufferSize, setBufferSizeState] = useState<number>(32);
-  const [playerType, setPlayerTypeState] = useState<PlayerType>('native');
+  const [playerType, setPlayerTypeState] = useState<PlayerType>(Platform.isTV ? 'vlc' : 'native');
   const [vlcHardwareAcceleration, setVlcHardwareAccelerationState] = useState<boolean>(true);
   const [isReady, setIsReady] = useState(false);
 
@@ -97,7 +98,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
 
         const storedPlayerType = await AsyncStorage.getItem('app_player_type');
-        if (storedPlayerType === 'native' || storedPlayerType === 'vlc' || storedPlayerType === 'avkit') {
+        if (storedPlayerType === 'native' || storedPlayerType === 'vlc' || storedPlayerType === 'avkit' || storedPlayerType === 'ksplayer') {
           setPlayerTypeState(storedPlayerType as PlayerType);
         }
 

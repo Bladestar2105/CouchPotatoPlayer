@@ -39,10 +39,39 @@ target 'CouchPotatoPlayer' do
     ]
   end
 
-  config = use_native_modules!(config_command)
-
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+
+  # ─── KSPlayer (FFmpeg-based player for full IPTV format support on iOS/tvOS) ───
+  # KSPlayer/MEPlayer uses FFmpegKit which supports raw MPEG-TS and all FFmpeg formats.
+  # This is required by the react-native-ksplayer native module.
+  #
+  # IMPORTANT: These pods MUST be declared BEFORE use_native_modules! because
+  # the react-native-ksplayer.podspec has s.dependency "KSPlayer/MEPlayer".
+  # CocoaPods needs to know about KSPlayer before evaluating the podspec.
+  #
+  # Dependency chain:
+  #   react-native-ksplayer → KSPlayer/MEPlayer → FFmpegKit → Libass
+  #
+  # These pods are not on CocoaPods trunk. All podspecs have version numbers that
+  # do not match real git tags (e.g. KSPlayer podspec says 1.1.0 but tags are 2.x.x).
+  # We use :git + :commit to pin to HEAD of each repo and bypass tag resolution.
+  #
+  # Pinned commits (update when upgrading):
+  #   FFmpegKit/Libass: d7048037 (HEAD/main as of 2026-03-29)
+  #   KSPlayer: 46f08efc (HEAD/main as of 2026-03-29)
+  pod 'Libass', :git => 'https://github.com/kingslay/FFmpegKit.git', :commit => 'd7048037a2eb94a3b08113fbf43aa92bdcb332d9'
+  pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :commit => 'd7048037a2eb94a3b08113fbf43aa92bdcb332d9'
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/Core: contains Utility.swift with Array(tuple:), URL.download, Data.md5, CGImage.combine
+  # These extensions are used by MEPlayer and Subtitle sources but not declared as dependencies.
+  pod 'KSPlayer/Core', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/Video: contains KSOptions extensions used by AVPlayer code
+  pod 'KSPlayer/Video', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/MEPlayer: the /MEPlayer subspec includes FFmpegKit (KSMEPlayer backend)
+  pod 'KSPlayer/MEPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+
+  config = use_native_modules!(config_command)
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -59,5 +88,18 @@ target 'CouchPotatoPlayer' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Ensure react-native-ksplayer can find KSPlayer frameworks
+    # KSPlayer is built as a static framework, so we need to add its build products
+    # to the framework search paths of react-native-ksplayer
+    installer.pods_project.targets.each do |target|
+      if target.name == 'react-native-ksplayer'
+        target.build_configurations.each do |config|
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] ||= ['$(inherited)']
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_ROOT)/KSPlayer'
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer'
+        end
+      end
+    end
   end
 end

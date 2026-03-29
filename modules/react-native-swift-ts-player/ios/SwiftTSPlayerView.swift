@@ -3,6 +3,11 @@ import AVFoundation
 import UIKit
 import React
 
+/// Native AVPlayer view for **HLS (.m3u8) and MP4 playback ONLY**.
+///
+/// This view does NOT support raw MPEG-TS streams — AVPlayer fundamentally
+/// cannot demux raw TS containers. For raw TS, use VLC (TVVLCKit) or
+/// KSPlayer (FFmpegKit) instead.
 @objc(SwiftTSPlayerView)
 class SwiftTSPlayerView: UIView {
 
@@ -15,7 +20,7 @@ class SwiftTSPlayerView: UIView {
     private var stalledObserver: NSObjectProtocol?
     private var failedObserver: NSObjectProtocol?
     private var retryCount: Int = 0
-    private let maxRetries: Int = 5
+    private let maxRetries: Int = 3
     private var retryTimer: Timer?
 
     // React Native Props
@@ -44,13 +49,11 @@ class SwiftTSPlayerView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupLayer()
-        SwiftTSPlayerProxy.shared.start()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupLayer()
-        SwiftTSPlayerProxy.shared.start()
     }
 
     private func setupLayer() {
@@ -67,6 +70,8 @@ class SwiftTSPlayerView: UIView {
         playerLayer?.frame = self.bounds
     }
 
+    // MARK: - Teardown
+
     private func teardownPlayer() {
         retryTimer?.invalidate()
         retryTimer = nil
@@ -76,12 +81,12 @@ class SwiftTSPlayerView: UIView {
         bufferEmptyObserver = nil
         likelyToKeepUpObserver?.invalidate()
         likelyToKeepUpObserver = nil
-        if let stalledObserver = stalledObserver {
-            NotificationCenter.default.removeObserver(stalledObserver)
+        if let obs = stalledObserver {
+            NotificationCenter.default.removeObserver(obs)
         }
         stalledObserver = nil
-        if let failedObserver = failedObserver {
-            NotificationCenter.default.removeObserver(failedObserver)
+        if let obs = failedObserver {
+            NotificationCenter.default.removeObserver(obs)
         }
         failedObserver = nil
         player?.pause()
@@ -90,54 +95,42 @@ class SwiftTSPlayerView: UIView {
         player = nil
     }
 
+    // MARK: - Setup
+
     private func setupPlayer(with urlString: String) {
         teardownPlayer()
 
-        let playUrl: URL?
-
-        let lowerUrl = urlString.lowercased()
-        if lowerUrl.contains(".m3u8") || lowerUrl.contains(".mp4") {
-            // Native HLS or MP4 — play directly without proxy
-            playUrl = URL(string: urlString)
-        } else {
-            // TS stream — register with proxy to get a proper live HLS URL
-            let localProxyUrlString = SwiftTSPlayerProxy.shared.registerStream(targetUrl: urlString)
-            playUrl = URL(string: localProxyUrlString)
+        // Only play HLS and MP4 directly — everything else should use VLC/KSPlayer
+        guard let url = URL(string: urlString) else {
+            onVideoError?(["error": "Invalid URL: \(urlString)"])
+            return
         }
 
-        guard let finalUrl = playUrl else { return }
-
-        let asset = AVURLAsset(url: finalUrl, options: [
-            "AVURLAssetHTTPHeaderFieldsKey": ["User-Agent": "Mozilla/5.0"]
+        let asset = AVURLAsset(url: url, options: [
+            "AVURLAssetHTTPHeaderFieldsKey": ["User-Agent": "Mozilla/5.0 (AppleTV; CPU AppleTV OS 18_0 like Mac OS X)"]
         ])
 
         playerItem = AVPlayerItem(asset: asset)
-
-        // Configure for live streaming
-        playerItem?.preferredForwardBufferDuration = 4.0
-        // Allow some buffer to build before declaring "ready"
+        playerItem?.preferredForwardBufferDuration = 6.0
         playerItem?.canUseNetworkResourcesForLiveStreamingWhilePaused = true
 
         player = AVPlayer(playerItem: playerItem)
-        // For live content, allow AVPlayer to manage stall recovery
         player?.automaticallyWaitsToMinimizeStalling = true
-
         playerLayer?.player = player
 
-        // Observe playerItem status using modern KVO
+        // Observe player status
         playerStatusObserver = playerItem?.observe(\.status, options: [.new]) { [weak self] item, _ in
             DispatchQueue.main.async {
                 self?.handleStatusChange(item: item)
             }
         }
 
-        // Observe buffer state for stall recovery
-        bufferEmptyObserver = playerItem?.observe(\.isPlaybackBufferEmpty, options: [.new]) { [weak self] item, _ in
-            if item.isPlaybackBufferEmpty {
-                print("[SwiftTSPlayer] Buffer empty — waiting for data")
-            }
+        // Observe buffer empty state
+        bufferEmptyObserver = playerItem?.observe(\.isPlaybackBufferEmpty, options: [.new]) { _, _ in
+            // Buffer empty — AVPlayer will handle rebuffering automatically
         }
 
+        // Observe likely-to-keep-up for resuming playback after stall
         likelyToKeepUpObserver = playerItem?.observe(\.isPlaybackLikelyToKeepUp, options: [.new]) { [weak self] item, _ in
             if item.isPlaybackLikelyToKeepUp {
                 DispatchQueue.main.async {
@@ -154,18 +147,18 @@ class SwiftTSPlayerView: UIView {
             object: playerItem,
             queue: .main
         ) { [weak self] _ in
-            print("[SwiftTSPlayer] Playback stalled — attempting recovery")
+            print("[SwiftTSPlayerView] Playback stalled — attempting recovery")
             self?.attemptStallRecovery()
         }
 
-        // Observe failure to play to end
+        // Observe failure
         failedObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem,
             queue: .main
         ) { [weak self] notification in
             if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
-                print("[SwiftTSPlayer] Failed to play to end: \(error.localizedDescription)")
+                print("[SwiftTSPlayerView] Failed to play to end: \(error.localizedDescription)")
                 self?.attemptRetry()
             }
         }
@@ -175,11 +168,13 @@ class SwiftTSPlayerView: UIView {
         }
     }
 
+    // MARK: - Status Handling
+
     private func handleStatusChange(item: AVPlayerItem) {
         switch item.status {
         case .readyToPlay:
-            retryCount = 0 // Reset on successful playback
-            // Extract video metadata
+            retryCount = 0
+
             var width: CGFloat = 0
             var height: CGFloat = 0
 
@@ -197,7 +192,7 @@ class SwiftTSPlayerView: UIView {
 
         case .failed:
             let errorMsg = item.error?.localizedDescription ?? "Unknown error"
-            print("[SwiftTSPlayer] Player item failed: \(errorMsg)")
+            print("[SwiftTSPlayerView] Player item failed: \(errorMsg)")
             attemptRetry()
 
         case .unknown:
@@ -208,8 +203,9 @@ class SwiftTSPlayerView: UIView {
         }
     }
 
+    // MARK: - Recovery
+
     private func attemptStallRecovery() {
-        // Try to nudge playback forward by seeking to current time
         guard let player = player, let item = player.currentItem else { return }
 
         let currentTime = item.currentTime()
@@ -219,25 +215,22 @@ class SwiftTSPlayerView: UIView {
                     self?.player?.play()
                 }
             }
-        } else {
-            // If current time is not valid, just try to play
-            if !paused {
-                player.play()
-            }
+        } else if !paused {
+            player.play()
         }
     }
 
     private func attemptRetry() {
         guard retryCount < maxRetries else {
             let errorMsg = "Playback failed after \(maxRetries) retries"
-            print("[SwiftTSPlayer] \(errorMsg)")
+            print("[SwiftTSPlayerView] \(errorMsg)")
             onVideoError?(["error": errorMsg])
             return
         }
 
         retryCount += 1
-        let delay = min(Double(retryCount) * 1.0, 3.0) // 1s, 2s, 3s backoff
-        print("[SwiftTSPlayer] Retrying playback in \(delay)s (attempt \(retryCount)/\(maxRetries))")
+        let delay = Double(retryCount) * 1.5 // 1.5s, 3s, 4.5s backoff
+        print("[SwiftTSPlayerView] Retrying in \(delay)s (attempt \(retryCount)/\(maxRetries))")
 
         retryTimer?.invalidate()
         retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in

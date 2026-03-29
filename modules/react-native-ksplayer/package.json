@@ -1,0 +1,12 @@
+{
+  "name": "react-native-ksplayer",
+  "version": "1.0.0",
+  "description": "KSPlayer (FFmpeg-based) React Native bridge for iOS & tvOS",
+  "main": "index.js",
+  "license": "MIT",
+  "author": "CouchPotatoPlayer",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  }
+}
