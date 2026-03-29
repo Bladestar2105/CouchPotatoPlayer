@@ -169,12 +169,22 @@ class SwiftTSPlayerProxy: NSObject {
             return
         }
 
+        // Extract headers
+        var headers: [String: String] = [:]
+        for line in lines.dropFirst() {
+            if line.isEmpty { break }
+            let headerComponents = line.split(separator: ":", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespaces) }
+            if headerComponents.count == 2 {
+                headers[headerComponents[0]] = headerComponents[1]
+            }
+        }
+
         if filename == "stream.m3u8" {
             // Serve a virtual M3U8 playlist that points to our local TS endpoint
             servePlaylist(uuid: uuid, connection: connection)
         } else if filename == "stream.ts" {
             // Proxy the actual TS stream
-            proxyStream(to: targetUrl, connection: connection)
+            proxyStream(to: targetUrl, headers: headers, connection: connection)
         } else {
             sendNotFoundResponse(to: connection)
         }
@@ -206,9 +216,17 @@ class SwiftTSPlayerProxy: NSObject {
         }))
     }
 
-    private func proxyStream(to url: URL, connection: NWConnection) {
+    private func proxyStream(to url: URL, headers: [String: String], connection: NWConnection) {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+
+        // Forward important client headers to the remote server
+        let headersToForward = ["Range", "User-Agent", "Accept", "Accept-Language"]
+        for headerKey in headersToForward {
+            if let headerValue = headers.first(where: { $0.key.caseInsensitiveCompare(headerKey) == .orderedSame })?.value {
+                request.setValue(headerValue, forHTTPHeaderField: headerKey)
+            }
+        }
 
         let config = URLSessionConfiguration.default
         let delegate = ProxySessionDelegate(connection: connection)
@@ -241,10 +259,31 @@ class ProxySessionDelegate: NSObject, URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         if !headersSent, let httpResponse = response as? HTTPURLResponse {
-            var headerString = "HTTP/1.1 \(httpResponse.statusCode) OK\r\n"
-            headerString += "Content-Type: video/mp2t\r\n" // Force TS MIME type
-            headerString += "Connection: keep-alive\r\n"
-            headerString += "Accept-Ranges: bytes\r\n\r\n"
+            let statusCode = httpResponse.statusCode
+            let statusText = HTTPURLResponse.localizedString(forStatusCode: statusCode)
+            var headerString = "HTTP/1.1 \(statusCode) \(statusText)\r\n"
+
+            // Forward headers from remote server to client
+            let headersToExclude = ["Transfer-Encoding", "Content-Encoding"]
+            for (key, value) in httpResponse.allHeaderFields {
+                if let keyStr = key as? String, let valStr = value as? String {
+                    if !headersToExclude.contains(where: { $0.caseInsensitiveCompare(keyStr) == .orderedSame }) {
+                        headerString += "\(keyStr): \(valStr)\r\n"
+                    }
+                }
+            }
+
+            // Ensure necessary headers are present if missing
+            if httpResponse.allHeaderFields["Content-Type"] == nil {
+                headerString += "Content-Type: video/mp2t\r\n" // Force TS MIME type
+            }
+            if httpResponse.allHeaderFields["Connection"] == nil {
+                headerString += "Connection: keep-alive\r\n"
+            }
+            if httpResponse.allHeaderFields["Accept-Ranges"] == nil {
+                headerString += "Accept-Ranges: bytes\r\n"
+            }
+            headerString += "\r\n"
 
             if let headerData = headerString.data(using: .utf8) {
                 connection.send(content: headerData, completion: .contentProcessed({ [weak self] error in

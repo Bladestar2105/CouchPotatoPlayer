@@ -59,8 +59,17 @@ class SwiftTSPlayerView: UIView {
     }
 
     private func setupPlayer(with urlString: String) {
-        let localProxyUrlString = SwiftTSPlayerProxy.shared.registerStream(targetUrl: urlString)
-        guard let playUrl = URL(string: localProxyUrlString) else { return }
+        let playUrl: URL?
+
+        let lowerUrl = urlString.lowercased()
+        if lowerUrl.contains(".m3u8") || lowerUrl.contains(".mp4") {
+            playUrl = URL(string: urlString)
+        } else {
+            let localProxyUrlString = SwiftTSPlayerProxy.shared.registerStream(targetUrl: urlString)
+            playUrl = URL(string: localProxyUrlString)
+        }
+
+        guard let finalUrl = playUrl else { return }
 
         // Remove old player item observers
         if let currentItem = playerItem {
@@ -68,7 +77,7 @@ class SwiftTSPlayerView: UIView {
             NotificationCenter.default.removeObserver(self, name: .AVPlayerItemFailedToPlayToEndTime, object: currentItem)
         }
 
-        let asset = AVAsset(url: playUrl)
+        let asset = AVAsset(url: finalUrl)
         playerItem = AVPlayerItem(asset: asset)
 
         // Optimize for low latency Live TV
