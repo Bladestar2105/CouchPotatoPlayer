@@ -47,8 +47,10 @@ target 'CouchPotatoPlayer' do
   # ── KSPlayer (FFmpeg-based player for full IPTV format support on iOS/tvOS) ──
   # KSPlayer/MEPlayer pulls in FFmpegKit for raw MPEG-TS and all FFmpeg formats.
   # This is required by the react-native-ksplayer native module.
-  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :tag => '1.1.0'
-  pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :tag => '1.1.0', :subspecs => ['MEPlayer']
+  # NOTE: KSPlayer's podspec has s.version='1.1.0' but git tags are 2.x.x
+  #       We use :commit to pin to the exact 2.3.4 release commit (tag dd24fb9).
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => 'dd24fb9b98b53fc41d184be95e740a3001332bb4'
+  pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => 'dd24fb9b98b53fc41d184be95e740a3001332bb4', :subspecs => ['MEPlayer']
   pod 'FFmpegKit', :podspec => 'https://raw.githubusercontent.com/kingslay/FFmpegKit/main/FFmpegKit.podspec'
 
   use_react_native!(
