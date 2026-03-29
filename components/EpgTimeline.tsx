@@ -13,6 +13,7 @@ const TIMELINE_DURATION_HOURS = 24; // Total hours in timeline
 interface EpgTimelineProps {
   channels: Channel[];
   onChannelPress: (channel: Channel) => void;
+  onProgramPress?: (channel: Channel, prog: any) => void;
   focusedChannelId: string | null;
   setFocusedChannelId: (id: string) => void;
   currentStreamId: string | undefined;
@@ -22,7 +23,7 @@ interface EpgTimelineProps {
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 const formatTime = (d: Date) => timeFormatter.format(d);
 
-const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, width, colors, onChannelPress }: any) => {
+const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, width, colors, onProgramPress, onChannelPress }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -35,7 +36,11 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
             onFocus={() => setIsProgramFocused(true)}
             onBlur={() => setIsProgramFocused(false)}
             onPress={() => {
-                if (isNow) onChannelPress(channel);
+                if (onProgramPress) {
+                    onProgramPress(channel, prog);
+                } else if (isNow) {
+                    onChannelPress(channel);
+                }
             }}
         >
             <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{prog.title}</Text>
@@ -51,7 +56,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
            prevProps.width === nextProps.width;
 });
 
-const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE }: any) => {
+const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
     // recalculating boundaries, offsets, and time comparisons on every render.
     const programLayoutData = useMemo(() => {
@@ -130,6 +135,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                         width={item.width}
                         colors={colors}
                         onChannelPress={onChannelPress}
+                        onProgramPress={onProgramPress}
                     />
                 ))}
             </View>
@@ -142,7 +148,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
            prevProps.programs === nextProps.programs;
 });
 
-const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, focusedChannelId, setFocusedChannelId, currentStreamId }) => {
+const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId }) => {
   const { epg, hasCatchup, getCatchupUrl, isFavorite, addFavorite, removeFavorite } = useIPTV();
   const { colors } = useSettings();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -261,6 +267,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, foc
                             focusedChannelId={focusedChannelId}
                             setFocusedChannelId={setFocusedChannelId}
                             onChannelPress={onChannelPress}
+                            onProgramPress={onProgramPress}
                             addFavorite={addFavorite}
                             removeFavorite={removeFavorite}
                             timelineStart={timelineStart}

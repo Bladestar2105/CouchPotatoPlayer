@@ -329,7 +329,7 @@ const SettingsScreen = () => {
             <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
               <Switch
                 value={vlcHardwareAcceleration}
-                onValueChange={setVlcHardwareAcceleration}
+                onValueChange={(val) => setVlcHardwareAcceleration(val)}
                 trackColor={{ false: colors.divider, true: colors.primary }}
                 thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
               />
@@ -354,7 +354,7 @@ const SettingsScreen = () => {
               <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
                 <Switch
                   value={ksplayerHardwareDecode}
-                  onValueChange={setKsplayerHardwareDecode}
+                  onValueChange={(val) => setKsplayerHardwareDecode(val)}
                   trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
                 />
@@ -374,7 +374,7 @@ const SettingsScreen = () => {
               <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
                 <Switch
                   value={ksplayerAsynchronousDecompression}
-                  onValueChange={setKsplayerAsynchronousDecompression}
+                  onValueChange={(val) => setKsplayerAsynchronousDecompression(val)}
                   trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
                 />
@@ -394,7 +394,7 @@ const SettingsScreen = () => {
               <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
                 <Switch
                   value={ksplayerDisplayFrameRate}
-                  onValueChange={setKsplayerDisplayFrameRate}
+                  onValueChange={(val) => setKsplayerDisplayFrameRate(val)}
                   trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
                 />
