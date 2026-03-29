@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet, Platform, NativeModules } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
+import { KSPlayerView } from './KSPlayerView';
 
 // ---------------------------------------------------------------------------
 // Platform-gated player imports
@@ -362,14 +363,46 @@ const VideoPlayer = React.forwardRef(
       );
     };
 
-    // KSPlayer uses VLC as fallback for now — will be replaced with actual
-    // KSPlayer React Native bridge when available. The proxy URL setup is
-    // already compatible since KSPlayer supports raw TS via FFmpeg.
+    // KSPlayer — FFmpeg-based player via react-native-ksplayer native bridge.
+    // Supports raw MPEG-TS, HLS, MP4 and all FFmpeg formats on iOS & tvOS 13+.
+    // Uses the proxy URL so headers are forwarded correctly for IPTV streams.
     const renderKSPlayer = () => {
-      // KSPlayer native bridge not yet available —
-      // fall back to VLC which uses the same proxy infrastructure
-      console.warn('[VideoPlayer] KSPlayer bridge not yet available, using VLC as fallback');
-      return renderVLCPlayer();
+      const effectiveUrl = resolvedProxyUrl || streamUrl;
+      if (!effectiveUrl) return null;
+
+      // KSPlayerView is only available on iOS/tvOS; on other platforms fall back to VLC
+      if (Platform.OS !== 'ios') {
+        console.warn('[VideoPlayer] KSPlayer is only available on iOS/tvOS, falling back to VLC');
+        return renderVLCPlayer();
+      }
+
+      return (
+        <KSPlayerView
+          key={currentStream?.id}
+          style={styles.video}
+          streamUrl={effectiveUrl}
+          paused={paused}
+          onVideoLoad={(metadata) => {
+            if (onVideoLoad) {
+              onVideoLoad({
+                width: metadata.width,
+                height: metadata.height,
+              });
+            }
+          }}
+          onVideoError={(error) => {
+            console.warn('[KSPlayerView] Playback error:', error);
+          }}
+          onProgress={(data) => {
+            if (onProgress) {
+              onProgress({
+                currentTime: data.currentTime,
+                duration: data.duration,
+              });
+            }
+          }}
+        />
+      );
     };
 
     const renderPlayer = () => {

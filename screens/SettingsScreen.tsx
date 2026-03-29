@@ -279,8 +279,10 @@ const SettingsScreen = () => {
         {(playerType === 'vlc' || playerType === 'ksplayer') && (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>VLC Hardware Acceleration</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>Improve performance on supported devices</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Acceleration</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
+                {playerType === 'ksplayer' ? 'VideoToolbox decoding (H.264/H.265)' : 'Improve performance on supported devices'}
+              </Text>
             </View>
             <Switch
               value={vlcHardwareAcceleration}

@@ -44,6 +44,13 @@ target 'CouchPotatoPlayer' do
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
+  # ── KSPlayer (FFmpeg-based player for full IPTV format support on iOS/tvOS) ──
+  # KSPlayer/MEPlayer pulls in FFmpegKit for raw MPEG-TS and all FFmpeg formats.
+  # This is required by the react-native-ksplayer native module.
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :tag => '1.1.0'
+  pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :tag => '1.1.0', :subspecs => ['MEPlayer']
+  pod 'FFmpegKit', :podspec => 'https://raw.githubusercontent.com/kingslay/FFmpegKit/main/FFmpegKit.podspec'
+
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',

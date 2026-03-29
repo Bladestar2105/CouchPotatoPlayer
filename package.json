@@ -55,7 +55,8 @@
     "react-native-video": "^6.17.0",
     "react-native-vlc-media-player": "^1.0.96",
     "react-native-web": "^0.21.2",
-    "react-native-worklets": "~0.8.1"
+    "react-native-worklets": "~0.8.1",
+    "react-native-ksplayer": "file:modules/react-native-ksplayer"
   },
   "devDependencies": {
     "@expo/config-plugins": "56.0.0-canary-20260305-5163746",
