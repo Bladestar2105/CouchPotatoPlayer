@@ -73,6 +73,12 @@ interface SettingsContextProps {
   setPlayerType: (type: PlayerType) => void;
   vlcHardwareAcceleration: boolean;
   setVlcHardwareAcceleration: (enabled: boolean) => void;
+  ksplayerHardwareDecode: boolean;
+  setKsplayerHardwareDecode: (enabled: boolean) => void;
+  ksplayerAsynchronousDecompression: boolean;
+  setKsplayerAsynchronousDecompression: (enabled: boolean) => void;
+  ksplayerDisplayFrameRate: boolean;
+  setKsplayerDisplayFrameRate: (enabled: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextProps | undefined>(undefined);
@@ -82,6 +88,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [bufferSize, setBufferSizeState] = useState<number>(32);
   const [playerType, setPlayerTypeState] = useState<PlayerType>(Platform.isTV ? 'vlc' : 'native');
   const [vlcHardwareAcceleration, setVlcHardwareAccelerationState] = useState<boolean>(true);
+  const [ksplayerHardwareDecode, setKsplayerHardwareDecodeState] = useState<boolean>(true);
+  const [ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompressionState] = useState<boolean>(false);
+  const [ksplayerDisplayFrameRate, setKsplayerDisplayFrameRateState] = useState<boolean>(true);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -105,6 +114,21 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const storedVlcHwAccel = await AsyncStorage.getItem('app_vlc_hw_accel');
         if (storedVlcHwAccel) {
           setVlcHardwareAccelerationState(storedVlcHwAccel === 'true');
+        }
+
+        const storedKSHwDecode = await AsyncStorage.getItem('app_ks_hw_decode');
+        if (storedKSHwDecode) {
+          setKsplayerHardwareDecodeState(storedKSHwDecode === 'true');
+        }
+
+        const storedKSAsync = await AsyncStorage.getItem('app_ks_async_decomp');
+        if (storedKSAsync) {
+          setKsplayerAsynchronousDecompressionState(storedKSAsync === 'true');
+        }
+
+        const storedKSFrameRate = await AsyncStorage.getItem('app_ks_display_frame_rate');
+        if (storedKSFrameRate) {
+          setKsplayerDisplayFrameRateState(storedKSFrameRate === 'true');
         }
       } catch (e) {
         Logger.error('Failed to load settings', e);
@@ -151,6 +175,33 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const setKsplayerHardwareDecode = async (enabled: boolean) => {
+    setKsplayerHardwareDecodeState(enabled);
+    try {
+      await AsyncStorage.setItem('app_ks_hw_decode', enabled.toString());
+    } catch (e) {
+      Logger.error('Failed to save ksplayer hw decode', e);
+    }
+  };
+
+  const setKsplayerAsynchronousDecompression = async (enabled: boolean) => {
+    setKsplayerAsynchronousDecompressionState(enabled);
+    try {
+      await AsyncStorage.setItem('app_ks_async_decomp', enabled.toString());
+    } catch (e) {
+      Logger.error('Failed to save ksplayer async decomp', e);
+    }
+  };
+
+  const setKsplayerDisplayFrameRate = async (enabled: boolean) => {
+    setKsplayerDisplayFrameRateState(enabled);
+    try {
+      await AsyncStorage.setItem('app_ks_display_frame_rate', enabled.toString());
+    } catch (e) {
+      Logger.error('Failed to save ksplayer display frame rate', e);
+    }
+  };
+
   const colors = getThemeColors(themeMode);
 
   // ⚡ Perf: Memoize the context value object to prevent unnecessary re-renders
@@ -165,7 +216,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPlayerType,
     vlcHardwareAcceleration,
     setVlcHardwareAcceleration,
-  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration]);
+    ksplayerHardwareDecode,
+    setKsplayerHardwareDecode,
+    ksplayerAsynchronousDecompression,
+    setKsplayerAsynchronousDecompression,
+    ksplayerDisplayFrameRate,
+    setKsplayerDisplayFrameRate,
+  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration, ksplayerHardwareDecode, setKsplayerHardwareDecode, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate]);
 
   if (!isReady) {
     return null; // Or a splash screen / loader

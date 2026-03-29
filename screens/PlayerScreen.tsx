@@ -43,11 +43,8 @@ const PlayerScreen = () => {
   // Memoize handleBack to prevent unnecessary re-renders
   const handleBack = React.useCallback(() => {
     // Apple TV Menu button shouldn't close the app from PlayerScreen.
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return true;
-    }
-    // Even if it can't go back, prevent default exit just in case the stack is weird
+    // Explicitly navigating to "Home" instead of relying on "goBack()"
+    // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
     navigation.navigate('Home');
     return true;
   }, [navigation]);

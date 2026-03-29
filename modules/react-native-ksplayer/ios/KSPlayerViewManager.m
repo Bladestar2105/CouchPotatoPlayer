@@ -12,6 +12,9 @@
 
 RCT_EXPORT_VIEW_PROPERTY(streamUrl, NSString)
 RCT_EXPORT_VIEW_PROPERTY(paused, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(hardwareDecode, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(asynchronousDecompression, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(displayFrameRate, BOOL)
 
 RCT_EXPORT_VIEW_PROPERTY(onVideoLoad, RCTBubblingEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onVideoError, RCTBubblingEventBlock)

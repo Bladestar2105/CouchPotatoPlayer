@@ -26,6 +26,12 @@ export interface KSPlayerProps extends ViewProps {
   streamUrl: string;
   /** Whether playback is paused. */
   paused?: boolean;
+  /** Whether to use hardware decoding */
+  hardwareDecode?: boolean;
+  /** Whether to use asynchronous decompression */
+  asynchronousDecompression?: boolean;
+  /** Whether to use adaptive display frame rate */
+  displayFrameRate?: boolean;
   /** Called when the video is ready to play. */
   onVideoLoad?: (metadata: KSPlayerVideoMetadata) => void;
   /** Called when a playback error occurs. */
@@ -50,6 +56,9 @@ if (Platform.OS === 'ios') {
 export const KSPlayerView: React.FC<KSPlayerProps> = ({
   streamUrl,
   paused = false,
+  hardwareDecode = true,
+  asynchronousDecompression = false,
+  displayFrameRate = true,
   onVideoLoad,
   onVideoError,
   onProgress,
@@ -77,6 +86,9 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
       style={[styles.video, style]}
       streamUrl={streamUrl}
       paused={paused}
+      hardwareDecode={hardwareDecode}
+      asynchronousDecompression={asynchronousDecompression}
+      displayFrameRate={displayFrameRate}
       onVideoLoad={(event: any) => {
         if (onVideoLoad && event?.nativeEvent) {
           onVideoLoad({

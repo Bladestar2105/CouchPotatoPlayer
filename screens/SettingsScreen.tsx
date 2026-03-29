@@ -19,7 +19,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 const SettingsScreen = () => {
   const { currentProfile, profiles, pin, isAdultUnlocked, unlockAdultContent, lockAdultContent, removeProfile, loadProfile, unloadProfile } = useIPTV();
-  const { colors, themeMode, setThemeMode, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration } = useSettings();
+  const {
+    colors, themeMode, setThemeMode, bufferSize, setBufferSize,
+    playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration,
+    ksplayerHardwareDecode, setKsplayerHardwareDecode,
+    ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression,
+    ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate
+  } = useSettings();
   const navigation = useNavigation<any>();
 
   const [updateInterval, setUpdateInterval] = React.useState<number>(24);
@@ -275,13 +281,13 @@ const SettingsScreen = () => {
           </View>
         )}
 
-        {/* Hardware Acceleration — shown when VLC or KSPlayer is selected (including tvOS) */}
-        {(playerType === 'vlc' || playerType === 'ksplayer') && (
+        {/* Hardware Acceleration — shown when VLC is selected (including tvOS) */}
+        {(playerType === 'vlc') && (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Acceleration</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-                {playerType === 'ksplayer' ? 'VideoToolbox decoding (H.264/H.265)' : 'Improve performance on supported devices'}
+                Improve performance on supported devices
               </Text>
             </View>
             <Switch
@@ -291,6 +297,54 @@ const SettingsScreen = () => {
               thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
             />
           </View>
+        )}
+
+        {/* KSPlayer specific settings */}
+        {(playerType === 'ksplayer') && (
+          <>
+            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Decoding</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
+                  VideoToolbox decoding (H.264/H.265)
+                </Text>
+              </View>
+              <Switch
+                value={ksplayerHardwareDecode}
+                onValueChange={setKsplayerHardwareDecode}
+                trackColor={{ false: colors.divider, true: colors.primary }}
+                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
+              />
+            </View>
+            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>Asynchronous Decompression</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
+                  Improve performance for high-bitrate streams
+                </Text>
+              </View>
+              <Switch
+                value={ksplayerAsynchronousDecompression}
+                onValueChange={setKsplayerAsynchronousDecompression}
+                trackColor={{ false: colors.divider, true: colors.primary }}
+                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
+              />
+            </View>
+            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>Adaptive Frame Rate</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
+                  Automatically adjust display frame rate
+                </Text>
+              </View>
+              <Switch
+                value={ksplayerDisplayFrameRate}
+                onValueChange={setKsplayerDisplayFrameRate}
+                trackColor={{ false: colors.divider, true: colors.primary }}
+                thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
+              />
+            </View>
+          </>
         )}
 
         {/* Theme Mode */}
