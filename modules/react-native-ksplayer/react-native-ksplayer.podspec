@@ -17,16 +17,14 @@ Pod::Spec.new do |s|
 
   s.dependency "React-Core"
 
-  # KSPlayer is not on CocoaPods trunk, so we cannot use s.dependency "KSPlayer/MEPlayer".
-  # Instead we inject the framework search path directly into this pod's xcconfig so the
-  # Swift compiler can resolve `import KSPlayer` at compile time.
+  # KSPlayer/MEPlayer is declared in the Podfile via :git => ... source.
+  # We must also declare it as a dependency here so that CocoaPods generates
+  # the correct Xcode build order (KSPlayer compiles before react-native-ksplayer).
+  # Without this, Xcode tries to compile react-native-ksplayer in parallel with
+  # (or before) KSPlayer, causing "header 'KSPlayer-Swift.h' not found" errors
+  # because the Swift-generated header does not exist yet.
   #
-  # The KSPlayer framework is built by CocoaPods into the Pods configuration build dir.
-  # We add two paths:
-  #   1. $(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer  — standard location
-  #   2. $(SYMROOT)/$(CONFIGURATION)-$(EFFECTIVE_PLATFORM_NAME)/KSPlayer — used when
-  #      xcodebuild is invoked with a custom SYMROOT (e.g. CI: SYMROOT=$WORKSPACE/build/ios)
-  s.xcconfig = {
-    "FRAMEWORK_SEARCH_PATHS" => '"$(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer" "$(SYMROOT)/$(CONFIGURATION)-$(EFFECTIVE_PLATFORM_NAME)/KSPlayer"'
-  }
+  # NOTE: CocoaPods resolves this dependency from the Podfile's :git source for
+  # KSPlayer/MEPlayer — it does NOT require KSPlayer to be on the CocoaPods trunk CDN.
+  s.dependency "KSPlayer/MEPlayer"
 end
