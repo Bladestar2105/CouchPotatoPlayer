@@ -15,6 +15,8 @@ Pod::Spec.new do |s|
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 
+  # React Native dependencies - use React-RCTFabric for Fabric/New Architecture
   s.dependency "React-Core"
+  s.dependency "React-RCTFabric"
   s.dependency "KSPlayer/MEPlayer"
 end

@@ -1,4 +1,5 @@
 import Foundation
+@objc import React
 
 // ---------------------------------------------------------------------------
 // KSPlayerViewManager — React Native ViewManager for KSPlayerView

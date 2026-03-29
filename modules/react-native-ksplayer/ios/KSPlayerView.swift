@@ -3,6 +3,9 @@ import UIKit
 import AVFoundation
 import KSPlayer
 
+// Import React types through the module
+@objc import React
+
 // ---------------------------------------------------------------------------
 // KSPlayerView — React Native native view wrapping KSPlayer's KSPlayerLayer
 //
