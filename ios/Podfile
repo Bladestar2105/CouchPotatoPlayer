@@ -45,13 +45,24 @@ target 'CouchPotatoPlayer' do
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
   # ── KSPlayer (FFmpeg-based player for full IPTV format support on iOS/tvOS) ──
-  # KSPlayer/MEPlayer pulls in FFmpegKit for raw MPEG-TS and all FFmpeg formats.
+  # KSPlayer/MEPlayer uses FFmpegKit which supports raw MPEG-TS and all FFmpeg formats.
   # This is required by the react-native-ksplayer native module.
-  # NOTE: KSPlayer's podspec has s.version='1.1.0' but git tags are 2.x.x
-  #       We use :commit to pin to the exact 2.3.4 release commit (tag dd24fb9).
-  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => 'dd24fb9b98b53fc41d184be95e740a3001332bb4'
-  pod 'KSPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => 'dd24fb9b98b53fc41d184be95e740a3001332bb4', :subspecs => ['MEPlayer']
-  pod 'FFmpegKit', :podspec => 'https://raw.githubusercontent.com/kingslay/FFmpegKit/main/FFmpegKit.podspec'
+  #
+  # Dependency chain:
+  #   react-native-ksplayer → KSPlayer/MEPlayer → FFmpegKit → Libass
+  #
+  # These pods are not on CocoaPods trunk. All podspecs have version numbers that
+  # do not match real git tags (e.g. KSPlayer podspec says 1.1.0 but tags are 2.x.x).
+  # We use :git + :commit to pin to HEAD of each repo and bypass tag resolution.
+  #
+  # Pinned commits (update when upgrading):
+  #   FFmpegKit/Libass: d7048037 (HEAD/main as of 2026-03-29)
+  #   KSPlayer: 46f08efc (HEAD/main as of 2026-03-29)
+  pod 'Libass', :git => 'https://github.com/kingslay/FFmpegKit.git', :commit => 'd7048037a2eb94a3b08113fbf43aa92bdcb332d9'
+  pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :commit => 'd7048037a2eb94a3b08113fbf43aa92bdcb332d9'
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/MEPlayer: the /MEPlayer subspec includes FFmpegKit (KSMEPlayer backend)
+  pod 'KSPlayer/MEPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
 
   use_react_native!(
     :path => config[:reactNativePath],
