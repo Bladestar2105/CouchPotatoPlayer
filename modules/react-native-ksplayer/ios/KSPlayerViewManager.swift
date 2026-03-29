@@ -1,5 +1,5 @@
 import Foundation
-import UIKit
+import React
 
 // ---------------------------------------------------------------------------
 // KSPlayerViewManager — React Native ViewManager for KSPlayerView
@@ -11,11 +11,11 @@ import UIKit
 
 @objc(KSPlayerViewManager)
 class KSPlayerViewManager: RCTViewManager {
-    
+
     override func view() -> UIView! {
         return KSPlayerView()
     }
-    
+
     override static func requiresMainQueueSetup() -> Bool {
         return true
     }
