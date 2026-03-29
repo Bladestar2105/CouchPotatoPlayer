@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
-
+// @ts-ignore - TVEventControl is available in react-native-tvos but not in standard React Native types
+import { TVEventControl, useTVEventHandler } from 'react-native';
 
 import VideoPlayer, { VideoMetadata } from '../components/VideoPlayer';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
-// @ts-ignore
-import { useTVEventHandler } from 'react-native';
 
 // Dynamically require expo-screen-orientation only if not on a TV
 let ScreenOrientation: any;
@@ -26,6 +25,16 @@ const defaultLogo = require('../assets/icon.png');
 // ⚡ Bolt: Cache Intl.DateTimeFormat instance to avoid slow initialization overhead on every render
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
+/**
+ * PlayerScreen - Full-screen video player for IPTV streams
+ * 
+ * tvOS/Android TV Back Button Handling:
+ * - Uses TVEventControl.enableTVMenuKey() to intercept the menu button on tvOS
+ * - Combined with BackHandler for Android TV compatibility
+ * - useTVEventHandler handles remote events including 'menu' event type
+ * 
+ * The menu button navigates back to Home instead of exiting the app.
+ */
 const PlayerScreen = () => {
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
@@ -40,13 +49,20 @@ const PlayerScreen = () => {
   // Use a ref for current time to avoid re-triggering the event listener effect
   const currentTimeRef = React.useRef(0);
 
-  // Memoize handleBack to prevent unnecessary re-renders
-  const handleBack = React.useCallback(() => {
+  /**
+   * Handle back navigation - navigates to Home screen instead of exiting app
+   * This is the core of the tvOS menu button handling.
+   * 
+   * IMPORTANT: We use navigation.navigate('Home') instead of navigation.goBack()
+   * because the Player screen might be the only screen in the stack (e.g., when
+   * launched via deep link), and goBack() would exit the app in that case.
+   */
+  const handleBack = useCallback(() => {
     // Apple TV Menu button shouldn't close the app from PlayerScreen.
     // Explicitly navigating to "Home" instead of relying on "goBack()"
     // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
     navigation.navigate('Home');
-    return true;
+    return true; // Return true to indicate we handled the back event
   }, [navigation]);
 
   // Get full channel details for HUD
@@ -149,7 +165,16 @@ const PlayerScreen = () => {
     setShowOverlay(prev => !prev);
   };
 
-  const handleTVRemoteEvent = React.useCallback((evt: any) => {
+  /**
+   * TV Remote Event Handler
+   * 
+   * Handles various remote control events for tvOS and Android TV:
+   * - 'menu': Back/Menu button - navigates to Home screen
+   * - 'playPause': Play/Pause button - toggles pause state
+   * - 'left'/'right': Seek backward/forward 10 seconds
+   * - 'up'/'down'/'select': Show overlay for info display
+   */
+  const handleTVRemoteEvent = useCallback((evt: any) => {
     if (!isFocused || !evt) return;
 
     if (evt.eventType === 'menu') {
@@ -177,13 +202,40 @@ const PlayerScreen = () => {
   // Use the standard hook provided by react-native for TV remote events
   useTVEventHandler(handleTVRemoteEvent);
 
+  /**
+   * tvOS Menu Button Control with TVEventControl
+   * 
+   * CRITICAL for tvOS: This effect uses TVEventControl to properly handle
+   * the menu button behavior on Apple TV.
+   * 
+   * - enableTVMenuKey(): Allows the menu button to be intercepted by the app
+   *   instead of immediately exiting to tvOS home screen.
+   * - When enabled, menu button presses can be handled via BackHandler
+   *   and useTVEventHandler ('menu' event type).
+   * 
+   * Without this, the menu button would exit the app immediately on tvOS.
+   * 
+   * For Android TV: BackHandler alone is sufficient, but we include it
+   * here for cross-platform compatibility.
+   */
   useEffect(() => {
     if (!isFocused) return;
-    
-    // On Apple TV, the Menu button sometimes triggers hardwareBackPress
+
+    // Enable menu key interception on tvOS
+    // This must be called to prevent the app from exiting when menu is pressed
+    if (Platform.isTV && TVEventControl?.enableTVMenuKey) {
+      TVEventControl.enableTVMenuKey();
+    }
+
+    // BackHandler works for both Android TV and tvOS (when TVEventControl is enabled)
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
 
     return () => {
+      // Cleanup: Disable menu key interception when leaving PlayerScreen
+      // This restores default tvOS menu button behavior on the root screen
+      if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+        TVEventControl.disableTVMenuKey();
+      }
       backHandler.remove();
     };
   }, [isFocused, handleBack]);
