@@ -79,5 +79,41 @@ target 'CouchPotatoPlayer' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # -- KSPlayer framework search path injection --
+    # react-native-ksplayer imports KSPlayer in Swift, but since the podspec
+    # cannot declare s.dependency "KSPlayer/MEPlayer" (KSPlayer is not on
+    # CocoaPods trunk CDN), CocoaPods does not automatically add KSPlayer's
+    # framework output directory to react-native-ksplayer's Swift compiler
+    # flags (-F path).
+    #
+    # We inject FRAMEWORK_SEARCH_PATHS here so the Swift compiler can resolve
+    # `import KSPlayer` at compile time.
+    #
+    # Two paths are added to cover both:
+    #   1. $(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer  -- standard CocoaPods build dir
+    #   2. $(SYMROOT)/$(CONFIGURATION)-$(EFFECTIVE_PLATFORM_NAME)/KSPlayer
+    #      -- when xcodebuild is invoked with a custom SYMROOT (e.g. in CI:
+    #        xcodebuild ... SYMROOT="$GITHUB_WORKSPACE/build/ios")
+    #      This is where CocoaPods places its framework outputs when SYMROOT
+    #      is overridden, matching paths like:
+    #        build/ios/Release-iphonesimulator/KSPlayer
+    #        build/ios/Release-iphoneos/KSPlayer
+    installer.pods_project.targets.each do |target|
+      if target.name == 'react-native-ksplayer'
+        target.build_configurations.each do |config|
+          existing = config.build_settings['FRAMEWORK_SEARCH_PATHS'] || ['$(inherited)']
+          existing = [existing] if existing.is_a?(String)
+          paths_to_add = [
+            '$(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer',
+            '$(SYMROOT)/$(CONFIGURATION)-$(EFFECTIVE_PLATFORM_NAME)/KSPlayer',
+          ]
+          paths_to_add.each do |p|
+            existing << p unless existing.include?(p)
+          end
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] = existing
+        end
+      end
+    end
   end
 end
