@@ -3,9 +3,6 @@ import UIKit
 import AVFoundation
 import KSPlayer
 
-// Import React types through the module
-@objc import React
-
 // ---------------------------------------------------------------------------
 // KSPlayerView — React Native native view wrapping KSPlayer's KSPlayerLayer
 //
@@ -22,6 +19,10 @@ import KSPlayer
 //   - The local Swift proxy URL is accepted as-is (header forwarding handled upstream)
 //   - Progress is reported via KSPlayerLayerDelegate, not a polling timer
 // ---------------------------------------------------------------------------
+
+// Typealias for React Native callback block
+// RCTBubblingEventBlock is defined in React and available via the Objective-C bridge
+typealias RCTBubblingEventBlock = ([String: Any]) -> Void
 
 @objc(KSPlayerView)
 class KSPlayerView: UIView {
