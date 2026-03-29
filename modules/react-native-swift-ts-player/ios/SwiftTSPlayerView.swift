@@ -82,6 +82,29 @@ class SwiftTSPlayerView: UIView {
         player = nil
     }
 
+    private func teardownPlayer() {
+        retryTimer?.invalidate()
+        retryTimer = nil
+        playerStatusObserver?.invalidate()
+        playerStatusObserver = nil
+        bufferEmptyObserver?.invalidate()
+        bufferEmptyObserver = nil
+        likelyToKeepUpObserver?.invalidate()
+        likelyToKeepUpObserver = nil
+        if let stalledObserver = stalledObserver {
+            NotificationCenter.default.removeObserver(stalledObserver)
+        }
+        stalledObserver = nil
+        if let failedObserver = failedObserver {
+            NotificationCenter.default.removeObserver(failedObserver)
+        }
+        failedObserver = nil
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        playerItem = nil
+        player = nil
+    }
+
     private func setupPlayer(with urlString: String) {
         teardown()
 

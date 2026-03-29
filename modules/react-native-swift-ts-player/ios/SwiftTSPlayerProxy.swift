@@ -26,6 +26,7 @@ class SwiftTSPlayerProxy: NSObject {
         init(connection: NWConnection, delegate: ProxySessionDelegate? = nil) {
             self.connection = connection
             self.delegate = delegate
+            self.segmenter = segmenter
         }
     }
 
@@ -185,7 +186,37 @@ class SwiftTSPlayerProxy: NSObject {
 
     // MARK: - Stream Proxying
 
-    private func proxyStream(to url: URL, headers: [String: String], connection: NWConnection) {
+    // MARK: - Segment Serving
+
+    private func serveSegment(filename: String, streamInfo: StreamInfo, connection: NWConnection) {
+        // Parse segment index from filename like "seg0.ts", "seg1.ts", etc.
+        let name = filename.replacingOccurrences(of: "seg", with: "").replacingOccurrences(of: ".ts", with: "")
+        guard let index = Int(name) else {
+            sendNotFoundResponse(to: connection)
+            return
+        }
+
+        let segmenter = streamInfo.segmenter
+        guard let segmentData = segmenter.getSegment(at: index) else {
+            // Segment not yet available — return 404 so AVPlayer retries on next playlist reload
+            sendNotFoundResponse(to: connection)
+            return
+        }
+
+        let header = "HTTP/1.1 200 OK\r\nContent-Type: video/mp2t\r\nContent-Length: \(segmentData.count)\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n"
+
+        var fullData = header.data(using: .utf8)!
+        fullData.append(segmentData)
+
+        connection.send(content: fullData, completion: .contentProcessed({ [weak self] _ in
+            self?.cleanupConnection(connection)
+            connection.cancel()
+        }))
+    }
+
+    // MARK: - Direct TS proxy (for VLC)
+
+    private func proxyStreamDirect(to url: URL, headers: [String: String], connection: NWConnection) {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")

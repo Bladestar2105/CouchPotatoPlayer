@@ -144,6 +144,36 @@ const AppleAVPlayer = ({
 };
 
 // ---------------------------------------------------------------------------
+// Helper: get a proxy URL for VLC on Apple platforms (tvOS / iOS)
+// The SwiftTSPlayerProxy provides a direct TS pass-through endpoint that
+// VLC can consume natively without the HLS segmentation layer.
+// ---------------------------------------------------------------------------
+const getVLCProxyUrl = async (url: string): Promise<string> => {
+  if (Platform.OS !== 'ios') return url;
+
+  // If the URL is already HLS or MP4, VLC can handle it directly
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.mp4')) {
+    return url;
+  }
+
+  // For raw TS streams on Apple platforms, route through the local Swift proxy
+  // using the direct pass-through endpoint. This ensures proper TS handling
+  // without the HLS segmentation overhead.
+  try {
+    const { SwiftTSPlayerProxyModule } = NativeModules;
+    if (SwiftTSPlayerProxyModule && SwiftTSPlayerProxyModule.registerStreamDirect) {
+      const proxyUrl = await SwiftTSPlayerProxyModule.registerStreamDirect(url);
+      return proxyUrl;
+    }
+  } catch (e) {
+    console.warn('[VideoPlayer] SwiftTSPlayerProxyModule not available for VLC, using direct URL');
+  }
+
+  return url;
+};
+
+// ---------------------------------------------------------------------------
 // Main VideoPlayer component
 // ---------------------------------------------------------------------------
 
