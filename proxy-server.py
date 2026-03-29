@@ -7,6 +7,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.request
 import urllib.parse
 import sys
+import re
 
 ALLOWED_ORIGINS = [
     'http://localhost:8081', # Expo web development
@@ -67,7 +68,30 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
         self.end_headers()
     
     def log_message(self, format, *args):
-        print(f"[PROXY] {args[0]}", file=sys.stderr)
+        message = str(args[0])
+
+        try:
+            # Safely mask URL authority credentials, accounting for potential URL encoding
+            # Matches :// followed by anything that isn't a slash, stopping at @
+            masked_message = re.sub(r'(%3A|:)//([^/]+)(%40|@)', r'\1//***\3', message, flags=re.IGNORECASE)
+
+            # Mask username and password query parameters directly on the raw string
+            # We match the parameter name (URL encoded or not), =, and then consume
+            # everything up to the next & (or %26) or space (or %20) which marks the HTTP boundary
+            masked_message = re.sub(
+                r'([?&]|%3F|%26)(username|password)(%3D|=)([^& \s]|%20|%26)*',
+                r'\g<1>\g<2>\g<3>***',
+                masked_message,
+                flags=re.IGNORECASE
+            )
+
+            # Prevent CRLF log injection by stripping raw newlines if any exist in the raw string
+            safe_message = masked_message.replace('\r', '').replace('\n', '')
+
+            print(f"[PROXY] {safe_message}", file=sys.stderr)
+        except Exception:
+            # Fallback to a generic message if parsing/masking completely fails to prevent crash
+            print("[PROXY] <Request Log Masking Failed>", file=sys.stderr)
 
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9000
