@@ -24,20 +24,23 @@ let VLCPlayerComponent: any;
 
 if (Platform.OS === 'web') {
   WebVideoComponent = require('expo-av').Video;
-} else if (Platform.isTV) {
-  // tvOS: use expo-video exclusively — it maps to AVPlayerViewController which
-  // is the recommended playback API for Apple TV.
-  try {
-    const expoVideo = require('expo-video');
-    ExpoVideoView = expoVideo.VideoView;
-    useExpoVideoPlayer = expoVideo.useVideoPlayer;
-  } catch (e) {
-    console.warn('[VideoPlayer] expo-video not available on tvOS:', e);
-  }
 } else {
-  // iOS (phone/tablet) and Android
-  VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
-  NativeVideoComponent = require('react-native-video').default;
+  // For Apple environments (tvOS and iOS), expo-video is supported (AVKit)
+  if (Platform.isTV || Platform.OS === 'ios') {
+    try {
+      const expoVideo = require('expo-video');
+      ExpoVideoView = expoVideo.VideoView;
+      useExpoVideoPlayer = expoVideo.useVideoPlayer;
+    } catch (e) {
+      console.warn('[VideoPlayer] expo-video not available on Apple environment:', e);
+    }
+  }
+
+  // For iOS and Android, other native players are supported
+  if (!Platform.isTV) {
+    VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
+    NativeVideoComponent = require('react-native-video').default;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -172,20 +175,20 @@ const VideoPlayer = React.forwardRef(
       },
     }));
 
-    // Declarative seeking for non-tvOS players
+    // Declarative seeking for non-expo-video players
     React.useEffect(() => {
       if (seekPosition === undefined) return;
-      if (Platform.isTV) return; // tvOS uses expo-video which handles seek differently
+      if (Platform.isTV || (Platform.OS === 'ios' && playerType === 'avkit')) return; // expo-video handles seek differently
       if (videoRef.current && videoRef.current.seek) {
         videoRef.current.seek(seekPosition / 1000.0);
       }
-    }, [seekPosition]);
+    }, [seekPosition, playerType]);
 
     // -----------------------------------------------------------------------
     // Render helpers
     // -----------------------------------------------------------------------
 
-    const renderTVOSPlayer = () => {
+    const renderExpoVideoPlayer = () => {
       if (!streamUrl) return null;
       return (
         <TVOSVideoPlayer
@@ -296,11 +299,11 @@ const VideoPlayer = React.forwardRef(
 
       if (Platform.OS === 'web') return renderWebPlayer();
 
-      // tvOS: always use expo-video regardless of playerType setting —
-      // react-native-vlc-media-player has no tvOS binary and
-      // react-native-video triggers AVFoundation error -11850 on the
-      // Apple TV Simulator.
-      if (Platform.isTV) return renderTVOSPlayer();
+      // tvOS: always use expo-video regardless of playerType setting
+      if (Platform.isTV) return renderExpoVideoPlayer();
+
+      // iOS (phone/tablet)
+      if (Platform.OS === 'ios' && playerType === 'avkit') return renderExpoVideoPlayer();
 
       // iOS (phone/tablet) & Android
       if (playerType === 'native') return renderNativePlayer();
