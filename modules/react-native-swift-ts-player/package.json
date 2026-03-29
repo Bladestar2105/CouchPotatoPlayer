@@ -1,0 +1,12 @@
+{
+  "name": "react-native-swift-ts-player",
+  "version": "1.0.0",
+  "description": "Native AVPlayer TS Proxy for React Native",
+  "main": "index.js",
+  "license": "MIT",
+  "author": "Jules",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  }
+}

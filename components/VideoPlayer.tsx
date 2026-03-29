@@ -24,20 +24,15 @@ let VLCPlayerComponent: any;
 
 if (Platform.OS === 'web') {
   WebVideoComponent = require('expo-av').Video;
-} else if (Platform.isTV) {
-  // tvOS: use expo-video exclusively — it maps to AVPlayerViewController which
-  // is the recommended playback API for Apple TV.
-  try {
-    const expoVideo = require('expo-video');
-    ExpoVideoView = expoVideo.VideoView;
-    useExpoVideoPlayer = expoVideo.useVideoPlayer;
-  } catch (e) {
-    console.warn('[VideoPlayer] expo-video not available on tvOS:', e);
-  }
 } else {
-  // iOS (phone/tablet) and Android
-  VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
-  NativeVideoComponent = require('react-native-video').default;
+  // Note: Instead of expo-video, we use a custom native SwiftTSPlayerView for Apple environments
+  // to support low-latency local TS proxies for IPTV playback.
+
+  // For iOS and Android, other native players are supported
+  if (!Platform.isTV) {
+    VLCPlayerComponent = require('react-native-vlc-media-player').VLCPlayer;
+    NativeVideoComponent = require('react-native-video').default;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -59,14 +54,12 @@ interface VideoPlayerProps {
   onVideoLoad?: (metadata: VideoMetadata) => void;
 }
 
+import { SwiftTSPlayer } from './SwiftTSPlayer';
+
 // ---------------------------------------------------------------------------
-// tvOS player sub-component (expo-video)
+// Apple environment custom player (SwiftTSPlayerView)
 // ---------------------------------------------------------------------------
-// Defined as a separate inner component so that `useExpoVideoPlayer` hook
-// is always called unconditionally at the top of a React component, avoiding
-// the "Rules of Hooks" violation that would happen if we called it
-// conditionally inside `renderPlayer`.
-const TVOSVideoPlayer = ({
+const AppleCustomVideoPlayer = ({
   streamUrl,
   paused,
   onProgress,
@@ -77,59 +70,35 @@ const TVOSVideoPlayer = ({
   onProgress?: VideoPlayerProps['onProgress'];
   onVideoLoad?: VideoPlayerProps['onVideoLoad'];
 }) => {
-  if (!useExpoVideoPlayer || !ExpoVideoView) {
-    return (
-      <View style={styles.placeholder}>
-        <Text style={styles.placeholderText}>expo-video not available</Text>
-      </View>
-    );
-  }
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const player = useExpoVideoPlayer(streamUrl, (p: any) => {
-    p.loop = false;
-    p.muted = false;
-    if (!paused) {
-      p.play();
-    }
-  });
-
-  // Sync play/pause state
+  // Use a simple timer to emulate progress since the native view currently
+  // does not report progress directly, though it could be added to the module.
   React.useEffect(() => {
-    if (!player) return;
-    if (paused) {
-      player.pause();
-    } else {
-      player.play();
-    }
-  }, [paused, player]);
-
-  // Forward progress events
-  React.useEffect(() => {
-    if (!player || !onProgress) return;
+    if (!onProgress) return;
+    let time = 0;
     const interval = setInterval(() => {
-      try {
-        const currentTime = (player.currentTime ?? 0) * 1000; // seconds → ms
-        const duration = (player.duration ?? 0) * 1000;
-        onProgress({ currentTime, duration });
-      } catch (_) {}
+      if (!paused) {
+        time += 1;
+        onProgress({ currentTime: time * 1000, duration: 0 });
+      }
     }, 1000);
     return () => clearInterval(interval);
-  }, [player, onProgress]);
+  }, [paused, onProgress]);
 
   return (
-    <ExpoVideoView
-      player={player}
+    <SwiftTSPlayer
+      streamUrl={streamUrl}
+      paused={paused}
       style={styles.video}
-      contentFit="contain"
-      nativeControls={false}
-      onPlaybackStatusUpdate={(status: any) => {
-        if (status && onVideoLoad && status.videoWidth && status.videoHeight) {
+      onVideoLoad={(event) => {
+        if (onVideoLoad && event.nativeEvent) {
           onVideoLoad({
-            width: status.videoWidth,
-            height: status.videoHeight,
+            width: event.nativeEvent.width,
+            height: event.nativeEvent.height,
           });
         }
+      }}
+      onVideoError={(event) => {
+        console.warn('[SwiftTSPlayerView] Playback error:', event.nativeEvent?.error);
       }}
     />
   );
@@ -172,23 +141,23 @@ const VideoPlayer = React.forwardRef(
       },
     }));
 
-    // Declarative seeking for non-tvOS players
+    // Declarative seeking for non-SwiftTS players
     React.useEffect(() => {
       if (seekPosition === undefined) return;
-      if (Platform.isTV) return; // tvOS uses expo-video which handles seek differently
+      if (Platform.isTV || (Platform.OS === 'ios' && playerType === 'avkit')) return; // SwiftTSPlayer handles seek differently
       if (videoRef.current && videoRef.current.seek) {
         videoRef.current.seek(seekPosition / 1000.0);
       }
-    }, [seekPosition]);
+    }, [seekPosition, playerType]);
 
     // -----------------------------------------------------------------------
     // Render helpers
     // -----------------------------------------------------------------------
 
-    const renderTVOSPlayer = () => {
+    const renderAppleCustomPlayer = () => {
       if (!streamUrl) return null;
       return (
-        <TVOSVideoPlayer
+        <AppleCustomVideoPlayer
           streamUrl={streamUrl}
           paused={paused}
           onProgress={onProgress}
@@ -296,11 +265,11 @@ const VideoPlayer = React.forwardRef(
 
       if (Platform.OS === 'web') return renderWebPlayer();
 
-      // tvOS: always use expo-video regardless of playerType setting —
-      // react-native-vlc-media-player has no tvOS binary and
-      // react-native-video triggers AVFoundation error -11850 on the
-      // Apple TV Simulator.
-      if (Platform.isTV) return renderTVOSPlayer();
+      // tvOS: always use custom AVKit player
+      if (Platform.isTV) return renderAppleCustomPlayer();
+
+      // iOS (phone/tablet)
+      if (Platform.OS === 'ios' && playerType === 'avkit') return renderAppleCustomPlayer();
 
       // iOS (phone/tablet) & Android
       if (playerType === 'native') return renderNativePlayer();

@@ -160,8 +160,9 @@ const SettingsScreen = () => {
   const handleActionSheetPlayerType = () => {
     if (Platform.OS === 'ios' && !Platform.isTV) {
       const nativeLabel = 'Metal (Native)';
-      const options = ['Cancel', nativeLabel, 'VLC'];
-      const values: (PlayerType | null)[] = [null, 'native', 'vlc'];
+      const avkitLabel = 'AVKit (Native TS Proxy)';
+      const options = ['Cancel', avkitLabel, nativeLabel, 'VLC'];
+      const values: (PlayerType | null)[] = [null, 'avkit', 'native', 'vlc'];
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0 },
         (buttonIndex: number) => {
@@ -172,10 +173,16 @@ const SettingsScreen = () => {
   };
 
   const getNativePlayerName = () => {
-    if (Platform.isTV) return 'AVKit (expo-video)';
+    if (Platform.isTV) return 'AVKit (Native TS Proxy)';
     if (Platform.OS === 'ios') return 'Metal (Native)';
     if (Platform.OS === 'android') return 'ExoPlayer (Native)';
     return 'Native';
+  };
+
+  const getPlayerTypeName = (type: PlayerType) => {
+    if (type === 'avkit') return 'AVKit (Native TS Proxy)';
+    if (type === 'vlc') return 'VLC';
+    return getNativePlayerName();
   };
 
   return (
@@ -230,7 +237,7 @@ const SettingsScreen = () => {
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>AVKit (expo-video)</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>AVKit (Native TS Proxy)</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary, fontSize: 11, marginTop: 2 }]}>tvOS always uses AVKit</Text>
             </View>
           </View>
@@ -238,7 +245,7 @@ const SettingsScreen = () => {
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetPlayerType}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{playerType === 'native' ? getNativePlayerName() : 'VLC'}</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
             </View>
             <Text style={{ color: colors.primary }}>Edit</Text>
           </TouchableOpacity>
@@ -246,7 +253,7 @@ const SettingsScreen = () => {
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{playerType === 'native' ? getNativePlayerName() : 'VLC'}</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
             </View>
             <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
               <Picker selectedValue={playerType} onValueChange={(val: PlayerType) => setPlayerType(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>

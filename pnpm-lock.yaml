@@ -115,6 +115,9 @@ importers:
       react-native-screens:
         specifier: ~4.16.0
         version: 4.16.0(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)
+      react-native-swift-ts-player:
+        specifier: file:modules/react-native-swift-ts-player
+        version: file:modules/react-native-swift-ts-player(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)
       react-native-tab-view:
         specifier: ^4.2.0
         version: 4.3.0(react-native-pager-view@6.9.1(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)
@@ -2549,6 +2552,12 @@ packages:
 
   react-native-slider@0.11.0:
     resolution: {integrity: sha512-jV9K87eu9uWr0uJIyrSpBLnCKvVlOySC2wynq9TFCdV9oGgjt7Niq8Q1A8R8v+5GHsuBw/s8vEj1AAkkUi+u+w==}
+
+  react-native-swift-ts-player@file:modules/react-native-swift-ts-player:
+    resolution: {directory: modules/react-native-swift-ts-player, type: directory}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   react-native-tab-view@4.3.0:
     resolution: {integrity: sha512-qPMF75uz/7+MuVG2g+YETdGMzlWZnhC6iI4h/7EBbwIBwNBIBi2z4OA6KhY3IOOBwGHXEIz5IyA6doDqifYBHg==}
@@ -6087,6 +6096,11 @@ snapshots:
   react-native-slider@0.11.0:
     dependencies:
       prop-types: 15.8.1
+
+  react-native-swift-ts-player@file:modules/react-native-swift-ts-player(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-native: 0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3)
 
   react-native-tab-view@4.3.0(react-native-pager-view@6.9.1(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3):
     dependencies:

@@ -4,7 +4,7 @@ import Logger from '../utils/logger';
 
 export type ThemeMode = 'dark' | 'oled' | 'light';
 
-export type PlayerType = 'native' | 'vlc';
+export type PlayerType = 'native' | 'vlc' | 'avkit';
 
 export interface ThemeColors {
   background: string;
@@ -97,7 +97,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
 
         const storedPlayerType = await AsyncStorage.getItem('app_player_type');
-        if (storedPlayerType === 'native' || storedPlayerType === 'vlc') {
+        if (storedPlayerType === 'native' || storedPlayerType === 'vlc' || storedPlayerType === 'avkit') {
           setPlayerTypeState(storedPlayerType as PlayerType);
         }
 
