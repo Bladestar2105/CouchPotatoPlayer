@@ -16,5 +16,7 @@ Pod::Spec.new do |s|
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 
   s.dependency "React-Core"
-  s.dependency "KSPlayer/MEPlayer"
+  # KSPlayer and FFmpegKit are declared directly in the app's Podfile
+  # (with git source and subspecs) rather than here, since CocoaPods trunk
+  # does not host KSPlayer. The framework is available at compile/link time.
 end
