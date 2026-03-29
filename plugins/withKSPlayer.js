@@ -43,6 +43,9 @@ const KSPLAYER_PODS = `  # ─── KSPlayer (FFmpeg-based player for full IPTV
   # KSPlayer/Core: contains Utility.swift with runOnMainThread() used by AVPlayer
   # This is needed because the podspec's AVPlayer subspec doesn't declare this dependency.
   pod 'KSPlayer/Core', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/Video: contains KSOptions extensions (canBackgroundPlay, animateDelayTimeInterval)
+  # Used by AVPlayer code but not declared as a dependency in the podspec.
+  pod 'KSPlayer/Video', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
   # KSPlayer/MEPlayer: the /MEPlayer subspec includes FFmpegKit (KSMEPlayer backend)
   pod 'KSPlayer/MEPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
 
