@@ -15,9 +15,11 @@ import { useSettings, ThemeMode, PlayerType } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useTranslation } from 'react-i18next';
 // Removed synchronous Paths/Directory/File imports — using async FileSystem API instead
 
 const SettingsScreen = () => {
+  const { t } = useTranslation();
   const { currentProfile, profiles, pin, isAdultUnlocked, unlockAdultContent, lockAdultContent, removeProfile, loadProfile, unloadProfile } = useIPTV();
   const {
     colors, themeMode, setThemeMode, bufferSize, setBufferSize,
@@ -235,6 +237,30 @@ const SettingsScreen = () => {
               <View style={styles.tileLeft}>
                 <Text style={[styles.tileTitle, { color: isCurrent ? colors.primary : colors.text, fontWeight: isCurrent ? 'bold' : 'normal' }]}>{p.name}</Text>
                 <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{(p.type === 'm3u' || p.type === 'xtream') ? p.url : ''}</Text>
+
+                {p.providerInfo && (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      {t('channelsCount')}: {p.providerInfo.channelsCount ?? '-'}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      {t('moviesCount')}: {p.providerInfo.moviesCount ?? '-'}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      {t('seriesCount')}: {p.providerInfo.seriesCount ?? '-'}
+                    </Text>
+                    {p.type === 'xtream' && (
+                      <>
+                        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                          {t('connections')}: {p.providerInfo.activeConnections ?? '-'} / {p.providerInfo.maxConnections ?? '-'}
+                        </Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                          {t('expiryDate')}: {p.providerInfo.expiryDate ? new Date(Number(p.providerInfo.expiryDate) * 1000).toLocaleDateString() : '-'}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                )}
               </View>
               <View style={styles.tileRight}>
                 {!isCurrent && (

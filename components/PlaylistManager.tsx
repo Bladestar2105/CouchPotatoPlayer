@@ -168,6 +168,7 @@ const PlaylistManager = () => {
           {/* --- CORRECTION DU STYLE (blanc sur blanc) --- */}
           <Picker.Item label="Playlist M3U" value="m3u" color={Platform.OS === 'android' ? '#000' : '#FFF'} />
           <Picker.Item label="Xtream Codes" value="xtream" color={Platform.OS === 'android' ? '#000' : '#FFF'} />
+          <Picker.Item label="Stalker (MAC)" value="stalker" color={Platform.OS === 'android' ? '#888' : '#888'} enabled={false} />
         </Picker>
       </View>
 
