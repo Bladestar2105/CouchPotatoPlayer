@@ -172,15 +172,16 @@ const LiveTVFlow = () => {
 
   const handleEpgPress = (channel: Channel, prog: any) => {
     const now = new Date();
-    const isNow = now >= prog.start && now < prog.end;
-    const isPast = now >= prog.end;
+    const nowTime = now.getTime();
+    const isNow = nowTime >= prog.start && nowTime < prog.end;
+    const isPast = nowTime >= prog.end;
 
     if (isNow) {
        handleChannelPress(channel);
-    } else if (isPast && hasCatchup(channel) && prog.end.getTime() > Date.now() - (channel.catchupDays || 0) * 24 * 60 * 60 * 1000) {
-       const catchupUrl = getCatchupUrl(channel, prog.start, prog.end);
+    } else if (isPast && hasCatchup(channel) && prog.end > Date.now() - (channel.catchupDays || 0) * 24 * 60 * 60 * 1000) {
+       const catchupUrl = getCatchupUrl(channel, new Date(prog.start), new Date(prog.end));
        if (catchupUrl) {
-           playStream({ url: catchupUrl, id: `${channel.id}_${prog.start.getTime()}` });
+           playStream({ url: catchupUrl, id: `${channel.id}_${prog.start}` });
            navigation.navigate('Player');
        }
     }

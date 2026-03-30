@@ -391,17 +391,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const cachedEpg = JSON.parse(cachedEpgStr);
         if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS && !forceUpdate) {
-          // Re-hydrate Date objects
           Logger.log('[EPG] Using cached EPG data');
-          const hydratedEpg: Record<string, EPGProgram[]> = {};
-          for (const channelId in cachedEpg.data) {
-            hydratedEpg[channelId] = cachedEpg.data[channelId].map((p: any) => ({
-              ...p,
-              start: new Date(p.start),
-              end: new Date(p.end),
-            }));
-          }
-          setEpg(hydratedEpg);
+          setEpg(cachedEpg.data);
           return;
         }
       }
@@ -449,8 +440,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             channelId: p.channelId,
             title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
             description: decodeBase64IfNeeded(p.description || ''),
-            start: p.start,
-            end: p.end,
+            start: p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime(),
+            end: p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime(),
           }));
         }
         setEpg(newEpg);

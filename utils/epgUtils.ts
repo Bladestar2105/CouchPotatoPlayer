@@ -12,8 +12,8 @@ export const findCurrentProgramIndex = (epg: EPGProgram[], time: Date): number =
   while (left <= right) {
     const mid = Math.floor((left + right) / 2);
     const program = epg[mid];
-    const startMs = program.start.getTime();
-    const endMs = program.end.getTime();
+    const startMs = program.start;
+    const endMs = program.end;
 
     if (startMs <= timeMs && endMs >= timeMs) {
       return mid;
