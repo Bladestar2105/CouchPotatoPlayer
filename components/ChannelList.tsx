@@ -57,11 +57,11 @@ const LiveTVFlow = () => {
     loadEPG();
   }, []);
 
-  const groups = useMemo(() => {
+  const { groups, groupMap } = useMemo(() => {
     const len = channels.length;
-    if (len === 0) return [];
+    if (len === 0) return { groups: [], groupMap: {} };
 
-    const groupMap: Record<string, Channel[]> = {};
+    const map: Record<string, Channel[]> = {};
     const hasPin = !!pin;
 
     for (let i = 0; i < len; i++) {
@@ -72,21 +72,21 @@ const LiveTVFlow = () => {
       }
 
       const g = channel.group || 'Unknown';
-      if (groupMap[g] === undefined) {
-        groupMap[g] = [channel];
+      if (map[g] === undefined) {
+        map[g] = [channel];
       } else {
-        groupMap[g].push(channel);
+        map[g].push(channel);
       }
     }
 
-    const titles = Object.keys(groupMap);
+    const titles = Object.keys(map);
     const titlesLen = titles.length;
     const result = new Array(titlesLen);
     for (let i = 0; i < titlesLen; i++) {
       const title = titles[i];
-      result[i] = { title, data: groupMap[title] };
+      result[i] = { title, data: map[title] };
     }
-    return result;
+    return { groups: result, groupMap: map };
   }, [channels, isAdultUnlocked, pin]);
 
   useEffect(() => {
@@ -98,8 +98,10 @@ const LiveTVFlow = () => {
   // When a group changes, auto-focus the first channel in that group (or the currently playing one if it's in the group)
   useEffect(() => {
      if (selectedGroup) {
-         const currentChannels = groups.find(g => g.title === selectedGroup)?.data || [];
+         const currentChannels = groupMap[selectedGroup] || [];
          if (currentChannels.length > 0) {
+            // Find current stream id directly, since the array could be large,
+            // but normally it's small enough. Still we can keep find here or use simple iteration
             const playingInGroup = currentChannels.find((c: any) => c.id === currentStream?.id);
             if (playingInGroup) {
                  setFocusedChannelId(playingInGroup.id);
@@ -108,7 +110,7 @@ const LiveTVFlow = () => {
             }
          }
      }
-  }, [selectedGroup]);
+  }, [selectedGroup, groupMap, currentStream?.id]);
 
   // Handle category selection and hide pane on mobile
   const handleGroupSelect = (title: string) => {
@@ -127,8 +129,8 @@ const LiveTVFlow = () => {
   }
 
   const selectedChannels = useMemo(() => {
-    return groups.find(g => g.title === selectedGroup)?.data || [];
-  }, [groups, selectedGroup]);
+    return selectedGroup ? (groupMap[selectedGroup] || []) : [];
+  }, [groupMap, selectedGroup]);
 
   const focusedChannel = useMemo(() => {
      return channels.find(c => c.id === focusedChannelId);
