@@ -12,7 +12,7 @@ const POSTER_WIDTH = 120;
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, colors }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any }) => {
+const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -27,6 +27,7 @@ const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, c
             accessibilityRole="tab"
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`Select category ${title}`}
+            hasTVPreferredFocus={hasTVPreferredFocus}
         >
             <Text style={{ color: isSelected || isFocused ? '#FFF' : '#AAA', fontWeight: isSelected || isFocused ? 'bold' : 'normal', fontSize: Platform.isTV ? 16 : 16 }}>
                 {title} ({count})
@@ -34,7 +35,7 @@ const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, c
         </TouchableOpacity>
     );
 }, (prevProps, nextProps) => {
-    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count;
+    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 });
 
 const SeriesList = () => {
@@ -118,8 +119,9 @@ const SeriesList = () => {
           initialNumToRender={15}
           maxToRenderPerBatch={10}
           windowSize={5}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
               const isSelected = selectedGroup === item.title;
+              const isFirstItem = index === 0;
               return (
                 <CategoryItem
                   title={item.title}
@@ -128,6 +130,7 @@ const SeriesList = () => {
                   onPress={() => handleGroupSelect(item.title)}
                   onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
                   colors={colors}
+                  hasTVPreferredFocus={isFirstItem}
                 />
               );
           }}
