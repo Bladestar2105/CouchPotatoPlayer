@@ -127,10 +127,18 @@ export interface Category {
   adult?: number;
 }
 
-export interface M3UProfile { id: string; name: string; type: 'm3u'; url: string; epgUrl?: string; icon?: string; }
-export interface XtreamProfile { id: string; name: string; type: 'xtream'; url: string; username: string; password?: string; icon?: string; }
-export interface StalkerProfile { id: string; name: string; type: 'stalker'; portalUrl: string; macAddress: string; icon?: string; }
-export type IPTVProfile = M3UProfile | XtreamProfile | StalkerProfile;
+export interface ProviderInfo {
+  channelsCount?: number;
+  moviesCount?: number;
+  seriesCount?: number;
+  maxConnections?: string | number;
+  activeConnections?: string | number;
+  expiryDate?: string | number;
+}
+
+export interface M3UProfile { id: string; name: string; type: 'm3u'; url: string; epgUrl?: string; icon?: string; providerInfo?: ProviderInfo; }
+export interface XtreamProfile { id: string; name: string; type: 'xtream'; url: string; username: string; password?: string; icon?: string; providerInfo?: ProviderInfo; }
+export type IPTVProfile = M3UProfile | XtreamProfile;
 export type ProfileType = IPTVProfile['type'];
 
 export type IPTVContextType = {

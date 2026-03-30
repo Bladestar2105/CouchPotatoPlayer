@@ -94,10 +94,6 @@ const PlaylistManager = () => {
   };
 
   const startEditing = (profile: IPTVProfile) => {
-    if (profile.type === 'stalker') {
-      Alert.alert(t('unsupported'), t('stalkerEditNotImplemented'));
-      return;
-    }
     setEditingProfile(profile);
   };
 

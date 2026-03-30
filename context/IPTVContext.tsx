@@ -260,6 +260,28 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [profiles, currentProfile]);
 
+  const updateProfileInfo = useCallback(async (profileId: string, providerInfo: any) => {
+    try {
+      setProfiles(prevProfiles => {
+        const newProfiles = prevProfiles.map(p =>
+          p.id === profileId ? { ...p, providerInfo } : p
+        );
+        AsyncStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(newProfiles)).catch(e => {
+          Logger.error("Failed to save profile info to storage", e);
+        });
+        return newProfiles;
+      });
+      setCurrentProfile(prevProfile => {
+        if (prevProfile?.id === profileId) {
+          return { ...prevProfile, providerInfo } as any;
+        }
+        return prevProfile;
+      });
+    } catch (e) {
+      Logger.error("Failed to update profile info", e);
+    }
+  }, []);
+
   const loadProfile = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {
     if (!forceUpdate) {
         setIsLoading(true);
@@ -273,6 +295,17 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      setProfiles(prevProfiles => {
+        const currentProfileInList = prevProfiles.find(p => p.id === profile.id);
+        if (currentProfileInList) {
+           setCurrentProfile(currentProfileInList);
+        } else {
+           setCurrentProfile(profile);
+        }
+        return prevProfiles;
+      });
+      await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
+
       // SSRF mitigation: validate URL starts with http:// or https://
       const isValidUrl = (url: string) => /^https?:\/\//i.test(url.trim());
 
@@ -280,7 +313,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isValidUrl(profile.url)) {
           throw new Error('Invalid URL. M3U URL must start with http:// or https://');
         }
-        await loadM3U(profile.url.trim().replace(/\/+$/, ''));
+        await loadM3U(profile);
       }
       else if (profile.type === 'xtream') {
         const serverUrl = profile.url || (profile as any).serverUrl;
@@ -289,11 +322,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         await loadXtream(profile, forceUpdate);
       }
-      else if (profile.type === 'stalker') {
-        console.warn(i18n.t('stalkerNotImplemented'));
-      }
-      setCurrentProfile(profile);
-      await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
 
       if (forceUpdate) {
         await loadEPG(true);
@@ -452,10 +480,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentProfile]);
 
-  const loadM3U = useCallback(async (url: string) => {
+  const loadM3U = useCallback(async (profile: IPTVProfile) => {
     let m3uContent = '';
+    if (profile.type !== 'm3u') return;
     try {
-      const response = await fetchWithProxy(url);
+      const response = await fetchWithProxy(profile.url.trim().replace(/\/+$/, ''));
       if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
       m3uContent = await response.text();
     } catch (fetchError: any) {
@@ -469,6 +498,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMovies(movies);
       setSeries(series);
 
+      const providerInfo = {
+        channelsCount: channels.length,
+        moviesCount: movies.length,
+        seriesCount: series.length
+      };
+
+      updateProfileInfo(profile.id, providerInfo);
+
       if (channels.length === 0 && movies.length === 0 && series.length === 0) {
         throw new Error(i18n.t('m3uEmptyError'));
       }
@@ -476,7 +513,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Logger.error("M3U parsing error:", parseError);
       throw new Error(i18n.t('m3uFormatError'));
     }
-  }, []);
+  }, [updateProfileInfo]);
 
   const parseM3U = useCallback((m3uContent: string): { channels: Channel[], movies: Movie[], series: Series[] } => {
     const lines = m3uContent.split('\n');
@@ -596,6 +633,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let authResponse;
     let liveExtension = 'ts';
+    let providerInfo: any = {};
+
     try {
       authResponse = await fetchWithProxy(baseUrl);
       if (!authResponse.ok) throw new Error(i18n.t('serverError', { status: authResponse.status }));
@@ -604,6 +643,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authData.user_info.auth === 0) {
         throw new Error(i18n.t('authFailed'));
       }
+
+      providerInfo = {
+        maxConnections: authData.user_info.max_connections,
+        activeConnections: authData.user_info.active_cons,
+        expiryDate: authData.user_info.exp_date
+      };
 
       if (authData.user_info.allowed_output_formats && Array.isArray(authData.user_info.allowed_output_formats)) {
         const formats = authData.user_info.allowed_output_formats;
@@ -716,6 +761,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }) : [];
       setSeries(parsedSeries);
 
+      providerInfo.channelsCount = parsedChannels.length;
+      providerInfo.moviesCount = parsedMovies.length;
+      providerInfo.seriesCount = parsedSeries.length;
+
+      updateProfileInfo(profile.id, providerInfo);
+
       // Save to cache
       try {
           const cacheDataStr = JSON.stringify({
@@ -739,7 +790,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       Logger.error("Error fetching Xtream streams", sanitizeError(e));
       throw new Error(e.message === i18n.t('corsError') ? i18n.t('corsError') : i18n.t('loadStreamsError'));
     }
-  }, []);
+  }, [updateProfileInfo]);
 
   const getSeriesInfo = useCallback(async (seriesId: string): Promise<any> => {
     if (currentProfile?.type !== 'xtream') return null;
