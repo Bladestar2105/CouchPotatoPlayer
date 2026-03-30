@@ -17,7 +17,7 @@ import EpisodeScreen from './screens/EpisodeScreen';
 import PinSetupScreen from './screens/PinSetupScreen';
 import MediaInfoScreen from './screens/MediaInfoScreen';
 import SearchScreen from './screens/SearchScreen';
-import { Series, Season, Channel } from './types';
+import { Series, Season } from './types';
 
 // Mettre à jour la liste des écrans (SAUF Splash)
 export type RootStackParamList = {
