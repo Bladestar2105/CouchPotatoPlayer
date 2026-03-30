@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -268,17 +268,15 @@ const HomeScreen = () => {
       // Wait a tick so the UI renders first
       setTimeout(() => {
          // Using standard Alert for simple yes/no
-         import('react-native').then(({ Alert }) => {
-            Alert.alert(
-               "Playlist aktualisieren?",
-               "Möchten Sie die Playlist und das EPG jetzt aktualisieren?",
-               [
-                 { text: "Nein", style: "cancel" },
-                 { text: "Ja", onPress: () => loadProfile(currentProfile, true) }
-               ],
-               { cancelable: true }
-            );
-         });
+         Alert.alert(
+            "Playlist aktualisieren?",
+            "Möchten Sie die Playlist und das EPG jetzt aktualisieren?",
+            [
+              { text: "Nein", style: "cancel" },
+              { text: "Ja", onPress: () => loadProfile(currentProfile, true) }
+            ],
+            { cancelable: true }
+         );
       }, 500);
     }
   }, [currentProfile, isInitializing, isLoading, hasPromptedUpdate, loadProfile]);
