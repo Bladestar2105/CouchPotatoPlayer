@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   StyleSheet,
   FlatList,
   TouchableOpacity,
@@ -206,8 +205,30 @@ const PlaylistManager = () => {
       )}
 
       <View style={styles.formButtons}>
-        <Button title={editingProfile ? t('save') : t('add')} onPress={handleSubmit} />
-        {editingProfile && (<Button title={t('cancel')} onPress={cancelEdit} color="#FF3B30" />)}
+        <TouchableOpacity
+          style={[styles.primaryButton, isLoading && styles.disabledButton]}
+          onPress={handleSubmit}
+          disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel={editingProfile ? t('save') : t('add')}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>{editingProfile ? t('save') : t('add')}</Text>
+          )}
+        </TouchableOpacity>
+        {editingProfile && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={cancelEdit}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel={t('cancel')}
+          >
+            <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.divider} />
@@ -274,8 +295,41 @@ const styles = StyleSheet.create({
   },
   formButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
+    gap: 12,
     marginBottom: 12,
+    marginTop: 8,
+  },
+  primaryButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   divider: {
     height: 1,
