@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform // Importé pour le style du Picker
+  Platform
 } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
-import { IPTVProfile, M3UProfile, XtreamProfile, ProfileType } from '../types';
+import { IPTVProfile, ProfileType } from '../types';
 import { Picker } from '@react-native-picker/picker';
 import { useTranslation } from 'react-i18next';
 import Logger from '../utils/logger';
