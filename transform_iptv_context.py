@@ -580,7 +580,7 @@ new_provider_body = r"""
         for (const channelId in epgData) {
           newEpg[channelId] = epgData[channelId].map((p: any) => ({
             // Use cryptographically secure UUID if available, fallback for older environments
-            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(),
+            id: Crypto.randomUUID(),
             channelId: p.channelId,
             title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
             description: decodeBase64IfNeeded(p.description || ''),
