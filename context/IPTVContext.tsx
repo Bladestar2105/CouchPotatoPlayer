@@ -288,9 +288,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         await loadXtream(profile, forceUpdate);
       }
-      else if (profile.type === 'stalker') {
-        console.warn(i18n.t('stalkerNotImplemented'));
-      }
       setCurrentProfile(profile);
       await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
 
