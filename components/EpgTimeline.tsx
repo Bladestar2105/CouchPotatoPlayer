@@ -45,7 +45,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
         >
             <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{prog.title}</Text>
             <Text style={[styles.programTime, { fontSize: Platform.isTV ? 14 : 12 }]} numberOfLines={1}>
-                {formatTime(prog.start)} - {formatTime(prog.end)}
+                {formatTime(new Date(prog.start))} - {formatTime(new Date(prog.end))}
             </Text>
         </TouchableOpacity>
     );
@@ -75,8 +75,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
 
         for (let idx = 0; idx < programs.length; idx++) {
             const prog = programs[idx];
-            const startMs = prog.start.getTime();
-            const endMs = prog.end.getTime();
+            const startMs = prog.start;
+            const endMs = prog.end;
 
             // Skip if fully outside timeline
             if (endMs <= timelineStartMs || startMs >= timelineEndMs) continue;

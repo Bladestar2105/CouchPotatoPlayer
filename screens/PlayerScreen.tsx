@@ -102,8 +102,8 @@ const PlayerScreen = () => {
      // the next program is simply the next contiguous element — O(1) instead of O(N).
      const nextProgram = (currentIdx + 1 < channelEpg.length) ? channelEpg[currentIdx + 1] : null;
 
-     const totalDuration = currentProgram.end.getTime() - currentProgram.start.getTime();
-     const elapsed = now.getTime() - currentProgram.start.getTime();
+     const totalDuration = currentProgram.end - currentProgram.start;
+     const elapsed = now.getTime() - currentProgram.start;
      const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
 
      return { currentProgram, nextProgram, progressPercent };

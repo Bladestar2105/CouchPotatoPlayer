@@ -76,8 +76,8 @@ export interface EPGProgram {
   channelId: string;
   title: string;
   description: string;
-  start: Date;
-  end: Date;
+  start: number;
+  end: number;
   // Support for raw data from Xtream API
   title_raw?: string;
   description_raw?: string;

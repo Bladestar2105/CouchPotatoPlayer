@@ -9,24 +9,24 @@ describe('epgUtils', () => {
       channelId: 'ch1',
       title: 'Program 1',
       description: 'Desc 1',
-      start: new Date('2023-10-27T10:00:00Z'),
-      end: new Date('2023-10-27T11:00:00Z'),
+      start: new Date('2023-10-27T10:00:00Z').getTime(),
+      end: new Date('2023-10-27T11:00:00Z').getTime(),
     },
     {
       id: '2',
       channelId: 'ch1',
       title: 'Program 2',
       description: 'Desc 2',
-      start: new Date('2023-10-27T11:00:00Z'),
-      end: new Date('2023-10-27T12:00:00Z'),
+      start: new Date('2023-10-27T11:00:00Z').getTime(),
+      end: new Date('2023-10-27T12:00:00Z').getTime(),
     },
     {
       id: '3',
       channelId: 'ch1',
       title: 'Program 3',
       description: 'Desc 3',
-      start: new Date('2023-10-27T13:00:00Z'),
-      end: new Date('2023-10-27T14:00:00Z'),
+      start: new Date('2023-10-27T13:00:00Z').getTime(),
+      end: new Date('2023-10-27T14:00:00Z').getTime(),
     },
   ];
 
@@ -81,8 +81,8 @@ describe('epgUtils', () => {
         channelId: 'ch1',
         title: `Program ${i}`,
         description: `Desc ${i}`,
-        start: new Date(2023, 9, 27, i, 0, 0),
-        end: new Date(2023, 9, 27, i, 59, 59),
+        start: new Date(2023, 9, 27, i, 0, 0).getTime(),
+        end: new Date(2023, 9, 27, i, 59, 59).getTime(),
       }));
       const time = new Date(2023, 9, 27, 50, 30, 0);
       expect(findCurrentProgramIndex(largeEpg, time)).toBe(50);
