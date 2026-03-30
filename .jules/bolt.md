@@ -20,3 +20,7 @@
 ## 2024-10-29 - [Optimize high-frequency array searches with Sets]
 **Learning:** Using `Array.prototype.some()` inside a hot render path (like `isFavorite` called for every channel rendered in an EPG timeline or list) causes O(N) lookups that block the main thread. With 10,000 channels and 1,000 favorites, this scales terribly and creates severe stuttering.
 **Action:** When a boolean check (like "is this item in a list?") is executed repeatedly during render cycles, convert the source array into a `Set` using `useMemo` (e.g., `new Set(items.map(i => i.id))`). This upgrades the lookup from O(N) to O(1) via `Set.prototype.has()`, drastically improving rendering performance for large lists.
+
+## 2024-03-30 - [Manual for-loop vs .some() on large arrays]
+**Learning:** Using `Array.prototype.some()` on large arrays (like tens of thousands of channels or VOD items) creates significant overhead from closure instantiation and repeated function invocation per element. A manual `for` loop is measurably faster, avoiding main thread blocking while preserving short-circuiting behavior.
+**Action:** When iterating over potentially massive arrays where early returns (short-circuiting) are expected, prefer traditional `for` loops over `Array.prototype.some()`, `Array.prototype.every()`, or `Array.prototype.find()` to minimize garbage collection overhead and improve execution speed.
