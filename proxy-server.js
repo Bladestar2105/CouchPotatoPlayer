@@ -56,7 +56,16 @@ const server = http.createServer((req, res) => {
       console.log('Proxying:', masked);
     }
     
-    const parsedUrl = url.parse(targetUrl);
+    const { URL } = require('url');
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(targetUrl);
+    } catch (e) {
+      console.error('Proxy error: Invalid URL', e.message);
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: 'Invalid URL provided' }));
+      return;
+    }
     const protocol = parsedUrl.protocol === 'https:' ? https : http;
     
     const proxyReq = protocol.request(targetUrl, {

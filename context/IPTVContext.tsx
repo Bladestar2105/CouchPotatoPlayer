@@ -295,15 +295,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      setProfiles(prevProfiles => {
-        const currentProfileInList = prevProfiles.find(p => p.id === profile.id);
-        if (currentProfileInList) {
-           setCurrentProfile(currentProfileInList);
-        } else {
-           setCurrentProfile(profile);
-        }
-        return prevProfiles;
-      });
+      const currentProfileInList = profiles.find(p => p.id === profile.id);
+      if (currentProfileInList) {
+         setCurrentProfile(currentProfileInList);
+      } else {
+         setCurrentProfile(profile);
+      }
       await AsyncStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile.id);
 
       // SSRF mitigation: validate URL starts with http:// or https://
@@ -349,7 +346,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
          setIsLoading(false);
       }
     }
-  }, []);
+  }, [profiles]);
 
   const unloadProfile = useCallback(async () => {
     setCurrentProfile(null);
@@ -534,7 +531,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if ((line.startsWith('http://') || line.startsWith('https://')) && currentItemInfo) {
         const url = line.trim();
         if (url.includes('/movie/')) {
-          movies.push({ id: url, name: currentItemInfo.name, streamUrl: url, cover: currentItemInfo.logo, group: currentItemInfo.group });
+          const movieId = `${url}_${currentItemInfo.name}`;
+          movies.push({ id: movieId, name: currentItemInfo.name, streamUrl: url, cover: currentItemInfo.logo, group: currentItemInfo.group });
         }
         else if (url.includes('/series/')) {
           const match = currentItemInfo.name.match(seriesRegex);
@@ -567,10 +565,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             currentSeries.seasons.push(currentSeason);
           }
 
-          currentSeason.episodes.push({ id: url, name: episodeName, streamUrl: url, episodeNumber: episodeNum });
+          const episodeId = `${url}_${seriesName}_S${seasonNum}E${episodeNum}`;
+          currentSeason.episodes.push({ id: episodeId, name: episodeName, streamUrl: url, episodeNumber: episodeNum });
 
         } else {
-          channels.push({ id: currentItemInfo.tvgId || url, name: currentItemInfo.name, url: url, logo: currentItemInfo.logo, group: currentItemInfo.group, tvgId: currentItemInfo.tvgId });
+          const channelId = currentItemInfo.tvgId ? `${currentItemInfo.tvgId}_${url}` : `${url}_${currentItemInfo.name}`;
+          channels.push({ id: channelId, name: currentItemInfo.name, url: url, logo: currentItemInfo.logo, group: currentItemInfo.group, tvgId: currentItemInfo.tvgId });
         }
         currentItemInfo = null;
       }
@@ -881,22 +881,23 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updatePlaybackPosition = useCallback(async (id: string, position: number, duration?: number) => {
     try {
-      const index = recentlyWatched.findIndex(r => r.id === id);
-      if (index >= 0) {
-        const item = recentlyWatched[index];
-        recentlyWatched[index] = {
-          ...item,
-          lastWatchedAt: Date.now(),
-          position,
-          duration: duration ?? item.duration,
-        };
-        setRecentlyWatched([...recentlyWatched]);
-        await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(recentlyWatched));
-      }
+      setRecentlyWatched(prev => {
+        const index = prev.findIndex(r => r.id === id);
+        if (index >= 0) {
+          const updated = prev.map((r, i) =>
+            i === index ? { ...r, lastWatchedAt: Date.now(), position, duration: duration ?? r.duration } : r
+          );
+          AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(updated)).catch(e => {
+            Logger.error("Error saving updated playback position", e);
+          });
+          return updated;
+        }
+        return prev;
+      });
     } catch (e) {
       Logger.error("Error updating playback position", e);
     }
-  }, [recentlyWatched]);
+  }, []);
 
   const removeRecentlyWatched = useCallback(async (id: string) => {
     try {
@@ -933,9 +934,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [lockedChannels]);
 
+  const lockedChannelsSet = useMemo(() => new Set(lockedChannels), [lockedChannels]);
+
   const isChannelLocked = useCallback((id: string) => {
-    return lockedChannels.includes(id);
-  }, [lockedChannels]);
+    return lockedChannelsSet.has(id);
+  }, [lockedChannelsSet]);
 
   // --- PIN Management ---
   const setPinCode = useCallback(async (newPin: string | null) => {
