@@ -57,15 +57,17 @@ const LiveTVFlow = () => {
     loadEPG();
   }, []);
 
-  const { groups, groupMap } = useMemo(() => {
+  const { groups, groupMap, channelMap } = useMemo(() => {
     const len = channels.length;
-    if (len === 0) return { groups: [], groupMap: {} };
+    if (len === 0) return { groups: [], groupMap: {}, channelMap: {} };
 
     const map: Record<string, Channel[]> = {};
+    const cMap: Record<string, Channel> = {};
     const hasPin = !!pin;
 
     for (let i = 0; i < len; i++) {
       const channel = channels[i];
+      cMap[channel.id] = channel;
       // Skip restricted content early in the loop to avoid redundant filtering
       if (channel.isAdult && !isAdultUnlocked && hasPin) {
         continue;
@@ -86,7 +88,7 @@ const LiveTVFlow = () => {
       const title = titles[i];
       result[i] = { title, data: map[title] };
     }
-    return { groups: result, groupMap: map };
+    return { groups: result, groupMap: map, channelMap: cMap };
   }, [channels, isAdultUnlocked, pin]);
 
   useEffect(() => {
@@ -133,8 +135,8 @@ const LiveTVFlow = () => {
   }, [groupMap, selectedGroup]);
 
   const focusedChannel = useMemo(() => {
-     return channels.find(c => c.id === focusedChannelId);
-  }, [focusedChannelId, channels]);
+     return focusedChannelId ? channelMap[focusedChannelId] : undefined;
+  }, [focusedChannelId, channelMap]);
 
   const getEpgKey = (channel: Channel | undefined): string => {
     if (!channel) return '';

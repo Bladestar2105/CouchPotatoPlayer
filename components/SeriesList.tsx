@@ -52,29 +52,29 @@ const SeriesList = () => {
   const isMobile = dimensions.width < 768;
   const numColumns = Math.max(2, Math.floor((isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310) / (POSTER_WIDTH + 16)));
 
-  const groups = useMemo(() => {
-    if (series.length === 0) return [];
+  const { groups, groupMap } = useMemo(() => {
+    if (series.length === 0) return { groups: [], groupMap: {} };
 
     // ⚡ Bolt: Consolidated filter and reduce into a single pass to save CPU and memory allocations
-    const groupMap: Record<string, Series[]> = {};
+    const map: Record<string, Series[]> = {};
     for (let i = 0; i < series.length; i++) {
-      const s = series[i];
-      if (!s.isAdult || isAdultUnlocked || !pin) {
-        const g = s.group || 'Unknown';
-        if (!groupMap[g]) groupMap[g] = [];
-        groupMap[g].push(s);
+      const item = series[i];
+      if (!item.isAdult || isAdultUnlocked || !pin) {
+        const g = item.group || 'Unknown';
+        if (!map[g]) map[g] = [];
+        map[g].push(item);
       }
     }
 
     // ⚡ Bolt: Pre-allocate array and use manual loop instead of .map() for massive datasets
-    const keys = Object.keys(groupMap);
+    const keys = Object.keys(map);
     const result = new Array(keys.length);
     for (let i = 0; i < keys.length; i++) {
       const title = keys[i];
-      result[i] = { title, data: groupMap[title] };
+      result[i] = { title, data: map[title] };
     }
 
-    return result;
+    return { groups: result, groupMap: map };
   }, [series, isAdultUnlocked, pin]);
 
   // Default select first group
@@ -100,8 +100,8 @@ const SeriesList = () => {
   }
 
   const selectedSeries = useMemo(() => {
-    return groups.find(g => g.title === selectedGroup)?.data || [];
-  }, [groups, selectedGroup]);
+    return selectedGroup ? (groupMap[selectedGroup] || []) : [];
+  }, [groupMap, selectedGroup]);
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
