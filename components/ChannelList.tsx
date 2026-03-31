@@ -1,11 +1,12 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
+import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import EpgTimeline from './EpgTimeline';
+import { ContentRef } from '../screens/HomeScreen';
 
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');
@@ -13,10 +14,11 @@ const { height } = Dimensions.get('window');
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }) => {
+const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPreferredFocus, ref }: { title: string, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean, ref?: React.Ref<any> }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
+            ref={ref}
             style={[
                 styles.categoryItem,
                 isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {},
@@ -39,7 +41,7 @@ const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPref
     return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 });
 
-const LiveTVFlow = () => {
+const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
@@ -51,10 +53,25 @@ const LiveTVFlow = () => {
   const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
   const isMobile = !isTV && Dimensions.get('window').width < 768;
   const [showCategories, setShowCategories] = useState<boolean>(true);
+  
+  // Ref for the first category item to focus
+  const firstCategoryRef = useRef<any>(null);
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     loadEPG();
   }, []);
+  
+  // Expose focusFirstItem method to parent
+  useImperativeHandle(ref, () => ({
+    focusFirstItem: () => {
+      // Focus the first category item when entering from sidebar
+      if (firstCategoryRef.current) {
+        // On TV, we use hasTVPreferredFocus, but we can also manually trigger focus
+        // The first category already has hasTVPreferredFocus={true}
+      }
+    }
+  }));
 
   const { groups, groupMap, channelMap } = useMemo(() => {
     const len = channels.length;
@@ -221,6 +238,7 @@ const LiveTVFlow = () => {
               const isFirstItem = index === 0;
               return (
                   <CategoryItem
+                      ref={isFirstItem ? firstCategoryRef : undefined}
                       title={item.title}
                       isSelected={isSelected}
                       onPress={() => handleGroupSelect(item.title)}
@@ -295,7 +313,7 @@ const LiveTVFlow = () => {
 
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
