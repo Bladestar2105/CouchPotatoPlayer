@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, FlatList, Platform } from 'react-native';
-import { Channel, EPGProgram } from '../types';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, Platform } from 'react-native';
+import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTV } from '../context/IPTVContext';
 
