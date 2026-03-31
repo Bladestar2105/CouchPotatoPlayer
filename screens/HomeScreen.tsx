@@ -46,6 +46,9 @@ const MainLayout = () => {
   // Track previous sidebar focused state to detect transitions
   const prevSidebarFocusedRef = useRef(true);
 
+  // Fix menu bouncing issue by tracking focused items
+  const sidebarFocusCountRef = useRef(0);
+
   useEffect(() => {
     Animated.timing(sidebarWidth, {
       toValue: isSidebarExpanded ? expandedWidth : collapsedWidth,
@@ -69,6 +72,7 @@ const MainLayout = () => {
     // Collapse menu when a tab is selected (TiviMate behavior)
     setIsSidebarExpanded(false);
     setIsSidebarFocused(false);
+    sidebarFocusCountRef.current = 0;
     
     // Focus first item in content after a short delay
     setTimeout(() => {
@@ -77,24 +81,27 @@ const MainLayout = () => {
   };
 
   const handleSidebarFocus = () => {
+    sidebarFocusCountRef.current += 1;
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
+      sidebarTimeoutRef.current = null;
     }
     // Expand sidebar when it gains focus (TiviMate style)
-    if (!isSidebarExpanded) {
-       setIsSidebarExpanded(true);
-    }
+    setIsSidebarExpanded(true);
     setIsSidebarFocused(true);
   };
 
   const handleSidebarBlur = () => {
+    sidebarFocusCountRef.current = Math.max(0, sidebarFocusCountRef.current - 1);
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
     // Collapse sidebar when focus leaves it (going to content)
     sidebarTimeoutRef.current = setTimeout(() => {
-      setIsSidebarExpanded(false);
-      setIsSidebarFocused(false);
+      if (sidebarFocusCountRef.current === 0) {
+        setIsSidebarExpanded(false);
+        setIsSidebarFocused(false);
+      }
     }, 150);
   };
 
@@ -102,6 +109,7 @@ const MainLayout = () => {
   const handleSidebarReturn = () => {
     setIsSidebarExpanded(true);
     setIsSidebarFocused(true);
+    sidebarFocusCountRef.current = 1;
   };
 
   const renderContent = () => {
