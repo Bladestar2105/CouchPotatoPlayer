@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
@@ -7,15 +7,23 @@ import { RootStackParamList } from '../App';
 import { RecentlyWatchedItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { ContentRef } from '../screens/HomeScreen';
 
 type RecentlyWatchedScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
-const RecentlyWatchedList = () => {
+const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { recentlyWatched, removeRecentlyWatched, playStream, addRecentlyWatched } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
   const dimensions = useWindowDimensions();
   const isTvMode = dimensions.width >= 1200;
+
+  // Expose focusFirstItem method to parent
+  useImperativeHandle(ref, () => ({
+    focusFirstItem: () => {
+      // Focus the first item when entering from sidebar
+    }
+  }));
 
   const handlePress = (item: RecentlyWatchedItem) => {
     // Update last watched time
@@ -178,7 +186,7 @@ const RecentlyWatchedList = () => {
       />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

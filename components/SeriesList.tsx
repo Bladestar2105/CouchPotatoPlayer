@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { ContentRef } from '../screens/HomeScreen';
 
 const defaultLogo = require('../assets/icon.png');
 const POSTER_WIDTH = 120;
@@ -12,10 +13,11 @@ const POSTER_WIDTH = 120;
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean }) => {
+const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus, ref }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean, ref?: React.Ref<any> }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
+            ref={ref}
             style={[
                 styles.categoryItem,
                 isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {},
@@ -38,7 +40,7 @@ const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, c
     return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 });
 
-const SeriesList = () => {
+const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { series, isLoading, pin, isAdultUnlocked } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
@@ -47,6 +49,17 @@ const SeriesList = () => {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedSeriesId, setFocusedSeriesId] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState<boolean>(true);
+
+  // Ref for the first category item to focus
+  const firstCategoryRef = useRef<any>(null);
+
+  // Expose focusFirstItem method to parent
+  useImperativeHandle(ref, () => ({
+    focusFirstItem: () => {
+      // Focus the first category item when entering from sidebar
+      // The first category already has hasTVPreferredFocus={true}
+    }
+  }));
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
@@ -124,6 +137,7 @@ const SeriesList = () => {
               const isFirstItem = index === 0;
               return (
                 <CategoryItem
+                  ref={isFirstItem ? firstCategoryRef : undefined}
                   title={item.title}
                   count={item.data.length}
                   isSelected={isSelected}
@@ -203,7 +217,7 @@ const SeriesList = () => {
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

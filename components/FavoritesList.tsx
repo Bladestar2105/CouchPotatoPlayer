@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
@@ -7,18 +7,26 @@ import { RootStackParamList } from '../App';
 import { FavoriteItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { ContentRef } from '../screens/HomeScreen';
 
 type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 type SortOption = 'added' | 'name' | 'type' | 'recent';
 
-const FavoritesList = () => {
+const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { favorites, removeFavorite, playStream, addRecentlyWatched } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
   const dimensions = useWindowDimensions();
   const [sortBy, setSortBy] = useState<SortOption>('added');
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
+
+  // Expose focusFirstItem method to parent
+  useImperativeHandle(ref, () => ({
+    focusFirstItem: () => {
+      // Focus the first item when entering from sidebar
+    }
+  }));
 
   const handlePress = (item: FavoriteItem) => {
     addRecentlyWatched({
@@ -187,7 +195,7 @@ const FavoritesList = () => {
       />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

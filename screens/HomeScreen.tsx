@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -17,6 +17,11 @@ import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
 import SearchScreen from './SearchScreen';
 
+// Export type for content component ref
+export type ContentRef = {
+  focusFirstItem: () => void;
+};
+
 const MainLayout = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
@@ -28,10 +33,18 @@ const MainLayout = () => {
   const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search'>('channels');
 
   // Animation values for the sidebar expansion
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false); // Default to collapsed for TV
+  // Sidebar is expanded by default when active (TiviMate style)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [isSidebarFocused, setIsSidebarFocused] = useState(true); // Track if sidebar has focus
   const collapsedWidth = Platform.isTV ? 100 : 80;
   const expandedWidth = Platform.isTV ? 350 : 250;
-  const sidebarWidth = React.useRef(new Animated.Value(collapsedWidth)).current;
+  const sidebarWidth = React.useRef(new Animated.Value(expandedWidth)).current;
+
+  // Ref for content component to focus first item
+  const contentRef = useRef<ContentRef>(null);
+
+  // Track previous sidebar focused state to detect transitions
+  const prevSidebarFocusedRef = useRef(true);
 
   useEffect(() => {
     Animated.timing(sidebarWidth, {
@@ -53,42 +66,54 @@ const MainLayout = () => {
 
   const handleTabPress = (tab: any) => {
     setActiveTab(tab);
-
-    // Force collapse the menu when a tab is explicitly pressed (selected)
+    // Collapse menu when a tab is selected (TiviMate behavior)
     setIsSidebarExpanded(false);
+    setIsSidebarFocused(false);
+    
+    // Focus first item in content after a short delay
+    setTimeout(() => {
+      contentRef.current?.focusFirstItem();
+    }, 100);
   };
 
   const handleSidebarFocus = () => {
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
+    // Expand sidebar when it gains focus (TiviMate style)
     if (!isSidebarExpanded) {
        setIsSidebarExpanded(true);
     }
+    setIsSidebarFocused(true);
   };
 
   const handleSidebarBlur = () => {
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
-    // We increase the timeout significantly for Apple TV so spatial
-    // navigation up/down doesn't trigger collapse. It will only collapse
-    // if the user moves focus entirely to the main content pane and stays there.
+    // Collapse sidebar when focus leaves it (going to content)
     sidebarTimeoutRef.current = setTimeout(() => {
       setIsSidebarExpanded(false);
-    }, 1000);
+      setIsSidebarFocused(false);
+    }, 150);
+  };
+
+  // Handle back navigation to sidebar - expand it again
+  const handleSidebarReturn = () => {
+    setIsSidebarExpanded(true);
+    setIsSidebarFocused(true);
   };
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'channels': return <ChannelList />;
-      case 'movies': return <MovieList />;
-      case 'series': return <SeriesList />;
-      case 'favorites': return <FavoritesList />;
-      case 'recent': return <RecentlyWatchedList />;
+      case 'channels': return <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
+      case 'movies': return <MovieList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
+      case 'series': return <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
+      case 'favorites': return <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
+      case 'recent': return <RecentlyWatchedList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
       case 'settings': return <SettingsScreen />;
       case 'search': return <SearchScreen />;
-      default: return <ChannelList />;
+      default: return <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
     }
   };
 
@@ -101,7 +126,7 @@ const MainLayout = () => {
                 contentContainerStyle={{ paddingVertical: 16 }}
                 // TV focus interactions
               >
-                {/* On a TV, the sidebar auto-expands on focus, so the hamburger menu isn't strictly necessary, but helpful for mouse/touch */}
+                {/* Hamburger menu toggle */}
                 <TouchableOpacity
                   onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
                   onFocus={handleSidebarFocus}
@@ -115,13 +140,69 @@ const MainLayout = () => {
 
                 {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
 
-                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="search" label={t('search')} isActive={activeTab === 'search'} onPress={() => handleTabPress('search')} showLabel={isSidebarExpanded} />
-                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="tv" label={t('channels')} isActive={activeTab === 'channels'} onPress={() => handleTabPress('channels')} showLabel={isSidebarExpanded} />
-                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="movie" label={t('movies')} isActive={activeTab === 'movies'} onPress={() => handleTabPress('movies')} showLabel={isSidebarExpanded} />
-                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="list" label={t('series')} isActive={activeTab === 'series'} onPress={() => handleTabPress('series')} showLabel={isSidebarExpanded} />
-                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="favorite" label={t('favorites')} isActive={activeTab === 'favorites'} onPress={() => handleTabPress('favorites')} showLabel={isSidebarExpanded} />
-                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="history" label={t('recent')} isActive={activeTab === 'recent'} onPress={() => handleTabPress('recent')} showLabel={isSidebarExpanded} />
-                <SidebarItem onFocus={handleSidebarFocus} onBlur={handleSidebarBlur} icon="settings" label={t('settings')} isActive={activeTab === 'settings'} onPress={() => handleTabPress('settings')} showLabel={isSidebarExpanded} />
+                <SidebarItem 
+                  onFocus={handleSidebarFocus} 
+                  onBlur={handleSidebarBlur} 
+                  icon="search" 
+                  label={t('search')} 
+                  isActive={activeTab === 'search'} 
+                  onPress={() => handleTabPress('search')} 
+                  showLabel={isSidebarExpanded} 
+                />
+                <SidebarItem 
+                  onFocus={handleSidebarFocus} 
+                  onBlur={handleSidebarBlur} 
+                  icon="tv" 
+                  label={t('channels')} 
+                  isActive={activeTab === 'channels'} 
+                  onPress={() => handleTabPress('channels')} 
+                  showLabel={isSidebarExpanded} 
+                />
+                <SidebarItem 
+                  onFocus={handleSidebarFocus} 
+                  onBlur={handleSidebarBlur} 
+                  icon="movie" 
+                  label={t('movies')} 
+                  isActive={activeTab === 'movies'} 
+                  onPress={() => handleTabPress('movies')} 
+                  showLabel={isSidebarExpanded} 
+                />
+                <SidebarItem 
+                  onFocus={handleSidebarFocus} 
+                  onBlur={handleSidebarBlur} 
+                  icon="list" 
+                  label={t('series')} 
+                  isActive={activeTab === 'series'} 
+                  onPress={() => handleTabPress('series')} 
+                  showLabel={isSidebarExpanded} 
+                />
+                <SidebarItem 
+                  onFocus={handleSidebarFocus} 
+                  onBlur={handleSidebarBlur} 
+                  icon="favorite" 
+                  label={t('favorites')} 
+                  isActive={activeTab === 'favorites'} 
+                  onPress={() => handleTabPress('favorites')} 
+                  showLabel={isSidebarExpanded} 
+                />
+                <SidebarItem 
+                  onFocus={handleSidebarFocus} 
+                  onBlur={handleSidebarBlur} 
+                  icon="history" 
+                  label={t('recent')} 
+                  isActive={activeTab === 'recent'} 
+                  onPress={() => handleTabPress('recent')} 
+                  showLabel={isSidebarExpanded} 
+                />
+                <SidebarItem 
+                  onFocus={handleSidebarFocus} 
+                  onBlur={handleSidebarBlur} 
+                  icon="settings" 
+                  label={t('settings')} 
+                  isActive={activeTab === 'settings'} 
+                  onPress={() => handleTabPress('settings')} 
+                  showLabel={isSidebarExpanded} 
+                />
 
                 <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
                 {isSidebarExpanded && <Text style={[styles.sidebarSectionTitle, { fontSize: Platform.isTV ? 16 : 12 }]}>PROVIDERS</Text>}
