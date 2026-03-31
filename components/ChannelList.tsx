@@ -315,6 +315,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   );
 });
 
+LiveTVFlow.displayName = 'LiveTVFlow';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

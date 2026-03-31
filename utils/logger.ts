@@ -5,6 +5,10 @@
  */
 
 declare const __DEV__: boolean;
+import { LogBox } from 'react-native';
+
+// Ignore annoying React Native warnings and UIKitCore logs that clutter the terminal
+LogBox.ignoreLogs(['InteractionManager has been deprecated', 'RCTScrollViewComponentView implements focusItemsInRect']);
 
 const Logger = {
   log: (...args: any[]) => {
