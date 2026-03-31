@@ -5,7 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { findCurrentProgram } from '../utils/epgUtils';
 import EpgTimeline from './EpgTimeline';
 
 const defaultLogo = require('../assets/icon.png');
