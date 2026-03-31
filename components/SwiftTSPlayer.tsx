@@ -9,6 +9,16 @@ interface SwiftTSPlayerProps extends ViewProps {
   onVideoError?: (event: any) => void;
 }
 
-export const SwiftTSPlayer: React.FC<SwiftTSPlayerProps> = (props) => {
-  return <SwiftTSPlayerView {...props} />;
+export const SwiftTSPlayer: React.FC<SwiftTSPlayerProps> = ({
+  onVideoLoad,
+  onVideoError,
+  ...props
+}) => {
+  return (
+    <SwiftTSPlayerView
+      {...props}
+      onSwiftVideoLoad={onVideoLoad}
+      onSwiftVideoError={onVideoError}
+    />
+  );
 };

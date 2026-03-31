@@ -16,9 +16,9 @@ RCT_EXPORT_VIEW_PROPERTY(hardwareDecode, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(asynchronousDecompression, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(displayFrameRate, BOOL)
 
-RCT_EXPORT_VIEW_PROPERTY(onVideoLoad, RCTBubblingEventBlock)
-RCT_EXPORT_VIEW_PROPERTY(onVideoError, RCTBubblingEventBlock)
-RCT_EXPORT_VIEW_PROPERTY(onProgress, RCTBubblingEventBlock)
-RCT_EXPORT_VIEW_PROPERTY(onPlayerState, RCTBubblingEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onKSVideoLoad, RCTBubblingEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onKSVideoError, RCTBubblingEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onKSProgress, RCTBubblingEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onKSPlayerState, RCTBubblingEventBlock)
 
 @end

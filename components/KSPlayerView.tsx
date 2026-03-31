@@ -89,7 +89,7 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
       hardwareDecode={hardwareDecode}
       asynchronousDecompression={asynchronousDecompression}
       displayFrameRate={displayFrameRate}
-      onVideoLoad={(event: any) => {
+      onKSVideoLoad={(event: any) => {
         if (onVideoLoad && event?.nativeEvent) {
           onVideoLoad({
             width: event.nativeEvent.width,
@@ -98,12 +98,12 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
           });
         }
       }}
-      onVideoError={(event: any) => {
+      onKSVideoError={(event: any) => {
         if (onVideoError && event?.nativeEvent) {
           onVideoError(event.nativeEvent.error ?? 'Unknown error');
         }
       }}
-      onProgress={(event: any) => {
+      onKSProgress={(event: any) => {
         if (onProgress && event?.nativeEvent) {
           onProgress({
             currentTime: event.nativeEvent.currentTime ?? 0,
@@ -111,7 +111,7 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
           });
         }
       }}
-      onPlayerState={(event: any) => {
+      onKSPlayerState={(event: any) => {
         if (onPlayerState && event?.nativeEvent) {
           onPlayerState(event.nativeEvent.state ?? '');
         }
