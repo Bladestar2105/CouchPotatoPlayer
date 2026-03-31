@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform // Importé pour le style du Picker
+  Platform
 } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { IPTVProfile, ProfileType } from '../types';
