@@ -301,8 +301,17 @@ const HomeScreen = () => {
   // ⚡ Perf: Once adult content is detected, cache the result to avoid
   // re-iterating potentially thousands of items on every collection change.
   const hasAdultContentRef = React.useRef(false);
+
+  const prevProfileIdRef = React.useRef(currentProfile?.id);
+
   const hasAdultContent = React.useMemo(() => {
-    // Short-circuit: once we've found adult content, it won't disappear
+    // Reset the ref during render when the profile changes because a new profile might not have adult content
+    if (prevProfileIdRef.current !== currentProfile?.id) {
+      hasAdultContentRef.current = false;
+      prevProfileIdRef.current = currentProfile?.id;
+    }
+
+    // Short-circuit: once we've found adult content, it won't disappear for this profile
     if (hasAdultContentRef.current) return true;
     // ⚡ Bolt: Replaced O(N) array methods (.some) with manual for-loops.
     // Calling .some() on arrays with 100k+ items creates significant overhead
@@ -340,6 +349,11 @@ const HomeScreen = () => {
         navigation.navigate('PinSetup');
     }
   }, [isInitializing, isLoading, currentProfile, hasAdultContent, pin, navigation]);
+
+  // Reset hasPromptedUpdate when profile changes
+  useEffect(() => {
+    setHasPromptedUpdate(false);
+  }, [currentProfile?.id]);
 
   // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
   useEffect(() => {

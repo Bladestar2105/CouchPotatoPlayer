@@ -77,11 +77,21 @@ const PlayerScreen = () => {
     return true; // Return true to indicate we handled the back event
   }, [navigation, stopStream]);
 
+  // Cache channel indices for O(1) channelUp/channelDown lookups
+  const channelIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (let i = 0; i < channels.length; i++) {
+      map.set(channels[i].id, i);
+    }
+    return map;
+  }, [channels]);
+
   // Get full channel details for HUD
   const currentChannel = useMemo(() => {
      if (!currentStream?.id) return null;
-     return channels.find(c => c.id === currentStream.id) || null;
-  }, [currentStream?.id, channels]);
+     const index = channelIndexMap.get(currentStream.id);
+     return index !== undefined ? channels[index] : null;
+  }, [currentStream?.id, channels, channelIndexMap]);
 
   const getEpgKey = (channel: Channel | null): string => {
     if (!channel) return '';
@@ -208,8 +218,8 @@ const PlayerScreen = () => {
       setShowOverlay(true);
     } else if (evt.eventType === 'pageUp' || evt.eventType === 'channelUp') {
        if (channels.length > 0 && currentStream) {
-           const currentIndex = channels.findIndex(c => c.id === currentStream.id);
-           if (currentIndex >= 0) {
+           const currentIndex = channelIndexMap.get(currentStream.id);
+           if (currentIndex !== undefined) {
                const nextIndex = (currentIndex + 1) % channels.length;
                const nextChannel = channels[nextIndex];
                playStream({ url: nextChannel.url, id: nextChannel.id });
@@ -218,8 +228,8 @@ const PlayerScreen = () => {
        }
     } else if (evt.eventType === 'pageDown' || evt.eventType === 'channelDown') {
        if (channels.length > 0 && currentStream) {
-           const currentIndex = channels.findIndex(c => c.id === currentStream.id);
-           if (currentIndex >= 0) {
+           const currentIndex = channelIndexMap.get(currentStream.id);
+           if (currentIndex !== undefined) {
                const prevIndex = (currentIndex - 1 + channels.length) % channels.length;
                const prevChannel = channels[prevIndex];
                playStream({ url: prevChannel.url, id: prevChannel.id });
