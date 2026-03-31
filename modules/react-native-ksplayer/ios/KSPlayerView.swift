@@ -28,10 +28,10 @@ typealias RCTBubblingEventBlock = ([String: Any]) -> Void
 class KSPlayerView: UIView {
 
     // MARK: - React Native Callbacks
-    @objc var onVideoLoad: RCTBubblingEventBlock?
-    @objc var onVideoError: RCTBubblingEventBlock?
-    @objc var onProgress: RCTBubblingEventBlock?
-    @objc var onPlayerState: RCTBubblingEventBlock?
+    @objc var onKSVideoLoad: RCTBubblingEventBlock?
+    @objc var onKSVideoError: RCTBubblingEventBlock?
+    @objc var onKSProgress: RCTBubblingEventBlock?
+    @objc var onKSPlayerState: RCTBubblingEventBlock?
 
     // MARK: - Props
     @objc var streamUrl: String = "" {
@@ -230,7 +230,7 @@ class KSPlayerView: UIView {
     // MARK: - Error Helper
     private func sendError(_ message: String) {
         print("[KSPlayerView] ❌ \(message)")
-        onVideoError?(["error": message])
+        onKSVideoError?(["error": message])
     }
 }
 
@@ -240,7 +240,7 @@ extension KSPlayerView: KSPlayerLayerDelegate {
 
     func player(layer: KSPlayerLayer, state: KSPlayerState) {
         print("[KSPlayerView] State → \(state.description)")
-        onPlayerState?(["state": state.description])
+        onKSPlayerState?(["state": state.description])
 
         switch state {
         case .readyToPlay:
@@ -249,7 +249,7 @@ extension KSPlayerView: KSPlayerLayerDelegate {
                 self.attachRenderView(from: layer)
                 let size = layer.player.naturalSize
                 let duration = layer.player.duration
-                self.onVideoLoad?([
+                self.onKSVideoLoad?([
                     "width": size.width,
                     "height": size.height,
                     "duration": duration,
@@ -265,7 +265,7 @@ extension KSPlayerView: KSPlayerLayerDelegate {
     }
 
     func player(layer: KSPlayerLayer, currentTime: TimeInterval, totalTime: TimeInterval) {
-        onProgress?([
+        onKSProgress?([
             "currentTime": currentTime * 1000,
             "duration": totalTime * 1000,
         ])

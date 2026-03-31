@@ -57,12 +57,23 @@ const PlayerScreen = () => {
    * because the Player screen might be the only screen in the stack (e.g., when
    * launched via deep link), and goBack() would exit the app in that case.
    */
+  const [isExiting, setIsExiting] = useState(false);
+
   const handleBack = useCallback(() => {
     // Apple TV Menu button shouldn't close the app from PlayerScreen.
     // Explicitly navigating to "Home" instead of relying on "goBack()"
     // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
-    stopStream();
-    navigation.navigate('Home');
+
+    // Immediately hide the video player to make the UI feel responsive
+    setIsExiting(true);
+
+    // Stop the stream and navigate back in the next tick to prevent blocking the main thread
+    // while the video player is unmounting or HomeScreen is rendering
+    setTimeout(() => {
+      stopStream();
+      navigation.navigate('Home');
+    }, 10);
+
     return true; // Return true to indicate we handled the back event
   }, [navigation, stopStream]);
 
@@ -260,6 +271,10 @@ const PlayerScreen = () => {
       backHandler.remove();
     };
   }, [isFocused, handleBack]);
+
+  if (isExiting) {
+    return <View style={styles.container} />;
+  }
 
   return (
     <View style={styles.container}>

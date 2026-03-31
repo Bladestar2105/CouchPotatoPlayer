@@ -43,8 +43,8 @@ class SwiftTSPlayerView: UIView {
         }
     }
 
-    @objc var onVideoLoad: RCTDirectEventBlock?
-    @objc var onVideoError: RCTDirectEventBlock?
+    @objc var onSwiftVideoLoad: RCTDirectEventBlock?
+    @objc var onSwiftVideoError: RCTDirectEventBlock?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -102,7 +102,7 @@ class SwiftTSPlayerView: UIView {
 
         // Only play HLS and MP4 directly — everything else should use VLC/KSPlayer
         guard let url = URL(string: urlString) else {
-            onVideoError?(["error": "Invalid URL: \(urlString)"])
+            onSwiftVideoError?(["error": "Invalid URL: \(urlString)"])
             return
         }
 
@@ -184,7 +184,7 @@ class SwiftTSPlayerView: UIView {
                 height = abs(size.height)
             }
 
-            onVideoLoad?(["width": width, "height": height])
+            onSwiftVideoLoad?(["width": width, "height": height])
 
             if !paused {
                 player?.play()
@@ -224,7 +224,7 @@ class SwiftTSPlayerView: UIView {
         guard retryCount < maxRetries else {
             let errorMsg = "Playback failed after \(maxRetries) retries"
             print("[SwiftTSPlayerView] \(errorMsg)")
-            onVideoError?(["error": errorMsg])
+            onSwiftVideoError?(["error": errorMsg])
             return
         }
 

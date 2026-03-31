@@ -313,7 +313,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isValidUrl(profile.url)) {
           throw new Error('Invalid URL. M3U URL must start with http:// or https://');
         }
-        await loadM3U(profile);
+        await loadM3U(profile, forceUpdate);
       }
       else if (profile.type === 'xtream') {
         const serverUrl = profile.url || (profile as any).serverUrl;
@@ -419,7 +419,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         Logger.log('[EPG] Fetching EPG from:', epgUrl);
 
         // Use CORS proxy for fetching EPG
-        const response = await fetchWithProxy(epgUrl);
+        const fetchOptions: RequestInit = forceUpdate ? {
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        } : {};
+        const response = await fetchWithProxy(epgUrl, fetchOptions);
         if (!response.ok) {
           throw new Error(`Failed to fetch EPG: ${response.status}`);
         }
@@ -470,11 +473,14 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentProfile]);
 
-  const loadM3U = useCallback(async (profile: IPTVProfile) => {
+  const loadM3U = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {
     let m3uContent = '';
     if (profile.type !== 'm3u') return;
     try {
-      const response = await fetchWithProxy(profile.url.trim().replace(/\/+$/, ''));
+      const fetchOptions: RequestInit = forceUpdate ? {
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      } : {};
+      const response = await fetchWithProxy(profile.url.trim().replace(/\/+$/, ''), fetchOptions);
       if (!response.ok) throw new Error(i18n.t('networkError', { status: response.status }));
       m3uContent = await response.text();
     } catch (fetchError: any) {
@@ -620,13 +626,16 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
     const baseUrl = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
+    const fetchOptions: RequestInit = forceUpdate ? {
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    } : {};
 
     let authResponse;
     let liveExtension = 'ts';
     let providerInfo: any = {};
 
     try {
-      authResponse = await fetchWithProxy(baseUrl);
+      authResponse = await fetchWithProxy(baseUrl, fetchOptions);
       if (!authResponse.ok) throw new Error(i18n.t('serverError', { status: authResponse.status }));
 
       const authData = await authResponse.json();
@@ -661,9 +670,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const [liveCatRes, vodCatRes, seriesCatRes] = await Promise.all([
-        fetchWithProxy(liveCategoriesUrl),
-        fetchWithProxy(vodCategoriesUrl),
-        fetchWithProxy(seriesCategoriesUrl)
+        fetchWithProxy(liveCategoriesUrl, fetchOptions),
+        fetchWithProxy(vodCategoriesUrl, fetchOptions),
+        fetchWithProxy(seriesCategoriesUrl, fetchOptions)
       ]);
 
       const liveCatData = await liveCatRes.json();
@@ -689,9 +698,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const seriesStreamsUrl = `${baseUrl}&action=get_series`;
 
       const [liveRes, vodRes, seriesRes] = await Promise.all([
-        fetchWithProxy(allStreamsUrl),
-        fetchWithProxy(vodStreamsUrl),
-        fetchWithProxy(seriesStreamsUrl)
+        fetchWithProxy(allStreamsUrl, fetchOptions),
+        fetchWithProxy(vodStreamsUrl, fetchOptions),
+        fetchWithProxy(seriesStreamsUrl, fetchOptions)
       ]);
 
       const liveData = await liveRes.json();
