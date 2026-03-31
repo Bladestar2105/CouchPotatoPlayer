@@ -95,6 +95,9 @@ const FavoritesList = () => {
           onPress={() => handlePress(item)}
           onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
           onBlur={() => setFocusedItemId(null)}
+          accessibilityRole="button"
+          accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
+          accessibilityHint={`Plays the ${item.type}`}
         >
           <View style={[styles.imageContainer, { backgroundColor: '#1C1C1E' }]}>
             {item.icon ? (

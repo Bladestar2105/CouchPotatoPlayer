@@ -84,6 +84,9 @@ const RecentlyWatchedList = () => {
       <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.card }]}
         onPress={() => handlePress(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
+        accessibilityHint={`Plays the ${item.type}`}
       >
         <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
           {item.icon ? (
