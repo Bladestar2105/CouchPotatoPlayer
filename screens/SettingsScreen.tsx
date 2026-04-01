@@ -16,6 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
+import { Moon, Sun, Monitor, Palette } from 'lucide-react-native';
+import { themeOptions } from '../utils/theme';
 // Removed synchronous Paths/Directory/File imports — using async FileSystem API instead
 
 const SettingsScreen = () => {
@@ -28,6 +30,11 @@ const SettingsScreen = () => {
     ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression,
     ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate
   } = useSettings();
+
+  const handleThemeChange = () => {
+    const nextMode = themeMode === 'dark' ? 'light' : themeMode === 'light' ? 'oled' : 'dark';
+    setThemeMode(nextMode);
+  };
   const navigation = useNavigation<any>();
 
   const [updateInterval, setUpdateInterval] = React.useState<number>(24);
@@ -429,7 +436,20 @@ const SettingsScreen = () => {
           </>
         )}
 
-        {/* Theme Mode */}
+        {/* Modern Theme Switcher */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+            <Palette size={18} color={colors.primary} /> {t('appearance', 'Appearance')}
+          </Text>
+          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.divider }]} onPress={handleThemeChange}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {themeMode === 'light' ? <Sun color={colors.text} size={20} /> : themeMode === 'dark' ? <Moon color={colors.text} size={20} /> : <Monitor color={colors.text} size={20} />}
+              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('theme', 'Theme')}: {themeMode.toUpperCase()}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Theme Mode Original Fallback */}
         {Platform.OS === 'ios' && !Platform.isTV ? (
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetTheme}>
             <View style={styles.tileLeft}>

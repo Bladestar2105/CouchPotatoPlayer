@@ -11,6 +11,11 @@ const ALLOWED_ORIGINS = [
   'http://localhost'      // Nginx/Docker default
 ];
 
+const sanitizeLogMessage = (msg) => {
+  if (typeof msg !== 'string') return String(msg);
+  return msg.replace(/\r/g, '').replace(/\n/g, '');
+};
+
 const server = http.createServer((req, res) => {
   const origin = req.headers.origin;
 
@@ -48,12 +53,12 @@ const server = http.createServer((req, res) => {
       if (u.searchParams.has('password')) u.searchParams.set('password', '***');
       if (u.username) u.username = '***';
       if (u.password) u.password = '***';
-      console.log('Proxying:', u.toString());
+      console.log('Proxying:', sanitizeLogMessage(u.toString()));
     } catch (e) {
       const masked = targetUrl
         .replace(/:\/\/([^/]+)@/g, '://***@')
         .replace(/([?&])(username|password)=([^&]*)/gi, '$1$2=***');
-      console.log('Proxying:', masked);
+      console.log('Proxying:', sanitizeLogMessage(masked));
     }
     
     const { URL } = require('url');
@@ -61,7 +66,7 @@ const server = http.createServer((req, res) => {
     try {
       parsedUrl = new URL(targetUrl);
     } catch (e) {
-      console.error('Proxy error: Invalid URL', e.message);
+      console.error('Proxy error: Invalid URL', sanitizeLogMessage(e.message));
       res.writeHead(400);
       res.end(JSON.stringify({ error: 'Invalid URL provided' }));
       return;
@@ -83,7 +88,7 @@ const server = http.createServer((req, res) => {
       const maskedError = e.message
         .replace(/:\/\/([^/]+)@/g, '://***@')
         .replace(/([?&])(username|password)=([^&]*)/gi, '$1$2=***');
-      console.error('Proxy error:', maskedError);
+      console.error('Proxy error:', sanitizeLogMessage(maskedError));
       res.writeHead(500);
       res.end(JSON.stringify({ error: 'Proxy error occurred' }));
     });

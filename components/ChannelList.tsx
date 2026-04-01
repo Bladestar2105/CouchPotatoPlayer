@@ -6,7 +6,7 @@ import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import EpgTimeline from './EpgTimeline';
-import { ContentRef } from '../screens/HomeScreen';
+export type ContentRef = { focusFirstItem: () => void };
 
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');

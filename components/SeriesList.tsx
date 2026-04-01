@@ -5,7 +5,7 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
-import { ContentRef } from '../screens/HomeScreen';
+export type ContentRef = { focusFirstItem: () => void };
 
 const defaultLogo = require('../assets/icon.png');
 const POSTER_WIDTH = 120;
