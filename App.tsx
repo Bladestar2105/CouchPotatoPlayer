@@ -8,6 +8,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SettingsProvider } from './context/SettingsContext';
 import './utils/i18n';
 import { useTranslation } from 'react-i18next';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { NetworkMonitor } from './components/NetworkMonitor';
 
 // Importez les écrans (SAUF SplashScreen)
 import HomeScreen from './screens/HomeScreen';
@@ -37,8 +39,10 @@ const App = () => {
   return (
     <SettingsProvider>
       <SafeAreaProvider>
+        <ErrorBoundary>
         <IPTVProvider>
           <StatusBar barStyle="light-content" />
+          <NetworkMonitor />
         <NavigationContainer>
           <Stack.Navigator
             // --- L'ÉCRAN DE DÉMARRAGE EST DE RETOUR SUR "Home" ---
@@ -87,6 +91,7 @@ const App = () => {
             </Stack.Navigator>
           </NavigationContainer>
         </IPTVProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </SettingsProvider>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { ScrollView } from 'react-native-gesture-handler';
+import { Star, Play, Settings, Search, Clock, Heart, MonitorPlay, Film } from 'lucide-react-native';
 
 import WelcomeScreen from './WelcomeScreen';
 import ChannelList from '../components/ChannelList';
@@ -16,6 +17,7 @@ import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
 import SearchScreen from './SearchScreen';
+import { TMDBService } from '../services/tmdb';
 
 // Export type for content component ref
 export type ContentRef = {
@@ -31,6 +33,27 @@ const MainLayout = () => {
 
   const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search'>('channels');
+  const [heroContent, setHeroContent] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchHero = async () => {
+      const tmdb = new TMDBService({ apiKey: 'YOUR_API_KEY_HERE' });
+      if ((tmdb as any).apiKey !== 'YOUR_API_KEY_HERE' && tmdb.isAvailable()) {
+        const trending = await tmdb.getTrending('all', 'week');
+        if (trending && trending.length > 0) {
+          setHeroContent(trending[0]);
+        }
+      } else {
+        setHeroContent({
+          title: "Trending Today",
+          overview: "Discover the latest movies and series added to the catalog. Explore our vast collection of live TV, movies, and series.",
+          backdropUrl: 'https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2070&auto=format&fit=crop',
+          rating: 8.5
+        });
+      }
+    };
+    fetchHero();
+  }, []);
 
   // Animation values for the sidebar expansion
   // Sidebar is expanded by default when active (TiviMate style)
@@ -113,16 +136,42 @@ const MainLayout = () => {
   };
 
   const renderContent = () => {
-    switch (activeTab) {
-      case 'channels': return <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
-      case 'movies': return <MovieList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
-      case 'series': return <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
-      case 'favorites': return <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
-      case 'recent': return <RecentlyWatchedList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
-      case 'settings': return <SettingsScreen />;
-      case 'search': return <SearchScreen />;
-      default: return <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />;
-    }
+    return (
+      <View style={{ flex: 1 }}>
+        {/* Modern Hero Banner (Show only on media tabs) */}
+        {heroContent && (activeTab === 'channels' || activeTab === 'movies' || activeTab === 'series') && (
+          <View style={styles.heroWrapper}>
+            <ImageBackground
+              source={{ uri: heroContent.backdropUrl }}
+              style={styles.heroBanner}
+              imageStyle={{ borderRadius: 16 }}
+            >
+              <View style={[styles.heroOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                <View style={styles.heroContentText}>
+                  <Text style={styles.heroLabel}>FEATURED</Text>
+                  <Text style={styles.heroTitle} numberOfLines={1}>{heroContent.title}</Text>
+                  <Text style={styles.heroDesc} numberOfLines={2}>{heroContent.overview}</Text>
+                  <View style={styles.heroMetaRow}>
+                    <Star color="#FFD700" size={16} fill="#FFD700" />
+                    <Text style={styles.heroRating}>{heroContent.rating}</Text>
+                  </View>
+                </View>
+              </View>
+            </ImageBackground>
+          </View>
+        )}
+
+        <View style={{ flex: 1 }}>
+          {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
+          {activeTab === 'movies' && <MovieList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
+          {activeTab === 'series' && <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
+          {activeTab === 'favorites' && <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
+          {activeTab === 'recent' && <RecentlyWatchedList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
+          {activeTab === 'settings' && <SettingsScreen />}
+          {activeTab === 'search' && <SearchScreen />}
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -447,6 +496,54 @@ const styles = StyleSheet.create({
   },
   menuIcon: {
     marginRight: 16,
+  },
+  heroWrapper: {
+    padding: 16,
+    paddingBottom: 8,
+  },
+  heroBanner: {
+    width: '100%',
+    height: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  heroContentText: {
+    gap: 4,
+  },
+  heroLabel: {
+    color: '#007AFF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  heroTitle: {
+    color: '#FFF',
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  heroDesc: {
+    color: '#DDD',
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+    maxWidth: '80%',
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  heroRating: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
