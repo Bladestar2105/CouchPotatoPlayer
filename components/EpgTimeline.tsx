@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, 
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTV } from '../context/IPTVContext';
+import { isCatchupChannel } from '../utils/epgUtils';
 
 const PIXELS_PER_MINUTE = Platform.isTV ? 8 : 4; // Stretch timeline for TV
 const HOUR_WIDTH = PIXELS_PER_MINUTE * 60;
@@ -25,6 +26,11 @@ const formatTime = (d: Date) => timeFormatter.format(d);
 
 const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, width, colors, onProgramPress, onChannelPress }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
+
+    // Check if channel has catchup and this program is in the past
+    // Let's assume onProgramPress will handle it if it's available
+    const canCatchup = isPast && isCatchupChannel(channel) && prog.end > Date.now() - (channel.catchupDays || 0) * 24 * 60 * 60 * 1000;
+
     return (
         <TouchableOpacity
             style={[
@@ -38,8 +44,8 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
             onPress={() => {
                 if (onProgramPress) {
                     onProgramPress(channel, prog);
-                } else if (isNow) {
-                    onChannelPress(channel);
+                } else if (isNow || canCatchup) {
+                    onChannelPress(channel); // Usually onProgramPress is provided and handles catchup, but fallback here
                 }
             }}
         >
@@ -156,20 +162,50 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 
   const [now] = useState(new Date());
 
+  // Check if any visible channel supports catchup
+  const canGoToPast = useMemo(() => {
+    for (let i = 0; i < channels.length; i++) {
+      if (isCatchupChannel(channels[i])) {
+        return true;
+      }
+    }
+    return false;
+  }, [channels]);
+
+  // Adjust timeline start based on whether catchup is available for these channels
   const timelineStart = useMemo(() => {
     const d = new Date(now);
-    d.setHours(d.getHours() - TIMELINE_START_OFFSET_HOURS);
+    if (canGoToPast) {
+      // Find the maximum catchup duration across these channels
+      let maxCatchupHours = TIMELINE_START_OFFSET_HOURS;
+      for (let i = 0; i < channels.length; i++) {
+         const channel = channels[i];
+         if (isCatchupChannel(channel)) {
+            const hours = (channel.catchupDays || 0) * 24;
+            const archiveHours = channel.tvArchiveDuration || channel.tv_archive_duration || 0;
+            maxCatchupHours = Math.max(maxCatchupHours, hours > 0 ? hours : (archiveHours > 0 ? archiveHours : 24)); // Default to 24h if catchup flag set but no duration
+         }
+      }
+      // Don't show too much past to avoid massive timelines, limit to e.g. 72 hours max
+      d.setHours(d.getHours() - Math.min(maxCatchupHours, 72));
+    } else {
+      d.setHours(d.getHours() - TIMELINE_START_OFFSET_HOURS);
+    }
     d.setMinutes(0, 0, 0);
     return d;
-  }, [now]);
+  }, [now, canGoToPast, channels]);
+
+  const timelineDuration = useMemo(() => {
+    return (canGoToPast) ? Math.min(72, TIMELINE_DURATION_HOURS + 24) : TIMELINE_DURATION_HOURS; // Adjust total duration
+  }, [canGoToPast]);
 
   const timelineEnd = useMemo(() => {
     const d = new Date(timelineStart);
-    d.setHours(d.getHours() + TIMELINE_DURATION_HOURS);
+    d.setHours(d.getHours() + timelineDuration);
     return d;
-  }, [timelineStart]);
+  }, [timelineStart, timelineDuration]);
 
-  const totalWidth = TIMELINE_DURATION_HOURS * HOUR_WIDTH;
+  const totalWidth = timelineDuration * HOUR_WIDTH;
 
   // Calculate current time indicator position
   const nowPosition = useMemo(() => {
@@ -188,7 +224,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 
   const timeHeaders = useMemo(() => {
     const headers = [];
-    for (let i = 0; i < TIMELINE_DURATION_HOURS; i++) {
+    for (let i = 0; i < timelineDuration; i++) {
       const d = new Date(timelineStart);
       d.setHours(d.getHours() + i);
 

@@ -72,7 +72,12 @@ const PlayerScreen = () => {
     // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
 
     // 1. Navigation SOFORT auslösen (optimistisch)
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // Fallback: immer sicher zum Home-Screen
+      navigation.navigate('Home', { focusChannelId: currentStream?.id });
+    }
 
     // 2. Player asynchron und sauber stoppen
     //    (Nach goBack läuft der Component noch kurz weiter)
@@ -85,7 +90,7 @@ const PlayerScreen = () => {
     });
 
     return true; // Return true to indicate we handled the back event
-  }, [navigation, stopStream]);
+  }, [navigation, stopStream, currentStream]);
 
   // Außerdem im useEffect-Cleanup:
   useEffect(() => {
@@ -331,7 +336,14 @@ const PlayerScreen = () => {
 
       {showOverlay && (
         <View style={{ position: 'absolute', top: 20, right: 80, zIndex: 30 }}>
-          <TouchableOpacity ref={infoButtonRef} onPress={() => setShowStreamHealth(!showStreamHealth)}>
+          <TouchableOpacity
+            ref={infoButtonRef}
+            onPress={() => setShowStreamHealth(!showStreamHealth)}
+            accessible={true}
+            isTVSelectable={true}
+            hasTVPreferredFocus={false}
+            tvParallaxProperties={{ enabled: false }}
+          >
             <Icon name="info-outline" size={32} color={showStreamHealth ? '#4CD964' : '#FFF'} />
           </TouchableOpacity>
         </View>
@@ -356,9 +368,10 @@ const PlayerScreen = () => {
       </TouchableOpacity>
 
       {showOverlay && (
-        <TVFocusGuideView style={styles.overlay} destinations={[backButtonRef.current, infoButtonRef.current]} pointerEvents="box-none">
+        <TVFocusGuideView style={styles.overlay} destinations={[infoButtonRef.current]} pointerEvents="box-none">
           {/* Top Bar - Back Button */}
           <View style={styles.topBar}>
+            {/*
             <TouchableOpacity
               ref={backButtonRef}
               style={styles.backButton}
@@ -369,6 +382,7 @@ const PlayerScreen = () => {
             >
               <Icon name="arrow-back" size={28} color="#FFF" />
             </TouchableOpacity>
+            */}
           </View>
 
           {/* Pause Indicator */}

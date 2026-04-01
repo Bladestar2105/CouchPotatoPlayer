@@ -33,3 +33,15 @@ export const findCurrentProgram = (epg: EPGProgram[], time: Date): EPGProgram | 
   const index = findCurrentProgramIndex(epg, time);
   return index !== -1 ? epg[index] : undefined;
 };
+
+export const isCatchupChannel = (channel: any): boolean => {
+  if (!channel) return false;
+  return (
+    channel.tvArchive === 1 ||
+    channel.tvArchive === '1' ||
+    channel.tv_archive === 1 ||
+    channel.tv_archive === '1' ||
+    (channel.tvArchiveDuration != null && channel.tvArchiveDuration > 0) ||
+    (channel.tv_archive_duration != null && channel.tv_archive_duration > 0)
+  );
+};

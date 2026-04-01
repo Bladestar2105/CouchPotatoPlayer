@@ -22,7 +22,10 @@ const EpisodeScreen = () => {
   const handleEpisodePress = (episode: Episode) => {
     Logger.log('CLIC SUR ÉPISODE:', episode.name);
     playStream({ url: episode.streamUrl, id: episode.id });
-    navigation.navigate('Player');
+    navigation.navigate('Player', {
+      returnTo: 'episodeList',
+      focusChannelId: episode.id
+    });
   };
 
   const renderItem = ({ item }: { item: Episode }) => (

@@ -101,11 +101,16 @@ export const generateCatchupUrl = (
 /**
  * Check if a channel supports catchup/archive
  */
-export const hasCatchupSupport = (channel: Channel): boolean => {
+export const hasCatchupSupport = (channel: any): boolean => {
+  if (!channel) return false;
   return (
-    (channel.tvArchive === 1) ||
+    channel.tvArchive === 1 ||
+    channel.tvArchive === '1' ||
+    channel.tv_archive === 1 ||
+    channel.tv_archive === '1' ||
     (channel.catchupDays !== undefined && channel.catchupDays > 0) ||
-    (channel.tvArchiveDuration !== undefined && channel.tvArchiveDuration > 0)
+    (channel.tvArchiveDuration !== undefined && channel.tvArchiveDuration > 0) ||
+    (channel.tv_archive_duration !== undefined && channel.tv_archive_duration > 0)
   );
 };
 

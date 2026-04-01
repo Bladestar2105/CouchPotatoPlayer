@@ -67,7 +67,14 @@ const resources = {
       "search": "Search",
       "settings": {
         "updatePlaylist": "Update Playlist",
-        "updateEPG": "Update EPG"
+        "updateEPG": "Update EPG",
+        "hardwareAcceleration": "Hardware Acceleration",
+        "hardwareDecoding": "Hardware Decoding",
+        "asyncDecompression": "Asynchronous Decompression",
+        "adaptiveFrameRate": "Adaptive Frame Rate",
+        "playerEngine": "Video Player Engine",
+        "theme": "Theme",
+        "appearance": "Appearance"
       },
       "back": "Back",
       "info": "Info"
@@ -137,7 +144,14 @@ const resources = {
       "search": "Suche",
       "settings": {
         "updatePlaylist": "Playlist aktualisieren",
-        "updateEPG": "EPG aktualisieren"
+        "updateEPG": "EPG aktualisieren",
+        "hardwareAcceleration": "Hardwarebeschleunigung",
+        "hardwareDecoding": "Hardware-Decodierung",
+        "asyncDecompression": "Asynchrone Dekompression",
+        "adaptiveFrameRate": "Adaptive Bildrate",
+        "playerEngine": "Video Player Engine",
+        "theme": "Theme",
+        "appearance": "Darstellung"
       },
       "back": "Zurück",
       "info": "Info"
@@ -207,7 +221,14 @@ const resources = {
       "search": "Rechercher",
       "settings": {
         "updatePlaylist": "Mettre à jour la playlist",
-        "updateEPG": "Mettre à jour l'EPG"
+        "updateEPG": "Mettre à jour l'EPG",
+        "hardwareAcceleration": "Accélération matérielle",
+        "hardwareDecoding": "Décodage matériel",
+        "asyncDecompression": "Décompression asynchrone",
+        "adaptiveFrameRate": "Fréquence d'images adaptative",
+        "playerEngine": "Moteur du lecteur vidéo",
+        "theme": "Thème",
+        "appearance": "Apparence"
       },
       "back": "Retour",
       "info": "Info"
