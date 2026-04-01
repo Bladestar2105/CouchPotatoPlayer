@@ -75,7 +75,7 @@ const sanitizeUrl = (urlStr: string): string => {
 };
 
 /**
- * Decode Base64 string if needed (Flutter migration)
+ * Decode Base64 string if needed
  * Xtream EPG sometimes returns base64-encoded titles
  */
 const decodeBase64IfNeeded = (text: string): string => {
@@ -838,7 +838,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentStream(null);
   }, []);
 
-  // --- Favorites with full metadata (Flutter migration) ---
+  // --- Favorites with full metadata ---
   const addFavorite = useCallback(async (item: FavoriteItem) => {
     try {
       if (!favorites.some(f => f.id === item.id && f.type === item.type)) {
@@ -869,7 +869,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return favoritesSet.has(id);
   }, [favoritesSet]);
 
-  // --- Recently Watched with progress (Flutter migration) ---
+  // --- Recently Watched with progress ---
   const addRecentlyWatched = useCallback(async (item: RecentlyWatchedItem) => {
     try {
       // Remove existing entry for this item
@@ -912,7 +912,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [recentlyWatched]);
 
-  // --- Channel Lock/Unlock (Flutter migration) ---
+  // --- Channel Lock/Unlock ---
   const lockChannel = useCallback(async (id: string) => {
     try {
       if (!lockedChannels.includes(id)) {

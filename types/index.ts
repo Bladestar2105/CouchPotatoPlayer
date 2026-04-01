@@ -69,7 +69,7 @@ export interface Series {
 }
 
 /**
- * Programme EPG avec support pour timestamps Unix (Flutter)
+ * Programme EPG avec support pour timestamps Unix
  */
 export interface EPGProgram {
   id: string;
@@ -86,7 +86,7 @@ export interface EPGProgram {
 }
 
 /**
- * Élément favori avec métadonnées complètes (Flutter migration)
+ * Élément favori avec métadonnées complètes
  */
 export interface FavoriteItem {
   id: string;
@@ -99,7 +99,7 @@ export interface FavoriteItem {
 }
 
 /**
- * Élément récemment regardé avec progression (Flutter migration)
+ * Élément récemment regardé avec progression
  */
 export interface RecentlyWatchedItem {
   id: string;
@@ -118,7 +118,7 @@ export interface RecentlyWatchedItem {
 }
 
 /**
- * Catégorie IPTV (Flutter migration)
+ * Catégorie IPTV
  */
 export interface Category {
   category_id: string;
@@ -192,7 +192,7 @@ export type IPTVContextType = {
   unlockAdultContent: (pinInput: string) => boolean;
   lockAdultContent: () => void;
 
-  // Channel Lock/Unlock (Flutter migration)
+  // Channel Lock/Unlock
   lockedChannels: string[];
   lockChannel: (id: string) => Promise<void>;
   unlockChannel: (id: string) => Promise<void>;
