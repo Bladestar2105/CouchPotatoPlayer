@@ -65,6 +65,11 @@ const resources = {
       "loadStreamsError": "Unable to load stream lists. Check your connection.",
       "corsError": "CORS Error: The server blocks web browsers. Please use the Desktop or Mobile app, or configure a proxy.",
       "search": "Search",
+      "hardwareAcceleration": "Hardware Acceleration",
+      "asyncDecompression": "Asynchronous Decompression",
+      "adaptiveFrameRate": "Adaptive Frame Rate",
+      "playerSettings": "Video Player Engine",
+      "theme": "Theme",
       "settings": {
         "updatePlaylist": "Update Playlist",
         "updateEPG": "Update EPG"
@@ -135,6 +140,11 @@ const resources = {
       "loadStreamsError": "Stream-Listen konnten nicht geladen werden. Überprüfen Sie Ihre Verbindung.",
       "corsError": "CORS-Fehler: Der Server blockiert Webbrowser. Bitte nutzen Sie die Desktop- oder Mobile-App oder konfigurieren Sie einen Proxy.",
       "search": "Suche",
+      "hardwareAcceleration": "Hardwarebeschleunigung",
+      "asyncDecompression": "Asynchrone Dekompression",
+      "adaptiveFrameRate": "Adaptive Bildrate",
+      "playerSettings": "Player-Einstellungen",
+      "theme": "Theme",
       "settings": {
         "updatePlaylist": "Playlist aktualisieren",
         "updateEPG": "EPG aktualisieren"

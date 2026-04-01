@@ -72,7 +72,11 @@ const PlayerScreen = () => {
     // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
 
     // 1. Navigation SOFORT auslösen (optimistisch)
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home', { focusChannelId: currentStream?.id });
+    }
 
     // 2. Player asynchron und sauber stoppen
     //    (Nach goBack läuft der Component noch kurz weiter)
@@ -331,7 +335,7 @@ const PlayerScreen = () => {
 
       {showOverlay && (
         <View style={{ position: 'absolute', top: 20, right: 80, zIndex: 30 }}>
-          <TouchableOpacity ref={infoButtonRef} onPress={() => setShowStreamHealth(!showStreamHealth)}>
+          <TouchableOpacity ref={infoButtonRef} onPress={() => setShowStreamHealth(!showStreamHealth)} accessible={true} isTVSelectable={true} hasTVPreferredFocus={false} tvParallaxProperties={{ enabled: false }}>
             <Icon name="info-outline" size={32} color={showStreamHealth ? '#4CD964' : '#FFF'} />
           </TouchableOpacity>
         </View>

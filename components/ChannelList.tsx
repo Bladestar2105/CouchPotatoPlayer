@@ -54,7 +54,10 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
     }
-  }, [route.params?.returnGroupId]);
+    if (route.params?.focusChannelId) {
+      setFocusedChannelId(route.params.focusChannelId);
+    }
+  }, [route.params?.returnGroupId, route.params?.focusChannelId]);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
   // For mobile devices, hide categories when a group is selected to give more space
@@ -204,6 +207,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     });
     
     navigation.navigate('Player', {
+      focusChannelId: channel.id,
       returnGroupId: selectedGroup,
     });
   };
@@ -221,6 +225,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
        if (catchupUrl) {
            playStream({ url: catchupUrl, id: `${channel.id}_${prog.start}` });
            navigation.navigate('Player', {
+             focusChannelId: channel.id,
              returnGroupId: selectedGroup,
            });
        }
