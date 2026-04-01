@@ -48,8 +48,17 @@ const App = () => {
             // --- L'ÉCRAN DE DÉMARRAGE EST DE RETOUR SUR "Home" ---
             initialRouteName="Home"
             screenOptions={{
-              headerStyle: { backgroundColor: '#1A1A1A' },
-              headerTintColor: '#FFF',
+              headerStyle: { 
+                backgroundColor: '#18181B',
+                borderBottomWidth: 0,
+                shadowOpacity: 0,
+                elevation: 0,
+              },
+              headerTintColor: '#FAFAFA',
+              headerTitleStyle: {
+                fontWeight: '600',
+                letterSpacing: 0.3,
+              },
             }}
           >
             {/* On a supprimé l'écran "Splash" */}

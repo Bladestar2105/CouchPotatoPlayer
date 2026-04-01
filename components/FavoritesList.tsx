@@ -97,8 +97,8 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
         <TouchableOpacity
           style={[
               styles.card,
-              { backgroundColor: 'rgba(30,30,30,0.8)' },
-              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
+              { backgroundColor: 'rgba(24,24,27,0.9)' },
+              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#3B82F6', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
           ]}
           onPress={() => handlePress(item)}
           onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
@@ -132,8 +132,8 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
             </TouchableOpacity>
           </View>
           <View style={styles.infoContainer}>
-             <Text style={[styles.name, { color: isFocused ? '#FFF' : '#AAA' }]} numberOfLines={2}>{item.name}</Text>
-             <Text style={[styles.typeLabel, { color: '#666' }]}>{getTypeLabel(item.type)}</Text>
+             <Text style={[styles.name, { color: isFocused ? '#FAFAFA' : '#A1A1AA' }]} numberOfLines={2}>{item.name}</Text>
+             <Text style={[styles.typeLabel, { color: '#71717A' }]}>{getTypeLabel(item.type)}</Text>
           </View>
         </TouchableOpacity>
       );
@@ -143,8 +143,8 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
     return (
       <View style={[styles.emptyContainer, { backgroundColor: 'transparent' }]}>
         <Icon name="favorite-border" size={80} color={colors.textSecondary} />
-        <Text style={[styles.emptyText, { color: '#FFF' }]}>No Favorites Found</Text>
-        <Text style={[styles.emptyHint, { color: '#AAA' }]}>Add channels, movies, or series to your favorites to see them here.</Text>
+        <Text style={[styles.emptyText, { color: '#FAFAFA' }]}>No Favorites Found</Text>
+        <Text style={[styles.emptyHint, { color: '#A1A1AA' }]}>Add channels, movies, or series to your favorites to see them here.</Text>
       </View>
     );
   }
@@ -154,9 +154,9 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
   const numColumns = Math.max(3, Math.floor((dimensions.width - 250 - 48) / (CARD_WIDTH + 16)));
 
   return (
-    <View style={[styles.container, { backgroundColor: 'rgba(20,20,20,0.95)' }]}>
+    <View style={[styles.container, { backgroundColor: 'rgba(13,13,15,0.98)' }]}>
       <View style={styles.sortHeader}>
-        <Text style={[styles.sortLabel, { color: '#AAA' }]}>Sort by:</Text>
+        <Text style={[styles.sortLabel, { color: '#A1A1AA' }]}>Sort by:</Text>
         <View style={styles.sortButtons}>
           {[
             { key: 'added', label: 'Recently Added' },
@@ -173,7 +173,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
               onPress={() => setSortBy(option.key as SortOption)}
               onFocus={() => setSortBy(option.key as SortOption)}
             >
-              <Text style={[styles.sortButtonText, { color: sortBy === option.key ? '#FFF' : '#AAA' }]}>
+              <Text style={[styles.sortButtonText, { color: sortBy === option.key ? '#FAFAFA' : '#A1A1AA' }]}>
                 {option.label}
               </Text>
             </TouchableOpacity>
@@ -205,28 +205,37 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
   },
   emptyText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 20,
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 24,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   emptyHint: {
-    fontSize: 16,
-    marginTop: 10,
+    fontSize: 15,
+    marginTop: 12,
     textAlign: 'center',
+    opacity: 0.7,
+    lineHeight: 22,
   },
   listContainer: {
-    padding: 24,
+    padding: 20,
   },
   card: {
     width: 160,
-    marginRight: 16,
-    marginBottom: 24,
-    borderRadius: 12,
+    marginRight: 14,
+    marginBottom: 20,
+    borderRadius: 16,
     overflow: 'hidden',
+    // Shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   imageContainer: {
     width: '100%',
@@ -235,73 +244,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     position: 'relative',
+    borderRadius: 14,
   },
   image: {
     width: '100%',
     height: '100%',
+    borderRadius: 14,
   },
   placeholderImage: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#18181B',
   },
   typeBadge: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: 10,
+    left: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   removeButton: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 10,
+    right: 10,
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   infoContainer: {
-      padding: 12,
+      padding: 14,
   },
   name: {
     fontSize: 14,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 5,
+    letterSpacing: 0.1,
   },
   typeLabel: {
     fontSize: 12,
+    fontWeight: '500',
+    opacity: 0.7,
   },
   sortHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   sortLabel: {
-    fontSize: 16,
-    marginRight: 16,
+    fontSize: 14,
+    marginRight: 18,
+    fontWeight: '500',
   },
   sortButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   sortButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   sortButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

@@ -11,44 +11,72 @@ export interface ThemeColors {
   background: string;
   card: string;
   surface: string;
+  surfaceSecondary: string;
   divider: string;
   text: string;
   textSecondary: string;
+  textMuted: string;
   primary: string;
+  primaryLight: string;
+  accent: string;
   error: string;
+  success: string;
+  warning: string;
+  border: string;
 }
 
 export const darkThemeColors: ThemeColors = {
-  background: '#121212',
-  card: '#1E1E1E',
-  surface: '#1C1C1E',
-  divider: '#2C2C2E',
-  text: '#FFFFFF',
-  textSecondary: '#888888',
-  primary: '#007AFF',
-  error: '#FF453A',
+  background: '#0D0D0F',
+  card: '#18181B',
+  surface: '#18181B',
+  surfaceSecondary: '#1F1F23',
+  divider: '#27272A',
+  text: '#FAFAFA',
+  textSecondary: '#A1A1AA',
+  textMuted: '#71717A',
+  primary: '#3B82F6',
+  primaryLight: 'rgba(59,130,246,0.15)',
+  accent: '#8B5CF6',
+  error: '#EF4444',
+  success: '#22C55E',
+  warning: '#F59E0B',
+  border: '#27272A',
 };
 
 export const oledThemeColors: ThemeColors = {
   background: '#000000',
-  card: '#0D0D0D',
+  card: '#0A0A0A',
   surface: '#0A0A0A',
+  surfaceSecondary: '#141414',
   divider: '#1A1A1A',
-  text: '#FFFFFF',
-  textSecondary: '#666666',
-  primary: '#007AFF',
-  error: '#FF453A',
+  text: '#FAFAFA',
+  textSecondary: '#A1A1AA',
+  textMuted: '#52525B',
+  primary: '#3B82F6',
+  primaryLight: 'rgba(59,130,246,0.12)',
+  accent: '#8B5CF6',
+  error: '#EF4444',
+  success: '#22C55E',
+  warning: '#F59E0B',
+  border: '#1A1A1A',
 };
 
 export const lightThemeColors: ThemeColors = {
-  background: '#F2F2F7',
+  background: '#F4F4F5',
   card: '#FFFFFF',
   surface: '#FFFFFF',
-  divider: '#E5E5EA',
-  text: '#000000',
-  textSecondary: '#888888',
-  primary: '#007AFF',
-  error: '#FF3B30',
+  surfaceSecondary: '#F9FAFB',
+  divider: '#E4E4E7',
+  text: '#18181B',
+  textSecondary: '#52525B',
+  textMuted: '#A1A1AA',
+  primary: '#2563EB',
+  primaryLight: 'rgba(37,99,235,0.1)',
+  accent: '#7C3AED',
+  error: '#DC2626',
+  success: '#16A34A',
+  warning: '#D97706',
+  border: '#E4E4E7',
 };
 
 export const getThemeColors = (mode: ThemeMode): ThemeColors => {

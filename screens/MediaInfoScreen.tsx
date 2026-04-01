@@ -94,7 +94,7 @@ const MediaInfoScreen = () => {
 
         {/* Modern Hero Backdrop */}
         <ImageBackground source={{ uri: backdrop }} style={styles.heroBackdrop}>
-          <View style={[styles.heroOverlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+          <View style={[styles.heroOverlay, { backgroundColor: 'rgba(13,13,15,0.85)' }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
               <ArrowLeft color="#FFF" size={24} />
             </TouchableOpacity>
@@ -147,7 +147,7 @@ const MediaInfoScreen = () => {
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.favBtn} onPress={toggleFavorite}>
-                    {isFavorite ? <Heart color="#FF453A" size={24} fill="#FF453A" /> : <Heart color="#FFF" size={24} />}
+                    {isFavorite ? <Heart color="#EF4444" size={24} fill="#EF4444" /> : <Heart color="#FAFAFA" size={24} />}
                   </TouchableOpacity>
                 </View>
 
@@ -177,29 +177,75 @@ const MediaInfoScreen = () => {
 const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container: { flex: 1 },
-  heroBackdrop: { width: '100%', minHeight: 450 },
-  heroOverlay: { flex: 1, paddingHorizontal: 20, paddingBottom: 40 },
-  backBtn: { position: 'absolute', top: 40, left: 20, zIndex: 10, padding: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20 },
-  heroContentRow: { flexDirection: 'row', marginTop: 100, gap: 24, alignItems: 'flex-end' },
-  posterWrap: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 10 },
+  heroBackdrop: { width: '100%', minHeight: 480 },
+  heroOverlay: { flex: 1, paddingHorizontal: 24, paddingBottom: 48 },
+  backBtn: { 
+    position: 'absolute', 
+    top: 48, 
+    left: 24, 
+    zIndex: 10, 
+    padding: 10, 
+    backgroundColor: 'rgba(24,24,27,0.8)', 
+    borderRadius: 14,
+    // Shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  heroContentRow: { flexDirection: 'row', marginTop: 110, gap: 28, alignItems: 'flex-end' },
+  posterWrap: { 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 12 }, 
+    shadowOpacity: 0.5, 
+    shadowRadius: 20,
+    borderRadius: 16,
+  },
   heroTextContent: { flex: 1 },
-  title: { color: '#FFF', fontSize: 32, fontWeight: '900', marginBottom: 12 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 },
-  badge: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  badgeText: { color: '#FFF', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 },
+  title: { color: '#FAFAFA', fontSize: 34, fontWeight: '800', marginBottom: 14, letterSpacing: -0.5 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 18 },
+  badge: { backgroundColor: 'rgba(59,130,246,0.3)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  badgeText: { color: '#3B82F6', fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaText: { color: '#CCC', fontSize: 14, fontWeight: '600' },
-  genresRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  genrePill: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  genreText: { color: '#AAA', fontSize: 12 },
-  desc: { color: '#DDD', fontSize: 15, lineHeight: 22, marginBottom: 24 },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
-  playBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, gap: 8 },
-  playText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  favBtn: { padding: 14, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12 },
-  infoRow: { flexDirection: 'row', marginBottom: 8, marginTop: 4 },
-  label: { fontWeight: 'bold', marginRight: 4, fontSize: 14 },
-  value: { flex: 1, fontSize: 14 },
+  metaText: { color: '#A1A1AA', fontSize: 14, fontWeight: '600' },
+  genresRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
+  genrePill: { 
+    borderWidth: 1.5, 
+    borderColor: 'rgba(255,255,255,0.15)', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  genreText: { color: '#A1A1AA', fontSize: 12, fontWeight: '500' },
+  desc: { color: '#D4D4D8', fontSize: 15, lineHeight: 24, marginBottom: 28 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 24 },
+  playBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 28, 
+    paddingVertical: 16, 
+    borderRadius: 14, 
+    gap: 10,
+    // Shadow for depth
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  playText: { color: '#FAFAFA', fontSize: 16, fontWeight: '600', letterSpacing: 0.3 },
+  favBtn: { 
+    padding: 16, 
+    backgroundColor: 'rgba(255,255,255,0.08)', 
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  infoRow: { flexDirection: 'row', marginBottom: 10, marginTop: 6 },
+  label: { fontWeight: '600', marginRight: 6, fontSize: 14 },
+  value: { flex: 1, fontSize: 14, opacity: 0.8 },
 });
 
 export default MediaInfoScreen;
