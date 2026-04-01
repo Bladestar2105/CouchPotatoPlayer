@@ -19,6 +19,7 @@ import { useIPTV } from '../context/IPTVContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { Channel } from '../types';
 import { findCurrentProgramIndex } from '../utils/epgUtils';
+import { StreamHealthMonitor } from '../components/StreamHealthMonitor';
 
 const defaultLogo = require('../assets/icon.png');
 
@@ -42,6 +43,7 @@ const PlayerScreen = () => {
 
   // TiviMate-style info overlay state
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showStreamHealth, setShowStreamHealth] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
@@ -133,7 +135,7 @@ const PlayerScreen = () => {
   // Hide overlay on inactivity
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    if (showOverlay && !isPaused) {
+    if (showOverlay && !isPaused && !showStreamHealth) {
         timer = setTimeout(() => {
             setShowOverlay(false);
         }, 6000);
@@ -141,7 +143,7 @@ const PlayerScreen = () => {
     return () => {
         if (timer) clearTimeout(timer);
     };
-  }, [showOverlay, isPaused]);
+  }, [showOverlay, isPaused, showStreamHealth]);
 
   useEffect(() => {
     if (isFocused && currentStream && currentStream.id) {
@@ -184,6 +186,10 @@ const PlayerScreen = () => {
   }, [isFocused]);
 
   const handlePress = () => {
+    if (showStreamHealth) {
+      setShowStreamHealth(false);
+      return;
+    }
     setShowOverlay(prev => !prev);
   };
 
@@ -200,6 +206,10 @@ const PlayerScreen = () => {
     if (!isFocused || !evt) return;
 
     if (evt.eventType === 'menu') {
+      if (showStreamHealth) {
+        setShowStreamHealth(false);
+        return;
+      }
       handleBack();
     } else if (evt.eventType === 'playPause') {
       setIsPaused(prev => !prev);
@@ -237,9 +247,13 @@ const PlayerScreen = () => {
            }
        }
     } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
+       if (showStreamHealth) {
+         setShowStreamHealth(false);
+         return;
+       }
        setShowOverlay(true);
     }
-  }, [isFocused, handleBack, channels, currentStream, playStream]);
+  }, [isFocused, handleBack, channels, currentStream, playStream, showStreamHealth]);
 
   // Use the standard hook provided by react-native for TV remote events
   useTVEventHandler(handleTVRemoteEvent);
@@ -288,6 +302,26 @@ const PlayerScreen = () => {
 
   return (
     <View style={styles.container}>
+      {currentStream && (
+        <StreamHealthMonitor
+          visible={showStreamHealth}
+          streamUrl={currentStream.url}
+          videoData={videoMetadata}
+          bufferHealth={{ isBuffering: false }}
+          currentTime={currentTimeRef.current}
+          duration={0}
+          playbackRate={1}
+        />
+      )}
+
+      {showOverlay && (
+        <View style={{ position: 'absolute', top: 20, right: 80, zIndex: 30 }}>
+          <TouchableOpacity onPress={() => setShowStreamHealth(!showStreamHealth)}>
+            <Icon name="info-outline" size={32} color={showStreamHealth ? '#4CD964' : '#FFF'} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
