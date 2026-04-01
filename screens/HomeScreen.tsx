@@ -38,7 +38,7 @@ const MainLayout = () => {
   useEffect(() => {
     const fetchHero = async () => {
       const tmdb = new TMDBService({ apiKey: 'YOUR_API_KEY_HERE' });
-      if (false) {
+      if ((tmdb as any).apiKey !== 'YOUR_API_KEY_HERE' && tmdb.isAvailable()) {
         const trending = await tmdb.getTrending('all', 'week');
         if (trending && trending.length > 0) {
           setHeroContent(trending[0]);

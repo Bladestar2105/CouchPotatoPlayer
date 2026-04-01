@@ -64,6 +64,8 @@ export const getThemeColors = (mode: ThemeMode): ThemeColors => {
 };
 
 interface SettingsContextProps {
+
+
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
   colors: ThemeColors;
