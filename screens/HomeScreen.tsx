@@ -333,11 +333,10 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
 };
 
 const HomeScreen = () => {
-  const { isInitializing, currentProfile, pin, channels, movies, series, isLoading, isUpdating, loadProfile } = useIPTV();
+  const { isInitializing, currentProfile, pin, channels, movies, series, isLoading, isUpdating, loadProfile, hasCheckedOnStartup, setHasCheckedOnStartup } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
-  const [hasPromptedUpdate, setHasPromptedUpdate] = useState(false);
 
   // Prevent app from exiting when pressing back on the Home screen on Apple TV
   useEffect(() => {
@@ -407,16 +406,11 @@ const HomeScreen = () => {
     }
   }, [isInitializing, isLoading, currentProfile, hasAdultContent, pin, navigation]);
 
-  // Reset hasPromptedUpdate when profile changes
-  useEffect(() => {
-    setHasPromptedUpdate(false);
-  }, [currentProfile?.id]);
-
   // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
   useEffect(() => {
     // Prompt to update when a profile is successfully loaded and we haven't asked yet
-    if (currentProfile && !isInitializing && !isLoading && !hasPromptedUpdate) {
-      setHasPromptedUpdate(true);
+    if (currentProfile && !isInitializing && !isLoading && !hasCheckedOnStartup) {
+      setHasCheckedOnStartup(true);
       // Wait a tick so the UI renders first
       setTimeout(() => {
          // Using standard Alert for simple yes/no
@@ -431,7 +425,7 @@ const HomeScreen = () => {
          );
       }, 500);
     }
-  }, [currentProfile, isInitializing, isLoading, hasPromptedUpdate, loadProfile]);
+  }, [currentProfile, isInitializing, isLoading, hasCheckedOnStartup, setHasCheckedOnStartup, loadProfile]);
 
   if (isInitializing || (isLoading && !currentProfile)) {
     return (

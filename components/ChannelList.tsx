@@ -45,9 +45,17 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (route.params?.returnGroupId) {
+      setSelectedGroup(route.params.returnGroupId);
+    }
+  }, [route.params?.returnGroupId]);
+  const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
   // For mobile devices, hide categories when a group is selected to give more space
   const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
@@ -133,10 +141,18 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   // Handle category selection and hide pane on mobile
   const handleGroupSelect = (title: string) => {
     setSelectedGroup(title);
+    setShouldFocusFirstItem(true);
     if (isMobile) {
       setShowCategories(false);
     }
   };
+
+  useEffect(() => {
+    if (shouldFocusFirstItem) {
+      const timer = setTimeout(() => setShouldFocusFirstItem(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldFocusFirstItem]);
 
   if (isLoading) {
     return (
@@ -187,7 +203,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
       lastWatchedAt: Date.now(),
     });
     
-    navigation.navigate('Player');
+    navigation.navigate('Player', {
+      returnGroupId: selectedGroup,
+    });
   };
 
   const handleEpgPress = (channel: Channel, prog: any) => {
@@ -202,7 +220,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
        const catchupUrl = getCatchupUrl(channel, new Date(prog.start), new Date(prog.end));
        if (catchupUrl) {
            playStream({ url: catchupUrl, id: `${channel.id}_${prog.start}` });
-           navigation.navigate('Player');
+           navigation.navigate('Player', {
+             returnGroupId: selectedGroup,
+           });
        }
     }
   };
@@ -268,8 +288,12 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                 onChannelPress={handleChannelPress}
                  onProgramPress={handleEpgPress}
                 focusedChannelId={focusedChannelId}
-                setFocusedChannelId={setFocusedChannelId}
+                setFocusedChannelId={(id) => {
+                  setFocusedChannelId(id);
+                  setShouldFocusFirstItem(false);
+                }}
                 currentStreamId={currentStream?.id}
+                shouldFocusFirstItem={shouldFocusFirstItem}
              />
           ) : (
             <View style={styles.centeredContainer}>

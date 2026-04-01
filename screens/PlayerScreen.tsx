@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVFocusGuideView } from 'react-native';
 // @ts-ignore - TVEventControl is available in react-native-tvos but not in standard React Native types
 import { TVEventControl, useTVEventHandler } from 'react-native';
 
@@ -16,6 +16,7 @@ if (!Platform.isTV) {
   }
 }
 import { useIPTV } from '../context/IPTVContext';
+import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { Channel } from '../types';
 import { findCurrentProgramIndex } from '../utils/epgUtils';
@@ -37,6 +38,7 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minu
  * The menu button navigates back to Home instead of exiting the app.
  */
 const PlayerScreen = () => {
+  const { t } = useTranslation();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
   const { currentStream, addRecentlyWatched, channels, epg, stopStream, playStream } = useIPTV();
@@ -61,23 +63,36 @@ const PlayerScreen = () => {
    */
   const [isExiting, setIsExiting] = useState(false);
 
+  const backButtonRef = React.useRef<any>(null);
+  const infoButtonRef = React.useRef<any>(null);
+
   const handleBack = useCallback(() => {
     // Apple TV Menu button shouldn't close the app from PlayerScreen.
     // Explicitly navigating to "Home" instead of relying on "goBack()"
     // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
 
-    // Immediately hide the video player to make the UI feel responsive
-    setIsExiting(true);
+    // 1. Navigation SOFORT auslösen (optimistisch)
+    navigation.goBack();
 
-    // Stop the stream and navigate back in the next tick to prevent blocking the main thread
-    // while the video player is unmounting or HomeScreen is rendering
-    setTimeout(() => {
-      stopStream();
-      navigation.navigate('Home');
-    }, 10);
+    // 2. Player asynchron und sauber stoppen
+    //    (Nach goBack läuft der Component noch kurz weiter)
+    requestAnimationFrame(() => {
+      try {
+        stopStream();
+      } catch (e) {
+        console.warn('Player cleanup error:', e);
+      }
+    });
 
     return true; // Return true to indicate we handled the back event
   }, [navigation, stopStream]);
+
+  // Außerdem im useEffect-Cleanup:
+  useEffect(() => {
+    return () => {
+      stopStream();
+    };
+  }, [stopStream]);
 
   // Cache channel indices for O(1) channelUp/channelDown lookups
   const channelIndexMap = useMemo(() => {
@@ -316,7 +331,7 @@ const PlayerScreen = () => {
 
       {showOverlay && (
         <View style={{ position: 'absolute', top: 20, right: 80, zIndex: 30 }}>
-          <TouchableOpacity onPress={() => setShowStreamHealth(!showStreamHealth)}>
+          <TouchableOpacity ref={infoButtonRef} onPress={() => setShowStreamHealth(!showStreamHealth)}>
             <Icon name="info-outline" size={32} color={showStreamHealth ? '#4CD964' : '#FFF'} />
           </TouchableOpacity>
         </View>
@@ -341,14 +356,16 @@ const PlayerScreen = () => {
       </TouchableOpacity>
 
       {showOverlay && (
-        <View style={styles.overlay} pointerEvents="box-none">
+        <TVFocusGuideView style={styles.overlay} destinations={[backButtonRef.current, infoButtonRef.current]} pointerEvents="box-none">
           {/* Top Bar - Back Button */}
           <View style={styles.topBar}>
             <TouchableOpacity
+              ref={backButtonRef}
               style={styles.backButton}
               onPress={handleBack}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t('back')}
+              hasTVPreferredFocus={false}
             >
               <Icon name="arrow-back" size={28} color="#FFF" />
             </TouchableOpacity>
@@ -411,7 +428,7 @@ const PlayerScreen = () => {
                  </View>
               </View>
           )}
-        </View>
+        </TVFocusGuideView>
       )}
     </View>
   );

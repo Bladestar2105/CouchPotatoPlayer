@@ -159,6 +159,8 @@ export type IPTVContextType = {
   error: string | null;
   isUpdating: boolean;
   setIsUpdating: (val: boolean) => void;
+  hasCheckedOnStartup: boolean;
+  setHasCheckedOnStartup: (val: boolean) => void;
 
   addProfile: (profile: IPTVProfile) => Promise<void>;
   removeProfile: (id: string) => Promise<void>;

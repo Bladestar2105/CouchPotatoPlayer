@@ -52,6 +52,13 @@ const SettingsScreen = () => {
     await AsyncStorage.setItem('app_update_interval', val.toString());
   };
 
+  const handleManualUpdate = async () => {
+    if (currentProfile) {
+      // Pass forceUpdate=true to bypass cache
+      loadProfile(currentProfile, true);
+    }
+  };
+
   const handleClearCache = async () => {
     Alert.alert(
       'Clear Cache',
@@ -530,6 +537,19 @@ const SettingsScreen = () => {
             </View>
           </View>
         )}
+
+        {/* Update Playlist/EPG Manually */}
+        <TouchableOpacity
+          style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+          onPress={handleManualUpdate}
+        >
+          <View style={styles.tileLeft}>
+            <Text style={[styles.tileTitle, { color: colors.text }]}>{t('settings.updatePlaylist')}</Text>
+            <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
+              Force a fresh download of channels and TV guide
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Update Interval */}
         {Platform.OS === 'ios' && !Platform.isTV ? (
