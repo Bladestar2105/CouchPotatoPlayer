@@ -74,6 +74,9 @@ const MediaInfoScreen = () => {
           <TouchableOpacity
             style={[styles.playButton, { backgroundColor: colors.primary }]}
             onPress={handlePlay}
+            accessibilityRole="button"
+            accessibilityLabel={type === 'series' ? 'View Episodes' : 'Play Media'}
+            accessibilityHint={type === 'series' ? 'Navigates to the episode list for this series' : 'Starts playing this media'}
           >
             <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
               {type === 'series' ? 'Episodes' : 'Play'}
