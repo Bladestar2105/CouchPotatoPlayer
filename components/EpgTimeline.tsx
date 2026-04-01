@@ -16,6 +16,7 @@ interface EpgTimelineProps {
   focusedChannelId: string | null;
   setFocusedChannelId: (id: string) => void;
   currentStreamId: string | undefined;
+  shouldFocusFirstItem?: boolean;
 }
 
 // ⚡ Bolt: Cache Intl.DateTimeFormat instance to avoid slow initialization overhead on every render
@@ -55,7 +56,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
            prevProps.width === nextProps.width;
 });
 
-const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE }: any) => {
+const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
     // recalculating boundaries, offsets, and time comparisons on every render.
     const programLayoutData = useMemo(() => {
@@ -100,6 +101,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
         <View style={[styles.row, isFocused && styles.rowFocused]}>
             {/* Channel Info Fixed on Left */}
             <TouchableOpacity
+                hasTVPreferredFocus={hasTVPreferredFocus}
                 style={[
                     styles.channelBox,
                     isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary },
@@ -147,7 +149,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
            prevProps.programs === nextProps.programs;
 });
 
-const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId }) => {
+const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId, shouldFocusFirstItem }) => {
   const { epg, hasCatchup, getCatchupUrl, isFavorite, addFavorite, removeFavorite } = useIPTV();
   const { colors } = useSettings();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -248,7 +250,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                     offset: (Platform.isTV ? 80 : 60) * index,
                     index,
                  })}
-                 renderItem={({ item: channel }) => {
+                 renderItem={({ item: channel, index }) => {
                     const epgKey = getEpgKey(channel);
                     const programs = epg[epgKey] || [];
                     const isFocused = focusedChannelId === channel.id;
@@ -273,6 +275,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                             timelineEnd={timelineEnd}
                             now={now}
                             PIXELS_PER_MINUTE={PIXELS_PER_MINUTE}
+                            hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                         />
                     );
                  }}

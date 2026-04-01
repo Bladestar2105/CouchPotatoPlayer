@@ -146,6 +146,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [hasCheckedOnStartup, setHasCheckedOnStartup] = useState<boolean>(false);
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -239,6 +240,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentProfile?.id === id) {
         unloadProfile();
       }
+      setHasCheckedOnStartup(false);
     } catch (e) {
       Logger.error("Failed to remove profile", e);
     }
@@ -356,6 +358,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEpg({});
     setError(null);
     setCurrentStream(null);
+    setHasCheckedOnStartup(false);
     await AsyncStorage.removeItem(CURRENT_PROFILE_STORAGE_KEY);
   }, []);
 
@@ -1033,6 +1036,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasCatchup,
     isUpdating,
     setIsUpdating,
+    hasCheckedOnStartup,
+    setHasCheckedOnStartup,
   }), [
     isInitializing,
     profiles,
@@ -1076,6 +1081,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasCatchup,
     isUpdating,
     setIsUpdating,
+    hasCheckedOnStartup,
+    setHasCheckedOnStartup,
   ]);
 
   return (

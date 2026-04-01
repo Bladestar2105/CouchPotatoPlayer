@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, u
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTV } from '../context/IPTVContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
 export type ContentRef = { focusFirstItem: () => void };
@@ -44,11 +44,19 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   const { series, isLoading, pin, isAdultUnlocked } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const dimensions = Dimensions.get('window');
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (route.params?.returnGroupId) {
+      setSelectedGroup(route.params.returnGroupId);
+    }
+  }, [route.params?.returnGroupId]);
   const [focusedSeriesId, setFocusedSeriesId] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState<boolean>(true);
+  const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
@@ -99,10 +107,18 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
   const handleGroupSelect = (title: string) => {
     setSelectedGroup(title);
+    setShouldFocusFirstItem(true);
     if (isMobile) {
       setShowCategories(false);
     }
   };
+
+  useEffect(() => {
+    if (shouldFocusFirstItem) {
+      const timer = setTimeout(() => setShouldFocusFirstItem(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldFocusFirstItem]);
 
   if (isLoading) {
     return (
@@ -180,16 +196,20 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                const rowIndex = Math.floor(index / numColumns);
                return { length: rowHeight, offset: rowHeight * rowIndex, index };
             }}
-            renderItem={({ item }) => {
+            renderItem={({ item, index }) => {
                 const isFocused = focusedSeriesId === item.id;
                 return (
                   <TouchableOpacity
+                    hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,
                         isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1 } : {}
                     ]}
-                    onPress={() => navigation.navigate('MediaInfo', { id: item.id, type: 'series', title: item.name, cover: item.cover })}
-                    onFocus={() => setFocusedSeriesId(item.id)}
+                    onPress={() => navigation.navigate('MediaInfo', { id: item.id, type: 'series', title: item.name, cover: item.cover, returnGroupId: selectedGroup })}
+                    onFocus={() => {
+                      setFocusedSeriesId(item.id);
+                      setShouldFocusFirstItem(false);
+                    }}
                     onBlur={() => setFocusedSeriesId(null)}
                   >
                     <Image

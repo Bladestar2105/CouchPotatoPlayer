@@ -64,7 +64,13 @@ const resources = {
       "connectionFailed": "Connection to the server failed. Check your connection or the server URL.",
       "loadStreamsError": "Unable to load stream lists. Check your connection.",
       "corsError": "CORS Error: The server blocks web browsers. Please use the Desktop or Mobile app, or configure a proxy.",
-      "search": "Search"
+      "search": "Search",
+      "settings": {
+        "updatePlaylist": "Update Playlist",
+        "updateEPG": "Update EPG"
+      },
+      "back": "Back",
+      "info": "Info"
     }
   },
   de: {
@@ -128,7 +134,13 @@ const resources = {
       "connectionFailed": "Verbindung zum Server fehlgeschlagen. Überprüfen Sie Ihre Verbindung oder die Server-URL.",
       "loadStreamsError": "Stream-Listen konnten nicht geladen werden. Überprüfen Sie Ihre Verbindung.",
       "corsError": "CORS-Fehler: Der Server blockiert Webbrowser. Bitte nutzen Sie die Desktop- oder Mobile-App oder konfigurieren Sie einen Proxy.",
-      "search": "Suche"
+      "search": "Suche",
+      "settings": {
+        "updatePlaylist": "Playlist aktualisieren",
+        "updateEPG": "EPG aktualisieren"
+      },
+      "back": "Zurück",
+      "info": "Info"
     }
   },
   fr: {
@@ -192,7 +204,13 @@ const resources = {
       "connectionFailed": "Connexion au serveur échouée. Vérifiez votre connexion ou l'URL du serveur.",
       "loadStreamsError": "Impossible de charger les listes de flux. Vérifiez votre connexion.",
       "corsError": "Erreur CORS : Le serveur bloque les navigateurs web. Veuillez utiliser l'application de bureau ou mobile, ou configurer un proxy.",
-      "search": "Rechercher"
+      "search": "Rechercher",
+      "settings": {
+        "updatePlaylist": "Mettre à jour la playlist",
+        "updateEPG": "Mettre à jour l'EPG"
+      },
+      "back": "Retour",
+      "info": "Info"
     }
   }
 };
