@@ -30,8 +30,8 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
             style={[
                 styles.programBlock,
                 { left: leftOffset, width: Math.max(width - 2, 2) },
-                isNow ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : (isPast ? { backgroundColor: 'rgba(50,50,50,0.8)' } : { backgroundColor: 'rgba(80,80,80,0.8)' }),
-                isProgramFocused && { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderWidth: 2, borderColor: colors.primary }
+                isNow ? { backgroundColor: 'rgba(59, 130, 246, 0.35)' } : (isPast ? { backgroundColor: 'rgba(39, 39, 42, 0.9)' } : { backgroundColor: 'rgba(63, 63, 70, 0.8)' }),
+                isProgramFocused && { backgroundColor: 'rgba(59, 130, 246, 0.4)', borderWidth: 2, borderColor: '#3B82F6' }
             ]}
             onFocus={() => setIsProgramFocused(true)}
             onBlur={() => setIsProgramFocused(false)}
@@ -43,7 +43,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
                 }
             }}
         >
-            <Text style={[styles.programTitle, isPast ? { color: '#888' } : { color: '#FFF' }, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{prog.title}</Text>
+            <Text style={[styles.programTitle, isPast ? { color: '#71717A' } : { color: '#FAFAFA' }, { fontSize: Platform.isTV ? 15 : 13 }]} numberOfLines={1}>{prog.title}</Text>
             <Text style={[styles.programTime, { fontSize: Platform.isTV ? 14 : 12 }]} numberOfLines={1}>
                 {formatTime(new Date(prog.start))} - {formatTime(new Date(prog.end))}
             </Text>
@@ -104,8 +104,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                 hasTVPreferredFocus={hasTVPreferredFocus}
                 style={[
                     styles.channelBox,
-                    isPlaying && { borderLeftWidth: 3, borderLeftColor: colors.primary },
-                    isFocused && { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderWidth: 2, borderColor: colors.primary }
+                    isPlaying && { borderLeftWidth: 3, borderLeftColor: '#3B82F6' },
+                    isFocused && { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 2, borderColor: '#3B82F6' }
                 ]}
                 onPress={() => onChannelPress(channel)}
                 onFocus={() => setFocusedChannelId(channel.id)}
@@ -290,96 +290,103 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(20,20,20,0.95)',
+    backgroundColor: 'rgba(13,13,15,0.98)',
   },
   headerRow: {
     flexDirection: 'row',
-    height: 40,
+    height: 44,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#111',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#18181B',
   },
   channelHeaderSpace: {
     width: 120,
     borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.1)',
+    borderRightColor: 'rgba(255,255,255,0.06)',
   },
   timeHeaderItem: {
     justifyContent: 'center',
-    paddingLeft: 8,
+    paddingLeft: 12,
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255,255,255,0.05)',
+    borderLeftColor: 'rgba(255,255,255,0.04)',
   },
   timeHeaderText: {
-    color: '#AAA',
+    color: '#71717A',
     fontSize: 12,
+    fontWeight: '500',
   },
   currentTimeIndicator: {
     position: 'absolute',
     width: 2,
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#EF4444',
     zIndex: 10,
+    borderRadius: 1,
   },
   currentTimeLine: {
     position: 'absolute',
     width: 2,
     height: '100%',
-    backgroundColor: 'rgba(255, 59, 48, 0.5)',
+    backgroundColor: 'rgba(239, 68, 68, 0.4)',
     zIndex: 5,
   },
   row: {
     flexDirection: 'row',
-    height: Platform.isTV ? 80 : 60,
+    height: Platform.isTV ? 80 : 64,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   rowFocused: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(59,130,246,0.08)',
   },
   channelBox: {
     width: Platform.isTV ? 160 : 120,
-    padding: 4,
+    padding: 6,
     justifyContent: 'center',
     alignItems: 'center',
     borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#1C1C1E',
+    borderRightColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#18181B',
     position: 'absolute',
     left: 0,
-    height: Platform.isTV ? 80 : 60,
-    zIndex: 10, // keep on top of scrolled content
+    height: Platform.isTV ? 80 : 64,
+    zIndex: 10,
+    borderRadius: 0,
   },
   channelLogo: {
     width: Platform.isTV ? 48 : 36,
     height: Platform.isTV ? 32 : 24,
-    marginBottom: 2,
+    marginBottom: 4,
+    borderRadius: 6,
   },
   channelName: {
-    color: '#FFF',
-    fontSize: Platform.isTV ? 16 : 10,
+    color: '#FAFAFA',
+    fontSize: Platform.isTV ? 16 : 11,
     textAlign: 'center',
+    fontWeight: '500',
   },
   programsContainer: {
     flex: 1,
     position: 'relative',
-    marginLeft: Platform.isTV ? 160 : 120, // offset for fixed channel box
+    marginLeft: Platform.isTV ? 160 : 120,
   },
   programBlock: {
     position: 'absolute',
-    height: Platform.isTV ? 70 : 50,
-    top: 5,
-    borderRadius: 4,
-    padding: Platform.isTV ? 8 : 4,
+    height: Platform.isTV ? 70 : 52,
+    top: 6,
+    borderRadius: 10,
+    padding: Platform.isTV ? 10 : 6,
     justifyContent: 'center',
   },
   programTitle: {
-    fontSize: Platform.isTV ? 16 : 12,
-    fontWeight: 'bold',
+    fontSize: Platform.isTV ? 15 : 12,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
   programTime: {
-    fontSize: Platform.isTV ? 14 : 10,
-    color: '#AAA',
-    marginTop: 2,
+    fontSize: Platform.isTV ? 13 : 10,
+    color: '#71717A',
+    marginTop: 3,
+    fontWeight: '400',
   }
 });
 

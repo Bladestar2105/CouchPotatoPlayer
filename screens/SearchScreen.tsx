@@ -157,17 +157,22 @@ const styles = StyleSheet.create({
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    padding: 16,
     borderBottomWidth: 1,
   },
   input: {
     flex: 1,
-    height: 40,
+    height: 48,
     fontSize: 16,
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 14,
+    marginRight: 10,
   },
   clearBtn: {
-    padding: 10,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   center: {
     flex: 1,
@@ -176,15 +181,18 @@ const styles = StyleSheet.create({
   },
   item: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     alignItems: 'center',
     borderBottomWidth: 1,
+    borderRadius: 12,
+    marginHorizontal: 12,
+    marginBottom: 6,
   },
   logoContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 52,
+    height: 52,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -192,18 +200,21 @@ const styles = StyleSheet.create({
   logo: {
     width: '100%',
     height: '100%',
+    borderRadius: 10,
   },
   info: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
   name: {
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 16,
+    letterSpacing: 0.2,
   },
   type: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 5,
+    fontWeight: '500',
   },
 });
 

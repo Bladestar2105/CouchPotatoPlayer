@@ -146,7 +146,7 @@ const MainLayout = () => {
               style={styles.heroBanner}
               imageStyle={{ borderRadius: 16 }}
             >
-              <View style={[styles.heroOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+              <View style={[styles.heroOverlay, { backgroundColor: 'rgba(13,13,15,0.75)' }]}>
                 <View style={styles.heroContentText}>
                   <Text style={styles.heroLabel}>FEATURED</Text>
                   <Text style={styles.heroTitle} numberOfLines={1}>{heroContent.title}</Text>
@@ -175,9 +175,9 @@ const MainLayout = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000', flexDirection: 'row' }}>
+    <View style={{ flex: 1, backgroundColor: '#0D0D0F', flexDirection: 'row' }}>
       {/* Sidebar */}
-      <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(0,0,0,0.5)', borderRightColor: '#2C2C2E' }]}>
+      <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(24,24,27,0.95)', borderRightColor: '#27272A' }]}>
         <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
               <ScrollView
                 contentContainerStyle={{ paddingVertical: 16 }}
@@ -261,7 +261,7 @@ const MainLayout = () => {
                   showLabel={isSidebarExpanded} 
                 />
 
-                <View style={{ height: 1, backgroundColor: '#2C2C2E', marginVertical: 16 }} />
+                <View style={{ height: 1, backgroundColor: '#27272A', marginVertical: 20, marginHorizontal: 20, borderRadius: 1 }} />
                 {isSidebarExpanded && <Text style={[styles.sidebarSectionTitle, { fontSize: Platform.isTV ? 16 : 12 }]}>PROVIDERS</Text>}
 
                 {profiles.map(p => {
@@ -313,18 +313,35 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
       style={[
         styles.menuItem,
         {
-          backgroundColor: isFocused ? 'rgba(255, 255, 255, 0.2)' : (isActive ? 'rgba(0, 122, 255, 0.3)' : 'transparent'),
+          backgroundColor: isFocused 
+            ? 'rgba(59, 130, 246, 0.25)' 
+            : (isActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent'),
           justifyContent: showLabel ? 'flex-start' : 'center',
           alignItems: 'center',
+          borderWidth: isFocused ? 1.5 : 0,
+          borderColor: isFocused ? 'rgba(59, 130, 246, 0.5)' : 'transparent',
         }
       ]}
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={label}
     >
-      <Icon name={icon} size={Platform.isTV ? 40 : 24} color={isActive || isFocused ? '#FFF' : '#888'} style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} />
+      <Icon 
+        name={icon} 
+        size={Platform.isTV ? 36 : 22} 
+        color={isActive ? '#3B82F6' : (isFocused ? '#FAFAFA' : '#71717A')} 
+        style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} 
+      />
       {showLabel && (
-        <Text style={{ color: isActive || isFocused ? '#FFF' : '#888', fontWeight: isActive ? 'bold' : 'normal', fontSize: Platform.isTV ? 24 : 14 }} numberOfLines={1}>
+        <Text 
+          style={{ 
+            color: isActive ? '#3B82F6' : (isFocused ? '#FAFAFA' : '#A1A1AA'), 
+            fontWeight: isActive || isFocused ? '600' : '400', 
+            fontSize: Platform.isTV ? 22 : 15,
+            letterSpacing: 0.2,
+          }} 
+          numberOfLines={1}
+        >
           {label}
         </Text>
       )}
@@ -472,70 +489,81 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sidebarSectionTitle: {
-    color: '#888',
-    fontSize: 12,
-    marginBottom: 8,
-    paddingHorizontal: 16,
+    color: '#71717A',
+    fontSize: 11,
+    marginBottom: 12,
+    paddingHorizontal: 20,
     textTransform: 'uppercase',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 1.2,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginHorizontal: 8,
-    marginBottom: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginHorizontal: 10,
+    marginBottom: 6,
   },
   menuIcon: {
-    marginRight: 16,
+    marginRight: 14,
   },
   heroWrapper: {
-    padding: 16,
-    paddingBottom: 8,
+    padding: 20,
+    paddingBottom: 12,
   },
   heroBanner: {
     width: '100%',
-    height: 220,
-    borderRadius: 16,
+    height: 240,
+    borderRadius: 20,
     overflow: 'hidden',
     justifyContent: 'flex-end',
+    // Modern shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
-    padding: 20,
+    padding: 24,
+    // Gradient overlay for better text readability
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   heroContentText: {
-    gap: 4,
+    gap: 6,
   },
   heroLabel: {
-    color: '#007AFF',
-    fontSize: 12,
+    color: '#3B82F6',
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   heroTitle: {
-    color: '#FFF',
-    fontSize: 28,
-    fontWeight: 'bold',
+    color: '#FAFAFA',
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   heroDesc: {
-    color: '#DDD',
+    color: '#D4D4D8',
     fontSize: 14,
-    lineHeight: 20,
-    marginTop: 4,
-    maxWidth: '80%',
+    lineHeight: 22,
+    marginTop: 6,
+    maxWidth: '85%',
   },
   heroMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 12,
   },
   heroRating: {
-    color: '#FFF',
+    color: '#FAFAFA',
     fontSize: 14,
     fontWeight: '600',
   },

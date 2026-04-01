@@ -21,8 +21,8 @@ const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPref
             ref={ref}
             style={[
                 styles.categoryItem,
-                isSelected ? { backgroundColor: 'rgba(0, 122, 255, 0.4)' } : {},
-                isFocused ? { backgroundColor: 'rgba(255, 255, 255, 0.4)', borderColor: colors.primary, borderWidth: 2 } : { borderWidth: 2, borderColor: 'transparent' }
+                isSelected ? { backgroundColor: 'rgba(59, 130, 246, 0.25)' } : {},
+                isFocused ? { backgroundColor: 'rgba(59, 130, 246, 0.35)', borderColor: '#3B82F6', borderWidth: 2 } : { borderWidth: 2, borderColor: 'transparent' }
             ]}
             onPress={onPress}
             onFocus={() => setIsFocused(true)}
@@ -32,7 +32,7 @@ const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPref
             accessibilityLabel={`Select category ${title}`}
             hasTVPreferredFocus={hasTVPreferredFocus}
         >
-            <Text style={{ color: isSelected || isFocused ? '#FFF' : '#AAA', fontWeight: isSelected || isFocused ? 'bold' : 'normal', fontSize: Platform.isTV ? 16 : 16 }}>
+            <Text style={{ color: isSelected || isFocused ? '#FAFAFA' : '#A1A1AA', fontWeight: isSelected || isFocused ? '600' : '400', fontSize: Platform.isTV ? 15 : 15 }}>
                 {title}
             </Text>
         </TouchableOpacity>
@@ -352,14 +352,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoriesSidebar: {
-    width: Platform.isTV ? 350 : 250,
+    width: Platform.isTV ? 350 : 260,
     borderRightWidth: 1,
   },
   categoryItem: {
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    marginHorizontal: 8,
+    marginBottom: 4,
   },
   channelListPane: {
     width: 350,
@@ -368,14 +371,18 @@ const styles = StyleSheet.create({
   channelItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 18,
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.05)',
+      borderBottomColor: 'rgba(255,255,255,0.04)',
+      borderRadius: 12,
+      marginHorizontal: 8,
+      marginBottom: 4,
   },
   channelLogo: {
       width: 50,
       height: 40,
+      borderRadius: 8,
   },
   epgPane: {
       flex: 1,
@@ -385,19 +392,22 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       padding: 24,
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.1)',
+      borderBottomColor: 'rgba(255,255,255,0.08)',
+      borderRadius: 16,
   },
   epgHeaderLogo: {
       width: 80,
       height: 60,
       marginRight: 20,
+      borderRadius: 12,
   },
   epgRow: {
       flexDirection: 'row',
       paddingVertical: 16,
       paddingHorizontal: 24,
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.05)',
+      borderBottomColor: 'rgba(255,255,255,0.04)',
+      borderRadius: 12,
   }
 });
 
