@@ -439,8 +439,8 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
             channelId: p.channelId,
             title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
             description: decodeBase64IfNeeded(p.description || ''),
-            start: p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime(),
-            end: p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime(),
+            start: typeof p.start === 'number' ? p.start : (p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime()),
+            end: typeof p.end === 'number' ? p.end : (p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime()),
           }));
         }
         setEpg(newEpg);

@@ -2,8 +2,8 @@ import { XMLParser } from 'fast-xml-parser';
 import Logger from './logger';
 
 export interface ParsedProgram {
-  start: Date;
-  end: Date;
+  start: number;
+  end: number;
   title: string;
   description: string;
   channelId: string;
@@ -64,7 +64,7 @@ export const parseXMLTVFromString = (xmlData: string): Record<string, ParsedProg
 
     // Sort chronologically for optimal binary searching
     Object.keys(epgData).forEach(key => {
-      epgData[key].sort((a, b) => a.start.getTime() - b.start.getTime());
+      epgData[key].sort((a, b) => a.start - b.start);
     });
 
     Logger.log(`[EPG Parser] Grouped into ${Object.keys(epgData).length} channels`);
@@ -94,7 +94,7 @@ export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProg
   }
 };
 
-const parseXMLDate = (inputDateString: string | number): Date | null => {
+const parseXMLDate = (inputDateString: string | number): number | null => {
   const dateString = String(inputDateString);
   if (dateString.length < 14) return null;
 
@@ -111,7 +111,7 @@ const parseXMLDate = (inputDateString: string | number): Date | null => {
       return null;
     }
 
-    let date = new Date(Date.UTC(year, monthIdx, day, hour, min, sec));
+    let timestamp = Date.UTC(year, monthIdx, day, hour, min, sec);
 
     if (dateString.length >= 19) {
       const offsetSign = dateString.substring(15, 16);
@@ -121,17 +121,17 @@ const parseXMLDate = (inputDateString: string | number): Date | null => {
       const offsetTotalMs = ((offsetHour * 60) + offsetMin) * 60000;
 
       if (offsetSign === '+') {
-        date = new Date(date.getTime() - offsetTotalMs);
+        timestamp -= offsetTotalMs;
       } else if (offsetSign === '-') {
-        date = new Date(date.getTime() + offsetTotalMs);
+        timestamp += offsetTotalMs;
       }
     }
 
-    if (isNaN(date.getTime())) {
+    if (isNaN(timestamp)) {
       return null;
     }
 
-    return date;
+    return timestamp;
   } catch (e) {
     return null;
   }
