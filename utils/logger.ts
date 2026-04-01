@@ -7,8 +7,12 @@
 declare const __DEV__: boolean;
 import { LogBox } from 'react-native';
 
-// Ignore annoying React Native warnings and UIKitCore logs that clutter the terminal
-LogBox.ignoreLogs(['InteractionManager has been deprecated', 'RCTScrollViewComponentView implements focusItemsInRect']);
+// Ignore annoying React Native warnings and expected app limitations
+LogBox.ignoreLogs([
+  'InteractionManager has been deprecated',
+  'RCTScrollViewComponentView implements focusItemsInRect',
+  'Persistent storage is not supported on tvOS'
+]);
 
 const Logger = {
   log: (...args: any[]) => {

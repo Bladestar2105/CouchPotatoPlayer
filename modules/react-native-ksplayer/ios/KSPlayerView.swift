@@ -94,6 +94,10 @@ class KSPlayerView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .black
+
+        // Suppress noisy native logs from KSPlayer/FFmpegKit (like missing parsers or POC refs)
+        KSLog.logLevel = .off
+
         // Force KSMEPlayer (FFmpegKit) as the primary player type for TS/live streams
         // KSAVPlayer remains as fallback for HLS/MP4 via KSOptions.secondPlayerType
         KSOptions.firstPlayerType = KSMEPlayer.self
