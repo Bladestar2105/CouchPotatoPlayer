@@ -185,29 +185,27 @@ The application will be accessible on port `8080` (e.g., `http://localhost:8080`
 We are actively developing this player. Help on any of these items is welcome!
 
 ### Core API & Parsers
-* `[ ]` **Implement Xtream Codes API:**
+* `[x]` **Implement Xtream Codes API:**
     * Add "Xtream Codes" as a profile type in the `PlaylistManager`.
     * Create a service (`xtreamService.ts`) to handle the login (Server, User, Pass).
     * Fetch and parse categories (Live, VOD, Series) from the Xtream API.
     * Fetch and parse the stream lists for each category.
-* `[ ]` **Implement Stalker Portal API:**
-    * Add "Stalker (MAC)" as a profile type.
-    * Create a service (`stalkerService.ts`) to handle portal login (Portal URL, MAC Address).
-    * Parse the Stalker JSON-RPC responses for channels.
-* `[ ]` **Implement EPG Parser:**
+* `[x]` **Implement Stalker Portal API:**
+    * Stalker portal support has been explicitly removed. The application exclusively supports Xtream Codes and M3U playlists.
+* `[x]` **Implement EPG Parser:**
     * Fetch the `epg_url` provided by the M3U or Xtream API.
     * Parse the `XMLTV` data using `fast-xml-parser` (already in package.json).
     * Store and display EPG data (current/next program) for channels.
-* `[ ]` **Video Player Consolidation:**
+* `[x]` **Video Player Consolidation:**
     * Standardize the video playback architecture. Evaluate `expo-video`, `react-native-video`, and `react-native-vlc-media-player` to determine the single best dependency for broad codec and streaming protocol support.
 
 ### UI / UX
-* `[ ]` **Implement Tabbed Navigation:** On the `HomeScreen`, replace the single `ChannelList` with a Tab Navigator to show:
+* `[x]` **Implement Tabbed Navigation:** On the `HomeScreen`, replace the single `ChannelList` with a Tab Navigator to show:
     * "Live TV" (`ChannelList`)
     * "Movies" (`MovieList`)
     * "Series" (`SeriesList`)
-* `[ ]` **Create `MovieList` / `SeriesList`:** Create new components to display the lists of movies and series from the context.
-* `[ ]` **Profile Editing:** Add an "Edit" button next to "Delete" in the `PlaylistManager`.
+* `[x]` **Create `MovieList` / `SeriesList`:** Create new components to display the lists of movies and series from the context.
+* `[x]` **Profile Editing:** Add an "Edit" button next to "Delete" in the `PlaylistManager`.
 
 ---
 
