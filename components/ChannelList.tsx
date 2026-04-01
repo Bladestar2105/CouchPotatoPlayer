@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
