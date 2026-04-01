@@ -95,7 +95,13 @@ const MediaInfoScreen = () => {
         {/* Modern Hero Backdrop */}
         <ImageBackground source={{ uri: backdrop }} style={styles.heroBackdrop}>
           <View style={[styles.heroOverlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => navigation.goBack()}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              accessibilityHint="Navigates back to the previous screen"
+            >
               <ArrowLeft color="#FFF" size={24} />
             </TouchableOpacity>
 
