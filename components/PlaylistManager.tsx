@@ -62,7 +62,7 @@ const PlaylistManager = () => {
         return;
       }
       profileData = {
-        id: editingProfile?.id || Date.now().toString(),
+        id: editingProfile?.id || ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString()),
         name, type: 'm3u', url: trimmedUrl,
       };
     } else if (profileType === 'xtream') {
@@ -76,7 +76,7 @@ const PlaylistManager = () => {
         return;
       }
       profileData = {
-        id: editingProfile?.id || Date.now().toString(),
+        id: editingProfile?.id || ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString()),
         name, type: 'xtream', url: trimmedServerUrl, username, password,
       };
     } else {

@@ -48,7 +48,7 @@ const WelcomeScreen = () => {
       let newProfile: any;
       if (type === 'm3u') {
         newProfile = {
-          id: Date.now().toString(),
+          id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(),
           name,
           type: 'm3u',
           url: trimmedServerUrl,
@@ -57,7 +57,7 @@ const WelcomeScreen = () => {
         };
       } else {
         newProfile = {
-          id: Date.now().toString(),
+          id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(),
           name,
           type: 'xtream',
           url: trimmedServerUrl,
