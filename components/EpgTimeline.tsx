@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, 
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTV } from '../context/IPTVContext';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 const PIXELS_PER_MINUTE = Platform.isTV ? 8 : 4; // Stretch timeline for TV
 const HOUR_WIDTH = PIXELS_PER_MINUTE * 60;
@@ -56,7 +57,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
            prevProps.width === nextProps.width;
 });
 
-const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus }: any) => {
+const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus, hasCatchup }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
     // recalculating boundaries, offsets, and time comparisons on every render.
     const programLayoutData = useMemo(() => {
@@ -114,12 +115,20 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                    else addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
                 }}
             >
-                <Image
-                    source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : require('../assets/icon.png')}
-                    style={styles.channelLogo}
-                    resizeMode="contain"
-                    defaultSource={require('../assets/icon.png')}
-                />
+                <View style={styles.logoContainer}>
+                    <Image
+                        source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : require('../assets/icon.png')}
+                        style={styles.channelLogo}
+                        resizeMode="contain"
+                        defaultSource={require('../assets/icon.png')}
+                    />
+                    {/* Catchup badge */}
+                    {hasCatchup && hasCatchup(channel) && (
+                        <View style={styles.catchupBadge}>
+                            <Icon name="history" size={10} color="#FFF" />
+                        </View>
+                    )}
+                </View>
               <Text style={[styles.channelName, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{channel.name}</Text>
             </TouchableOpacity>
 
@@ -276,6 +285,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                             now={now}
                             PIXELS_PER_MINUTE={PIXELS_PER_MINUTE}
                             hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
+                            hasCatchup={hasCatchup}
                         />
                     );
                  }}
@@ -357,6 +367,20 @@ const styles = StyleSheet.create({
     height: Platform.isTV ? 32 : 24,
     marginBottom: 4,
     borderRadius: 6,
+  },
+  logoContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catchupBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: -4,
+    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+    borderRadius: 4,
+    padding: 2,
+    zIndex: 10,
   },
   channelName: {
     color: '#FAFAFA',

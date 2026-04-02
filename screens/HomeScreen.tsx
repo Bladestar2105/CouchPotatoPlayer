@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../context/SettingsContext';
@@ -30,10 +30,18 @@ const MainLayout = () => {
   const { channels, movies, series, isLoading, profiles, currentProfile, loadProfile } = useIPTV();
   const dimensions = useWindowDimensions();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
   const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search'>('channels');
   const [heroContent, setHeroContent] = useState<any>(null);
+  
+  // Handle return parameters from Player
+  useEffect(() => {
+    if (route.params?.returnTab) {
+      setActiveTab(route.params.returnTab);
+    }
+  }, [route.params?.returnTab]);
 
   useEffect(() => {
     const fetchHero = async () => {
@@ -59,8 +67,8 @@ const MainLayout = () => {
   // Sidebar is expanded by default when active (TiviMate style)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isSidebarFocused, setIsSidebarFocused] = useState(true); // Track if sidebar has focus
-  const collapsedWidth = Platform.isTV ? 100 : 80;
-  const expandedWidth = Platform.isTV ? 350 : 250;
+  const collapsedWidth = Platform.isTV ? 80 : 60;
+  const expandedWidth = Platform.isTV ? 200 : 160;
   const sidebarWidth = React.useRef(new Animated.Value(expandedWidth)).current;
 
   // Ref for content component to focus first item
@@ -328,7 +336,7 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
     >
       <Icon 
         name={icon} 
-        size={Platform.isTV ? 36 : 22} 
+        size={Platform.isTV ? 24 : 18} 
         color={isActive ? '#3B82F6' : (isFocused ? '#FAFAFA' : '#71717A')} 
         style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} 
       />
@@ -337,7 +345,7 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
           style={{ 
             color: isActive ? '#3B82F6' : (isFocused ? '#FAFAFA' : '#A1A1AA'), 
             fontWeight: isActive || isFocused ? '600' : '400', 
-            fontSize: Platform.isTV ? 22 : 15,
+            fontSize: Platform.isTV ? 16 : 13,
             letterSpacing: 0.2,
           }} 
           numberOfLines={1}
@@ -500,11 +508,11 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    marginHorizontal: 10,
-    marginBottom: 6,
+    paddingVertical: Platform.isTV ? 10 : 8,
+    paddingHorizontal: Platform.isTV ? 14 : 12,
+    borderRadius: 10,
+    marginHorizontal: 6,
+    marginBottom: 4,
   },
   menuIcon: {
     marginRight: 14,

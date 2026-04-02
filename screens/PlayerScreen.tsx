@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVFocusGuideView } from 'react-native';
 // @ts-ignore - TVEventControl is available in react-native-tvos but not in standard React Native types
 import { TVEventControl, useTVEventHandler } from 'react-native';
 
 import VideoPlayer, { VideoMetadata } from '../components/VideoPlayer';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 
 // Dynamically require expo-screen-orientation only if not on a TV
 let ScreenOrientation: any;
@@ -41,7 +41,20 @@ const PlayerScreen = () => {
   const { t } = useTranslation();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { currentStream, addRecentlyWatched, channels, epg, stopStream, playStream } = useIPTV();
+
+  // Get return parameters from navigation
+  const returnGroupId = route.params?.returnGroupId;
+  const returnScreen = route.params?.returnScreen || 'Home';
+  const returnTab = route.params?.returnTab || 'channels';
+  const focusChannelId = route.params?.focusChannelId;
+
+  // Store the previous navigation state for returning
+  const lastNavigationState = useRef<{ groupId: string | null; channelId: string | null }>({
+    groupId: returnGroupId || null,
+    channelId: focusChannelId || currentStream?.id || null,
+  });
 
   // TiviMate-style info overlay state
   const [showOverlay, setShowOverlay] = useState(false);
@@ -54,12 +67,11 @@ const PlayerScreen = () => {
   const currentTimeRef = React.useRef(0);
 
   /**
-   * Handle back navigation - navigates to Home screen instead of exiting app
+   * Handle back navigation - navigates back to the previous screen
    * This is the core of the tvOS menu button handling.
    * 
-   * IMPORTANT: We use navigation.navigate('Home') instead of navigation.goBack()
-   * because the Player screen might be the only screen in the stack (e.g., when
-   * launched via deep link), and goBack() would exit the app in that case.
+   * IMPORTANT: We use navigation.goBack() for proper stack navigation
+   * to return to the previous screen (channel list, movie list, etc.)
    */
   const [isExiting, setIsExiting] = useState(false);
 
@@ -67,29 +79,23 @@ const PlayerScreen = () => {
   const infoButtonRef = React.useRef<any>(null);
 
   const handleBack = useCallback(() => {
-    // Apple TV Menu button shouldn't close the app from PlayerScreen.
-    // Explicitly navigating to "Home" instead of relying on "goBack()"
-    // prevents the app from unexpectedly exiting on tvOS when the stack is empty or confused.
-
-    // 1. Navigation SOFORT auslösen (optimistisch)
+    // Stop the stream first
+    stopStream();
+    
+    // Navigate back with return state
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      navigation.navigate('Home', { focusChannelId: currentStream?.id });
+      // Navigate to Home with parameters to restore state
+      navigation.navigate('Home', {
+        focusChannelId: lastNavigationState.current.channelId,
+        returnGroupId: lastNavigationState.current.groupId,
+        returnTab: returnTab,
+      });
     }
 
-    // 2. Player asynchron und sauber stoppen
-    //    (Nach goBack läuft der Component noch kurz weiter)
-    requestAnimationFrame(() => {
-      try {
-        stopStream();
-      } catch (e) {
-        console.warn('Player cleanup error:', e);
-      }
-    });
-
     return true; // Return true to indicate we handled the back event
-  }, [navigation, stopStream]);
+  }, [navigation, stopStream, returnTab]);
 
   // Außerdem im useEffect-Cleanup:
   useEffect(() => {
@@ -335,8 +341,22 @@ const PlayerScreen = () => {
 
       {showOverlay && (
         <View style={{ position: 'absolute', top: 20, right: 80, zIndex: 30 }}>
-          <TouchableOpacity ref={infoButtonRef} onPress={() => setShowStreamHealth(!showStreamHealth)} accessible={true} isTVSelectable={true} hasTVPreferredFocus={false} tvParallaxProperties={{ enabled: false }}>
-            <Icon name="info-outline" size={32} color={showStreamHealth ? '#4CD964' : '#FFF'} />
+          <TouchableOpacity 
+            ref={infoButtonRef} 
+            onPress={() => setShowStreamHealth(!showStreamHealth)} 
+            accessible={true} 
+            accessibilityRole="button"
+            accessibilityLabel="Stream Info"
+            isTVSelectable={true} 
+            hasTVPreferredFocus={Platform.isTV ? true : false}
+            tvParallaxProperties={{ enabled: false }}
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              padding: 12,
+              borderRadius: 20,
+            }}
+          >
+            <Icon name="info-outline" size={28} color={showStreamHealth ? '#4CD964' : '#FFF'} />
           </TouchableOpacity>
         </View>
       )}
@@ -369,7 +389,9 @@ const PlayerScreen = () => {
               onPress={handleBack}
               accessibilityRole="button"
               accessibilityLabel={t('back')}
-              hasTVPreferredFocus={false}
+              isTVSelectable={true}
+              hasTVPreferredFocus={Platform.isTV ? true : false}
+              tvParallaxProperties={{ enabled: false }}
             >
               <Icon name="arrow-back" size={28} color="#FFF" />
             </TouchableOpacity>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, BackHandler } from 'react-native';
+import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { Season, Episode } from '../types';
@@ -13,12 +13,28 @@ type SeasonScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Seaso
 const SeasonScreen = () => {
   const route = useRoute<SeasonScreenRouteProp>();
   const navigation = useNavigation<SeasonScreenNavigationProp>();
+  const isFocused = useIsFocused();
   const { getSeriesInfo, currentProfile } = useIPTV();
   const { colors } = useSettings();
 
-  const { series } = route.params;
+  const { series, returnGroupId, returnTab } = route.params as any;
   const [seasons, setSeasons] = useState<Season[]>(series.seasons || []);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Handle back button to navigate properly instead of closing app
+  useEffect(() => {
+    if (!isFocused) return;
+    
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [isFocused, navigation]);
 
   useEffect(() => {
     const fetchSeriesData = async () => {
@@ -58,7 +74,7 @@ const SeasonScreen = () => {
   }, [series.id]);
 
   const handleSeasonPress = (season: Season) => {
-    navigation.navigate('Episode', { season: season });
+    navigation.navigate('Episode', { season: season, returnGroupId, returnTab });
   };
 
   const renderItem = ({ item }: { item: Season }) => (

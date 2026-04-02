@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Switch, Alert, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
 let ActionSheetIOS: any;
@@ -18,7 +18,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Monitor, Palette } from 'lucide-react-native';
 import { themeOptions } from '../utils/theme';
-// Removed synchronous Paths/Directory/File imports — using async FileSystem API instead
 
 const SettingsScreen = () => {
   const { t } = useTranslation();
@@ -54,7 +53,6 @@ const SettingsScreen = () => {
 
   const handleManualUpdate = async () => {
     if (currentProfile) {
-      // Pass forceUpdate=true to bypass cache
       loadProfile(currentProfile, true);
     }
   };
@@ -75,9 +73,6 @@ const SettingsScreen = () => {
                 if (cacheKeys.length > 0) {
                    await AsyncStorage.multiRemove(cacheKeys);
                 }
-
-                // ⚡ Perf: Use asynchronous file system operations to avoid
-                // blocking the JS thread and causing UI stuttering.
                 if (Platform.OS !== 'web') {
                    const cacheDirUri = Platform.isTV
                      ? FileSystem.cacheDirectory
@@ -235,366 +230,287 @@ const SettingsScreen = () => {
         'secure-text'
       );
     } else {
-       // Fallback for Android/Web where Alert.prompt is unsupported
        navigation.navigate('PinSetup');
     }
   };
 
+  // Render sections as FlatList data for better performance on TV
+  const renderSectionHeader = (title: string) => (
+    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
+  );
+
+  const renderProviderItem = ({ item }: { item: typeof profiles[0] }) => {
+    const isCurrent = item.id === currentProfile?.id;
+    return (
+      <TouchableOpacity
+        style={[styles.tile, { backgroundColor: colors.card, borderColor: isCurrent ? colors.primary : colors.divider, borderWidth: isCurrent ? 2 : 1 }]}
+        onPress={() => loadProfile(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`Profile ${item.name}`}
+      >
+        <View style={styles.tileLeft}>
+          <Text style={[styles.tileTitle, { color: isCurrent ? colors.primary : colors.text, fontWeight: isCurrent ? 'bold' : 'normal' }]}>{item.name}</Text>
+          <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>{(item.type === 'm3u' || item.type === 'xtream') ? item.url : ''}</Text>
+          {item.providerInfo && (
+            <View style={{ marginTop: 4 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
+                {t('channelsCount')}: {item.providerInfo.channelsCount ?? '-'}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.tileRight}>
+          {!isCurrent && (
+            <TouchableOpacity onPress={() => loadProfile(item)} style={styles.iconButton}>
+              <Text style={{ color: colors.primary, fontSize: 13 }}>Load</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => handleDeleteProfile(item.id)} style={styles.iconButton}>
+            <Text style={{ color: colors.error, fontSize: 13 }}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Providers</Text>
-        {profiles.map(p => {
-          const isCurrent = p.id === currentProfile?.id;
-          return (
-            <View key={p.id} style={[styles.tile, { backgroundColor: colors.card, borderColor: isCurrent ? colors.primary : colors.divider, borderWidth: isCurrent ? 2 : 1 }]}>
-              <View style={styles.tileLeft}>
-                <Text style={[styles.tileTitle, { color: isCurrent ? colors.primary : colors.text, fontWeight: isCurrent ? 'bold' : 'normal' }]}>{p.name}</Text>
-                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{(p.type === 'm3u' || p.type === 'xtream') ? p.url : ''}</Text>
+    <FlatList
+      style={[styles.container, { backgroundColor: colors.background }]}
+      data={profiles}
+      keyExtractor={(item) => item.id}
+      renderItem={renderProviderItem}
+      ListHeaderComponent={
+        <View style={styles.section}>
+          {renderSectionHeader('Providers')}
+        </View>
+      }
+      ListFooterComponent={
+        <View style={styles.section}>
+          {renderSectionHeader('General')}
 
-                {p.providerInfo && (
-                  <View style={{ marginTop: 8 }}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      {t('channelsCount')}: {p.providerInfo.channelsCount ?? '-'}
-                    </Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      {t('moviesCount')}: {p.providerInfo.moviesCount ?? '-'}
-                    </Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      {t('seriesCount')}: {p.providerInfo.seriesCount ?? '-'}
-                    </Text>
-                    {p.type === 'xtream' && (
-                      <>
-                        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                          {t('connections')}: {p.providerInfo.activeConnections ?? '-'} / {p.providerInfo.maxConnections ?? '-'}
-                        </Text>
-                        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                          {t('expiryDate')}: {p.providerInfo.expiryDate ? new Date(Number(p.providerInfo.expiryDate) * 1000).toLocaleDateString() : '-'}
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                )}
-              </View>
-              <View style={styles.tileRight}>
-                {!isCurrent && (
-                  <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={`Load profile ${p.name}`}>
-                    <Text style={{ color: colors.primary }}>Load</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={`Delete profile ${p.name}`}>
-                  <Text style={{ color: colors.error }}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        })}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>General</Text>
-
-        {/* PIN Setup */}
-        <TouchableOpacity
-          style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-          onPress={() => navigation.navigate('PinSetup')}
-        >
-          <View style={styles.tileLeft}>
-            <Text style={[styles.tileTitle, { color: colors.text }]}>Parental Control PIN</Text>
-            <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-              {pin ? 'PIN is set' : 'No PIN set'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Video Player Engine */}
-        {/* On tvOS, VLC is the recommended default (plays all IPTV formats).
-            AVKit only supports HLS & MP4. KSPlayer uses FFmpeg for full format support. */}
-        {Platform.isTV ? (
+          {/* PIN Setup */}
           <TouchableOpacity
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => {
-              const options: PlayerType[] = ['vlc', 'ksplayer', 'avkit'];
-              const nextIndex = (options.indexOf(playerType) + 1) % options.length;
-              setPlayerType(options[nextIndex]);
-            }}
+            onPress={() => navigation.navigate('PinSetup')}
           >
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary, fontSize: 10, marginTop: 2 }]}>
-                {playerType === 'vlc' ? 'Recommended — plays all IPTV streams' :
-                 playerType === 'ksplayer' ? 'FFmpeg-based — plays all formats' :
-                 'HLS & MP4 only — TS streams auto-fallback to VLC'}
-              </Text>
-            </View>
-            <Text style={{ color: colors.primary }}>Toggle</Text>
-          </TouchableOpacity>
-        ) : Platform.OS === 'ios' ? (
-          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetPlayerType}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
-            </View>
-            <Text style={{ color: colors.primary }}>Edit</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
-            </View>
-            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
-              <Picker selectedValue={playerType} onValueChange={(val: PlayerType) => setPlayerType(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
-                <Picker.Item label={getNativePlayerName()} value="native" />
-                <Picker.Item label="VLC" value="vlc" />
-              </Picker>
-            </View>
-          </View>
-        )}
-
-        {/* Hardware Acceleration — shown when VLC is selected (including tvOS) */}
-        {(playerType === 'vlc') && (
-          <TouchableOpacity
-            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => setVlcHardwareAcceleration(!vlcHardwareAcceleration)}
-            disabled={!Platform.isTV}
-          >
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('hardwareAcceleration', 'Hardware Acceleration')}</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Parental Control PIN</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-                Improve performance on supported devices
+                {pin ? 'PIN is set' : 'No PIN set'}
               </Text>
             </View>
-            <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+          </TouchableOpacity>
+
+          {/* Video Player Engine */}
+          {Platform.isTV ? (
+            <TouchableOpacity
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+              onPress={() => {
+                const options: PlayerType[] = ['vlc', 'ksplayer', 'avkit'];
+                const nextIndex = (options.indexOf(playerType) + 1) % options.length;
+                setPlayerType(options[nextIndex]);
+              }}
+            >
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
+              </View>
+              <Text style={{ color: colors.primary, fontSize: 13 }}>Toggle</Text>
+            </TouchableOpacity>
+          ) : Platform.OS === 'ios' ? (
+            <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetPlayerType}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
+              </View>
+              <Text style={{ color: colors.primary, fontSize: 13 }}>Edit</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
+              </View>
+              <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+                <Picker selectedValue={playerType} onValueChange={(val: PlayerType) => setPlayerType(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
+                  <Picker.Item label={getNativePlayerName()} value="native" />
+                  <Picker.Item label="VLC" value="vlc" />
+                </Picker>
+              </View>
+            </View>
+          )}
+
+          {/* Hardware Acceleration */}
+          {(playerType === 'vlc') && (
+            <TouchableOpacity
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+              onPress={() => setVlcHardwareAcceleration(!vlcHardwareAcceleration)}
+            >
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('hardwareAcceleration', 'Hardware Acceleration')}</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>Improve performance</Text>
+              </View>
               <Switch
                 value={vlcHardwareAcceleration}
-                onValueChange={(val) => setVlcHardwareAcceleration(val)}
+                onValueChange={setVlcHardwareAcceleration}
                 trackColor={{ false: colors.divider, true: colors.primary }}
                 thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
               />
-            </View>
-          </TouchableOpacity>
-        )}
+            </TouchableOpacity>
+          )}
 
-        {/* KSPlayer specific settings */}
-        {(playerType === 'ksplayer') && (
-          <>
-            <TouchableOpacity
-              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-              onPress={() => setKsplayerHardwareDecode(!ksplayerHardwareDecode)}
-              disabled={!Platform.isTV}
-            >
-              <View style={styles.tileLeft}>
-                <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Decoding</Text>
-                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-                  VideoToolbox decoding (H.264/H.265)
-                </Text>
-              </View>
-              <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+          {/* KSPlayer Settings */}
+          {(playerType === 'ksplayer') && (
+            <>
+              <TouchableOpacity
+                style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+                onPress={() => setKsplayerHardwareDecode(!ksplayerHardwareDecode)}
+              >
+                <View style={styles.tileLeft}>
+                  <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Decoding</Text>
+                  <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>VideoToolbox (H.264/H.265)</Text>
+                </View>
                 <Switch
                   value={ksplayerHardwareDecode}
-                  onValueChange={(val) => setKsplayerHardwareDecode(val)}
+                  onValueChange={setKsplayerHardwareDecode}
                   trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
                 />
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-              onPress={() => setKsplayerAsynchronousDecompression(!ksplayerAsynchronousDecompression)}
-              disabled={!Platform.isTV}
-            >
-              <View style={styles.tileLeft}>
-                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('asyncDecompression', 'Asynchronous Decompression')}</Text>
-                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-                  Improve performance for high-bitrate streams
-                </Text>
-              </View>
-              <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+                onPress={() => setKsplayerAsynchronousDecompression(!ksplayerAsynchronousDecompression)}
+              >
+                <View style={styles.tileLeft}>
+                  <Text style={[styles.tileTitle, { color: colors.text }]}>{t('asyncDecompression', 'Async Decompression')}</Text>
+                  <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>High-bitrate performance</Text>
+                </View>
                 <Switch
                   value={ksplayerAsynchronousDecompression}
-                  onValueChange={(val) => setKsplayerAsynchronousDecompression(val)}
+                  onValueChange={setKsplayerAsynchronousDecompression}
                   trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
                 />
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-              onPress={() => setKsplayerDisplayFrameRate(!ksplayerDisplayFrameRate)}
-              disabled={!Platform.isTV}
-            >
-              <View style={styles.tileLeft}>
-                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('adaptiveFrameRate', 'Adaptive Frame Rate')}</Text>
-                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-                  Automatically adjust display frame rate
-                </Text>
-              </View>
-              <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+                onPress={() => setKsplayerDisplayFrameRate(!ksplayerDisplayFrameRate)}
+              >
+                <View style={styles.tileLeft}>
+                  <Text style={[styles.tileTitle, { color: colors.text }]}>{t('adaptiveFrameRate', 'Adaptive Frame Rate')}</Text>
+                  <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>Auto-adjust display</Text>
+                </View>
                 <Switch
                   value={ksplayerDisplayFrameRate}
-                  onValueChange={(val) => setKsplayerDisplayFrameRate(val)}
+                  onValueChange={setKsplayerDisplayFrameRate}
                   trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
                 />
-              </View>
-            </TouchableOpacity>
-          </>
-        )}
+              </TouchableOpacity>
+            </>
+          )}
 
-        {/* Modern Theme Switcher */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.primary }]}>
-            <Palette size={18} color={colors.primary} /> {t('appearance', 'Appearance')}
-          </Text>
-          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.divider }]} onPress={handleThemeChange}>
+          {/* Theme */}
+          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleThemeChange}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              {themeMode === 'light' ? <Sun color={colors.text} size={20} /> : themeMode === 'dark' ? <Moon color={colors.text} size={20} /> : <Monitor color={colors.text} size={20} />}
+              {themeMode === 'light' ? <Sun color={colors.text} size={18} /> : themeMode === 'dark' ? <Moon color={colors.text} size={18} /> : <Monitor color={colors.text} size={18} />}
               <Text style={[styles.tileTitle, { color: colors.text }]}>{t('theme', 'Theme')}: {themeMode.toUpperCase()}</Text>
             </View>
           </TouchableOpacity>
-        </View>
 
-        {/* Buffer Size */}
-        {Platform.OS === 'ios' && !Platform.isTV ? (
-          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetBuffer}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+          {/* Buffer Size */}
+          {Platform.isTV ? (
+            <TouchableOpacity
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+              onPress={() => {
+                const sizes = [8, 16, 32, 64, 128];
+                const nextIndex = (sizes.indexOf(bufferSize) + 1) % sizes.length;
+                setBufferSize(sizes[nextIndex]);
+              }}
+            >
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>Buffer Size</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+              </View>
+              <Text style={{ color: colors.primary, fontSize: 13 }}>Toggle</Text>
+            </TouchableOpacity>
+          ) : Platform.OS === 'ios' ? (
+            <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetBuffer}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>Buffer Size</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+              </View>
+              <Text style={{ color: colors.primary, fontSize: 13 }}>Edit</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>Buffer Size</Text>
+                <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+              </View>
+              <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+                <Picker selectedValue={bufferSize} onValueChange={(val: number) => setBufferSize(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
+                  <Picker.Item label="8 MB" value={8} />
+                  <Picker.Item label="16 MB" value={16} />
+                  <Picker.Item label="32 MB" value={32} />
+                  <Picker.Item label="64 MB" value={64} />
+                  <Picker.Item label="128 MB" value={128} />
+                </Picker>
+              </View>
             </View>
-            <Text style={{ color: colors.primary }}>Edit</Text>
-          </TouchableOpacity>
-        ) : Platform.isTV ? (
+          )}
+
+          {/* Update Playlist */}
           <TouchableOpacity
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => {
-              const sizes = [8, 16, 32, 64, 128];
-              const nextIndex = (sizes.indexOf(bufferSize) + 1) % sizes.length;
-              setBufferSize(sizes[nextIndex]);
-            }}
+            onPress={handleManualUpdate}
           >
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('settings.updatePlaylist')}</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>Force refresh</Text>
             </View>
-            <Text style={{ color: colors.primary }}>Toggle</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Streaming Buffer Size</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{bufferSize} MB</Text>
-            </View>
-            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
-              <Picker selectedValue={bufferSize} onValueChange={(val: number) => setBufferSize(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
-                <Picker.Item label="8 MB" value={8} />
-                <Picker.Item label="16 MB" value={16} />
-                <Picker.Item label="32 MB" value={32} />
-                <Picker.Item label="64 MB" value={64} />
-                <Picker.Item label="128 MB" value={128} />
-              </Picker>
-            </View>
-          </View>
-        )}
 
-        {/* Update Playlist/EPG Manually */}
-        <TouchableOpacity
-          style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-          onPress={handleManualUpdate}
-        >
-          <View style={styles.tileLeft}>
-            <Text style={[styles.tileTitle, { color: colors.text }]}>{t('settings.updatePlaylist')}</Text>
-            <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-              Force a fresh download of channels and TV guide
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Update Interval */}
-        {Platform.OS === 'ios' && !Platform.isTV ? (
-          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetUpdateInterval}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
-            </View>
-            <Text style={{ color: colors.primary }}>Edit</Text>
-          </TouchableOpacity>
-        ) : Platform.isTV ? (
+          {/* Clear Cache */}
           <TouchableOpacity
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => {
-              const intervals = [12, 24, 48];
-              const nextIndex = (intervals.indexOf(updateInterval) + 1) % intervals.length;
-              handleSetUpdateInterval(intervals[nextIndex]);
-            }}
+            onPress={handleClearCache}
           >
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>Clear Cache</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>Force fresh data fetch</Text>
             </View>
-            <Text style={{ color: colors.primary }}>Toggle</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Update Interval</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{updateInterval} Hours</Text>
-            </View>
-            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
-              <Picker selectedValue={updateInterval} onValueChange={(val: number) => handleSetUpdateInterval(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
-                <Picker.Item label="12 Hours" value={12} />
-                <Picker.Item label="24 Hours" value={24} />
-                <Picker.Item label="48 Hours" value={48} />
-              </Picker>
-            </View>
-          </View>
-        )}
 
-        {/* Clear Cache */}
-        <TouchableOpacity
-          style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-          onPress={handleClearCache}
-        >
-          <View style={styles.tileLeft}>
-            <Text style={[styles.tileTitle, { color: colors.text }]}>Clear EPG & App Cache</Text>
-            <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
-              Forces a fresh data fetch on next load
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Show Adult Content */}
-        {pin && (
-          <TouchableOpacity
-            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => handleToggleAdultContent(!isAdultUnlocked)}
-            disabled={!Platform.isTV}
-          >
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Show Adult Content</Text>
-            </View>
-            <View pointerEvents={Platform.isTV ? 'none' : 'auto'}>
+          {/* Adult Content Toggle */}
+          {pin && (
+            <TouchableOpacity
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+              onPress={() => handleToggleAdultContent(!isAdultUnlocked)}
+            >
+              <View style={styles.tileLeft}>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>Show Adult Content</Text>
+              </View>
               <Switch
                 value={isAdultUnlocked}
                 onValueChange={handleToggleAdultContent}
                 trackColor={{ false: colors.divider, true: colors.primary }}
                 thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (isAdultUnlocked ? colors.primary : '#f4f3f4')}
               />
-            </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Logout */}
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider, marginTop: 16 }]}
+            onPress={handleLogout}
+          >
+            <Text style={[styles.tileTitle, { color: colors.error }]}>Logout / Clear Data</Text>
           </TouchableOpacity>
-        )}
-
-        {/* Logout */}
-        <TouchableOpacity
-          style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider, marginTop: 16 }]}
-          onPress={handleLogout}
-        >
-          <Text style={[styles.tileTitle, { color: colors.error }]}>Logout / Clear Data</Text>
-        </TouchableOpacity>
-
-      </View>
-    </ScrollView>
+        </View>
+      }
+      contentContainerStyle={{ paddingBottom: 40 }}
+    />
   );
 };
 
@@ -603,29 +519,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    padding: 20,
+    padding: 16,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 14,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 10,
     paddingLeft: 4,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   tile: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 18,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    marginBottom: 12,
-    // Modern shadow for depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 2,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
   },
   tileLeft: {
     flex: 1,
@@ -635,25 +545,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tileTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    letterSpacing: 0.2,
   },
   tileSubtitle: {
-    fontSize: 14,
-    marginTop: 6,
+    fontSize: 13,
+    marginTop: 4,
     opacity: 0.8,
   },
   iconButton: {
-    marginLeft: 16,
-    padding: 10,
-    borderRadius: 10,
+    marginLeft: 12,
+    padding: 8,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   pickerContainer: {
-    borderRadius: 12,
-    width: 150,
-    height: Platform.OS === 'ios' ? 50 : 50,
+    borderRadius: 10,
+    width: 140,
+    height: Platform.OS === 'ios' ? 44 : 44,
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.05)',
   },

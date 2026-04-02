@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, FlatList } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const WelcomeScreen = () => {
-  const { addProfile, loadProfile } = useIPTV();
+  const { addProfile, loadProfile, profiles, currentProfile } = useIPTV();
   const { colors } = useSettings();
+  const navigation = useNavigation<any>();
 
   const [type, setType] = useState<'xtream' | 'm3u'>('xtream');
   const [name, setName] = useState('');
@@ -17,10 +19,18 @@ const WelcomeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('dns');
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const predefinedIcons = [
     'tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business'
   ];
+
+  // If a profile is already loaded, navigate to Home
+  useEffect(() => {
+    if (currentProfile) {
+      navigation.replace('Home');
+    }
+  }, [currentProfile, navigation]);
 
   const handleLogin = async () => {
     const trimmedServerUrl = serverUrl.trim();
@@ -76,20 +86,94 @@ const WelcomeScreen = () => {
     }
   };
 
-  return (
+  const handleLoadProfile = async (profile: any) => {
+    setLoading(true);
+    try {
+      await loadProfile(profile);
+    } catch (e: any) {
+      setError('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderExistingProfiles = () => (
+    <View style={styles.profilesContainer}>
+      <Image
+        source={require('../assets/icon.png')}
+        style={styles.appLogo}
+        resizeMode="contain"
+      />
+      <Text style={[styles.title, { color: colors.text }]}>CouchPotatoPlayer</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Select a Provider</Text>
+
+      <FlatList
+        data={profiles}
+        keyExtractor={(item) => item.id}
+        style={{ width: '100%', maxHeight: 300 }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.profileTile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={() => handleLoadProfile(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Load ${item.name}`}
+          >
+            <View style={styles.profileIconContainer}>
+              <Icon name={(item.icon?.replace('_', '-') as any) || 'dns'} size={28} color={colors.primary} />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: colors.text }]}>{item.name}</Text>
+              <Text style={[styles.profileType, { color: colors.textSecondary }]}>
+                {item.type === 'xtream' ? 'Xtream Codes' : 'M3U Playlist'}
+              </Text>
+              {item.providerInfo && (
+                <Text style={[styles.profileChannels, { color: colors.textSecondary }]}>
+                  {item.providerInfo.channelsCount || 0} channels
+                </Text>
+              )}
+            </View>
+            <Icon name="chevron-right" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      />
+
+      <TouchableOpacity
+        style={[styles.addNewButton, { backgroundColor: colors.primary }]}
+        onPress={() => setShowAddForm(true)}
+      >
+        <Icon name="add" size={24} color="#FFF" />
+        <Text style={styles.addNewButtonText}>Add New Provider</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderAddForm = () => (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.card, { backgroundColor: colors.card }]}>
+          {profiles.length > 0 && (
+            <TouchableOpacity
+              style={styles.backToList}
+              onPress={() => setShowAddForm(false)}
+            >
+              <Icon name="arrow-back" size={24} color={colors.textSecondary} />
+              <Text style={[styles.backToListText, { color: colors.textSecondary }]}>Back to Providers</Text>
+            </TouchableOpacity>
+          )}
+
           <Image
             source={require('../assets/icon.png')}
             style={styles.appLogo}
             resizeMode="contain"
           />
           <Text style={[styles.title, { color: colors.text }]}>CouchPotatoPlayer</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Welcome</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            {profiles.length > 0 ? 'Add New Provider' : 'Welcome'}
+          </Text>
 
           {/* Type Selector */}
           <View style={[styles.typeSelector, { backgroundColor: colors.divider }]}>
@@ -201,13 +285,30 @@ const WelcomeScreen = () => {
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
+              <Text style={styles.loginButtonText}>Add Provider</Text>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
+
+  // If profiles exist and we're not showing the add form, show the profile list
+  if (profiles.length > 0 && !showAddForm) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        )}
+        {renderExistingProfiles()}
+      </View>
+    );
+  }
+
+  // Otherwise show the add form
+  return renderAddForm();
 };
 
 const styles = StyleSheet.create({
@@ -216,6 +317,12 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  profilesContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -327,6 +434,72 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.1)',
     backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  profileTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+    width: '100%',
+    maxWidth: 400,
+  },
+  profileIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  profileType: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  profileChannels: {
+    fontSize: 12,
+    marginTop: 2,
+    opacity: 0.7,
+  },
+  addNewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    marginTop: 20,
+    gap: 8,
+  },
+  addNewButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backToList: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
+  },
+  backToListText: {
+    fontSize: 15,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
   },
 });
 
