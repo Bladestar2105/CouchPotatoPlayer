@@ -95,7 +95,7 @@ const MediaInfoScreen = () => {
         {/* Modern Hero Backdrop */}
         <ImageBackground source={{ uri: backdrop }} style={styles.heroBackdrop}>
           <View style={[styles.heroOverlay, { backgroundColor: 'rgba(13,13,15,0.85)' }]}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate('Home'); }}>
+<TouchableOpacity style={styles.backBtn} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate(\'Home\'); }} accessibilityRole="button" accessibilityLabel="Go back">
               <ArrowLeft color="#FFF" size={24} />
             </TouchableOpacity>
 
@@ -141,12 +141,14 @@ const MediaInfoScreen = () => {
                   <TouchableOpacity
                     style={[styles.playBtn, { backgroundColor: colors.primary }]}
                     onPress={handlePlay}
+                    accessibilityRole="button"
+                    accessibilityLabel={type === 'series' ? 'Episodes' : 'Play'}
                   >
                     <Play color="#FFF" size={20} fill="#FFF" />
                     <Text style={styles.playText}>{type === 'series' ? 'Episodes' : 'Play'}</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.favBtn} onPress={toggleFavorite}>
+                  <TouchableOpacity style={styles.favBtn} onPress={toggleFavorite} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
                     {isFavorite ? <Heart color="#EF4444" size={24} fill="#EF4444" /> : <Heart color="#FAFAFA" size={24} />}
                   </TouchableOpacity>
                 </View>
