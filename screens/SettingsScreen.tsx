@@ -320,7 +320,7 @@ const SettingsScreen = () => {
             }}
           >
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary, fontSize: 10, marginTop: 2 }]}>
                 {playerType === 'vlc' ? 'Recommended — plays all IPTV streams' :
@@ -333,7 +333,7 @@ const SettingsScreen = () => {
         ) : Platform.OS === 'ios' ? (
           <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetPlayerType}>
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
             </View>
             <Text style={{ color: colors.primary }}>Edit</Text>
@@ -341,7 +341,7 @@ const SettingsScreen = () => {
         ) : (
           <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Video Player Engine</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('playerSettings', 'Video Player Engine')}</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{getPlayerTypeName(playerType)}</Text>
             </View>
             <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
@@ -361,7 +361,7 @@ const SettingsScreen = () => {
             disabled={!Platform.isTV}
           >
             <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Hardware Acceleration</Text>
+              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('hardwareAcceleration', 'Hardware Acceleration')}</Text>
               <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
                 Improve performance on supported devices
               </Text>
@@ -406,7 +406,7 @@ const SettingsScreen = () => {
               disabled={!Platform.isTV}
             >
               <View style={styles.tileLeft}>
-                <Text style={[styles.tileTitle, { color: colors.text }]}>Asynchronous Decompression</Text>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('asyncDecompression', 'Asynchronous Decompression')}</Text>
                 <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
                   Improve performance for high-bitrate streams
                 </Text>
@@ -426,7 +426,7 @@ const SettingsScreen = () => {
               disabled={!Platform.isTV}
             >
               <View style={styles.tileLeft}>
-                <Text style={[styles.tileTitle, { color: colors.text }]}>Adaptive Frame Rate</Text>
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('adaptiveFrameRate', 'Adaptive Frame Rate')}</Text>
                 <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>
                   Automatically adjust display frame rate
                 </Text>
@@ -455,46 +455,6 @@ const SettingsScreen = () => {
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* Theme Mode Original Fallback */}
-        {Platform.OS === 'ios' && !Platform.isTV ? (
-          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleActionSheetTheme}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode}</Text>
-            </View>
-            <Text style={{ color: colors.primary }}>Edit</Text>
-          </TouchableOpacity>
-        ) : Platform.isTV ? (
-          <TouchableOpacity
-            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => {
-              const themes: ThemeMode[] = ['dark', 'oled', 'light'];
-              const nextIndex = (themes.indexOf(themeMode) + 1) % themes.length;
-              setThemeMode(themes[nextIndex]);
-            }}
-          >
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode}</Text>
-            </View>
-            <Text style={{ color: colors.primary }}>Toggle</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-            <View style={styles.tileLeft}>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>Theme Mode</Text>
-              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode}</Text>
-            </View>
-            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
-              <Picker selectedValue={themeMode} onValueChange={(val: ThemeMode) => setThemeMode(val)} style={[styles.picker, { color: colors.text }]} dropdownIconColor={colors.text}>
-                <Picker.Item label="Dark" value="dark" />
-                <Picker.Item label="OLED Black" value="oled" />
-                <Picker.Item label="Light" value="light" />
-              </Picker>
-            </View>
-          </View>
-        )}
 
         {/* Buffer Size */}
         {Platform.OS === 'ios' && !Platform.isTV ? (
