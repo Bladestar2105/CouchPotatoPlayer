@@ -205,7 +205,16 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                         styles.posterContainer,
                         isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1 } : {}
                     ]}
-                    onPress={() => navigation.navigate('MediaInfo', { id: item.id, type: 'vod', title: item.name, cover: item.cover, streamUrl: item.streamUrl, returnGroupId: selectedGroup })}
+                    onPress={() => navigation.navigate('MediaInfo', { 
+                      id: item.id, 
+                      type: 'vod', 
+                      title: item.name, 
+                      cover: item.cover, 
+                      streamUrl: item.streamUrl, 
+                      returnGroupId: selectedGroup,
+                      returnScreen: 'Home',
+                      returnTab: 'movies',
+                    })}
                     onFocus={() => {
                       setFocusedMovieId(item.id);
                       setShouldFocusFirstItem(false);

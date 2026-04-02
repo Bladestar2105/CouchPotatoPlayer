@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, TouchableOpacity, useWindowDimensions, Platform, BackHandler } from 'react-native';
+import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
@@ -14,7 +14,8 @@ type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
 const MediaInfoScreen = () => {
   const route = useRoute<MediaInfoRouteProp>();
   const navigation = useNavigation<any>();
-  const { id, type, title, cover, streamUrl } = route.params;
+  const isFocused = useIsFocused();
+  const { id, type, title, cover, streamUrl, returnGroupId, returnTab } = route.params as any;
   const { getVodInfo, getSeriesInfo, playStream, series, favorites, addFavorite, removeFavorite } = useIPTV();
   const { colors } = useSettings();
   const dimensions = useWindowDimensions();
@@ -24,6 +25,21 @@ const MediaInfoScreen = () => {
   const [tmdbData, setTmdbData] = useState<any>(null);
 
   const isFavorite = favorites.some(f => f.id === id && f.type === type);
+
+  // Handle back button to navigate properly instead of closing app
+  useEffect(() => {
+    if (!isFocused) return;
+    
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [isFocused, navigation]);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false }); // Hide header for modern look
@@ -67,10 +83,14 @@ const MediaInfoScreen = () => {
         extension: info?.info?.container_extension,
         direct_source: streamUrl
       } as any);
-      navigation.navigate('Player');
+      navigation.navigate('Player', {
+        returnGroupId,
+        returnTab: returnTab || 'movies',
+        returnScreen: 'Home',
+      });
     } else if (type === 'series') {
       const seriesObj = series.find(s => s.id?.toString() === id?.toString()) || { id, name: title, cover, seasons: [], group: '' };
-      navigation.navigate('Season', { series: seriesObj });
+      navigation.navigate('Season', { series: seriesObj, returnGroupId, returnTab: returnTab || 'series' });
     }
   };
 

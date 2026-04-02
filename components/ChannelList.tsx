@@ -206,9 +206,12 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
       lastWatchedAt: Date.now(),
     });
     
+    // Navigate to Player with return info
     navigation.navigate('Player', {
       focusChannelId: channel.id,
       returnGroupId: selectedGroup,
+      returnScreen: 'Home',
+      returnTab: 'channels',
     });
   };
 

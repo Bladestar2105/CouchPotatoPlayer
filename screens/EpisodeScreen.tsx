@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, BackHandler } from 'react-native';
+import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { Episode } from '../types';
@@ -14,15 +14,35 @@ type EpisodeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Epis
 const EpisodeScreen = () => {
   const route = useRoute<EpisodeScreenRouteProp>();
   const navigation = useNavigation<EpisodeScreenNavigationProp>();
-  const { playStream } = useIPTV();
+  const isFocused = useIsFocused();
+  const { playStream, stopStream } = useIPTV();
   const { colors } = useSettings();
 
-  const { season } = route.params;
+  const { season, returnGroupId, returnTab } = route.params as any;
+
+  // Handle back button to navigate properly instead of closing app
+  useEffect(() => {
+    if (!isFocused) return;
+    
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [isFocused, navigation]);
 
   const handleEpisodePress = (episode: Episode) => {
     Logger.log('CLIC SUR ÉPISODE:', episode.name);
     playStream({ url: episode.streamUrl, id: episode.id });
-    navigation.navigate('Player');
+    navigation.navigate('Player', {
+      returnGroupId,
+      returnTab: returnTab || 'series',
+      returnScreen: 'Home',
+    });
   };
 
   const renderItem = ({ item }: { item: Episode }) => (

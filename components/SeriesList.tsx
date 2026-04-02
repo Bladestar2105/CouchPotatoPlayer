@@ -205,7 +205,15 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                         styles.posterContainer,
                         isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1 } : {}
                     ]}
-                    onPress={() => navigation.navigate('MediaInfo', { id: item.id, type: 'series', title: item.name, cover: item.cover, returnGroupId: selectedGroup })}
+                    onPress={() => navigation.navigate('MediaInfo', { 
+                      id: item.id, 
+                      type: 'series', 
+                      title: item.name, 
+                      cover: item.cover, 
+                      returnGroupId: selectedGroup,
+                      returnScreen: 'Home',
+                      returnTab: 'series',
+                    })}
                     onFocus={() => {
                       setFocusedSeriesId(item.id);
                       setShouldFocusFirstItem(false);
