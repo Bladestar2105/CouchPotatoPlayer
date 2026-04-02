@@ -3,12 +3,13 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const WelcomeScreen = () => {
   const { addProfile, loadProfile, profiles, currentProfile } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
   const [type, setType] = useState<'xtream' | 'm3u'>('xtream');
   const [name, setName] = useState('');
@@ -19,18 +20,19 @@ const WelcomeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('dns');
-  const [showAddForm, setShowAddForm] = useState(false);
+  // Show add form if: no profiles exist, or explicitly requested via route params
+  const [showAddForm, setShowAddForm] = useState(profiles.length === 0 || route.params?.showAddForm === true);
 
   const predefinedIcons = [
     'tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business'
   ];
 
-  // If a profile is already loaded, navigate to Home
+  // If a profile is already loaded and we're not in add mode, navigate to Home
   useEffect(() => {
-    if (currentProfile) {
+    if (currentProfile && !route.params?.showAddForm) {
       navigation.replace('Home');
     }
-  }, [currentProfile, navigation]);
+  }, [currentProfile, navigation, route.params?.showAddForm]);
 
   const handleLogin = async () => {
     const trimmedServerUrl = serverUrl.trim();
@@ -78,7 +80,14 @@ const WelcomeScreen = () => {
       }
 
       await addProfile(newProfile);
-      await loadProfile(newProfile);
+      
+      // If we're in add mode (already have a profile), go back to Home
+      // Otherwise load the new profile
+      if (route.params?.showAddForm && currentProfile) {
+        navigation.goBack();
+      } else {
+        await loadProfile(newProfile);
+      }
     } catch (e: any) {
       setError('Failed to add profile');
     } finally {
@@ -306,6 +315,15 @@ const WelcomeScreen = () => {
       </View>
     );
   }
+
+  // If we're in add mode and there are existing profiles, show back button
+  const handleBack = () => {
+    if (route.params?.showAddForm && profiles.length > 0) {
+      navigation.goBack();
+    } else if (profiles.length > 0) {
+      setShowAddForm(false);
+    }
+  };
 
   // Otherwise show the add form
   return renderAddForm();
