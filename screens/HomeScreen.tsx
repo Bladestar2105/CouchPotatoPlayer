@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, ImageBackground } from 'react-native';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useMemo } from 'react';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, FlatList, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { ScrollView } from 'react-native-gesture-handler';
 import { Star, Play, Settings, Search, Clock, Heart, MonitorPlay, Film } from 'lucide-react-native';
 
 import WelcomeScreen from './WelcomeScreen';
@@ -17,24 +16,85 @@ import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
 import SearchScreen from './SearchScreen';
-import { TMDBService } from '../services/tmdb';
+import { RecentlyWatchedItem } from '../types';
 
 // Export type for content component ref
 export type ContentRef = {
   focusFirstItem: () => void;
 };
 
+// Component for the "Last Watched Channels" bar
+const LastWatchedBar = ({ channels, onChannelPress }: { channels: RecentlyWatchedItem[], onChannelPress: (item: RecentlyWatchedItem) => void }) => {
+  const { colors } = useSettings();
+  
+  // Filter only live TV channels and limit to 10
+  const liveChannels = useMemo(() => 
+    channels.filter(item => item.type === 'live').slice(0, 10),
+    [channels]
+  );
+  
+  if (liveChannels.length === 0) return null;
+  
+  const formatTimeAgo = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    
+    if (minutes < 60) return `${minutes} Min.`;
+    if (hours < 24) return `${hours} Std.`;
+    return '';
+  };
+
+  const renderItem = ({ item, index }: { item: RecentlyWatchedItem, index: number }) => (
+    <TouchableOpacity
+      style={styles.lastWatchedItem}
+      onPress={() => onChannelPress(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`Play ${item.name}`}
+    >
+      <View style={styles.lastWatchedNumber}>
+        <Text style={styles.lastWatchedNumberText}>{index + 1}</Text>
+      </View>
+      {item.icon ? (
+        <Image source={{ uri: item.icon }} style={styles.lastWatchedLogo} resizeMode="contain" />
+      ) : (
+        <View style={styles.lastWatchedLogoPlaceholder}>
+          <Icon name="tv" size={20} color="#71717A" />
+        </View>
+      )}
+      <View style={styles.lastWatchedInfo}>
+        <Text style={styles.lastWatchedName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.lastWatchedTime}>{formatTimeAgo(item.lastWatchedAt)}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.lastWatchedContainer}>
+      <Text style={styles.lastWatchedTitle}>ZULETZT GESEHEN</Text>
+      <FlatList
+        horizontal
+        data={liveChannels}
+        keyExtractor={(item, index) => `last-${item.id}-${index}`}
+        renderItem={renderItem}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.lastWatchedList}
+      />
+    </View>
+  );
+};
+
 const MainLayout = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
-  const { channels, movies, series, isLoading, profiles, currentProfile, loadProfile } = useIPTV();
+  const { channels, movies, series, isLoading, profiles, currentProfile, loadProfile, recentlyWatched, playStream, addRecentlyWatched } = useIPTV();
   const dimensions = useWindowDimensions();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 
   const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search'>('channels');
-  const [heroContent, setHeroContent] = useState<any>(null);
   
   // Handle return parameters from Player
   useEffect(() => {
@@ -43,32 +103,11 @@ const MainLayout = () => {
     }
   }, [route.params?.returnTab]);
 
-  useEffect(() => {
-    const fetchHero = async () => {
-      const tmdb = new TMDBService({ apiKey: 'YOUR_API_KEY_HERE' });
-      if ((tmdb as any).apiKey !== 'YOUR_API_KEY_HERE' && tmdb.isAvailable()) {
-        const trending = await tmdb.getTrending('all', 'week');
-        if (trending && trending.length > 0) {
-          setHeroContent(trending[0]);
-        }
-      } else {
-        setHeroContent({
-          title: "Trending Today",
-          overview: "Discover the latest movies and series added to the catalog. Explore our vast collection of live TV, movies, and series.",
-          backdropUrl: 'https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2070&auto=format&fit=crop',
-          rating: 8.5
-        });
-      }
-    };
-    fetchHero();
-  }, []);
-
   // Animation values for the sidebar expansion
-  // Sidebar is expanded by default when active (TiviMate style)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
-  const [isSidebarFocused, setIsSidebarFocused] = useState(true); // Track if sidebar has focus
-  const collapsedWidth = Platform.isTV ? 80 : 60;
-  const expandedWidth = Platform.isTV ? 200 : 160;
+  const [isSidebarFocused, setIsSidebarFocused] = useState(true);
+  const collapsedWidth = Platform.isTV ? 70 : 50;
+  const expandedWidth = Platform.isTV ? 160 : 130;
   const sidebarWidth = React.useRef(new Animated.Value(expandedWidth)).current;
 
   // Ref for content component to focus first item
@@ -100,12 +139,10 @@ const MainLayout = () => {
 
   const handleTabPress = (tab: any) => {
     setActiveTab(tab);
-    // Collapse menu when a tab is selected (TiviMate behavior)
     setIsSidebarExpanded(false);
     setIsSidebarFocused(false);
     sidebarFocusCountRef.current = 0;
     
-    // Focus first item in content after a short delay
     setTimeout(() => {
       contentRef.current?.focusFirstItem();
     }, 100);
@@ -117,7 +154,6 @@ const MainLayout = () => {
       clearTimeout(sidebarTimeoutRef.current);
       sidebarTimeoutRef.current = null;
     }
-    // Expand sidebar when it gains focus (TiviMate style)
     setIsSidebarExpanded(true);
     setIsSidebarFocused(true);
   };
@@ -127,7 +163,6 @@ const MainLayout = () => {
     if (sidebarTimeoutRef.current) {
       clearTimeout(sidebarTimeoutRef.current);
     }
-    // Collapse sidebar when focus leaves it (going to content)
     sidebarTimeoutRef.current = setTimeout(() => {
       if (sidebarFocusCountRef.current === 0) {
         setIsSidebarExpanded(false);
@@ -136,38 +171,26 @@ const MainLayout = () => {
     }, 150);
   };
 
-  // Handle back navigation to sidebar - expand it again
   const handleSidebarReturn = () => {
     setIsSidebarExpanded(true);
     setIsSidebarFocused(true);
     sidebarFocusCountRef.current = 1;
   };
 
+  const handleLastWatchedPress = (item: RecentlyWatchedItem) => {
+    addRecentlyWatched({
+      ...item,
+      lastWatchedAt: Date.now(),
+    });
+    playStream({ url: '', id: item.id });
+    navigation.navigate('Player');
+  };
+
   const renderContent = () => {
     return (
       <View style={{ flex: 1 }}>
-        {/* Modern Hero Banner (Show only on media tabs) */}
-        {heroContent && (activeTab === 'channels' || activeTab === 'movies' || activeTab === 'series') && (
-          <View style={styles.heroWrapper}>
-            <ImageBackground
-              source={{ uri: heroContent.backdropUrl }}
-              style={styles.heroBanner}
-              imageStyle={{ borderRadius: 16 }}
-            >
-              <View style={[styles.heroOverlay, { backgroundColor: 'rgba(13,13,15,0.75)' }]}>
-                <View style={styles.heroContentText}>
-                  <Text style={styles.heroLabel}>FEATURED</Text>
-                  <Text style={styles.heroTitle} numberOfLines={1}>{heroContent.title}</Text>
-                  <Text style={styles.heroDesc} numberOfLines={2}>{heroContent.overview}</Text>
-                  <View style={styles.heroMetaRow}>
-                    <Star color="#FFD700" size={16} fill="#FFD700" />
-                    <Text style={styles.heroRating}>{heroContent.rating}</Text>
-                  </View>
-                </View>
-              </View>
-            </ImageBackground>
-          </View>
-        )}
+        {/* Last Watched Channels Bar - replaces static Trending Today */}
+        <LastWatchedBar channels={recentlyWatched} onChannelPress={handleLastWatchedPress} />
 
         <View style={{ flex: 1 }}>
           {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
@@ -188,19 +211,18 @@ const MainLayout = () => {
       <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(24,24,27,0.95)', borderRightColor: '#27272A' }]}>
         <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
               <ScrollView
-                contentContainerStyle={{ paddingVertical: 16 }}
-                // TV focus interactions
+                contentContainerStyle={{ paddingVertical: 8 }}
               >
                 {/* Hamburger menu toggle */}
                 <TouchableOpacity
                   onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
                   onFocus={handleSidebarFocus}
                   onBlur={handleSidebarBlur}
-                  style={[styles.menuItem, { justifyContent: 'center' }]}
+                  style={[styles.menuItem, { justifyContent: 'center', paddingVertical: Platform.isTV ? 8 : 6 }]}
                   accessibilityRole="button"
                   accessibilityLabel="Toggle Sidebar"
                 >
-                  <Icon name="menu" size={24} color="#FFF" style={isSidebarExpanded ? styles.menuIcon : {}} />
+                  <Icon name="menu" size={Platform.isTV ? 22 : 18} color="#FFF" style={isSidebarExpanded ? styles.menuIcon : {}} />
                 </TouchableOpacity>
 
                 {isSidebarExpanded && <Text style={styles.sidebarSectionTitle}>MENU</Text>}
@@ -269,8 +291,8 @@ const MainLayout = () => {
                   showLabel={isSidebarExpanded} 
                 />
 
-                <View style={{ height: 1, backgroundColor: '#27272A', marginVertical: 20, marginHorizontal: 20, borderRadius: 1 }} />
-                {isSidebarExpanded && <Text style={[styles.sidebarSectionTitle, { fontSize: Platform.isTV ? 16 : 12 }]}>PROVIDERS</Text>}
+                <View style={{ height: 1, backgroundColor: '#27272A', marginVertical: 12, marginHorizontal: 12, borderRadius: 1 }} />
+                {isSidebarExpanded && <Text style={[styles.sidebarSectionTitle, { fontSize: Platform.isTV ? 12 : 10 }]}>PROVIDERS</Text>}
 
                 {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;
@@ -336,7 +358,7 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
     >
       <Icon 
         name={icon} 
-        size={Platform.isTV ? 24 : 18} 
+        size={Platform.isTV ? 20 : 16} 
         color={isActive ? '#3B82F6' : (isFocused ? '#FAFAFA' : '#71717A')} 
         style={[showLabel ? styles.menuIcon : {}, { textAlign: 'center' }]} 
       />
@@ -345,7 +367,7 @@ const SidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlu
           style={{ 
             color: isActive ? '#3B82F6' : (isFocused ? '#FAFAFA' : '#A1A1AA'), 
             fontWeight: isActive || isFocused ? '600' : '400', 
-            fontSize: Platform.isTV ? 16 : 13,
+            fontSize: Platform.isTV ? 13 : 11,
             letterSpacing: 0.2,
           }} 
           numberOfLines={1}
@@ -368,9 +390,6 @@ const HomeScreen = () => {
     let backHandler: any;
     if (isFocused && Platform.isTV) {
       backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-         // Return true to prevent default exit.
-         // Optional: if you want back button to open sidebar when closed
-         // if (!isSidebarExpanded) setIsSidebarExpanded(true);
          return true;
       });
     }
@@ -379,25 +398,17 @@ const HomeScreen = () => {
     };
   }, [isFocused]);
 
-  // ⚡ Perf: Once adult content is detected, cache the result to avoid
-  // re-iterating potentially thousands of items on every collection change.
   const hasAdultContentRef = React.useRef(false);
 
   const prevProfileIdRef = React.useRef(currentProfile?.id);
 
   const hasAdultContent = React.useMemo(() => {
-    // Reset the ref during render when the profile changes because a new profile might not have adult content
     if (prevProfileIdRef.current !== currentProfile?.id) {
       hasAdultContentRef.current = false;
       prevProfileIdRef.current = currentProfile?.id;
     }
 
-    // Short-circuit: once we've found adult content, it won't disappear for this profile
     if (hasAdultContentRef.current) return true;
-    // ⚡ Bolt: Replaced O(N) array methods (.some) with manual for-loops.
-    // Calling .some() on arrays with 100k+ items creates significant overhead
-    // from closure instantiation and function invocation per element.
-    // A manual loop is measurably faster and avoids blocking the main thread.
     let result = false;
     for (let i = 0; i < channels.length; i++) {
       if (channels[i].isAdult) {
@@ -431,14 +442,10 @@ const HomeScreen = () => {
     }
   }, [isInitializing, isLoading, currentProfile, hasAdultContent, pin, navigation]);
 
-  // Prevent MainLayout from rendering momentarily if we're about to redirect to PinSetup
   useEffect(() => {
-    // Prompt to update when a profile is successfully loaded and we haven't asked yet
     if (currentProfile && !isInitializing && !isLoading && !hasCheckedOnStartup) {
       setHasCheckedOnStartup(true);
-      // Wait a tick so the UI renders first
       setTimeout(() => {
-         // Using standard Alert for simple yes/no
          Alert.alert(
             "Playlist aktualisieren?",
             "Möchten Sie die Playlist und das EPG jetzt aktualisieren?",
@@ -498,82 +505,94 @@ const styles = StyleSheet.create({
   },
   sidebarSectionTitle: {
     color: '#71717A',
-    fontSize: 11,
-    marginBottom: 12,
-    paddingHorizontal: 20,
+    fontSize: 10,
+    marginBottom: 8,
+    paddingHorizontal: 12,
     textTransform: 'uppercase',
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Platform.isTV ? 10 : 8,
-    paddingHorizontal: Platform.isTV ? 14 : 12,
-    borderRadius: 10,
-    marginHorizontal: 6,
-    marginBottom: 4,
+    paddingVertical: Platform.isTV ? 7 : 5,
+    paddingHorizontal: Platform.isTV ? 10 : 8,
+    borderRadius: 8,
+    marginHorizontal: 4,
+    marginBottom: 2,
   },
   menuIcon: {
-    marginRight: 14,
+    marginRight: 10,
   },
-  heroWrapper: {
-    padding: 20,
-    paddingBottom: 12,
+  // Last Watched Bar Styles
+  lastWatchedContainer: {
+    paddingVertical: 12,
+    paddingLeft: 16,
+    backgroundColor: 'rgba(24,24,27,0.5)',
   },
-  heroBanner: {
-    width: '100%',
-    height: 240,
-    borderRadius: 20,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-    // Modern shadow for depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    padding: 24,
-    // Gradient overlay for better text readability
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  heroContentText: {
-    gap: 6,
-  },
-  heroLabel: {
-    color: '#3B82F6',
+  lastWatchedTitle: {
+    color: '#71717A',
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 10,
     textTransform: 'uppercase',
   },
-  heroTitle: {
-    color: '#FAFAFA',
-    fontSize: 30,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+  lastWatchedList: {
+    paddingRight: 16,
   },
-  heroDesc: {
-    color: '#D4D4D8',
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: 6,
-    maxWidth: '85%',
-  },
-  heroMetaRow: {
+  lastWatchedItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
+    backgroundColor: 'rgba(39,39,42,0.8)',
+    borderRadius: 10,
+    padding: 8,
+    marginRight: 10,
+    width: Platform.isTV ? 180 : 140,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  heroRating: {
+  lastWatchedNumber: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  lastWatchedNumberText: {
+    color: '#3B82F6',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  lastWatchedLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  lastWatchedLogoPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lastWatchedInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  lastWatchedName: {
     color: '#FAFAFA',
-    fontSize: 14,
+    fontSize: Platform.isTV ? 13 : 11,
     fontWeight: '600',
+  },
+  lastWatchedTime: {
+    color: '#71717A',
+    fontSize: Platform.isTV ? 11 : 9,
+    marginTop: 2,
   },
 });
 

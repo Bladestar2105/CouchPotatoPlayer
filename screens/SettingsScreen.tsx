@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Monitor, Palette } from 'lucide-react-native';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { themeOptions } from '../utils/theme';
 
 const SettingsScreen = () => {
@@ -273,6 +274,10 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleAddProvider = () => {
+    navigation.navigate('Welcome', { showAddForm: true });
+  };
+
   return (
     <FlatList
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -282,6 +287,15 @@ const SettingsScreen = () => {
       ListHeaderComponent={
         <View style={styles.section}>
           {renderSectionHeader('Providers')}
+          
+          {/* Add Provider Button */}
+          <TouchableOpacity
+            style={[styles.addProviderButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+            onPress={handleAddProvider}
+          >
+            <Icon name="add" size={20} color="#FFF" />
+            <Text style={styles.addProviderButtonText}>Add New Provider</Text>
+          </TouchableOpacity>
         </View>
       }
       ListFooterComponent={
@@ -569,6 +583,21 @@ const styles = StyleSheet.create({
   picker: {
     width: '100%',
     height: '100%',
+  },
+  addProviderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+    gap: 8,
+  },
+  addProviderButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 
