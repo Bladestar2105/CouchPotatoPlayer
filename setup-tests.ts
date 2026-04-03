@@ -1,4 +1,16 @@
 import { mock } from "bun:test";
+(global as any).__DEV__ = true;
+
+// Mock ExpoGlobal
+(globalThis as any).expo = {
+  EventEmitter: class {
+    addListener() { return { remove: () => {} }; }
+    removeAllListeners() {}
+    emit() {}
+  },
+  uuidv4: () => 'mock-uuid',
+};
+
 mock.module("react-native", () => {
   return {
     LogBox: {
@@ -9,5 +21,12 @@ mock.module("react-native", () => {
       OS: 'ios',
       select: () => {},
     },
+    TurboModuleRegistry: {
+      getEnforcing: () => null,
+      get: () => null,
+    },
+    NativeEventEmitter: class {},
+    NativeModules: {},
+    UIManager: {}
   };
 });
