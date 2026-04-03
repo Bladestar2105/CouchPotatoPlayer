@@ -425,7 +425,13 @@ const SettingsScreen = () => {
           )}
 
           {/* Theme */}
-          <TouchableOpacity style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]} onPress={handleThemeChange}>
+          <TouchableOpacity
+            style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            onPress={handleThemeChange}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('theme', 'Theme')}: ${themeMode.toUpperCase()}`}
+            accessibilityHint="Changes the application theme between light, dark, and OLED"
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               {themeMode === 'light' ? <Sun color={colors.text} size={18} /> : themeMode === 'dark' ? <Moon color={colors.text} size={18} /> : <Monitor color={colors.text} size={18} />}
               <Text style={[styles.tileTitle, { color: colors.text }]}>{t('theme', 'Theme')}: {themeMode.toUpperCase()}</Text>
@@ -478,6 +484,8 @@ const SettingsScreen = () => {
           <TouchableOpacity
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
             onPress={handleManualUpdate}
+            accessibilityRole="button"
+            accessibilityHint="Force refresh the playlist"
           >
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>{t('settings.updatePlaylist')}</Text>
@@ -489,6 +497,8 @@ const SettingsScreen = () => {
           <TouchableOpacity
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
             onPress={handleClearCache}
+            accessibilityRole="button"
+            accessibilityHint="Clear saved EPG data and force fresh data fetch"
           >
             <View style={styles.tileLeft}>
               <Text style={[styles.tileTitle, { color: colors.text }]}>Clear Cache</Text>
@@ -518,6 +528,7 @@ const SettingsScreen = () => {
           <TouchableOpacity
             style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider, marginTop: 16 }]}
             onPress={handleLogout}
+            accessibilityRole="button"
           >
             <Text style={[styles.tileTitle, { color: colors.error }]}>Logout / Clear Data</Text>
           </TouchableOpacity>
