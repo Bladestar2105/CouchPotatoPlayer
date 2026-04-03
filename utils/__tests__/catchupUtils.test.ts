@@ -1,5 +1,5 @@
 import { describe, test, expect, setSystemTime, beforeAll, afterAll } from "bun:test";
-import { hasCatchupSupport, getCatchupDays, isProgramCatchupAvailable } from '../catchupUtils';
+import { hasCatchupSupport, getCatchupDays, isProgramCatchupAvailable, formatCatchupTime } from '../catchupUtils';
 import { Channel } from '../../types';
 
 describe('catchupUtils', () => {
@@ -96,6 +96,23 @@ describe('catchupUtils', () => {
       const start = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000 - 60000); // 1 min before window
       const end = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
       expect(isProgramCatchupAvailable(channel, start, end)).toBe(false);
+    });
+  });
+
+  describe('formatCatchupTime', () => {
+    const testDate = new Date('2023-11-01T12:00:00.000Z');
+
+    test('should return ISO8601 format when format is iso', () => {
+      expect(formatCatchupTime(testDate, 'iso')).toBe('2023-11-01T12:00:00.000Z');
+    });
+
+    test('should return Unix timestamp string when format is unix', () => {
+      // 2023-11-01T12:00:00Z -> 1698840000
+      expect(formatCatchupTime(testDate, 'unix')).toBe('1698840000');
+    });
+
+    test('should return Unix timestamp string by default', () => {
+      expect(formatCatchupTime(testDate)).toBe('1698840000');
     });
   });
 });
