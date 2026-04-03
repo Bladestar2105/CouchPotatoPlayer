@@ -32,3 +32,7 @@
 ## 2025-05-23 - [Avoid Date object instantiation in large data loops]
 **Learning:** Instantiating `Date` objects inside loops that iterate over large datasets (like EPG XMLTV parsing, which can have tens of thousands of programs) creates massive memory pressure and CPU overhead from object allocation and garbage collection. This severely blocks the main thread.
 **Action:** When parsing large volumes of data that include timestamps (e.g., `start` and `end` times for EPG), parse and store the timestamps as primitive `number`s (Unix time in ms) instead of `Date` objects. Update interfaces to expect `number` types. Only format or instantiate `Date` objects lazily during render when absolutely necessary.
+
+## 2025-05-23 - [Optimize EPG Timeline Rendering with Binary Search]
+**Learning:** In a UI layout engine rendering horizontally scrollable timelines (like an EPG grid), iterating over the entire program array (`length > 10,000` with multiple days of data) for every single channel row using a simple O(N) `for` loop causes extreme UI blockages. While `continue` skips rendering, the sheer volume of iterations still blocks the thread.
+**Action:** Since timeline program data is inherently chronologically sorted, use an O(log N) binary search to find the index of the first program that falls within the visible timeline window. Start the render loop from this index and immediately `break` when a program's start time exceeds the visible window. This reduces complexity from O(N) to O(log N) + K (where K is visible items).
