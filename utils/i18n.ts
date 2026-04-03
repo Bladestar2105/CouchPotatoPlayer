@@ -222,7 +222,7 @@ const resources = {
   }
 };
 
-let language = Localization.getLocales()[0].languageCode || 'en';
+let language = Localization.getLocales()[0]?.languageCode || 'en';
 // Default to English if the user language is not supported
 if (!resources[language as keyof typeof resources]) {
   language = 'en';
@@ -235,6 +235,7 @@ i18n
     resources,
     lng: language,
     fallbackLng: 'en',
+    initImmediate: false,
     interpolation: {
       escapeValue: false
     }
