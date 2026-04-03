@@ -57,6 +57,18 @@ describe('catchupUtils', () => {
     test('should return 0 if both are missing', () => {
       expect(getCatchupDays(mockChannel)).toBe(0);
     });
+
+    test('should ignore catchupDays if 0 and use tvArchiveDuration', () => {
+      expect(getCatchupDays({ ...mockChannel, catchupDays: 0, tvArchiveDuration: 48 })).toBe(2);
+    });
+
+    test('should round down partial days from tvArchiveDuration', () => {
+      expect(getCatchupDays({ ...mockChannel, tvArchiveDuration: 50 })).toBe(2);
+    });
+
+    test('should return 0 if both fields are 0', () => {
+      expect(getCatchupDays({ ...mockChannel, catchupDays: 0, tvArchiveDuration: 0 })).toBe(0);
+    });
   });
 
   describe('isProgramCatchupAvailable', () => {
