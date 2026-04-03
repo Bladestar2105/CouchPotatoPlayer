@@ -94,7 +94,7 @@ export const generateCatchupUrl = (
     case 'default':
     default:
       // Default Xtream Codes timeshift
-      return `${cleanServerUrl}/timeshift/${username}/${password}/${startUnix}/${endUnix}/${channel.streamId}.ts`;
+      return `${cleanServerUrl}/timeshift/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${startUnix}/${endUnix}/${channel.streamId}.ts`;
   }
 };
 
