@@ -21,7 +21,7 @@ import {
   FavoriteItem,
   RecentlyWatchedItem
 } from '../types';
-import { generateCatchupUrl, hasCatchupSupport } from '../utils/catchupUtils';
+import { generateCatchupUrl, hasCatchupSupport, CatchupType, CatchupConfig } from '../utils/catchupUtils';
 import { parseXMLTVFromString } from '../utils/epgParser';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
@@ -517,11 +517,15 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const movies: Movie[] = [];
     const seriesMap = new Map<string, Series>();
     const seasonMaps = new Map<string, Map<number, Season>>();
-    let currentItemInfo: { name: string, logo?: string, group: string, tvgId?: string } | null = null;
+    let currentItemInfo: { name: string, logo?: string, group: string, tvgId?: string, tvArchive?: number, catchupDays?: number, catchupId?: string, catchupSource?: string } | null = null;
     const infoRegex = /#EXTINF:[-0-9]+(.*),(.*)/;
     const tvgIdRegex = /tvg-id="([^"]*)"/;
     const tvgLogoRegex = /tvg-logo="([^"]*)"/;
     const groupTitleRegex = /group-title="([^"]*)"/;
+    const catchupRegex = /catchup="([^"]*)"/i;
+    const catchupDaysRegex = /catchup-days="([^"]*)"/i;
+    const catchupSourceRegex = /catchup-source="([^"]*)"/i;
+    const tvgRecRegex = /tvg-rec="([^"]*)"/i;
 
     for (const line of lines) {
       if (line.startsWith('#EXTINF:')) {
@@ -529,7 +533,21 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (infoMatch) {
           const attributes = infoMatch[1] || '';
           const name = infoMatch[2] || 'Unknown';
-          currentItemInfo = { name: name.trim(), tvgId: attributes.match(tvgIdRegex)?.[1], logo: attributes.match(tvgLogoRegex)?.[1], group: attributes.match(groupTitleRegex)?.[1] || 'Unknown' };
+          const catchupType = attributes.match(catchupRegex)?.[1];
+          const catchupDaysStr = attributes.match(catchupDaysRegex)?.[1];
+          const tvgRecStr = attributes.match(tvgRecRegex)?.[1];
+          const catchupDaysVal = catchupDaysStr ? parseInt(catchupDaysStr, 10) : undefined;
+          const hasTvArchive = tvgRecStr === '1' || (catchupType !== undefined && catchupType !== '');
+          currentItemInfo = {
+            name: name.trim(),
+            tvgId: attributes.match(tvgIdRegex)?.[1],
+            logo: attributes.match(tvgLogoRegex)?.[1],
+            group: attributes.match(groupTitleRegex)?.[1] || 'Unknown',
+            tvArchive: hasTvArchive ? 1 : (tvgRecStr ? Number(tvgRecStr) : undefined),
+            catchupDays: isNaN(catchupDaysVal as number) ? undefined : catchupDaysVal,
+            catchupId: catchupType || undefined,
+            catchupSource: attributes.match(catchupSourceRegex)?.[1] || undefined,
+          };
         }
       } else if ((line.startsWith('http://') || line.startsWith('https://')) && currentItemInfo) {
         const url = line.trim();
@@ -573,7 +591,18 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         } else {
           const channelId = currentItemInfo.tvgId ? `${currentItemInfo.tvgId}_${url}` : `${url}_${currentItemInfo.name}`;
-          channels.push({ id: channelId, name: currentItemInfo.name, url: url, logo: currentItemInfo.logo, group: currentItemInfo.group, tvgId: currentItemInfo.tvgId });
+          channels.push({
+            id: channelId,
+            name: currentItemInfo.name,
+            url: url,
+            logo: currentItemInfo.logo,
+            group: currentItemInfo.group,
+            tvgId: currentItemInfo.tvgId,
+            tvArchive: currentItemInfo.tvArchive,
+            catchupDays: currentItemInfo.catchupDays,
+            catchupId: currentItemInfo.catchupId,
+            catchupSource: currentItemInfo.catchupSource,
+          });
         }
         currentItemInfo = null;
       }
@@ -729,7 +758,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           streamId: channel.stream_id,
           categoryId: String(channel.category_id),
           containerExtension: extension,
-          isAdult: catInfo.isAdult
+          isAdult: catInfo.isAdult,
+          tvArchive: channel.tv_archive !== undefined ? Number(channel.tv_archive) : undefined,
+          tvArchiveDuration: channel.tv_archive_duration !== undefined ? Number(channel.tv_archive_duration) : undefined,
+          catchupDays: channel.tv_archive_duration !== undefined ? Number(channel.tv_archive_duration) : undefined,
         };
       }) : [];
       setChannels(parsedChannels);
@@ -975,18 +1007,26 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- Catchup/Archive Support ---
   const getCatchupUrl = useCallback((channel: Channel, startTime: Date, endTime: Date): string | null => {
-    if (!currentProfile || currentProfile.type !== 'xtream') {
-      return null;
+    if (!currentProfile) return null;
+
+    if (currentProfile.type === 'xtream') {
+      const xtreamProfile = currentProfile as XtreamProfile;
+      return generateCatchupUrl(
+        channel,
+        startTime,
+        endTime,
+        xtreamProfile.url,
+        xtreamProfile.username,
+        xtreamProfile.password || ''
+      );
+    } else if (currentProfile.type === 'm3u') {
+      // For M3U, use the catchup type stored in catchupId (e.g. "shift", "flussonic", "archive")
+      const catchupType = (channel.catchupId as CatchupType) || 'default';
+      const config: CatchupConfig = { type: catchupType, source: channel.catchupSource };
+      return generateCatchupUrl(channel, startTime, endTime, '', '', '', config);
     }
-    const xtreamProfile = currentProfile as XtreamProfile;
-    return generateCatchupUrl(
-      channel,
-      startTime,
-      endTime,
-      xtreamProfile.url,
-      xtreamProfile.username,
-      xtreamProfile.password || ''
-    );
+
+    return null;
   }, [currentProfile]);
 
   const hasCatchup = useCallback((channel: Channel): boolean => {

@@ -4,6 +4,7 @@ import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTV } from '../context/IPTVContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { isProgramCatchupAvailable } from '../utils/catchupUtils';
 
 const PIXELS_PER_MINUTE = Platform.isTV ? 8 : 4; // Stretch timeline for TV
 const HOUR_WIDTH = PIXELS_PER_MINUTE * 60;
@@ -24,14 +25,21 @@ interface EpgTimelineProps {
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 const formatTime = (d: Date | number) => timeFormatter.format(d);
 
-const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, width, colors, onProgramPress, onChannelPress }: any) => {
+const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvailable, leftOffset, width, colors, onProgramPress, onChannelPress }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
+    const isClickable = isNow || isCatchupAvailable;
+
+    let bgColor = 'rgba(63, 63, 70, 0.8)'; // future
+    if (isNow) bgColor = 'rgba(59, 130, 246, 0.35)';
+    else if (isCatchupAvailable) bgColor = 'rgba(20, 60, 40, 0.85)'; // catchup-available past: dark green tint
+    else if (isPast) bgColor = 'rgba(39, 39, 42, 0.9)'; // non-catchup past: dark
+
     return (
         <TouchableOpacity
             style={[
                 styles.programBlock,
                 { left: leftOffset, width: Math.max(width - 2, 2) },
-                isNow ? { backgroundColor: 'rgba(59, 130, 246, 0.35)' } : (isPast ? { backgroundColor: 'rgba(39, 39, 42, 0.9)' } : { backgroundColor: 'rgba(63, 63, 70, 0.8)' }),
+                { backgroundColor: bgColor },
                 isProgramFocused && { backgroundColor: 'rgba(59, 130, 246, 0.4)', borderWidth: 2, borderColor: '#3B82F6' }
             ]}
             onFocus={() => setIsProgramFocused(true)}
@@ -43,8 +51,14 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
                     onChannelPress(channel);
                 }
             }}
+            activeOpacity={isClickable ? 0.7 : 1}
         >
-            <Text style={[styles.programTitle, isPast ? { color: '#71717A' } : { color: '#FAFAFA' }, { fontSize: Platform.isTV ? 15 : 13 }]} numberOfLines={1}>{prog.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                {isCatchupAvailable && !isNow && (
+                    <Icon name="play-circle-outline" size={Platform.isTV ? 14 : 12} color="#4ADE80" style={{ marginRight: 2 }} />
+                )}
+                <Text style={[styles.programTitle, (isPast && !isCatchupAvailable) ? { color: '#71717A' } : { color: '#FAFAFA' }, { fontSize: Platform.isTV ? 15 : 13, flex: 1 }]} numberOfLines={1}>{prog.title}</Text>
+            </View>
             <Text style={[styles.programTime, { fontSize: Platform.isTV ? 14 : 12 }]} numberOfLines={1}>
                 {formatTime(prog.start)} - {formatTime(prog.end)}
             </Text>
@@ -53,6 +67,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
 }, (prevProps, nextProps) => {
     return prevProps.prog === nextProps.prog &&
            prevProps.isNow === nextProps.isNow &&
+           prevProps.isCatchupAvailable === nextProps.isCatchupAvailable &&
            prevProps.leftOffset === nextProps.leftOffset &&
            prevProps.width === nextProps.width;
 });
@@ -65,6 +80,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
         const timelineEndMs = timelineEnd.getTime();
         const nowMs = now.getTime();
 
+        const channelHasCatchup = hasCatchup ? hasCatchup(channel) : false;
+
         const result: Array<{
             prog: any;
             idx: number;
@@ -72,6 +89,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
             width: number;
             isNow: boolean;
             isPast: boolean;
+            isCatchupAvailable: boolean;
         }> = [];
 
         if (programs.length === 0) return result;
@@ -108,13 +126,18 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
             const renderStartMs = Math.max(startMs, timelineStartMs);
             const renderEndMs = Math.min(endMs, timelineEndMs);
 
+            const isProg_Now = nowMs >= startMs && nowMs < endMs;
+            const isProg_Past = nowMs >= endMs;
             result.push({
                 prog,
                 idx,
                 leftOffset: ((renderStartMs - timelineStartMs) / 60000) * PIXELS_PER_MINUTE,
                 width: ((renderEndMs - renderStartMs) / 60000) * PIXELS_PER_MINUTE,
-                isNow: nowMs >= startMs && nowMs < endMs,
-                isPast: nowMs >= endMs,
+                isNow: isProg_Now,
+                isPast: isProg_Past,
+                isCatchupAvailable: isProg_Past && channelHasCatchup
+                    ? isProgramCatchupAvailable(channel, new Date(startMs), new Date(endMs))
+                    : false,
             });
         }
 
@@ -164,6 +187,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                         channel={channel}
                         isNow={item.isNow}
                         isPast={item.isPast}
+                        isCatchupAvailable={item.isCatchupAvailable}
                         leftOffset={item.leftOffset}
                         width={item.width}
                         colors={colors}
@@ -178,7 +202,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
     return prevProps.isFocused === nextProps.isFocused &&
            prevProps.isPlaying === nextProps.isPlaying &&
            prevProps.isFav === nextProps.isFav &&
-           prevProps.programs === nextProps.programs;
+           prevProps.programs === nextProps.programs &&
+           prevProps.channel === nextProps.channel;
 });
 
 const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId, shouldFocusFirstItem }) => {
