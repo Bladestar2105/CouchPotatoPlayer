@@ -31,6 +31,14 @@ export interface CatchupConfig {
 }
 
 /**
+ * Format a Date as the Xtream Codes timeshift start parameter: YYYY-MM-DD:HH-MM
+ */
+const formatXtreamStart = (date: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}:${pad(date.getHours())}-${pad(date.getMinutes())}`;
+};
+
+/**
  * Generate catchup URL for a channel at a specific time
  */
 export const generateCatchupUrl = (
@@ -50,22 +58,25 @@ export const generateCatchupUrl = (
   const startUnix = Math.floor(startTime.getTime() / 1000);
   const endUnix = Math.floor(endTime.getTime() / 1000);
   const nowUnix = Math.floor(Date.now() / 1000);
-  const duration = endUnix - startUnix;
+  // Duration in minutes (Xtream Codes standard)
+  const durationMinutes = Math.ceil((endUnix - startUnix) / 60);
+  const xtreamStart = formatXtreamStart(startTime);
 
   const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
 
   switch (catchupType) {
     case 'xc':
-      // Xtream Codes format: /timeshift/{start}/{end}/{streamId}.ts
-      return `${cleanServerUrl}/timeshift/${startUnix}/${endUnix}/${channel.streamId}.ts`;
+    case 'default':
+      // Xtream Codes standard: /timeshift/{user}/{pass}/{duration_minutes}/{YYYY-MM-DD:HH-MM}/{streamId}.ts
+      if (!channel.streamId) return null;
+      return `${cleanServerUrl}/timeshift/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${durationMinutes}/${xtreamStart}/${channel.streamId}.ts`;
 
     case 'flussonic':
     case 'flussonic-hls':
-      // Flussonic HLS: index-{start}-{end}.m3u8
+      // Flussonic: ?utc={startUnix}&lutc={nowUnix}
       return `${channel.url}?utc=${startUnix}&lutc=${nowUnix}`;
 
     case 'flussonic-ts':
-      // Flussonic MPEG-TS
       return `${channel.url}?utc=${startUnix}&lutc=${nowUnix}`;
 
     case 'shift':
@@ -77,24 +88,22 @@ export const generateCatchupUrl = (
       return `${channel.url}?archive=${startUnix}&archive_end=${endUnix}`;
 
     case 'timeshift':
-      // Timeshift format: timeshift={start}&timenow={now}
+      // Timeshift format: ?timeshift={start}&timenow={now}
       return `${channel.url}?timeshift=${startUnix}&timenow=${nowUnix}`;
 
     case 'append':
-      // Append format: append duration to URL
+      // Append format: custom source template with variable substitution
       if (config?.source) {
         return channel.url + config.source
           .replace('${start}', String(startUnix))
           .replace('${end}', String(endUnix))
-          .replace('${duration}', String(duration))
+          .replace('${duration}', String(durationMinutes))
           .replace('${timestamp}', String(nowUnix));
       }
       return null;
 
-    case 'default':
     default:
-      // Default Xtream Codes timeshift
-      return `${cleanServerUrl}/timeshift/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${startUnix}/${endUnix}/${channel.streamId}.ts`;
+      return null;
   }
 };
 
