@@ -1,5 +1,5 @@
 import { describe, test, expect, setSystemTime, beforeAll, afterAll } from "bun:test";
-import { hasCatchupSupport, getCatchupDays, isProgramCatchupAvailable } from '../catchupUtils';
+import { hasCatchupSupport, getCatchupDays, isProgramCatchupAvailable, generateCatchupUrl } from '../catchupUtils';
 import { Channel } from '../../types';
 
 describe('catchupUtils', () => {
@@ -96,6 +96,96 @@ describe('catchupUtils', () => {
       const start = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000 - 60000); // 1 min before window
       const end = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
       expect(isProgramCatchupAvailable(channel, start, end)).toBe(false);
+    });
+  });
+
+  describe('generateCatchupUrl', () => {
+    const channelWithCatchup = {
+      ...mockChannel,
+      tvArchive: 1,
+      streamId: '12345'
+    };
+
+    const channelWithoutCatchup = {
+      ...mockChannel,
+      tvArchive: 0,
+      catchupDays: 0,
+      tvArchiveDuration: 0,
+      streamId: '12345'
+    };
+
+    const startTime = new Date('2023-11-01T12:00:00Z');
+    const endTime = new Date('2023-11-01T13:00:00Z');
+    const serverUrl = 'http://test-server.com/';
+    const username = 'testuser';
+    const password = 'testpassword';
+
+    const startUnix = Math.floor(startTime.getTime() / 1000);
+    const endUnix = Math.floor(endTime.getTime() / 1000);
+    const duration = endUnix - startUnix;
+
+    test('should return null if channel has no catchup support', () => {
+      expect(generateCatchupUrl(channelWithoutCatchup, startTime, endTime, serverUrl, username, password)).toBeNull();
+    });
+
+    test('should return xc format by default if config is not provided', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password);
+      expect(url).toBe(`http://test-server.com/timeshift/${startUnix}/${endUnix}/12345.ts`);
+    });
+
+    test('should return xc format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'xc' });
+      expect(url).toBe(`http://test-server.com/timeshift/${startUnix}/${endUnix}/12345.ts`);
+    });
+
+    test('should return flussonic format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'flussonic' });
+      const nowUnix = Math.floor(Date.now() / 1000);
+      // Because Date.now() is used inside the function, we check if it starts with the correct part
+      expect(url?.startsWith(`http://test.com/stream?utc=${startUnix}&lutc=`)).toBe(true);
+    });
+
+    test('should return flussonic-hls format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'flussonic-hls' });
+      expect(url?.startsWith(`http://test.com/stream?utc=${startUnix}&lutc=`)).toBe(true);
+    });
+
+    test('should return flussonic-ts format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'flussonic-ts' });
+      expect(url?.startsWith(`http://test.com/stream?utc=${startUnix}&lutc=`)).toBe(true);
+    });
+
+    test('should return shift format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'shift' });
+      expect(url?.startsWith(`http://test.com/stream?utc=${startUnix}&lutc=`)).toBe(true);
+    });
+
+    test('should return archive format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'archive' });
+      expect(url).toBe(`http://test.com/stream?archive=${startUnix}&archive_end=${endUnix}`);
+    });
+
+    test('should return timeshift format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'timeshift' });
+      expect(url?.startsWith(`http://test.com/stream?timeshift=${startUnix}&timenow=`)).toBe(true);
+    });
+
+    test('should return append format with custom source', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, {
+        type: 'append',
+        source: '?start=${start}&end=${end}&dur=${duration}&now=${timestamp}'
+      });
+      expect(url?.startsWith(`http://test.com/stream?start=${startUnix}&end=${endUnix}&dur=${duration}&now=`)).toBe(true);
+    });
+
+    test('should return null for append format if source is missing', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'append' });
+      expect(url).toBeNull();
+    });
+
+    test('should return default format', () => {
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'default' });
+      expect(url).toBe(`http://test-server.com/timeshift/testuser/testpassword/${startUnix}/${endUnix}/12345.ts`);
     });
   });
 });
