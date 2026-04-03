@@ -32,3 +32,7 @@
 ## 2025-05-23 - [Avoid Date object instantiation in large data loops]
 **Learning:** Instantiating `Date` objects inside loops that iterate over large datasets (like EPG XMLTV parsing, which can have tens of thousands of programs) creates massive memory pressure and CPU overhead from object allocation and garbage collection. This severely blocks the main thread.
 **Action:** When parsing large volumes of data that include timestamps (e.g., `start` and `end` times for EPG), parse and store the timestamps as primitive `number`s (Unix time in ms) instead of `Date` objects. Update interfaces to expect `number` types. Only format or instantiate `Date` objects lazily during render when absolutely necessary.
+
+## 2025-05-23 - [Avoid Date allocations in hot render paths]
+**Learning:** Wrapping primitive timestamps (like `prog.start`) with `new Date()` inside hot render paths—such as the `ProgramBlock` component in a virtualized EPG grid—creates hundreds of unnecessary object allocations during rapid scrolling. This leads to garbage collection spikes and severe main thread blocking, resulting in UI stutter, especially on lower-end TV devices.
+**Action:** When a high-frequency component needs to display a formatted timestamp, leverage the fact that `Intl.DateTimeFormat.format()` can directly accept a primitive `number` (Unix timestamp in ms). Refactor formatters to accept `number` types and pass the primitive directly from the dataset, eliminating the intermediate `Date` object instantiation.
