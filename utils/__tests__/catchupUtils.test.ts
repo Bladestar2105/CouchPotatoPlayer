@@ -23,6 +23,19 @@ describe('catchupUtils', () => {
       expect(hasCatchupSupport({ ...mockChannel, tvArchiveDuration: 48 })).toBe(true);
     });
 
+
+    test('should return true if tvArchive is string "1"', () => {
+      expect(hasCatchupSupport({ ...mockChannel, tvArchive: '1' as any })).toBe(true);
+    });
+
+    test('should return true if catchupDays is a string > 0', () => {
+      expect(hasCatchupSupport({ ...mockChannel, catchupDays: '7' as any })).toBe(true);
+    });
+
+    test('should return true if tvArchiveDuration is a string > 0', () => {
+      expect(hasCatchupSupport({ ...mockChannel, tvArchiveDuration: '48' as any })).toBe(true);
+    });
+
     test('should return false if no catchup fields are present', () => {
       expect(hasCatchupSupport(mockChannel)).toBe(false);
     });
