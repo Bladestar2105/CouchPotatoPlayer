@@ -168,6 +168,7 @@ const WelcomeScreen = () => {
             <TouchableOpacity
               style={styles.backToList}
               onPress={() => setShowAddForm(false)}
+              accessibilityRole="button"
             >
               <Icon name="arrow-back" size={24} color={colors.textSecondary} />
               <Text style={[styles.backToListText, { color: colors.textSecondary }]}>Back to Providers</Text>
