@@ -432,10 +432,14 @@ const SettingsScreen = () => {
             accessibilityLabel={`${t('theme', 'Theme')}: ${themeMode.toUpperCase()}`}
             accessibilityHint="Changes the application theme between light, dark, and OLED"
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              {themeMode === 'light' ? <Sun color={colors.text} size={18} /> : themeMode === 'dark' ? <Moon color={colors.text} size={18} /> : <Monitor color={colors.text} size={18} />}
-              <Text style={[styles.tileTitle, { color: colors.text }]}>{t('theme', 'Theme')}: {themeMode.toUpperCase()}</Text>
+            <View style={styles.tileLeft}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {themeMode === 'light' ? <Sun color={colors.text} size={18} /> : themeMode === 'dark' ? <Moon color={colors.text} size={18} /> : <Monitor color={colors.text} size={18} />}
+                <Text style={[styles.tileTitle, { color: colors.text }]}>{t('theme', 'Theme')}</Text>
+              </View>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{themeMode.toUpperCase()}</Text>
             </View>
+            <Text style={{ color: colors.primary, fontSize: 13 }}>Toggle</Text>
           </TouchableOpacity>
 
           {/* Buffer Size */}
@@ -507,7 +511,7 @@ const SettingsScreen = () => {
           </TouchableOpacity>
 
           {/* Adult Content Toggle */}
-          {pin && (
+          {!!pin && (
             <TouchableOpacity
               style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.divider }]}
               onPress={() => handleToggleAdultContent(!isAdultUnlocked)}
@@ -530,7 +534,11 @@ const SettingsScreen = () => {
             onPress={handleLogout}
             accessibilityRole="button"
           >
-            <Text style={[styles.tileTitle, { color: colors.error }]}>Logout / Clear Data</Text>
+            <View style={styles.tileLeft}>
+              <Text style={[styles.tileTitle, { color: colors.error }]}>Logout / Clear Data</Text>
+              <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>Remove profile and reset app</Text>
+            </View>
+            <Icon name="logout" size={20} color={colors.error} />
           </TouchableOpacity>
         </View>
       }

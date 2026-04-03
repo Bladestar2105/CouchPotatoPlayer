@@ -209,7 +209,7 @@ const MainLayout = () => {
     <View style={{ flex: 1, backgroundColor: '#0D0D0F', flexDirection: 'row' }}>
       {/* Sidebar */}
       <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(24,24,27,0.95)', borderRightColor: '#27272A' }]}>
-        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+        <SafeAreaView edges={Platform.isTV ? [] : ['top', 'bottom']} style={{ flex: 1 }}>
               <ScrollView
                 contentContainerStyle={{ paddingVertical: 8 }}
               >
@@ -321,7 +321,7 @@ const MainLayout = () => {
 
       {/* Main Content Area */}
       <View style={{ flex: 1 }}>
-        <SafeAreaView edges={['top', 'bottom', 'right']} style={{ flex: 1 }}>
+        <SafeAreaView edges={Platform.isTV ? [] : ['top', 'bottom', 'right']} style={{ flex: 1 }}>
            <View style={{ flex: 1 }}>
              {renderContent()}
            </View>
@@ -548,51 +548,51 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 8,
     marginRight: 10,
-    width: Platform.isTV ? 180 : 140,
+    width: Platform.isTV ? 320 : 220,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
   lastWatchedNumber: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     backgroundColor: 'rgba(59, 130, 246, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 12,
   },
   lastWatchedNumberText: {
     color: '#3B82F6',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
   },
   lastWatchedLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   lastWatchedLogoPlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   lastWatchedInfo: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 12,
   },
   lastWatchedName: {
     color: '#FAFAFA',
-    fontSize: Platform.isTV ? 13 : 11,
+    fontSize: Platform.isTV ? 16 : 14,
     fontWeight: '600',
   },
   lastWatchedTime: {
     color: '#71717A',
-    fontSize: Platform.isTV ? 11 : 9,
-    marginTop: 2,
+    fontSize: Platform.isTV ? 13 : 11,
+    marginTop: 4,
   },
 });
 
