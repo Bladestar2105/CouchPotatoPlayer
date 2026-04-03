@@ -151,7 +151,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
         }
 
         return result;
-    }, [programs, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE]);
+    }, [programs, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, scrollX, visibleWidth]);
 
     return (
         <View style={[styles.row, isFocused && styles.rowFocused]}>
@@ -240,10 +240,8 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
     return Math.max(2, maxCatchupDays * 24);
   }, [maxCatchupDays]);
 
-  const TIMELINE_DURATION_HOURS = useMemo(() => {
-     // Timeline is start offset + 24 hours into the future
-     return TIMELINE_START_OFFSET_HOURS + 24;
-  }, [TIMELINE_START_OFFSET_HOURS]);
+  // Timeline is start offset + 24 hours into the future
+  const TIMELINE_DURATION_HOURS = TIMELINE_START_OFFSET_HOURS + 24;
 
   const { colors } = useSettings();
   const scrollViewRef = useRef<ScrollView>(null);
