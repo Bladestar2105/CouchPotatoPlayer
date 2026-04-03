@@ -1,7 +1,12 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVFocusGuideView } from 'react-native';
 // @ts-ignore - TVEventControl is available in react-native-tvos but not in standard React Native types
-import { TVEventControl, useTVEventHandler } from 'react-native';
+import { TVEventControl, useTVEventHandler as _useTVEventHandler } from 'react-native';
+
+// useTVEventHandler only exists in react-native-tvos, not standard React Native.
+// Evaluated once at module level so React's rules of hooks are satisfied.
+const useTVEventHandler: (handler: (event: any) => void) => void =
+  typeof _useTVEventHandler === 'function' ? _useTVEventHandler : () => {};
 
 import VideoPlayer, { VideoMetadata } from '../components/VideoPlayer';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
