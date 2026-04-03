@@ -36,3 +36,7 @@
 ## 2025-05-23 - [Avoid Date allocations in hot render paths]
 **Learning:** Wrapping primitive timestamps (like `prog.start`) with `new Date()` inside hot render paths—such as the `ProgramBlock` component in a virtualized EPG grid—creates hundreds of unnecessary object allocations during rapid scrolling. This leads to garbage collection spikes and severe main thread blocking, resulting in UI stutter, especially on lower-end TV devices.
 **Action:** When a high-frequency component needs to display a formatted timestamp, leverage the fact that `Intl.DateTimeFormat.format()` can directly accept a primitive `number` (Unix timestamp in ms). Refactor formatters to accept `number` types and pass the primitive directly from the dataset, eliminating the intermediate `Date` object instantiation.
+
+## 2024-03-31 - [Virtualize massive horizontal timelines]
+**Learning:** Rendering every time block inside an EPG horizontal timeline for multiple days out of view blocks the UI thread because React Native instantiates views for everything rendered, even if `ScrollView` hides them visually.
+**Action:** Always constrain rendering large horizontal lists/blocks inside `ScrollView` to a visible window. Track `scrollX` via `onScroll` debounced, and calculate a `visibleStartMs` and `visibleEndMs` with a buffer to only push objects onto the render array that fall within that range.
