@@ -115,6 +115,8 @@ export const hasCatchupSupport = (channel: Channel): boolean => {
 export const getCatchupDays = (channel: Channel): number => {
   if (channel.catchupDays) return channel.catchupDays;
   if (channel.tvArchiveDuration) return Math.floor(channel.tvArchiveDuration / 24);
+  // If archive is enabled but no duration specified, assume 7 days as a safe default
+  if (String(channel.tvArchive) === '1') return 7;
   return 0;
 };
 

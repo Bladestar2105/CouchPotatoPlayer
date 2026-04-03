@@ -16,8 +16,9 @@ export interface Channel {
   // Catchup/Archive support
   tvArchive?: number; // 1 if channel has archive/catchup
   tvArchiveDuration?: number; // Duration in hours
-  catchupId?: string; // Catchup source ID
+  catchupId?: string; // Catchup type identifier (xc, shift, flussonic, archive, etc.)
   catchupDays?: number; // Number of days available for catchup
+  catchupSource?: string; // Catchup source URL template (for M3U append-type catchup)
 }
 
 /**

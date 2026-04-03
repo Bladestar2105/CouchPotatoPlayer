@@ -4,6 +4,7 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { isProgramCatchupAvailable } from '../utils/catchupUtils';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import EpgTimeline from './EpgTimeline';
 export type ContentRef = { focusFirstItem: () => void };
@@ -222,16 +223,27 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     const isPast = nowTime >= prog.end;
 
     if (isNow) {
-       handleChannelPress(channel);
-    } else if (isPast && hasCatchup(channel) && prog.end > Date.now() - (channel.catchupDays || 0) * 24 * 60 * 60 * 1000) {
-       const catchupUrl = getCatchupUrl(channel, new Date(prog.start), new Date(prog.end));
-       if (catchupUrl) {
-           playStream({ url: catchupUrl, id: `${channel.id}_${prog.start}` });
-           navigation.navigate('Player', {
-             focusChannelId: channel.id,
-             returnGroupId: selectedGroup,
-           });
-       }
+      handleChannelPress(channel);
+    } else if (isPast) {
+      const startDate = new Date(prog.start);
+      const endDate = new Date(prog.end);
+      if (isProgramCatchupAvailable(channel, startDate, endDate)) {
+        const catchupUrl = getCatchupUrl(channel, startDate, endDate);
+        if (catchupUrl) {
+          playStream({ url: catchupUrl, id: `${channel.id}_catchup_${prog.start}` });
+          addRecentlyWatched({
+            id: `${channel.id}_catchup`,
+            type: 'live',
+            name: `${channel.name}${prog.title ? ` – ${prog.title}` : ''}`,
+            icon: channel.logo,
+            lastWatchedAt: Date.now(),
+          });
+          navigation.navigate('Player', {
+            focusChannelId: channel.id,
+            returnGroupId: selectedGroup,
+          });
+        }
+      }
     }
   };
 
