@@ -1,5 +1,5 @@
 import { describe, test, expect, setSystemTime, beforeAll, afterAll } from "bun:test";
-import { hasCatchupSupport, getCatchupDays, isProgramCatchupAvailable, generateCatchupUrl } from '../catchupUtils';
+import { hasCatchupSupport, getCatchupDays, isProgramCatchupAvailable, formatCatchupTime, generateCatchupUrl } from '../catchupUtils';
 import { Channel } from '../../types';
 
 describe('catchupUtils', () => {
@@ -23,6 +23,19 @@ describe('catchupUtils', () => {
       expect(hasCatchupSupport({ ...mockChannel, tvArchiveDuration: 48 })).toBe(true);
     });
 
+
+    test('should return true if tvArchive is string "1"', () => {
+      expect(hasCatchupSupport({ ...mockChannel, tvArchive: '1' as any })).toBe(true);
+    });
+
+    test('should return true if catchupDays is a string > 0', () => {
+      expect(hasCatchupSupport({ ...mockChannel, catchupDays: '7' as any })).toBe(true);
+    });
+
+    test('should return true if tvArchiveDuration is a string > 0', () => {
+      expect(hasCatchupSupport({ ...mockChannel, tvArchiveDuration: '48' as any })).toBe(true);
+    });
+
     test('should return false if no catchup fields are present', () => {
       expect(hasCatchupSupport(mockChannel)).toBe(false);
     });
@@ -43,6 +56,18 @@ describe('catchupUtils', () => {
 
     test('should return 0 if both are missing', () => {
       expect(getCatchupDays(mockChannel)).toBe(0);
+    });
+
+    test('should ignore catchupDays if 0 and use tvArchiveDuration', () => {
+      expect(getCatchupDays({ ...mockChannel, catchupDays: 0, tvArchiveDuration: 48 })).toBe(2);
+    });
+
+    test('should round down partial days from tvArchiveDuration', () => {
+      expect(getCatchupDays({ ...mockChannel, tvArchiveDuration: 50 })).toBe(2);
+    });
+
+    test('should return 0 if both fields are 0', () => {
+      expect(getCatchupDays({ ...mockChannel, catchupDays: 0, tvArchiveDuration: 0 })).toBe(0);
     });
   });
 
@@ -99,6 +124,23 @@ describe('catchupUtils', () => {
     });
   });
 
+  describe('formatCatchupTime', () => {
+    const testDate = new Date('2023-11-01T12:00:00.000Z');
+
+    test('should return ISO8601 format when format is iso', () => {
+      expect(formatCatchupTime(testDate, 'iso')).toBe('2023-11-01T12:00:00.000Z');
+    });
+
+    test('should return Unix timestamp string when format is unix', () => {
+      // 2023-11-01T12:00:00Z -> 1698840000
+      expect(formatCatchupTime(testDate, 'unix')).toBe('1698840000');
+    });
+
+    test('should return Unix timestamp string by default', () => {
+      expect(formatCatchupTime(testDate)).toBe('1698840000');
+    });
+  });
+
   describe('generateCatchupUrl', () => {
     const channelWithCatchup = {
       ...mockChannel,
@@ -141,7 +183,6 @@ describe('catchupUtils', () => {
     test('should return flussonic format', () => {
       const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'flussonic' });
       const nowUnix = Math.floor(Date.now() / 1000);
-      // Because Date.now() is used inside the function, we check if it starts with the correct part
       expect(url?.startsWith(`http://test.com/stream?utc=${startUnix}&lutc=`)).toBe(true);
     });
 
