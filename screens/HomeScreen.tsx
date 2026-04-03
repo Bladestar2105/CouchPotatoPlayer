@@ -206,13 +206,21 @@ const MainLayout = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0D0D0F', flexDirection: 'row' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background, flexDirection: 'row' }}>
       {/* Sidebar */}
-      <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(24,24,27,0.95)', borderRightColor: '#27272A' }]}>
+      <Animated.View style={[styles.sidebar, { width: sidebarWidth, backgroundColor: 'rgba(20,20,20,0.95)', borderRightColor: colors.border }]}>
         <SafeAreaView edges={Platform.isTV ? [] : ['top', 'bottom']} style={{ flex: 1 }}>
+
               <ScrollView
                 contentContainerStyle={{ paddingVertical: 8 }}
               >
+                {isSidebarExpanded && (
+                  <View style={{ paddingHorizontal: 20, marginBottom: 20, alignItems: 'center' }}>
+                     <Text style={{ color: '#00A8FF', fontSize: 20, fontWeight: 'bold' }}>CouchPotato</Text>
+                     <Text style={{ color: '#A1A1AA', fontSize: 10, letterSpacing: 1 }}>PREMIUM CINEMA</Text>
+                  </View>
+                )}
+
                 {/* Hamburger menu toggle */}
                 <TouchableOpacity
                   onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}

@@ -361,84 +361,163 @@ const SettingsScreen = () => {
 
             {/* Playback */}
             {activeCategory === 'playback' && (
-              <View>
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Playback</Text>
-                {renderSettingRow(
-                  t('playerSettings', 'Video Player Engine'),
-                  getPlayerTypeName(playerType),
-                  <Text style={{ color: colors.primary }}>Change</Text>,
-                  () => openSubMenu('Video Player Engine', [
-                    { label: 'VLC (All Formats)', value: 'vlc' },
-                    { label: 'KSPlayer (FFmpeg)', value: 'ksplayer' },
-                    { label: 'AVKit (HLS & MP4 only)', value: 'avkit' },
-                    { label: getNativePlayerName(), value: 'native' }
-                  ], setPlayerType, playerType)
-                )}
+              <View style={styles.playbackContainer}>
+                {/* Header Area */}
+                <View style={styles.playbackHeader}>
+                   <Text style={[styles.mainTitle, { color: colors.textPrimary }]}>PLAYBACK SETTINGS</Text>
+                   <View style={styles.headerIcons}>
+                      <TouchableOpacity style={styles.headerIconBtn}><Text style={{ color: colors.textSecondary }}>?</Text></TouchableOpacity>
+                      <TouchableOpacity style={styles.headerIconBtn}><Text style={{ color: colors.textSecondary }}>👤</Text></TouchableOpacity>
+                   </View>
+                </View>
 
-                {renderSettingRow(
-                  'Streaming Buffer Size',
-                  `${bufferSize} MB`,
-                  <Text style={{ color: colors.primary }}>Change</Text>,
-                  () => openSubMenu('Buffer Size', [
-                    { label: '8 MB', value: 8 },
-                    { label: '16 MB', value: 16 },
-                    { label: '32 MB', value: 32 },
-                    { label: '64 MB', value: 64 },
-                    { label: '128 MB', value: 128 }
-                  ], setBufferSize, bufferSize)
-                )}
+                {/* Video Quality Section */}
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>● VIDEO QUALITY</Text>
+                <View style={styles.videoQualityGrid}>
+                   <View style={styles.videoQualityColLeft}>
+                      <TouchableOpacity
+                         style={styles.autoResCard}
+                         onPress={() => openSubMenu('Video Player Engine', [
+                            { label: 'VLC (All Formats)', value: 'vlc' },
+                            { label: 'KSPlayer (FFmpeg)', value: 'ksplayer' },
+                            { label: 'AVKit (HLS & MP4 only)', value: 'avkit' },
+                            { label: getNativePlayerName(), value: 'native' }
+                          ], setPlayerType, playerType)}
+                      >
+                         <View style={styles.autoResIcon}><Text style={{ color: '#fff', fontWeight: 'bold' }}>HQ</Text></View>
+                         <View style={styles.autoResText}>
+                            <Text style={styles.autoResTitle}>{t('playerSettings', 'Video Player Engine')}</Text>
+                            <Text style={styles.autoResDesc}>Current: {getPlayerTypeName(playerType)}</Text>
+                         </View>
+                         <View style={styles.recommendedBadge}>
+                            <Text style={styles.recommendedText}>RECOMMENDED</Text>
+                            <Text style={{ color: '#00A8FF', marginLeft: 4 }}>✓</Text>
+                         </View>
+                      </TouchableOpacity>
 
-                {playerType === 'vlc' && (
-                  renderSettingRow(
-                    t('hardwareAcceleration', 'Hardware Acceleration (VLC)'),
-                    'Use hardware decoding when available',
-                    <Switch
-                      value={vlcHardwareAcceleration}
-                      onValueChange={setVlcHardwareAcceleration}
-                      trackColor={{ false: colors.divider, true: colors.primary }}
-                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
-                    />,
-                    Platform.isTV ? () => setVlcHardwareAcceleration(!vlcHardwareAcceleration) : undefined
-                  )
-                )}
+                      <View style={styles.resolutionRow}>
+                         <View style={styles.resCard}>
+                            <Text style={styles.resTitle}>4K</Text>
+                            <Text style={styles.resDesc}>Ultra HD Experience</Text>
+                         </View>
+                         <View style={styles.resCard}>
+                            <Text style={styles.resTitle}>1080p</Text>
+                            <Text style={styles.resDesc}>Full High Definition</Text>
+                         </View>
+                         <View style={styles.resCard}>
+                            <Text style={styles.resTitle}>720p</Text>
+                            <Text style={styles.resDesc}>Standard High Def</Text>
+                         </View>
+                      </View>
+                   </View>
 
-                {playerType === 'ksplayer' && (
-                  <>
-                    {renderSettingRow(
-                      t('hardwareAcceleration', 'Hardware Acceleration (KSPlayer)'),
-                      'Use hardware decoding',
-                      <Switch
-                        value={ksplayerHardwareDecode}
-                        onValueChange={setKsplayerHardwareDecode}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerHardwareDecode(!ksplayerHardwareDecode) : undefined
-                    )}
-                    {renderSettingRow(
-                      t('asyncDecompression', 'Async Decompression'),
-                      'Process video frames asynchronously',
-                      <Switch
-                        value={ksplayerAsynchronousDecompression}
-                        onValueChange={setKsplayerAsynchronousDecompression}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerAsynchronousDecompression(!ksplayerAsynchronousDecompression) : undefined
-                    )}
-                    {renderSettingRow(
-                      t('adaptiveFrameRate', 'Adaptive Frame Rate'),
-                      'Automatically adjust display frame rate',
-                      <Switch
-                        value={ksplayerDisplayFrameRate}
-                        onValueChange={setKsplayerDisplayFrameRate}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerDisplayFrameRate(!ksplayerDisplayFrameRate) : undefined
-                    )}
-                  </>
-                )}
+                   <View style={styles.videoQualityColRight}>
+                      <View style={styles.statusCard}>
+                         <Text style={styles.statusBadgeText}>CURRENT STATUS</Text>
+                         <Text style={styles.statusMainText}>Stable Connection</Text>
+                         <Text style={styles.statusDescText}>Your hardware supports high bitrate streaming.</Text>
+                      </View>
+                   </View>
+                </View>
+
+                {/* Audio & Subtitles Section */}
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>● AUDIO & SUBTITLES</Text>
+                <View style={styles.listGroup}>
+                   <TouchableOpacity style={styles.listItem}>
+                      <Text style={{ color: colors.textSecondary, marginRight: 12 }}>🌐</Text>
+                      <Text style={[styles.listItemText, { color: colors.textPrimary }]}>Preferred Audio Language</Text>
+                      <Text style={[styles.listItemValue, { color: colors.textSecondary }]}>English (Original)</Text>
+                      <Text style={{ color: colors.textSecondary }}> ›</Text>
+                   </TouchableOpacity>
+                   <TouchableOpacity style={styles.listItem}>
+                      <Text style={{ color: colors.textSecondary, marginRight: 12 }}>TT</Text>
+                      <Text style={[styles.listItemText, { color: colors.textPrimary }]}>Subtitle Size</Text>
+                      <Text style={[styles.listItemValue, { color: colors.textSecondary }]}>Medium (Normal)</Text>
+                      <Text style={{ color: colors.textSecondary }}> ›</Text>
+                   </TouchableOpacity>
+                   <TouchableOpacity style={styles.listItem}>
+                      <Text style={{ color: colors.textSecondary, marginRight: 12 }}>📝</Text>
+                      <Text style={[styles.listItemText, { color: colors.textPrimary }]}>Subtitle Style</Text>
+                      <Text style={[styles.listItemValue, { color: colors.textSecondary }]}>Classic White Shadow</Text>
+                      <Text style={{ color: colors.textSecondary }}> ›</Text>
+                   </TouchableOpacity>
+                </View>
+
+                {/* Advanced Engine Section */}
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>● ADVANCED ENGINE</Text>
+                <View style={styles.advancedGrid}>
+                   {/* Hardware Acceleration */}
+                   <View style={styles.advancedCard}>
+                      <Text style={{ color: '#00A8FF', marginRight: 12 }}>⚡</Text>
+                      <View style={styles.advancedCardContent}>
+                         <Text style={[styles.advancedCardTitle, { color: colors.textPrimary }]}>Hardware Acceleration</Text>
+                         <Text style={styles.advancedCardDesc}>Recommended for high bitrates</Text>
+                      </View>
+                      <View style={{ pointerEvents: Platform.isTV ? 'none' : 'auto' }}>
+                        <Switch
+                           value={playerType === 'vlc' ? vlcHardwareAcceleration : ksplayerHardwareDecode}
+                           onValueChange={playerType === 'vlc' ? setVlcHardwareAcceleration : setKsplayerHardwareDecode}
+                           trackColor={{ false: colors.divider, true: '#00A8FF' }}
+                           thumbColor="#FFFFFF"
+                        />
+                      </View>
+                   </View>
+
+                   {/* Buffer Size */}
+                   <TouchableOpacity
+                      style={styles.advancedCard}
+                      onPress={() => openSubMenu('Buffer Size', [
+                        { label: '8 MB', value: 8 },
+                        { label: '16 MB', value: 16 },
+                        { label: '32 MB', value: 32 },
+                        { label: '64 MB', value: 64 },
+                        { label: '128 MB', value: 128 }
+                      ], setBufferSize, bufferSize)}
+                   >
+                      <Text style={{ color: colors.textSecondary, marginRight: 12 }}>💾</Text>
+                      <View style={styles.advancedCardContent}>
+                         <Text style={[styles.advancedCardTitle, { color: colors.textPrimary }]}>Buffer Size</Text>
+                         <Text style={styles.advancedCardDesc}>Current: {bufferSize}MB</Text>
+                      </View>
+                      <Text style={{ color: colors.textSecondary }}>⚙️</Text>
+                   </TouchableOpacity>
+
+                   {/* Refresh Rate Switching */}
+                   <View style={styles.advancedCard}>
+                      <Text style={{ color: colors.textSecondary, marginRight: 12 }}>🔄</Text>
+                      <View style={styles.advancedCardContent}>
+                         <Text style={[styles.advancedCardTitle, { color: colors.textPrimary }]}>Refresh Rate Switching</Text>
+                         <Text style={styles.advancedCardDesc}>Match frame rate to content</Text>
+                      </View>
+                      <View style={{ pointerEvents: Platform.isTV ? 'none' : 'auto' }}>
+                        <Switch
+                           value={ksplayerDisplayFrameRate}
+                           onValueChange={setKsplayerDisplayFrameRate}
+                           trackColor={{ false: colors.divider, true: '#00A8FF' }}
+                           thumbColor="#FFFFFF"
+                           disabled={playerType !== 'ksplayer'}
+                        />
+                      </View>
+                   </View>
+
+                   {/* Async Decompression */}
+                   <View style={styles.advancedCard}>
+                      <Text style={{ color: colors.textSecondary, marginRight: 12 }}>🚀</Text>
+                      <View style={styles.advancedCardContent}>
+                         <Text style={[styles.advancedCardTitle, { color: colors.textPrimary }]}>Async Decompression</Text>
+                         <Text style={styles.advancedCardDesc}>Improve playback smoothness</Text>
+                      </View>
+                      <View style={{ pointerEvents: Platform.isTV ? 'none' : 'auto' }}>
+                        <Switch
+                           value={ksplayerAsynchronousDecompression}
+                           onValueChange={setKsplayerAsynchronousDecompression}
+                           trackColor={{ false: colors.divider, true: '#00A8FF' }}
+                           thumbColor="#FFFFFF"
+                           disabled={playerType !== 'ksplayer'}
+                        />
+                      </View>
+                   </View>
+                </View>
               </View>
             )}
 
@@ -613,6 +692,179 @@ const styles = StyleSheet.create({
   subMenuItemText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+
+  playbackContainer: {
+    padding: 24,
+  },
+  playbackHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  mainTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoQualityGrid: {
+    flexDirection: Platform.isTV ? 'row' : 'column',
+    gap: 16,
+    marginBottom: 32,
+  },
+  videoQualityColLeft: {
+    flex: 2,
+    gap: 16,
+  },
+  videoQualityColRight: {
+    flex: 1,
+  },
+  autoResCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    borderWidth: 1,
+    borderColor: '#00A8FF',
+    borderRadius: 12,
+    padding: 20,
+  },
+  autoResIcon: {
+    backgroundColor: '#00A8FF',
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 16,
+  },
+  autoResText: {
+    flex: 1,
+  },
+  autoResTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  autoResDesc: {
+    color: '#A1A1AA',
+    fontSize: 13,
+  },
+  recommendedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,168,255,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  recommendedText: {
+    color: '#00A8FF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  resolutionRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  resCard: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+    padding: 16,
+    borderRadius: 12,
+  },
+  resTitle: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  resDesc: {
+    color: '#A1A1AA',
+    fontSize: 12,
+  },
+  statusCard: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    padding: 20,
+    justifyContent: 'center',
+  },
+  statusBadgeText: {
+    color: '#00A8FF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  statusMainText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  statusDescText: {
+    color: '#A1A1AA',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  listGroup: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 32,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+  listItemText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  listItemValue: {
+    fontSize: 14,
+  },
+  advancedGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  advancedCard: {
+    flex: Platform.isTV ? 1 : undefined,
+    minWidth: Platform.isTV ? '45%' : '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    padding: 16,
+    borderRadius: 12,
+  },
+  advancedCardContent: {
+    flex: 1,
+  },
+  advancedCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  advancedCardDesc: {
+    color: '#A1A1AA',
+    fontSize: 13,
   },
 });
 
