@@ -74,13 +74,36 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
             isPast: boolean;
         }> = [];
 
-        for (let idx = 0; idx < programs.length; idx++) {
+        if (programs.length === 0) return result;
+
+        // ⚡ Bolt: O(log N) binary search to find the first relevant program instead of scanning from index 0.
+        // This is extremely efficient for long EPG arrays (e.g. multiple days of data).
+        let left = 0;
+        let right = programs.length - 1;
+        let startIndex = 0;
+
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            if (programs[mid].end > timelineStartMs) {
+                startIndex = mid;
+                right = mid - 1; // Look for earlier valid programs
+            } else {
+                left = mid + 1; // Program ended before timeline started
+            }
+        }
+
+        for (let idx = startIndex; idx < programs.length; idx++) {
             const prog = programs[idx];
             const startMs = prog.start;
             const endMs = prog.end;
 
-            // Skip if fully outside timeline
-            if (endMs <= timelineStartMs || startMs >= timelineEndMs) continue;
+            // ⚡ Bolt: Since the array is chronologically sorted, if this program starts after
+            // the timeline ends, all subsequent programs will too. We can safely break.
+            if (startMs >= timelineEndMs) break;
+
+            // Skip if program ended before our timeline start
+            // (should be handled by binary search but kept as safety net)
+            if (endMs <= timelineStartMs) continue;
 
             const renderStartMs = Math.max(startMs, timelineStartMs);
             const renderEndMs = Math.min(endMs, timelineEndMs);
