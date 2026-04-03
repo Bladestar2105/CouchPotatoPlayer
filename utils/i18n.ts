@@ -70,10 +70,9 @@ const resources = {
       "adaptiveFrameRate": "Adaptive Frame Rate",
       "playerSettings": "Video Player Engine",
       "theme": "Theme",
-      "settings": {
-        "updatePlaylist": "Update Playlist",
-        "updateEPG": "Update EPG"
-      },
+      "settings": "Settings",
+      "settings.updatePlaylist": "Update Playlist",
+      "settings.updateEPG": "Update EPG",
       "back": "Back",
       "info": "Info"
     }
@@ -145,10 +144,9 @@ const resources = {
       "adaptiveFrameRate": "Adaptive Bildrate",
       "playerSettings": "Player-Einstellungen",
       "theme": "Theme",
-      "settings": {
-        "updatePlaylist": "Playlist aktualisieren",
-        "updateEPG": "EPG aktualisieren"
-      },
+      "settings": "Einstellungen",
+      "settings.updatePlaylist": "Playlist aktualisieren",
+      "settings.updateEPG": "EPG aktualisieren",
       "back": "Zurück",
       "info": "Info"
     }
@@ -215,10 +213,9 @@ const resources = {
       "loadStreamsError": "Impossible de charger les listes de flux. Vérifiez votre connexion.",
       "corsError": "Erreur CORS : Le serveur bloque les navigateurs web. Veuillez utiliser l'application de bureau ou mobile, ou configurer un proxy.",
       "search": "Rechercher",
-      "settings": {
-        "updatePlaylist": "Mettre à jour la playlist",
-        "updateEPG": "Mettre à jour l'EPG"
-      },
+      "settings": "Paramètres",
+      "settings.updatePlaylist": "Mettre à jour la playlist",
+      "settings.updateEPG": "Mettre à jour l'EPG",
       "back": "Retour",
       "info": "Info"
     }
