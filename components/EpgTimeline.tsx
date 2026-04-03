@@ -22,7 +22,7 @@ interface EpgTimelineProps {
 
 // ⚡ Bolt: Cache Intl.DateTimeFormat instance to avoid slow initialization overhead on every render
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
-const formatTime = (d: Date) => timeFormatter.format(d);
+const formatTime = (d: Date | number) => timeFormatter.format(d);
 
 const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, width, colors, onProgramPress, onChannelPress }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
@@ -46,7 +46,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, leftOffset, wid
         >
             <Text style={[styles.programTitle, isPast ? { color: '#71717A' } : { color: '#FAFAFA' }, { fontSize: Platform.isTV ? 15 : 13 }]} numberOfLines={1}>{prog.title}</Text>
             <Text style={[styles.programTime, { fontSize: Platform.isTV ? 14 : 12 }]} numberOfLines={1}>
-                {formatTime(new Date(prog.start))} - {formatTime(new Date(prog.end))}
+                {formatTime(prog.start)} - {formatTime(prog.end)}
             </Text>
         </TouchableOpacity>
     );
