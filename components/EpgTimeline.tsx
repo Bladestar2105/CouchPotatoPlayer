@@ -4,12 +4,11 @@ import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTV } from '../context/IPTVContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { isProgramCatchupAvailable } from '../utils/catchupUtils';
+import { isProgramCatchupAvailable, getCatchupDays } from '../utils/catchupUtils';
 
 const PIXELS_PER_MINUTE = Platform.isTV ? 8 : 4; // Stretch timeline for TV
 const HOUR_WIDTH = PIXELS_PER_MINUTE * 60;
-const TIMELINE_START_OFFSET_HOURS = 2; // Show x hours before now
-const TIMELINE_DURATION_HOURS = 24; // Total hours in timeline
+
 
 interface EpgTimelineProps {
   channels: Channel[];
@@ -72,7 +71,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
            prevProps.width === nextProps.width;
 });
 
-const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus, hasCatchup }: any) => {
+const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus, hasCatchup, scrollX, visibleWidth }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
     // recalculating boundaries, offsets, and time comparisons on every render.
     const programLayoutData = useMemo(() => {
@@ -81,6 +80,11 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
         const nowMs = now.getTime();
 
         const channelHasCatchup = hasCatchup ? hasCatchup(channel) : false;
+
+        // Calculate visible time window based on scroll position with a generous buffer
+        const visibleStartMs = timelineStart.getTime() + (Math.max(0, scrollX - 1000) / PIXELS_PER_MINUTE) * 60000;
+        const visibleEndMs = timelineStart.getTime() + ((scrollX + visibleWidth + 1000) / PIXELS_PER_MINUTE) * 60000;
+
 
         const result: Array<{
             prog: any;
@@ -123,6 +127,11 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
             // (should be handled by binary search but kept as safety net)
             if (endMs <= timelineStartMs) continue;
 
+            // Only render blocks that are within our visible window (with buffer)
+            if (endMs < visibleStartMs || startMs > visibleEndMs) {
+                continue;
+            }
+
             const renderStartMs = Math.max(startMs, timelineStartMs);
             const renderEndMs = Math.min(endMs, timelineEndMs);
 
@@ -142,7 +151,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
         }
 
         return result;
-    }, [programs, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE]);
+    }, [programs, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, scrollX, visibleWidth]);
 
     return (
         <View style={[styles.row, isFocused && styles.rowFocused]}>
@@ -203,11 +212,37 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
            prevProps.isPlaying === nextProps.isPlaying &&
            prevProps.isFav === nextProps.isFav &&
            prevProps.programs === nextProps.programs &&
-           prevProps.channel === nextProps.channel;
+           prevProps.channel === nextProps.channel &&
+           prevProps.scrollX === nextProps.scrollX &&
+           prevProps.visibleWidth === nextProps.visibleWidth;
 });
 
 const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId, shouldFocusFirstItem }) => {
   const { epg, hasCatchup, getCatchupUrl, isFavorite, addFavorite, removeFavorite } = useIPTV();
+
+  const [scrollX, setScrollX] = useState(0);
+  const [visibleWidth, setVisibleWidth] = useState(1000);
+  const mainScrollViewRef = useRef<ScrollView>(null);
+
+  // Calculate max catchup days across all visible channels
+  const maxCatchupDays = useMemo(() => {
+    let max = 0;
+    for (const channel of channels) {
+      if (hasCatchup && hasCatchup(channel)) {
+         max = Math.max(max, getCatchupDays(channel));
+      }
+    }
+    return max;
+  }, [channels, hasCatchup]);
+
+  const TIMELINE_START_OFFSET_HOURS = useMemo(() => {
+    // Show either 2 hours before now (default) or max catchup days available
+    return Math.max(2, maxCatchupDays * 24);
+  }, [maxCatchupDays]);
+
+  // Timeline is start offset + 24 hours into the future
+  const TIMELINE_DURATION_HOURS = TIMELINE_START_OFFSET_HOURS + 24;
+
   const { colors } = useSettings();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -236,12 +271,15 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 
   // Scroll to current time on mount
   useEffect(() => {
-    if (scrollViewRef.current && nowPosition > 100) {
+    const targetX = Math.max(0, nowPosition - (visibleWidth / 2));
+    if (scrollViewRef.current && targetX > 0) {
       setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ x: nowPosition - 100, animated: false });
+        scrollViewRef.current?.scrollTo({ x: targetX, animated: false });
+        mainScrollViewRef.current?.scrollTo({ x: targetX, animated: false });
+        setScrollX(targetX);
       }, 100);
     }
-  }, [nowPosition]);
+  }, [nowPosition, visibleWidth]);
 
   const timeHeaders = useMemo(() => {
     const headers = [];
@@ -285,12 +323,23 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
         </ScrollView>
       </View>
 
-      <View style={{ flex: 1 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={true} onScroll={(e) => {
-            if (scrollViewRef.current) {
-                scrollViewRef.current.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
-            }
-        }} scrollEventThrottle={16}>
+      <View style={{ flex: 1 }} onLayout={(e) => setVisibleWidth(e.nativeEvent.layout.width)}>
+        <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={true}
+            ref={mainScrollViewRef}
+            onScroll={(e) => {
+                const newScrollX = e.nativeEvent.contentOffset.x;
+                if (scrollViewRef.current) {
+                    scrollViewRef.current.scrollTo({ x: newScrollX, animated: false });
+                }
+                // Debounce state updates to avoid excessive re-renders during smooth scrolling
+                if (Math.abs(scrollX - newScrollX) > 500) {
+                   setScrollX(newScrollX);
+                }
+            }}
+            scrollEventThrottle={16}
+        >
           <View style={{ width: totalWidth + (Platform.isTV ? 160 : 120) }}>
               {/* Vertical Time Line across all rows */}
               <View style={[styles.currentTimeLine, { left: (Platform.isTV ? 160 : 120) + nowPosition }]} />
@@ -334,6 +383,8 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                             PIXELS_PER_MINUTE={PIXELS_PER_MINUTE}
                             hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                             hasCatchup={hasCatchup}
+                            scrollX={scrollX}
+                            visibleWidth={visibleWidth}
                         />
                     );
                  }}
