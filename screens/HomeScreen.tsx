@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -19,6 +19,7 @@ import { RecentlyWatchedItem } from '../types';
 
 export type ContentRef = {
   focusFirstItem: () => void;
+  handleBack?: () => boolean;
 };
 
 type TabId = 'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search';
@@ -33,7 +34,6 @@ const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
 
 // ============================================================
 // TV SIDEBAR - TiviMate-style collapsible left sidebar for TV
-// Uses LEFT/RIGHT focus navigation which works reliably on tvOS
 // ============================================================
 const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlur, colors }: any) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -88,7 +88,46 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
 
 // ============================================================
 // MOBILE TOP TAB BAR - Horizontal tabs for phones/tablets
+// Uses a flat View row instead of ScrollView to avoid
+// touch-interception issues on Android.
 // ============================================================
+const MobileTabItem = React.memo(({ tab, isActive, onPress, colors }: {
+  tab: TabDef;
+  isActive: boolean;
+  onPress: () => void;
+  colors: any;
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={[
+        mobileTabStyles.tab,
+        isActive && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 },
+        isFocused && { backgroundColor: colors.primaryLight },
+      ]}
+      accessible={true}
+      // @ts-ignore - isTVSelectable is valid on RN-TVOS
+      isTVSelectable={true}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
+    >
+      <Icon name={tab.icon as any} size={17} color={isActive ? colors.primary : colors.textMuted} />
+      <Text
+        style={[
+          mobileTabStyles.tabLabel,
+          { color: isActive ? colors.primary : colors.textMuted, fontWeight: isActive ? '700' : '500' },
+        ]}
+        numberOfLines={1}
+      >
+        {tab.label}
+      </Text>
+    </Pressable>
+  );
+});
+
 const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileName, profiles, currentProfileId, onProfileSwitch }: {
   tabs: TabDef[];
   activeTab: TabId;
@@ -99,7 +138,6 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileNa
   currentProfileId?: string;
   onProfileSwitch: (profile: any) => void;
 }) => {
-  const [focusedTab, setFocusedTab] = useState<TabId | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   return (
@@ -113,50 +151,23 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileNa
           activeOpacity={0.7}
         >
           <Image source={require('../assets/icon.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
-          {currentProfileName && (
-            <Text style={[mobileTabStyles.profileName, { color: colors.text }]} numberOfLines={1}>
-              {currentProfileName}
-            </Text>
-          )}
           {profiles.length > 1 && (
             <Icon name="arrow-drop-down" size={18} color={colors.textMuted} />
           )}
         </TouchableOpacity>
 
-        {/* Tabs - flex: 1 ensures ScrollView fills remaining horizontal space */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={mobileTabStyles.tabsScroll}
-          contentContainerStyle={mobileTabStyles.tabsRow}
-        >
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const isFocused = focusedTab === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => { setShowProfileMenu(false); onTabPress(tab.id); }}
-                onFocus={() => setFocusedTab(tab.id)}
-                onBlur={() => setFocusedTab(null)}
-                style={[
-                  mobileTabStyles.tab,
-                  isActive && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 },
-                  isFocused && { backgroundColor: colors.primaryLight },
-                ]}
-                accessible={true}
-                isTVSelectable={true}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-              >
-                <Icon name={tab.icon as any} size={17} color={isActive ? colors.primary : colors.textMuted} />
-                <Text style={[mobileTabStyles.tabLabel, { color: isActive ? colors.primary : colors.textMuted, fontWeight: isActive ? '700' : '500' }]} numberOfLines={1}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* Tabs - plain View row, NO ScrollView to avoid Android touch issues */}
+        <View style={mobileTabStyles.tabsRow}>
+          {tabs.map((tab) => (
+            <MobileTabItem
+              key={tab.id}
+              tab={tab}
+              isActive={activeTab === tab.id}
+              onPress={() => { setShowProfileMenu(false); onTabPress(tab.id); }}
+              colors={colors}
+            />
+          ))}
+        </View>
       </View>
 
       {/* Provider dropdown - rendered outside the tab row to avoid blocking taps */}
@@ -189,21 +200,19 @@ const mobileTabStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    paddingLeft: 10,
-    height: 50,
+    paddingLeft: 6,
+    height: 48,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 10,
+    paddingHorizontal: 8,
     borderRightWidth: 1,
-    marginRight: 4,
     height: '100%',
   },
-  brandLogo: { width: 26, height: 26, borderRadius: 8, marginRight: 6 },
-  profileName: { fontSize: 11, maxWidth: 72, fontWeight: '600', letterSpacing: 0.2 },
+  brandLogo: { width: 26, height: 26, borderRadius: 8, marginRight: 2 },
   profileDropdown: {
-    position: 'absolute', top: 50, left: 0, minWidth: 220,
+    position: 'absolute', top: 48, left: 0, minWidth: 220,
     borderWidth: 1, borderRadius: 14, zIndex: 200, elevation: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16,
     paddingVertical: 6,
@@ -212,17 +221,25 @@ const mobileTabStyles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 11, paddingHorizontal: 16, borderRadius: 10, marginHorizontal: 6, marginVertical: 2,
   },
-  tabsScroll: {
+  tabsRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: '100%',
+    paddingHorizontal: 2,
   },
-  tabsRow: { flexDirection: 'row', alignItems: 'center', height: '100%', paddingRight: 8 },
   tab: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 11, paddingVertical: 6, marginHorizontal: 2,
-    borderBottomWidth: 2.5, borderBottomColor: 'transparent', borderRadius: 6,
-    height: '100%', justifyContent: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    borderBottomWidth: 2.5,
+    borderBottomColor: 'transparent',
+    height: '100%',
+    minWidth: 0,
   },
-  tabLabel: { fontSize: 12, marginLeft: 5, letterSpacing: 0.3, fontWeight: '500' },
+  tabLabel: { fontSize: 10, marginLeft: 3, letterSpacing: 0.2, fontWeight: '500' },
 });
 
 // ============================================================
@@ -235,6 +252,7 @@ const MainLayout = () => {
   const dimensions = useWindowDimensions();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const isFocused = useIsFocused();
 
   const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<TabId>('channels');
@@ -250,7 +268,6 @@ const MainLayout = () => {
 
   // TV sidebar state (TiviMate-style collapsible)
   const isSidebarExpanded = true;
-    const collapsedWidth = 70;
   const expandedWidth = 170;
   const sidebarWidth = React.useRef(new Animated.Value(expandedWidth)).current;
 
@@ -265,7 +282,6 @@ const MainLayout = () => {
 
   const tabs: TabDef[] = useMemo(() => [
     { id: 'channels', icon: 'live-tv', label: t('channels') },
-
     { id: 'movies', icon: 'movie', label: t('movies') },
     { id: 'series', icon: 'tv', label: t('series') },
     { id: 'favorites', icon: 'favorite', label: t('favorites') },
@@ -273,6 +289,45 @@ const MainLayout = () => {
     { id: 'search', icon: 'search', label: t('search') },
     { id: 'settings', icon: 'settings', label: t('settings') },
   ], [t]);
+
+  // ============================================================
+  // BACK NAVIGATION - step-by-step, never closes app
+  // Priority:
+  //   1. Let active content handle back (e.g. movie grid -> categories)
+  //   2. If on a non-default tab, go back to channels (default tab)
+  //   3. If already on channels, show exit confirmation
+  // ============================================================
+  useEffect(() => {
+    if (!isFocused) return;
+
+    const onBack = () => {
+      // 1. Let the active content component handle back first
+      if (contentRef.current?.handleBack?.()) {
+        return true;
+      }
+
+      // 2. If not on the default tab, navigate back to channels
+      if (activeTab !== 'channels') {
+        setActiveTab('channels');
+        return true;
+      }
+
+      // 3. On default tab with nothing to go back to: show exit dialog
+      Alert.alert(
+        'App beenden?',
+        'Möchten Sie CouchPotatoPlayer wirklich beenden?',
+        [
+          { text: 'Nein', style: 'cancel' },
+          { text: 'Ja', onPress: () => BackHandler.exitApp() },
+        ],
+        { cancelable: true }
+      );
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => backHandler.remove();
+  }, [isFocused, activeTab]);
 
   if (isLoading) {
     return (
@@ -284,30 +339,19 @@ const MainLayout = () => {
 
   const handleTabPress = (tab: TabId) => {
     setActiveTab(tab);
-    if (isTV) {
-
-          }
     setTimeout(() => {
       contentRef.current?.focusFirstItem();
     }, 100);
   };
 
-  const handleSidebarFocus = () => {
-
-  };
-
-  const handleSidebarBlur = () => {
-              };
-
-  const handleSidebarReturn = () => {
-
-      };
+  const handleSidebarFocus = () => {};
+  const handleSidebarBlur = () => {};
+  const handleSidebarReturn = () => {};
 
   const renderContent = () => {
     return (
       <View style={{ flex: 1 }}>
         {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="epg" />}
-
         {activeTab === 'movies' && <MovieList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'series' && <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'favorites' && <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
@@ -432,18 +476,6 @@ const HomeScreen = () => {
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
-
-  useEffect(() => {
-    let backHandler: any;
-    if (isFocused && Platform.isTV) {
-      backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-         return true;
-      });
-    }
-    return () => {
-      if (backHandler) backHandler.remove();
-    };
-  }, [isFocused]);
 
   const hasAdultContentRef = React.useRef(false);
   const prevProfileIdRef = React.useRef(currentProfile?.id);

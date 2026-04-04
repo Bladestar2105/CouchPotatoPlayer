@@ -5,7 +5,7 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
-export type ContentRef = { focusFirstItem: () => void };
+export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/icon.png');
 const POSTER_WIDTH = 120;
@@ -63,16 +63,23 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
 
-  // Expose focusFirstItem method to parent
+  // Mobile responsiveness
+  const isMobile = dimensions.width < 768;
+
+  // Expose focusFirstItem and handleBack methods to parent
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
       firstCategoryRef.current?.focus?.();
       firstCategoryRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
-    }
+    },
+    handleBack: () => {
+      if (isMobile && !showCategories) {
+        setShowCategories(true);
+        return true;
+      }
+      return false;
+    },
   }));
-
-  // Mobile responsiveness
-  const isMobile = dimensions.width < 768;
   const numColumns = Math.max(2, Math.floor((isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310) / (POSTER_WIDTH + 16)));
 
   const { groups, groupMap } = useMemo(() => {
@@ -138,10 +145,10 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
       {showCategories && (
-      <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: 'rgba(26,26,46,0.95)', borderRightColor: 'rgba(124,77,255,0.12)' }]}>
+      <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.surface, borderRightColor: colors.divider }]}>
         {isMobile && (
-            <View style={{ padding: 16, backgroundColor: 'rgba(26,26,46,1)', borderBottomWidth: 1, borderBottomColor: 'rgba(124,77,255,0.12)' }}>
-              <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
+            <View style={{ padding: 16, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+              <Text style={{ color: colors.text, fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
             </View>
         )}
         <FlatList
@@ -172,9 +179,9 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
       {/* Main Content - Series Grid */}
       {(!isMobile || !showCategories) && (
-      <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: 'rgba(30,30,46,0.9)' }]}>
+      <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: colors.background }]}>
         {isMobile && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(26,26,46,1)', borderBottomWidth: 1, borderBottomColor: 'rgba(124,77,255,0.12)' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
               <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }} accessible={true} isTVSelectable={true}>
                 <Icon name="arrow-back" size={24} color={colors.text} />
                 <Text style={{ color: colors.text, marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
@@ -233,7 +240,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                       ]}
                       resizeMode="cover"
                     />
-                    <Text style={[styles.title, { color: isFocused ? '#FFF' : '#AAA' }]} numberOfLines={2}>
+                    <Text style={[styles.title, { color: isFocused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
                       {item.name}
                     </Text>
                   </TouchableOpacity>
@@ -242,7 +249,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
           />
         ) : (
           <View style={styles.centeredContainer}>
-            <Text style={{ color: '#AAA' }}>No series available</Text>
+            <Text style={{ color: colors.textMuted }}>No series available</Text>
           </View>
         )}
       </View>

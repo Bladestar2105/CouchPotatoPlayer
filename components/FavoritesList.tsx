@@ -7,7 +7,7 @@ import { RootStackParamList } from '../App';
 import { FavoriteItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-export type ContentRef = { focusFirstItem: () => void };
+export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
