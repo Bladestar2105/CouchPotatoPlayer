@@ -186,16 +186,22 @@ const WelcomeScreen = () => {
           </Text>
 
           {/* Type Selector */}
-          <View style={[styles.typeSelector, { backgroundColor: colors.divider }]}>
+          <View style={[styles.typeSelector, { backgroundColor: colors.divider }]} accessibilityRole="tablist">
             <TouchableOpacity
               style={[styles.typeButton, type === 'xtream' && { backgroundColor: colors.primary }]}
               onPress={() => setType('xtream')}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: type === 'xtream' }}
+              accessibilityLabel="Select Xtream Codes type"
             >
               <Text style={[styles.typeText, { color: type === 'xtream' ? '#FFF' : colors.textSecondary }]}>Xtream Codes</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.typeButton, type === 'm3u' && { backgroundColor: colors.primary }]}
               onPress={() => setType('m3u')}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: type === 'm3u' }}
+              accessibilityLabel="Select M3U Playlist type"
             >
               <Text style={[styles.typeText, { color: type === 'm3u' ? '#FFF' : colors.textSecondary }]}>M3U Playlist</Text>
             </TouchableOpacity>
@@ -291,6 +297,9 @@ const WelcomeScreen = () => {
             style={[styles.loginButton, { backgroundColor: colors.primary }]}
             onPress={handleLogin}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Add Provider"
+            accessibilityState={{ disabled: loading, busy: loading }}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
