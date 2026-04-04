@@ -35,3 +35,8 @@
 **Vulnerability:** The application used `Date.now().toString()` to generate unique identifiers for newly created IPTV profiles. Since `Date.now()` provides the current timestamp in milliseconds, creating profiles rapidly (e.g., in automated scripts or bulk operations) could result in colliding IDs, leading to state corruption and unpredictable behavior.
 **Learning:** Time-based generation without cryptographic uniqueness guarantees predictable sequences and collision risks. Modern environments provide `crypto.randomUUID()` for generating secure UUIDv4 identifiers.
 **Prevention:** Always use `crypto.randomUUID()` to generate unique identifiers. For environments with varying compatibility (like React Native), implement the defensive fallback: `(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString()`.
+
+## 2024-05-23 - Hardcoded TMDB API Key in MediaInfoScreen
+**Vulnerability:** The application contained a hardcoded TMDB API key placeholder (`'YOUR_API_KEY_HERE'`) in the `MediaInfoScreen.tsx` component. Hardcoding secrets in source code leads to information exposure and prevents secure management/rotation of credentials.
+**Learning:** Hardcoding API keys or secrets in the UI layer (or any source file) is a security risk. It makes the secret accessible to anyone with access to the source code or the bundled application.
+**Prevention:** Never hardcode secrets in source code. Use environment variables (prefixed with `EXPO_PUBLIC_` for Expo) for build-time defaults and provide a UI for users to supply their own keys, persisting them securely in local storage (like `AsyncStorage`). Retrieve secrets via a centralized configuration or context provider.

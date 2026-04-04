@@ -26,7 +26,8 @@ const SettingsScreen = () => {
     playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration,
     ksplayerHardwareDecode, setKsplayerHardwareDecode,
     ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression,
-    ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate
+    ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate,
+    tmdbApiKey, setTmdbApiKey
   } = useSettings();
 
   const navigation = useNavigation<any>();
@@ -110,6 +111,37 @@ const SettingsScreen = () => {
         }
       ]
     );
+  };
+
+  const handleSetTmdbKey = () => {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'TMDB API Key',
+        'Enter your TMDB API key to enable enriched media info (posters, backdrops, ratings, etc.)',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Save',
+            onPress: (key?: string) => {
+              if (key !== undefined) setTmdbApiKey(key);
+            }
+          }
+        ],
+        'plain-text',
+        tmdbApiKey
+      );
+    } else {
+      // Simple fallback for Android/TV or other platforms where prompt isn't supported or styled differently
+      // In a real app we might use a dedicated Input screen or Modal
+      Alert.alert(
+        'TMDB API Key',
+        'Please use the web interface or a supported mobile device to set the TMDB API Key, or enter it below if your platform supports it.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Clear Key', style: 'destructive', onPress: () => setTmdbApiKey('') }
+        ]
+      );
+    }
   };
 
   const handleDeleteProfile = (id: string) => {
@@ -488,6 +520,12 @@ const SettingsScreen = () => {
             {activeCategory === 'advanced' && (
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Advanced</Text>
+                {renderSettingRow(
+                  'TMDB API Key',
+                  tmdbApiKey ? `Key is set: ${tmdbApiKey.substring(0, 4)}****` : 'No API key set',
+                  <Text style={{ color: colors.primary }}>{tmdbApiKey ? 'Edit' : 'Set Key'}</Text>,
+                  handleSetTmdbKey
+                )}
                 {renderSettingRow(
                   'Clear EPG & App Cache',
                   'Forces a fresh data fetch on next load',
