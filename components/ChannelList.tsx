@@ -9,7 +9,7 @@ import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { findCurrentProgramIndex } from '../utils/epgUtils';
 import { ChannelLogo } from './ChannelLogo';
 import EpgTimeline from './EpgTimeline';
-export type ContentRef = { focusFirstItem: () => void };
+export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');
@@ -169,6 +169,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
 
   const firstCategoryRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
+  const [unlockMode, setUnlockMode] = useState<string | null>(null);
 
   useEffect(() => {
     loadEPG();
@@ -180,7 +181,20 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         firstCategoryRef.current.focus?.();
         firstCategoryRef.current.setNativeProps?.({ hasTVPreferredFocus: true });
       }
-    }
+    },
+    handleBack: () => {
+      // If PIN unlock dialog is open, close it
+      if (unlockMode) {
+        setUnlockMode(null);
+        return true;
+      }
+      // If viewing channel list on mobile, go back to categories
+      if (isMobile && !showCategories) {
+        setShowCategories(true);
+        return true;
+      }
+      return false;
+    },
   }));
 
   const { groups, groupMap, channelMap } = useMemo(() => {
@@ -269,8 +283,6 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     }
     return channel.tvgId || channel.id;
   };
-
-  const [unlockMode, setUnlockMode] = useState<string | null>(null);
 
   const handleChannelPress = (channel: Channel) => {
     if (isChannelLocked(channel.id)) {

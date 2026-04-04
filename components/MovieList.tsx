@@ -5,7 +5,7 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Movie } from '../types';
 import { useSettings } from '../context/SettingsContext';
-export type ContentRef = { focusFirstItem: () => void };
+export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/icon.png');
 const POSTER_WIDTH = 120;
@@ -63,16 +63,24 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
 
-  // Expose focusFirstItem method to parent
+  // Mobile responsiveness
+  const isMobile = dimensions.width < 768;
+
+  // Expose focusFirstItem and handleBack methods to parent
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
       firstCategoryRef.current?.focus?.();
       firstCategoryRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
-    }
+    },
+    handleBack: () => {
+      // If viewing movie grid on mobile, go back to categories
+      if (isMobile && !showCategories) {
+        setShowCategories(true);
+        return true;
+      }
+      return false;
+    },
   }));
-
-  // Mobile responsiveness
-  const isMobile = dimensions.width < 768;
   const numColumns = Math.max(2, Math.floor((isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310) / (POSTER_WIDTH + 16)));
 
   const { groups, groupMap } = useMemo(() => {
