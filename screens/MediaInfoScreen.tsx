@@ -17,7 +17,7 @@ const MediaInfoScreen = () => {
   const isFocused = useIsFocused();
   const { id, type, title, cover, streamUrl, returnGroupId, returnTab } = route.params as any;
   const { getVodInfo, getSeriesInfo, playStream, series, favorites, addFavorite, removeFavorite } = useIPTV();
-  const { colors } = useSettings();
+  const { colors, tmdbApiKey } = useSettings();
   const dimensions = useWindowDimensions();
 
   const [info, setInfo] = useState<any>(null);
@@ -54,7 +54,7 @@ const MediaInfoScreen = () => {
 
       setInfo(data);
 
-      const tmdb = new TMDBService({ apiKey: 'YOUR_API_KEY_HERE' });
+      const tmdb = new TMDBService({ apiKey: tmdbApiKey });
       if (tmdb.isAvailable()) {
         const enhanced = await tmdb.enrichTitle(title, type === 'series' ? 'tv' : 'movie');
         if (enhanced) setTmdbData(enhanced);

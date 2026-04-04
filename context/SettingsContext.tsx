@@ -109,6 +109,8 @@ interface SettingsContextProps {
   setKsplayerAsynchronousDecompression: (enabled: boolean) => void;
   ksplayerDisplayFrameRate: boolean;
   setKsplayerDisplayFrameRate: (enabled: boolean) => void;
+  tmdbApiKey: string;
+  setTmdbApiKey: (key: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextProps | undefined>(undefined);
@@ -121,6 +123,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [ksplayerHardwareDecode, setKsplayerHardwareDecodeState] = useState<boolean>(true);
   const [ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompressionState] = useState<boolean>(false);
   const [ksplayerDisplayFrameRate, setKsplayerDisplayFrameRateState] = useState<boolean>(true);
+  const [tmdbApiKey, setTmdbApiKeyState] = useState<string>(process.env.EXPO_PUBLIC_TMDB_API_KEY || '');
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -159,6 +162,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const storedKSFrameRate = await AsyncStorage.getItem('app_ks_display_frame_rate');
         if (storedKSFrameRate) {
           setKsplayerDisplayFrameRateState(storedKSFrameRate === 'true');
+        }
+
+        const storedTmdbKey = await AsyncStorage.getItem('app_tmdb_api_key');
+        if (storedTmdbKey) {
+          setTmdbApiKeyState(storedTmdbKey);
         }
       } catch (e) {
         Logger.error('Failed to load settings', e);
@@ -232,6 +240,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const setTmdbApiKey = async (key: string) => {
+    setTmdbApiKeyState(key);
+    try {
+      await AsyncStorage.setItem('app_tmdb_api_key', key);
+    } catch (e) {
+      Logger.error('Failed to save TMDB API Key', e);
+    }
+  };
+
   const colors = getThemeColors(themeMode);
 
   // ⚡ Perf: Memoize the context value object to prevent unnecessary re-renders
@@ -252,7 +269,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setKsplayerAsynchronousDecompression,
     ksplayerDisplayFrameRate,
     setKsplayerDisplayFrameRate,
-  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration, ksplayerHardwareDecode, setKsplayerHardwareDecode, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate]);
+    tmdbApiKey,
+    setTmdbApiKey,
+  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration, ksplayerHardwareDecode, setKsplayerHardwareDecode, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate, tmdbApiKey, setTmdbApiKey]);
 
   if (!isReady) {
     return null; // Or a splash screen / loader
