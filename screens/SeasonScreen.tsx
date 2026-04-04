@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, BackHandler } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, BackHandler, TVEventControl } from 'react-native';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
@@ -21,10 +21,14 @@ const SeasonScreen = () => {
   const [seasons, setSeasons] = useState<Season[]>(series.seasons || []);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Handle back button to navigate properly instead of closing app
+  // Handle back button / Apple TV menu button to navigate properly instead of closing app
   useEffect(() => {
     if (!isFocused) return;
-    
+
+    if (Platform.isTV && TVEventControl?.enableTVMenuKey) {
+      TVEventControl.enableTVMenuKey();
+    }
+
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (navigation.canGoBack()) {
         navigation.goBack();
@@ -34,7 +38,12 @@ const SeasonScreen = () => {
       return true;
     });
 
-    return () => backHandler.remove();
+    return () => {
+      if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+        TVEventControl.disableTVMenuKey();
+      }
+      backHandler.remove();
+    };
   }, [isFocused, navigation]);
 
   useEffect(() => {

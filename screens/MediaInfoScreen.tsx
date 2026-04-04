@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, TouchableOpacity, useWindowDimensions, Platform, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, TouchableOpacity, useWindowDimensions, Platform, BackHandler, TVEventControl } from 'react-native';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
 import { useIPTV } from '../context/IPTVContext';
@@ -26,10 +26,16 @@ const MediaInfoScreen = () => {
 
   const isFavorite = favorites.some(f => f.id === id && f.type === type);
 
-  // Handle back button to navigate properly instead of closing app
+  // Handle back button / Apple TV menu button to navigate properly instead of closing app
   useEffect(() => {
     if (!isFocused) return;
-    
+
+    // Enable menu key interception on tvOS so the remote's menu button
+    // triggers hardwareBackPress instead of exiting the app
+    if (Platform.isTV && TVEventControl?.enableTVMenuKey) {
+      TVEventControl.enableTVMenuKey();
+    }
+
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (navigation.canGoBack()) {
         navigation.goBack();
@@ -39,7 +45,12 @@ const MediaInfoScreen = () => {
       return true;
     });
 
-    return () => backHandler.remove();
+    return () => {
+      if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+        TVEventControl.disableTVMenuKey();
+      }
+      backHandler.remove();
+    };
   }, [isFocused, navigation]);
 
   useEffect(() => {
