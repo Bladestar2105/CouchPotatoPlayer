@@ -57,6 +57,8 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
           borderLeftColor: isActive ? colors.primary : 'transparent',
         }
       ]}
+      accessible={true}
+      isTVSelectable={true}
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={label}
@@ -152,7 +154,9 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileNa
                 isActive && { borderBottomColor: colors.primary, borderBottomWidth: 3 },
                 isFocused && { backgroundColor: colors.primaryLight },
               ]}
-              accessibilityRole="tab"
+              accessible={true}
+      isTVSelectable={true}
+      accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
             >
               <Icon name={tab.icon as any} size={18} color={isActive ? colors.primary : colors.textMuted} />
