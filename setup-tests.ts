@@ -19,7 +19,12 @@ mock.module("react-native", () => {
     },
     Platform: {
       OS: 'ios',
-      select: () => {},
+      select: (objs: any) => objs.ios || objs.default,
+      isTV: false,
+    },
+    Dimensions: {
+      get: () => ({ width: 390, height: 844 }),
+      addEventListener: () => ({ remove: () => {} }),
     },
     TurboModuleRegistry: {
       getEnforcing: () => null,
