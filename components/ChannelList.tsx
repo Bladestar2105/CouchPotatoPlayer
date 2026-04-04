@@ -160,6 +160,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     if (route.params?.focusChannelId) {
       setFocusedChannelId(route.params.focusChannelId);
     }
+    if (route.params?.returnGroupId || route.params?.focusChannelId) {
+      navigation.setParams({ returnGroupId: undefined, focusChannelId: undefined });
+    }
   }, [route.params?.returnGroupId, route.params?.focusChannelId]);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 

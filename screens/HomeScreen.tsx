@@ -260,7 +260,10 @@ const MainLayout = () => {
   // Handle return parameters from Player
   useEffect(() => {
     if (route.params?.returnTab) {
+
       setActiveTab(route.params.returnTab);
+      navigation.setParams({ returnTab: undefined });
+
     }
   }, [route.params?.returnTab]);
 
