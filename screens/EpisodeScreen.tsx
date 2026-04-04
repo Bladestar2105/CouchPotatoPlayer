@@ -29,7 +29,8 @@ const EpisodeScreen = () => {
         navigation.goBack();
         return true;
       }
-      return false;
+      navigation.navigate('Home');
+      return true;
     });
 
     return () => backHandler.remove();

@@ -283,14 +283,14 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 
   const timeHeaders = useMemo(() => {
     const headers = [];
-    for (let i = 0; i < TIMELINE_DURATION_HOURS; i++) {
+    for (let i = 0; i < TIMELINE_DURATION_HOURS * 2; i++) {
       const d = new Date(timelineStart);
-      d.setHours(d.getHours() + i);
+      d.setMinutes(d.getMinutes() + (i * 30));
 
-      const showDate = d.getHours() === 0 || i === 0;
+      const showDate = d.getHours() === 0 && d.getMinutes() === 0 || i === 0;
 
       headers.push(
-        <View key={i} style={[styles.timeHeaderItem, { width: HOUR_WIDTH }]}>
+        <View key={i} style={[styles.timeHeaderItem, { width: HOUR_WIDTH / 2 }]}>
           <Text style={styles.timeHeaderText}>
             {showDate ? d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' - ' : ''}
             {formatTime(d)}
