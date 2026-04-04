@@ -139,7 +139,7 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
 // View mode toggle: list vs EPG grid
 type ViewMode = 'list' | 'epg';
 
-const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
+const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; initialViewMode?: ViewMode }>((props, ref) => {
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
@@ -147,7 +147,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>(props.initialViewMode || 'list');
 
   useEffect(() => {
     if (route.params?.returnGroupId) {
@@ -364,8 +364,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
 
-      {/* View mode toggle */}
-      {!isMobile && (
+      {/* View mode toggle - hidden on TV where sidebar handles navigation */}
+      {!isMobile && !isTV && (
         <View style={[tiviStyles.viewModeBar, { backgroundColor: colors.card, borderBottomColor: colors.divider }]}>
           <TouchableOpacity
             style={[tiviStyles.viewModeBtn, viewMode === 'list' && { backgroundColor: colors.primary }]}

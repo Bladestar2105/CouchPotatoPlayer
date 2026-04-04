@@ -1,6 +1,24 @@
 import 'react-native';
 
 declare module 'react-native' {
+  // tvOS-specific props available in react-native-tvos
+  interface TouchableOpacityProps {
+    isTVSelectable?: boolean;
+    hasTVPreferredFocus?: boolean;
+    tvParallaxProperties?: Record<string, any>;
+  }
+
+  interface ViewProps {
+    isTVSelectable?: boolean;
+    hasTVPreferredFocus?: boolean;
+  }
+
+  // TVFocusGuideView available in react-native-tvos
+  export const TVFocusGuideView: React.ComponentType<ViewProps & {
+    autoFocus?: boolean;
+    destinations?: React.RefObject<any>[];
+  }>;
+
   interface TextInputProps {
     tvFocusable?: boolean;
   }
