@@ -18,7 +18,7 @@ const { height } = Dimensions.get('window');
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
 // TiviMate-style category item with count badge
-const CategoryItem = React.memo(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus, ref }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean, ref?: React.Ref<any> }) => {
+const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
