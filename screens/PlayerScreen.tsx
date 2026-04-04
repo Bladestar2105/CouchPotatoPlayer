@@ -1,26 +1,22 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVFocusGuideView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVFocusGuideView, Animated } from 'react-native';
 // @ts-ignore - TVEventControl is available in react-native-tvos but not in standard React Native types
 import { TVEventControl, useTVEventHandler as _useTVEventHandler } from 'react-native';
 
-// useTVEventHandler only exists in react-native-tvos, not standard React Native.
-// Evaluated once at module level so React's rules of hooks are satisfied.
 const useTVEventHandler: (handler: (event: any) => void) => void =
   typeof _useTVEventHandler === 'function' ? _useTVEventHandler : () => {};
 
 import VideoPlayer, { VideoMetadata } from '../components/VideoPlayer';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 
-// Dynamically require expo-screen-orientation only if not on a TV
 let ScreenOrientation: any;
 if (!Platform.isTV) {
   try {
     ScreenOrientation = require('expo-screen-orientation');
-  } catch (e) {
-    // Fallback if missing
-  }
+  } catch (e) {}
 }
 import { useIPTV } from '../context/IPTVContext';
+import { useSettings } from '../context/SettingsContext';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { Channel } from '../types';
@@ -29,69 +25,53 @@ import { StreamHealthMonitor } from '../components/StreamHealthMonitor';
 
 const defaultLogo = require('../assets/icon.png');
 
-// ⚡ Bolt: Cache Intl.DateTimeFormat instance to avoid slow initialization overhead on every render
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
 /**
- * PlayerScreen - Full-screen video player for IPTV streams
- * 
- * tvOS/Android TV Back Button Handling:
- * - Uses TVEventControl.enableTVMenuKey() to intercept the menu button on tvOS
- * - Combined with BackHandler for Android TV compatibility
- * - useTVEventHandler handles remote events including 'menu' event type
- * 
- * The menu button navigates back to Home instead of exiting the app.
+ * PlayerScreen - TiviMate-style full-screen video player
  */
 const PlayerScreen = () => {
   const { t } = useTranslation();
+  const { colors } = useSettings();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { currentStream, addRecentlyWatched, channels, epg, stopStream, playStream } = useIPTV();
 
-  // Get return parameters from navigation
   const returnGroupId = route.params?.returnGroupId;
   const returnScreen = route.params?.returnScreen || 'Home';
   const returnTab = route.params?.returnTab || 'channels';
   const focusChannelId = route.params?.focusChannelId;
 
-  // Store the previous navigation state for returning
   const lastNavigationState = useRef<{ groupId: string | null; channelId: string | null }>({
     groupId: returnGroupId || null,
     channelId: focusChannelId || currentStream?.id || null,
   });
 
-  // TiviMate-style info overlay state
+  // TiviMate-style overlay states
   const [showOverlay, setShowOverlay] = useState(false);
   const [showStreamHealth, setShowStreamHealth] = useState(false);
+  const [showChannelSwitch, setShowChannelSwitch] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
 
-  // Use a ref for current time to avoid re-triggering the event listener effect
+  // Channel switch animation
+  const channelSwitchOpacity = useRef(new Animated.Value(0)).current;
+
   const currentTimeRef = React.useRef(0);
 
-  /**
-   * Handle back navigation - navigates back to the previous screen
-   * This is the core of the tvOS menu button handling.
-   * 
-   * IMPORTANT: We use navigation.goBack() for proper stack navigation
-   * to return to the previous screen (channel list, movie list, etc.)
-   */
   const [isExiting, setIsExiting] = useState(false);
 
   const backButtonRef = React.useRef<any>(null);
   const infoButtonRef = React.useRef<any>(null);
 
   const handleBack = useCallback(() => {
-    // Stop the stream first
     stopStream();
-    
-    // Navigate back with return state
+
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      // Navigate to Home with parameters to restore state
       navigation.navigate('Home', {
         focusChannelId: lastNavigationState.current.channelId,
         returnGroupId: lastNavigationState.current.groupId,
@@ -99,10 +79,9 @@ const PlayerScreen = () => {
       });
     }
 
-    return true; // Return true to indicate we handled the back event
+    return true;
   }, [navigation, stopStream, returnTab]);
 
-  // Außerdem im useEffect-Cleanup:
   useEffect(() => {
     return () => {
       stopStream();
@@ -118,12 +97,18 @@ const PlayerScreen = () => {
     return map;
   }, [channels]);
 
-  // Get full channel details for HUD
   const currentChannel = useMemo(() => {
      if (!currentStream?.id) return null;
      const index = channelIndexMap.get(currentStream.id);
      return index !== undefined ? channels[index] : null;
   }, [currentStream?.id, channels, channelIndexMap]);
+
+  // Channel number for display
+  const currentChannelNumber = useMemo(() => {
+    if (!currentStream?.id) return 0;
+    const index = channelIndexMap.get(currentStream.id);
+    return index !== undefined ? index + 1 : 0;
+  }, [currentStream?.id, channelIndexMap]);
 
   const getEpgKey = (channel: Channel | null): string => {
     if (!channel) return '';
@@ -143,16 +128,11 @@ const PlayerScreen = () => {
      if (!channelEpg.length) return { currentProgram: null, nextProgram: null, progressPercent: 0 };
 
      const now = new Date();
-
-     // ⚡ Bolt: Replace O(N) linear search with O(log N) binary search
      const currentIdx = findCurrentProgramIndex(channelEpg, now);
 
      if (currentIdx === -1) return { currentProgram: null, nextProgram: null, progressPercent: 0 };
 
      const currentProgram = channelEpg[currentIdx];
-
-     // ⚡ Perf: Since channelEpg is sorted chronologically and currentIdx is known,
-     // the next program is simply the next contiguous element — O(1) instead of O(N).
      const nextProgram = (currentIdx + 1 < channelEpg.length) ? channelEpg[currentIdx + 1] : null;
 
      const totalDuration = currentProgram.end - currentProgram.start;
@@ -161,6 +141,16 @@ const PlayerScreen = () => {
 
      return { currentProgram, nextProgram, progressPercent };
   }, [channelEpg]);
+
+  // Show channel switch mini-overlay
+  const showChannelSwitchBriefly = useCallback(() => {
+    setShowChannelSwitch(true);
+    Animated.sequence([
+      Animated.timing(channelSwitchOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(2500),
+      Animated.timing(channelSwitchOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+    ]).start(() => setShowChannelSwitch(false));
+  }, [channelSwitchOpacity]);
 
   // Hide overlay on inactivity
   useEffect(() => {
@@ -184,15 +174,13 @@ const PlayerScreen = () => {
         icon: currentChannel?.logo,
         lastWatchedAt: Date.now(),
       });
-      // Show overlay briefly when channel changes
       setShowOverlay(true);
-      setVideoMetadata(null); // Reset metadata on stream change
+      setVideoMetadata(null);
     }
   }, [isFocused, currentStream]);
 
   useEffect(() => {
     const setOrientation = async () => {
-      // Screen orientation does not apply to TV platforms
       if (Platform.isTV || !ScreenOrientation) return;
 
       if (isFocused && Platform.OS !== 'web') {
@@ -223,15 +211,20 @@ const PlayerScreen = () => {
     setShowOverlay(prev => !prev);
   };
 
-  /**
-   * TV Remote Event Handler
-   * 
-   * Handles various remote control events for tvOS and Android TV:
-   * - 'menu': Back/Menu button - navigates to Home screen
-   * - 'playPause': Play/Pause button - toggles pause state
-   * - 'left'/'right': Seek backward/forward 10 seconds
-   * - 'up'/'down'/'select': Show overlay for info display
-   */
+  // Channel switching helper
+  const switchChannel = useCallback((direction: 'up' | 'down') => {
+    if (channels.length === 0 || !currentStream) return;
+    const currentIndex = channelIndexMap.get(currentStream.id);
+    if (currentIndex === undefined) return;
+
+    const nextIndex = direction === 'up'
+      ? (currentIndex + 1) % channels.length
+      : (currentIndex - 1 + channels.length) % channels.length;
+    const nextChannel = channels[nextIndex];
+    playStream({ url: nextChannel.url, id: nextChannel.id });
+    showChannelSwitchBriefly();
+  }, [channels, currentStream, channelIndexMap, playStream, showChannelSwitchBriefly]);
+
   const handleTVRemoteEvent = useCallback((evt: any) => {
     if (!isFocused || !evt) return;
 
@@ -245,80 +238,44 @@ const PlayerScreen = () => {
       setIsPaused(prev => !prev);
       setShowOverlay(true);
     } else if (evt.eventType === 'left') {
-      // Very rudimentary seek backward trigger
-      const newSeekTime = Math.max(0, currentTimeRef.current - 10000); // Back 10s roughly
+      const newSeekTime = Math.max(0, currentTimeRef.current - 10000);
       setSeekTime(newSeekTime);
       currentTimeRef.current = newSeekTime;
       setShowOverlay(true);
     } else if (evt.eventType === 'right') {
-      // Seek forward
       const newSeekTime = currentTimeRef.current + 10000;
       setSeekTime(newSeekTime);
       currentTimeRef.current = newSeekTime;
       setShowOverlay(true);
     } else if (evt.eventType === 'pageUp' || evt.eventType === 'channelUp') {
-       if (channels.length > 0 && currentStream) {
-           const currentIndex = channelIndexMap.get(currentStream.id);
-           if (currentIndex !== undefined) {
-               const nextIndex = (currentIndex + 1) % channels.length;
-               const nextChannel = channels[nextIndex];
-               playStream({ url: nextChannel.url, id: nextChannel.id });
-               setShowOverlay(true);
-           }
-       }
+       switchChannel('up');
     } else if (evt.eventType === 'pageDown' || evt.eventType === 'channelDown') {
-       if (channels.length > 0 && currentStream) {
-           const currentIndex = channelIndexMap.get(currentStream.id);
-           if (currentIndex !== undefined) {
-               const prevIndex = (currentIndex - 1 + channels.length) % channels.length;
-               const prevChannel = channels[prevIndex];
-               playStream({ url: prevChannel.url, id: prevChannel.id });
-               setShowOverlay(true);
-           }
-       }
-    } else if (evt.eventType === 'up' || evt.eventType === 'down' || evt.eventType === 'select') {
+       switchChannel('down');
+    } else if (evt.eventType === 'up') {
+       switchChannel('up');
+    } else if (evt.eventType === 'down') {
+       switchChannel('down');
+    } else if (evt.eventType === 'select') {
        if (showStreamHealth) {
          setShowStreamHealth(false);
          return;
        }
        setShowOverlay(true);
     }
-  }, [isFocused, handleBack, channels, currentStream, playStream, showStreamHealth]);
+  }, [isFocused, handleBack, switchChannel, showStreamHealth]);
 
-  // Use the standard hook provided by react-native for TV remote events
   useTVEventHandler(handleTVRemoteEvent);
 
-  /**
-   * tvOS Menu Button Control with TVEventControl
-   * 
-   * CRITICAL for tvOS: This effect uses TVEventControl to properly handle
-   * the menu button behavior on Apple TV.
-   * 
-   * - enableTVMenuKey(): Allows the menu button to be intercepted by the app
-   *   instead of immediately exiting to tvOS home screen.
-   * - When enabled, menu button presses can be handled via BackHandler
-   *   and useTVEventHandler ('menu' event type).
-   * 
-   * Without this, the menu button would exit the app immediately on tvOS.
-   * 
-   * For Android TV: BackHandler alone is sufficient, but we include it
-   * here for cross-platform compatibility.
-   */
   useEffect(() => {
     if (!isFocused) return;
 
-    // Enable menu key interception on tvOS
-    // This must be called to prevent the app from exiting when menu is pressed
     if (Platform.isTV && TVEventControl?.enableTVMenuKey) {
       TVEventControl.enableTVMenuKey();
     }
 
-    // BackHandler works for both Android TV and tvOS (when TVEventControl is enabled)
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
 
     return () => {
-      // Cleanup: Disable menu key interception when leaving PlayerScreen
-      // This restores default tvOS menu button behavior on the root screen
       if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
         TVEventControl.disableTVMenuKey();
       }
@@ -327,11 +284,11 @@ const PlayerScreen = () => {
   }, [isFocused, handleBack]);
 
   if (isExiting) {
-    return <View style={styles.container} />;
+    return <View style={pStyles.container} />;
   }
 
   return (
-    <View style={styles.container}>
+    <View style={pStyles.container}>
       {currentStream && (
         <StreamHealthMonitor
           visible={showStreamHealth}
@@ -344,24 +301,41 @@ const PlayerScreen = () => {
         />
       )}
 
+      {/* TiviMate-style channel switch mini-overlay (top-right) */}
+      {showChannelSwitch && currentChannel && (
+        <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
+          <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: colors.primary }]}>
+            <View style={[pStyles.channelNumberBadge, { backgroundColor: colors.primary }]}>
+              <Text style={pStyles.channelNumberText}>{currentChannelNumber}</Text>
+            </View>
+            {currentChannel.logo && currentChannel.logo.startsWith('http') ? (
+              <Image source={{ uri: currentChannel.logo }} style={pStyles.switchLogo} resizeMode="contain" />
+            ) : null}
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={pStyles.switchName} numberOfLines={1}>{currentChannel.name}</Text>
+              {currentProgram && (
+                <Text style={pStyles.switchProgram} numberOfLines={1}>{currentProgram.title}</Text>
+              )}
+            </View>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Info button (top-right, always when overlay shown) */}
       {showOverlay && (
-        <View style={{ position: 'absolute', top: 20, right: 80, zIndex: 30 }}>
-          <TouchableOpacity 
-            ref={infoButtonRef} 
-            onPress={() => setShowStreamHealth(!showStreamHealth)} 
-            accessible={true} 
+        <View style={pStyles.topRight}>
+          <TouchableOpacity
+            ref={infoButtonRef}
+            onPress={() => setShowStreamHealth(!showStreamHealth)}
+            accessible={true}
             accessibilityRole="button"
             accessibilityLabel="Stream Info"
-            isTVSelectable={true} 
+            isTVSelectable={true}
             hasTVPreferredFocus={Platform.isTV ? true : false}
             tvParallaxProperties={{ enabled: false }}
-            style={{
-              backgroundColor: 'rgba(0,0,0,0.6)',
-              padding: 12,
-              borderRadius: 20,
-            }}
+            style={[pStyles.iconBtn, { backgroundColor: 'rgba(30,30,46,0.75)' }]}
           >
-            <Icon name="info-outline" size={28} color={showStreamHealth ? '#4CD964' : '#FFF'} />
+            <Icon name="info-outline" size={24} color={showStreamHealth ? colors.success : '#FFF'} />
           </TouchableOpacity>
         </View>
       )}
@@ -375,7 +349,6 @@ const PlayerScreen = () => {
           paused={isPaused}
           seekPosition={seekTime}
           onProgress={(data) => {
-             // For React Native VLC media player, data.currentTime is usually in milliseconds
              currentTimeRef.current = data.currentTime;
           }}
           onVideoLoad={(metadata) => {
@@ -385,12 +358,12 @@ const PlayerScreen = () => {
       </TouchableOpacity>
 
       {showOverlay && (
-        <TVFocusGuideView style={styles.overlay} destinations={[backButtonRef.current, infoButtonRef.current]} pointerEvents="box-none">
-          {/* Top Bar - Back Button */}
-          <View style={styles.topBar}>
+        <TVFocusGuideView style={pStyles.overlay} destinations={[backButtonRef.current, infoButtonRef.current]} pointerEvents="box-none">
+          {/* Top Bar - Back + Channel Number Badge */}
+          <View style={pStyles.topBar}>
             <TouchableOpacity
               ref={backButtonRef}
-              style={styles.backButton}
+              style={[pStyles.iconBtn, { backgroundColor: 'rgba(30,30,46,0.75)' }]}
               onPress={handleBack}
               accessibilityRole="button"
               accessibilityLabel={t('back')}
@@ -398,62 +371,79 @@ const PlayerScreen = () => {
               hasTVPreferredFocus={Platform.isTV ? true : false}
               tvParallaxProperties={{ enabled: false }}
             >
-              <Icon name="arrow-back" size={28} color="#FFF" />
+              <Icon name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
+
+            {/* Channel Number Badge - TiviMate style */}
+            {currentChannel && (
+              <View style={[pStyles.topChannelBadge, { backgroundColor: 'rgba(30,30,46,0.75)' }]}>
+                <View style={[pStyles.channelNumCircle, { backgroundColor: colors.primary }]}>
+                  <Text style={pStyles.channelNumText}>{currentChannelNumber}</Text>
+                </View>
+                <Text style={pStyles.topChannelName} numberOfLines={1}>{currentChannel.name}</Text>
+                {videoMetadata?.width && videoMetadata?.height && (
+                  <View style={[pStyles.qualityBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={pStyles.qualityText}>
+                      {videoMetadata.height >= 2160 ? '4K' : videoMetadata.height >= 1080 ? 'HD' : videoMetadata.height >= 720 ? '720p' : 'SD'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Pause Indicator */}
           {isPaused && (
-            <View style={{position: 'absolute', top: '50%', left: '50%', transform: [{translateX: -40}, {translateY: -40}], backgroundColor: 'rgba(0,0,0,0.5)', padding: 20, borderRadius: 40}}>
-               <Icon name="pause" size={40} color="#FFF" />
+            <View style={pStyles.pauseIndicator}>
+               <Icon name="pause" size={48} color="#FFF" />
             </View>
           )}
 
-          {/* Bottom Bar - Channel Info (HUD) */}
+          {/* Bottom Bar - TiviMate-style EPG info */}
           {currentChannel && (
-              <View style={styles.bottomBar}>
-                 <View style={styles.infoContainer}>
-                     <Image source={currentChannel.logo && currentChannel.logo.startsWith('http') ? { uri: currentChannel.logo } : defaultLogo} style={styles.channelLogo} resizeMode="contain" />
+              <View style={[pStyles.bottomBar, { borderTopColor: colors.primary }]}>
+                 <View style={pStyles.infoContainer}>
+                     <Image source={currentChannel.logo && currentChannel.logo.startsWith('http') ? { uri: currentChannel.logo } : defaultLogo} style={pStyles.channelLogo} resizeMode="contain" />
 
-                     <View style={styles.textContainer}>
-                         <View style={styles.headerRow}>
-                            <View style={styles.channelNameContainer}>
-                                <Text style={styles.channelName}>{currentChannel.name}</Text>
-                                {!!(videoMetadata?.width && videoMetadata?.height) && (
-                                    <View style={styles.metadataBadge}>
-                                        <Text style={styles.metadataText}>{videoMetadata.width}x{videoMetadata.height}</Text>
-                                        {videoMetadata.fps ? <Text style={styles.metadataText}> • {Math.round(videoMetadata.fps)} FPS</Text> : null}
-                                        {videoMetadata.bitrate ? <Text style={styles.metadataText}> • {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
-                                    </View>
-                                )}
-                            </View>
-                            <Text style={styles.timeText}>{timeFormatter.format(new Date())}</Text>
+                     <View style={pStyles.textContainer}>
+                         <View style={pStyles.headerRow}>
+                            <Text style={pStyles.channelName}>{currentChannel.name}</Text>
+                            <Text style={pStyles.timeText}>{timeFormatter.format(new Date())}</Text>
                          </View>
 
                          {currentProgram ? (
-                            <View style={styles.epgContainer}>
-                                <Text style={styles.programTitle} numberOfLines={1}>{currentProgram.title}</Text>
+                            <View style={pStyles.epgContainer}>
+                                <Text style={pStyles.programTitle} numberOfLines={1}>{currentProgram.title}</Text>
 
-                                <View style={styles.progressRow}>
-                                    <Text style={styles.programTimeText}>
+                                <View style={pStyles.progressRow}>
+                                    <Text style={pStyles.programTimeText}>
                                         {timeFormatter.format(currentProgram.start)}
                                     </Text>
-                                    <View style={styles.progressBarContainer}>
-                                        <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+                                    <View style={pStyles.progressBarContainer}>
+                                        <View style={[pStyles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
                                     </View>
-                                    <Text style={styles.programTimeText}>
+                                    <Text style={pStyles.programTimeText}>
                                         {timeFormatter.format(currentProgram.end)}
                                     </Text>
                                 </View>
 
                                 {nextProgram && (
-                                    <Text style={styles.nextProgramText} numberOfLines={1}>
+                                    <Text style={pStyles.nextProgramText} numberOfLines={1}>
                                         Next: {timeFormatter.format(nextProgram.start)} - {nextProgram.title}
                                     </Text>
                                 )}
                             </View>
                          ) : (
-                             <Text style={styles.noEpgText}>No EPG Data Available</Text>
+                             <Text style={pStyles.noEpgText}>No EPG Data Available</Text>
+                         )}
+
+                         {/* Metadata row */}
+                         {videoMetadata?.width && videoMetadata?.height && (
+                           <View style={pStyles.metadataRow}>
+                             <Text style={pStyles.metadataText}>{videoMetadata.width}x{videoMetadata.height}</Text>
+                             {videoMetadata.fps ? <Text style={pStyles.metadataText}> | {Math.round(videoMetadata.fps)} FPS</Text> : null}
+                             {videoMetadata.bitrate ? <Text style={pStyles.metadataText}> | {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
+                           </View>
                          )}
                      </View>
                  </View>
@@ -465,7 +455,7 @@ const PlayerScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const pStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
@@ -475,31 +465,135 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   topBar: {
-    padding: 24,
+    padding: 20,
     flexDirection: 'row',
+    alignItems: 'center',
   },
-  backButton: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 12,
-    borderRadius: 30,
+  topRight: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 30,
+  },
+  iconBtn: {
+    padding: 10,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // TiviMate channel number badge in top bar
+  topChannelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  channelNumCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  channelNumText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  topChannelName: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+    maxWidth: 250,
+  },
+  qualityBadge: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  qualityText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  // Channel switch mini-overlay
+  channelSwitchOverlay: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 50,
+  },
+  channelSwitchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    minWidth: 250,
+  },
+  channelNumberBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  channelNumberText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  switchLogo: {
+    width: 40,
+    height: 28,
+    borderRadius: 4,
+  },
+  switchName: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  switchProgram: {
+    color: '#9E9EB8',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  // Pause indicator
+  pauseIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -40 }, { translateY: -40 }],
+    backgroundColor: 'rgba(30,30,46,0.6)',
+    padding: 16,
+    borderRadius: 40,
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Bottom bar
   bottomBar: {
-    backgroundColor: 'rgba(20, 20, 20, 0.9)',
-    borderTopWidth: 2,
-    borderTopColor: '#2196F3', // Accent color
+    backgroundColor: 'rgba(18, 18, 30, 0.92)',
+    borderTopWidth: 3,
   },
   infoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 24,
-    paddingBottom: 40, // Extra padding for safe area on some TVs
+    padding: 20,
+    paddingBottom: 36,
   },
   channelLogo: {
-      width: 100,
-      height: 100,
-      marginRight: 24,
+      width: 80,
+      height: 80,
+      marginRight: 20,
       backgroundColor: 'rgba(255,255,255,0.05)',
       borderRadius: 8,
   },
@@ -510,82 +604,72 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'baseline',
-      marginBottom: 8,
-  },
-  channelNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    flex: 1,
+      marginBottom: 6,
   },
   channelName: {
     color: '#FFF',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginRight: 12,
-  },
-  metadataBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  metadataText: {
-    color: '#DDD',
-    fontSize: 12,
-    fontWeight: '600',
+    flex: 1,
   },
   timeText: {
-      color: '#AAA',
-      fontSize: 20,
+      color: '#9E9EB8',
+      fontSize: 18,
       fontWeight: '600',
   },
   epgContainer: {
-      marginTop: 4,
+      marginTop: 2,
   },
   programTitle: {
       color: '#FFF',
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: '500',
-      marginBottom: 12,
+      marginBottom: 10,
   },
   progressRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
   },
   programTimeText: {
-      color: '#AAA',
-      fontSize: 14,
+      color: '#9E9EB8',
+      fontSize: 13,
       fontWeight: '600',
   },
   progressBarContainer: {
       flex: 1,
-      height: 6,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderRadius: 3,
-      marginHorizontal: 12,
+      height: 5,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderRadius: 2.5,
+      marginHorizontal: 10,
       overflow: 'hidden',
   },
   progressBarFill: {
       height: '100%',
-      backgroundColor: '#2196F3', // Accent color
-      borderRadius: 3,
+      borderRadius: 2.5,
   },
   nextProgramText: {
-      color: '#888',
-      fontSize: 16,
-      marginTop: 4,
+      color: '#6B6B8D',
+      fontSize: 14,
+      marginTop: 2,
   },
   noEpgText: {
-      color: '#666',
-      fontSize: 18,
+      color: '#6B6B8D',
+      fontSize: 16,
       fontStyle: 'italic',
-      marginTop: 10,
-  }
+      marginTop: 6,
+  },
+  metadataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    opacity: 0.6,
+  },
+  metadataText: {
+    color: '#9E9EB8',
+    fontSize: 12,
+    fontWeight: '500',
+  },
 });
 
 export default PlayerScreen;

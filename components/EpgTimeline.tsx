@@ -29,10 +29,10 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
     const [isProgramFocused, setIsProgramFocused] = useState(false);
     const isClickable = isNow || isCatchupAvailable;
 
-    let bgColor = 'rgba(63, 63, 70, 0.8)'; // future
-    if (isNow) bgColor = 'rgba(59, 130, 246, 0.35)';
-    else if (isCatchupAvailable) bgColor = 'rgba(20, 60, 40, 0.85)'; // catchup-available past: dark green tint
-    else if (isPast) bgColor = 'rgba(39, 39, 42, 0.9)'; // non-catchup past: dark
+    let bgColor = 'rgba(42, 42, 74, 0.7)'; // future
+    if (isNow) bgColor = 'rgba(124, 77, 255, 0.35)';
+    else if (isCatchupAvailable) bgColor = 'rgba(105, 240, 174, 0.15)'; // catchup-available past: subtle green tint
+    else if (isPast) bgColor = 'rgba(26, 26, 46, 0.9)'; // non-catchup past: dark
 
     return (
         <TouchableOpacity
@@ -40,7 +40,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
                 styles.programBlock,
                 { left: leftOffset, width: Math.max(width - 2, 2) },
                 { backgroundColor: bgColor },
-                isProgramFocused && { backgroundColor: 'rgba(59, 130, 246, 0.4)', borderWidth: 2, borderColor: '#3B82F6' }
+                isProgramFocused && { backgroundColor: 'rgba(124, 77, 255, 0.4)', borderWidth: 2, borderColor: '#7C4DFF' }
             ]}
             onFocus={() => setIsProgramFocused(true)}
             onBlur={() => setIsProgramFocused(false)}
@@ -55,7 +55,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 {isCatchupAvailable && !isNow && (
-                    <Icon name="play-circle-outline" size={Platform.isTV ? 14 : 12} color="#4ADE80" style={{ marginRight: 2 }} />
+                    <Icon name="play-circle-outline" size={Platform.isTV ? 14 : 12} color="#69F0AE" style={{ marginRight: 2 }} />
                 )}
                 <Text style={[styles.programTitle, (isPast && !isCatchupAvailable) ? { color: '#71717A' } : { color: '#FAFAFA' }, { fontSize: Platform.isTV ? 15 : 13, flex: 1 }]} numberOfLines={1}>{prog.title}</Text>
             </View>
@@ -151,8 +151,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                 hasTVPreferredFocus={hasTVPreferredFocus}
                 style={[
                     styles.channelBox,
-                    isPlaying && { borderLeftWidth: 3, borderLeftColor: '#3B82F6' },
-                    isFocused && { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 2, borderColor: '#3B82F6' }
+                    isPlaying && { borderLeftWidth: 3, borderLeftColor: '#7C4DFF' },
+                    isFocused && { backgroundColor: 'rgba(124, 77, 255, 0.2)', borderWidth: 2, borderColor: '#7C4DFF' }
                 ]}
                 onPress={() => onChannelPress(channel)}
                 onFocus={() => setFocusedChannelId(channel.id)}
@@ -348,14 +348,14 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(13,13,15,0.98)',
+    backgroundColor: 'rgba(18,18,30,0.98)',
   },
   headerRow: {
     flexDirection: 'row',
     height: 44,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: '#18181B',
+    borderBottomColor: 'rgba(124,77,255,0.12)',
+    backgroundColor: '#1E1E2E',
   },
   channelHeaderSpace: {
     width: 120,
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   rowFocused: {
-    backgroundColor: 'rgba(59,130,246,0.08)',
+    backgroundColor: 'rgba(124,77,255,0.1)',
   },
   channelBox: {
     width: Platform.isTV ? 160 : 120,
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRightWidth: 1,
     borderRightColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: '#18181B',
+    backgroundColor: '#1E1E2E',
     position: 'absolute',
     left: 0,
     height: Platform.isTV ? 80 : 64,
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 2,
     right: -4,
-    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+    backgroundColor: 'rgba(124, 77, 255, 0.9)',
     borderRadius: 4,
     padding: 2,
     zIndex: 10,

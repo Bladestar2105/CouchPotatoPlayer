@@ -48,13 +48,13 @@ const App = () => {
             // --- L'ÉCRAN DE DÉMARRAGE EST DE RETOUR SUR "Home" ---
             initialRouteName="Home"
             screenOptions={{
-              headerStyle: { 
-                backgroundColor: '#18181B',
+              headerStyle: {
+                backgroundColor: '#1E1E2E',
                 borderBottomWidth: 0,
                 shadowOpacity: 0,
                 elevation: 0,
               },
-              headerTintColor: '#FAFAFA',
+              headerTintColor: '#EEEEF0',
               headerTitleStyle: {
                 fontWeight: '600',
                 letterSpacing: 0.3,

@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
     // Button shadow for depth
-    shadowColor: '#3B82F6',
+    shadowColor: '#7C4DFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(124, 77, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,

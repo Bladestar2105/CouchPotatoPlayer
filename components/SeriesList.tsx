@@ -20,8 +20,8 @@ const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, c
             ref={ref}
             style={[
                 styles.categoryItem,
-                isSelected ? { backgroundColor: 'rgba(59, 130, 246, 0.25)' } : {},
-                isFocused ? { backgroundColor: 'rgba(59, 130, 246, 0.35)', borderColor: '#3B82F6', borderWidth: 2 } : { borderWidth: 2, borderColor: 'transparent' }
+                isSelected ? { backgroundColor: 'rgba(124, 77, 255, 0.2)', borderLeftColor: '#7C4DFF', borderLeftWidth: 3 } : { borderLeftWidth: 3, borderLeftColor: 'transparent' },
+                isFocused ? { backgroundColor: 'rgba(124, 77, 255, 0.3)', borderLeftColor: '#7C4DFF', borderLeftWidth: 3 } : {}
             ]}
             onPress={onPress}
             onFocus={() => { setIsFocused(true); onFocus(); }}
@@ -136,9 +136,9 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
       {showCategories && (
-      <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: 'rgba(20,20,20,0.9)', borderRightColor: '#2C2C2E' }]}>
+      <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: 'rgba(26,26,46,0.95)', borderRightColor: 'rgba(124,77,255,0.12)' }]}>
         {isMobile && (
-            <View style={{ padding: 16, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
+            <View style={{ padding: 16, backgroundColor: 'rgba(26,26,46,1)', borderBottomWidth: 1, borderBottomColor: 'rgba(124,77,255,0.12)' }}>
               <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
             </View>
         )}
@@ -170,9 +170,9 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
       {/* Main Content - Series Grid */}
       {(!isMobile || !showCategories) && (
-      <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: 'rgba(30,30,30,0.9)' }]}>
+      <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: 'rgba(30,30,46,0.9)' }]}>
         {isMobile && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(26,26,46,1)', borderBottomWidth: 1, borderBottomColor: 'rgba(124,77,255,0.12)' }}>
               <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Icon name="arrow-back" size={24} color="#FFF" />
                 <Text style={{ color: '#FFF', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     marginBottom: 10,
-    backgroundColor: '#18181B',
+    backgroundColor: '#1A1A2E',
     // Modern shadow for depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
