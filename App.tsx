@@ -49,12 +49,12 @@ const App = () => {
             initialRouteName="Home"
             screenOptions={{
               headerStyle: {
-                backgroundColor: '#1E1E2E',
+                backgroundColor: '#1A1A24',
                 borderBottomWidth: 0,
                 shadowOpacity: 0,
                 elevation: 0,
               },
-              headerTintColor: '#EEEEF0',
+              headerTintColor: '#F0F0F2',
               headerTitleStyle: {
                 fontWeight: '600',
                 letterSpacing: 0.3,
