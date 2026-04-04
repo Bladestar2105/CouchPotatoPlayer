@@ -43,6 +43,8 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
       onPress={onPress}
       onFocus={(e: any) => { setIsFocused(true); if (onFocus) onFocus(e); }}
       onBlur={(e: any) => { setIsFocused(false); if (onBlur) onBlur(e); }}
+      isTVSelectable={true}
+      accessible={true}
       style={[
         tvStyles.menuItem,
         {
@@ -453,7 +455,11 @@ const HomeScreen = () => {
     let backHandler: any;
     if (isFocused && Platform.isTV) {
       backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-         return true;
+         // Focus sidebar on hardware back press (Menu button on Apple TV remote)
+         setIsSidebarExpanded(true);
+         setIsSidebarFocused(true);
+         sidebarFocusCountRef.current = 1;
+         return true; // prevent default behavior
       });
     }
     return () => {
