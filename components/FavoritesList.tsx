@@ -97,8 +97,8 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
         <TouchableOpacity
           style={[
               styles.card,
-              { backgroundColor: 'rgba(24,24,27,0.9)' },
-              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#3B82F6', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
+              { backgroundColor: 'rgba(30,30,46,0.9)' },
+              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#7C4DFF', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
           ]}
           onPress={() => handlePress(item)}
           onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
@@ -119,7 +119,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
                 <Icon name={getTypeIcon(item.type)} size={48} color={colors.textSecondary} />
               </View>
             )}
-            <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#4CAF50' : item.type === 'vod' ? '#2196F3' : '#FF9800' }]}>
+            <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#69F0AE' : item.type === 'vod' ? '#7C4DFF' : '#FFD740' }]}>
               <Icon name={getTypeIcon(item.type)} size={16} color="#FFF" />
             </View>
             <TouchableOpacity
@@ -154,7 +154,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
   const numColumns = Math.max(3, Math.floor((dimensions.width - 250 - 48) / (CARD_WIDTH + 16)));
 
   return (
-    <View style={[styles.container, { backgroundColor: 'rgba(13,13,15,0.98)' }]}>
+    <View style={[styles.container, { backgroundColor: 'rgba(18,18,30,0.98)' }]}>
       <View style={styles.sortHeader}>
         <Text style={[styles.sortLabel, { color: '#A1A1AA' }]}>Sort by:</Text>
         <View style={styles.sortButtons}>
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#18181B',
+    backgroundColor: '#1A1A2E',
   },
   typeBadge: {
     position: 'absolute',

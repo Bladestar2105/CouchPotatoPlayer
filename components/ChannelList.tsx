@@ -6,24 +6,28 @@ import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { isProgramCatchupAvailable } from '../utils/catchupUtils';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { findCurrentProgramIndex } from '../utils/epgUtils';
+import { ChannelLogo } from './ChannelLogo';
 import EpgTimeline from './EpgTimeline';
 export type ContentRef = { focusFirstItem: () => void };
 
 const defaultLogo = require('../assets/icon.png');
 const { height } = Dimensions.get('window');
 
-// ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
-// when selecting a new group. The custom comparison function ensures that inline functions like onPress
-// do not trigger re-renders.
-const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPreferredFocus, ref }: { title: string, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean, ref?: React.Ref<any> }) => {
+// Cache time formatter
+const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+
+// TiviMate-style category item with count badge
+const CategoryItem = React.memo(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus, ref }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean, ref?: React.Ref<any> }) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
             ref={ref}
             style={[
-                styles.categoryItem,
-                isSelected ? { backgroundColor: 'rgba(59, 130, 246, 0.25)' } : {},
-                isFocused ? { backgroundColor: 'rgba(59, 130, 246, 0.35)', borderColor: '#3B82F6', borderWidth: 2 } : { borderWidth: 2, borderColor: 'transparent' }
+                tiviStyles.categoryItem,
+                { borderBottomColor: colors.divider },
+                isSelected && { backgroundColor: colors.primaryLight, borderLeftColor: colors.primary, borderLeftWidth: 3 },
+                isFocused && { backgroundColor: 'rgba(124,77,255,0.25)', borderLeftColor: colors.primary, borderLeftWidth: 3 }
             ]}
             onPress={onPress}
             onFocus={() => setIsFocused(true)}
@@ -33,14 +37,107 @@ const CategoryItem = React.memo(({ title, isSelected, onPress, colors, hasTVPref
             accessibilityLabel={`Select category ${title}`}
             hasTVPreferredFocus={hasTVPreferredFocus}
         >
-            <Text style={{ color: isSelected || isFocused ? '#FAFAFA' : '#A1A1AA', fontWeight: isSelected || isFocused ? '600' : '400', fontSize: Platform.isTV ? 15 : 15 }}>
+            <Text style={[tiviStyles.categoryText, { color: isSelected || isFocused ? colors.text : colors.textSecondary }]} numberOfLines={1}>
                 {title}
             </Text>
+            {count !== undefined && (
+                <View style={[tiviStyles.countBadge, { backgroundColor: isSelected ? colors.primary : colors.divider }]}>
+                    <Text style={[tiviStyles.countText, { color: isSelected ? '#FFF' : colors.textMuted }]}>{count}</Text>
+                </View>
+            )}
         </TouchableOpacity>
     );
 }, (prevProps, nextProps) => {
-    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
+    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 });
+
+// TiviMate-style channel row with inline EPG
+const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {
+    channel: Channel;
+    channelNumber: number;
+    isPlaying: boolean;
+    isFocused: boolean;
+    isFav: boolean;
+    currentProgram: any;
+    progressPercent: number;
+    hasCatchupSupport: boolean;
+    onPress: () => void;
+    onLongPress: () => void;
+    onFocus: () => void;
+    colors: any;
+}) => {
+    const [localFocused, setLocalFocused] = useState(false);
+    const focused = isFocused || localFocused;
+
+    return (
+        <TouchableOpacity
+            style={[
+                tiviStyles.channelRow,
+                { borderBottomColor: colors.divider },
+                isPlaying && { backgroundColor: 'rgba(124,77,255,0.12)', borderLeftColor: colors.primary, borderLeftWidth: 3 },
+                focused && { backgroundColor: 'rgba(124,77,255,0.18)' },
+            ]}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            onFocus={() => { setLocalFocused(true); onFocus(); }}
+            onBlur={() => setLocalFocused(false)}
+            activeOpacity={0.7}
+        >
+            {/* Channel Number */}
+            <Text style={[tiviStyles.channelNumber, { color: focused ? colors.primary : colors.textMuted }]}>
+                {channelNumber}
+            </Text>
+
+            {/* Channel Logo */}
+            <View style={tiviStyles.logoContainer}>
+                {channel.logo && channel.logo.startsWith('http') ? (
+                    <ChannelLogo uri={channel.logo} style={tiviStyles.channelLogo} />
+                ) : (
+                    <View style={[tiviStyles.channelLogo, tiviStyles.logoPlaceholder, { backgroundColor: colors.surfaceSecondary }]}>
+                        <Icon name="tv" size={18} color={colors.textMuted} />
+                    </View>
+                )}
+                {hasCatchupSupport && (
+                    <View style={[tiviStyles.catchupDot, { backgroundColor: colors.primary }]} />
+                )}
+            </View>
+
+            {/* Channel Info + EPG */}
+            <View style={tiviStyles.channelInfo}>
+                <View style={tiviStyles.channelNameRow}>
+                    <Text style={[tiviStyles.channelName, { color: focused ? colors.text : colors.textSecondary }]} numberOfLines={1}>
+                        {channel.name}
+                    </Text>
+                    {isFav && <Icon name="favorite" size={14} color={colors.primary} style={{ marginLeft: 4 }} />}
+                    {isPlaying && <Icon name="play-arrow" size={16} color={colors.primary} style={{ marginLeft: 4 }} />}
+                </View>
+
+                {currentProgram ? (
+                    <View style={tiviStyles.epgInline}>
+                        <Text style={[tiviStyles.programName, { color: colors.textMuted }]} numberOfLines={1}>
+                            {timeFormatter.format(currentProgram.start)} {currentProgram.title}
+                        </Text>
+                        <View style={[tiviStyles.progressBar, { backgroundColor: colors.divider }]}>
+                            <View style={[tiviStyles.progressFill, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
+                        </View>
+                    </View>
+                ) : (
+                    <Text style={[tiviStyles.noProgramText, { color: colors.textMuted }]}>No EPG data</Text>
+                )}
+            </View>
+        </TouchableOpacity>
+    );
+}, (prevProps, nextProps) => {
+    return prevProps.isPlaying === nextProps.isPlaying &&
+           prevProps.isFocused === nextProps.isFocused &&
+           prevProps.isFav === nextProps.isFav &&
+           prevProps.currentProgram === nextProps.currentProgram &&
+           prevProps.progressPercent === nextProps.progressPercent &&
+           prevProps.channel === nextProps.channel;
+});
+
+// View mode toggle: list vs EPG grid
+type ViewMode = 'list' | 'epg';
 
 const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
@@ -50,6 +147,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   useEffect(() => {
     if (route.params?.returnGroupId) {
@@ -61,26 +159,21 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   }, [route.params?.returnGroupId, route.params?.focusChannelId]);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
-  // For mobile devices, hide categories when a group is selected to give more space
   const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
   const isMobile = !isTV && Dimensions.get('window').width < 768;
   const [showCategories, setShowCategories] = useState<boolean>(true);
-  
-  // Ref for the first category item to focus
+
   const firstCategoryRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     loadEPG();
   }, []);
-  
-  // Expose focusFirstItem method to parent
+
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
-      // Focus the first category item when entering from sidebar
       if (firstCategoryRef.current) {
-        // On TV, we use hasTVPreferredFocus, but we can also manually trigger focus
-        // The first category already has hasTVPreferredFocus={true}
+        // Focus handled by hasTVPreferredFocus
       }
     }
   }));
@@ -96,7 +189,6 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     for (let i = 0; i < len; i++) {
       const channel = channels[i];
       cMap[channel.id] = channel;
-      // Skip restricted content early in the loop to avoid redundant filtering
       if (channel.isAdult && !isAdultUnlocked && hasPin) {
         continue;
       }
@@ -125,13 +217,10 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     }
   }, [groups, selectedGroup]);
 
-  // When a group changes, auto-focus the first channel in that group (or the currently playing one if it's in the group)
   useEffect(() => {
      if (selectedGroup) {
          const currentChannels = groupMap[selectedGroup] || [];
          if (currentChannels.length > 0) {
-            // Find current stream id directly, since the array could be large,
-            // but normally it's small enough. Still we can keep find here or use simple iteration
             const playingInGroup = currentChannels.find((c: any) => c.id === currentStream?.id);
             if (playingInGroup) {
                  setFocusedChannelId(playingInGroup.id);
@@ -142,7 +231,6 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
      }
   }, [selectedGroup, groupMap, currentStream?.id]);
 
-  // Handle category selection and hide pane on mobile
   const handleGroupSelect = (title: string) => {
     setSelectedGroup(title);
     setShouldFocusFirstItem(true);
@@ -170,23 +258,12 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
 
-  const focusedChannel = useMemo(() => {
-     return focusedChannelId ? channelMap[focusedChannelId] : undefined;
-  }, [focusedChannelId, channelMap]);
-
-  const getEpgKey = (channel: Channel | undefined): string => {
-    if (!channel) return '';
+  const getEpgKey = (channel: Channel): string => {
     if (channel.epgChannelId && channel.epgChannelId.length > 0) {
       return channel.epgChannelId;
     }
     return channel.tvgId || channel.id;
   };
-
-  const focusedChannelEpg = useMemo(() => {
-     if (!focusedChannel) return [];
-     const key = getEpgKey(focusedChannel);
-     return epg[key] || [];
-  }, [focusedChannel, epg]);
 
   const [unlockMode, setUnlockMode] = useState<string | null>(null);
 
@@ -195,9 +272,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
        setUnlockMode(channel.id);
        return;
     }
-    
+
     playStream({ url: channel.url, id: channel.id });
-    
+
     addRecentlyWatched({
       id: channel.id,
       type: 'live',
@@ -206,8 +283,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
       extension: 'm3u8',
       lastWatchedAt: Date.now(),
     });
-    
-    // Navigate to Player with return info
+
     navigation.navigate('Player', {
       focusChannelId: channel.id,
       returnGroupId: selectedGroup,
@@ -247,107 +323,210 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     }
   };
 
-  // ⚡ Bolt: Helper function to get current program using O(log N) binary search
+  const handleToggleFavorite = (channel: Channel) => {
+    if (isFavorite(channel.id)) {
+      removeFavorite(channel.id);
+    } else {
+      addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
+    }
+  };
+
+  // Compute EPG data for the TiviMate-style list view
+  const now = useMemo(() => Date.now(), []);
+
+  const getChannelEpgInfo = (channel: Channel) => {
+    const key = getEpgKey(channel);
+    const programs = epg[key] || [];
+    if (programs.length === 0) return { currentProgram: null, progressPercent: 0 };
+
+    const idx = findCurrentProgramIndex(programs, new Date(now));
+    if (idx === -1) return { currentProgram: null, progressPercent: 0 };
+
+    const prog = programs[idx];
+    const totalDuration = prog.end - prog.start;
+    const elapsed = now - prog.start;
+    const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+    return { currentProgram: prog, progressPercent };
+  };
+
+  // Global channel index for numbering
+  const channelIndexOffset = useMemo(() => {
+    if (!selectedGroup) return 0;
+    let offset = 0;
+    for (const g of groups) {
+      if (g.title === selectedGroup) break;
+      offset += g.data.length;
+    }
+    return offset;
+  }, [groups, selectedGroup]);
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
 
-      {/* LEFT PANE: Category Groups */}
-      {showCategories && (
-        <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: 'rgba(20,20,20,0.9)', borderRightColor: '#2C2C2E' }]}>
-          {isMobile && (
-            <View style={{ padding: 16, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
-              <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
-            </View>
+      {/* View mode toggle */}
+      {!isMobile && (
+        <View style={[tiviStyles.viewModeBar, { backgroundColor: colors.card, borderBottomColor: colors.divider }]}>
+          <TouchableOpacity
+            style={[tiviStyles.viewModeBtn, viewMode === 'list' && { backgroundColor: colors.primary }]}
+            onPress={() => setViewMode('list')}
+          >
+            <Icon name="list" size={18} color={viewMode === 'list' ? '#FFF' : colors.textMuted} />
+            <Text style={{ color: viewMode === 'list' ? '#FFF' : colors.textMuted, fontSize: 12, marginLeft: 4, fontWeight: '600' }}>List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[tiviStyles.viewModeBtn, viewMode === 'epg' && { backgroundColor: colors.primary }]}
+            onPress={() => setViewMode('epg')}
+          >
+            <Icon name="grid-on" size={18} color={viewMode === 'epg' ? '#FFF' : colors.textMuted} />
+            <Text style={{ color: viewMode === 'epg' ? '#FFF' : colors.textMuted, fontSize: 12, marginLeft: 4, fontWeight: '600' }}>EPG</Text>
+          </TouchableOpacity>
+          {selectedGroup && (
+            <Text style={[tiviStyles.groupTitle, { color: colors.textSecondary }]}>{selectedGroup}</Text>
           )}
-          <FlatList
-            data={groups}
-          keyExtractor={(item) => item.title}
-          initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          removeClippedSubviews={true}
-          getItemLayout={(data, index) => {
-             // Calculate row height: paddingVertical 18*2 = 36 + text approx 20 + 1 border = 57. Let's use 60 as a safe estimate or exact calculation.
-             // paddingVertical: 18 -> 36. Text fontSize: 16 -> line height ~ 20. Total ~ 56 + 1 (border).
-             const itemHeight = 57;
-             return { length: itemHeight, offset: itemHeight * index, index };
-          }}
-          renderItem={({ item, index }) => {
-              const isSelected = selectedGroup === item.title;
-              const isFirstItem = index === 0;
-              return (
-                  <CategoryItem
-                      ref={isFirstItem ? firstCategoryRef : undefined}
-                      title={item.title}
-                      isSelected={isSelected}
-                      onPress={() => handleGroupSelect(item.title)}
-                      colors={colors}
-                      hasTVPreferredFocus={isFirstItem}
-                  />
-              );
-          }}
-          />
         </View>
       )}
 
-      {/* RIGHT PANE: EPG Grid Timeline */}
-      {(!isMobile || !showCategories) && (
-        <View style={[styles.epgPane, isMobile ? { flex: 1, width: 'auto', borderRightWidth: 0 } : { backgroundColor: 'rgba(30,30,30,0.9)', borderRightColor: '#2C2C2E' }]}>
-          {isMobile && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(20,20,20,1)', borderBottomWidth: 1, borderBottomColor: '#2C2C2E' }}>
-              <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="arrow-back" size={24} color="#FFF" />
-                <Text style={{ color: '#FFF', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {selectedChannels.length > 0 ? (
-             <EpgTimeline
-                channels={selectedChannels}
-                onChannelPress={handleChannelPress}
-                 onProgramPress={handleEpgPress}
-                focusedChannelId={focusedChannelId}
-                setFocusedChannelId={(id) => {
-                  setFocusedChannelId(id);
-                  setShouldFocusFirstItem(false);
-                }}
-                currentStreamId={currentStream?.id}
-                shouldFocusFirstItem={shouldFocusFirstItem}
-             />
-          ) : (
-            <View style={styles.centeredContainer}>
-              <Text style={{ color: colors.textSecondary }}>No channels available in this category</Text>
-            </View>
-          )}
-        </View>
-      )}
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        {/* LEFT: Category Groups */}
+        {showCategories && (
+          <View style={[tiviStyles.categorySidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+            {isMobile && (
+              <View style={{ padding: 14, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>Categories</Text>
+              </View>
+            )}
+            <FlatList
+              data={groups}
+              keyExtractor={(item) => item.title}
+              initialNumToRender={15}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
+              renderItem={({ item, index }) => {
+                const isSelected = selectedGroup === item.title;
+                const isFirstItem = index === 0;
+                return (
+                    <CategoryItem
+                        ref={isFirstItem ? firstCategoryRef : undefined}
+                        title={item.title}
+                        count={item.data.length}
+                        isSelected={isSelected}
+                        onPress={() => handleGroupSelect(item.title)}
+                        colors={colors}
+                        hasTVPreferredFocus={isFirstItem}
+                    />
+                );
+              }}
+            />
+          </View>
+        )}
+
+        {/* RIGHT: Channel List or EPG Grid */}
+        {(!isMobile || !showCategories) && (
+          <View style={[tiviStyles.contentPane, { backgroundColor: colors.background }]}>
+            {isMobile && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Icon name="arrow-back" size={22} color={colors.text} />
+                  <Text style={{ color: colors.text, marginLeft: 8, fontSize: 16, fontWeight: '600' }}>{selectedGroup}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {viewMode === 'list' || isMobile ? (
+              // TiviMate-style channel list
+              selectedChannels.length > 0 ? (
+                <FlatList
+                  ref={flatListRef}
+                  data={selectedChannels}
+                  keyExtractor={(item) => item.id}
+                  initialNumToRender={15}
+                  maxToRenderPerBatch={10}
+                  windowSize={7}
+                  removeClippedSubviews={true}
+                  getItemLayout={(data, index) => ({
+                    length: Platform.isTV ? 72 : 64,
+                    offset: (Platform.isTV ? 72 : 64) * index,
+                    index,
+                  })}
+                  renderItem={({ item: channel, index }) => {
+                    const epgInfo = getChannelEpgInfo(channel);
+                    const isPlaying = currentStream?.id === channel.id;
+                    const isFocusedChannel = focusedChannelId === channel.id;
+                    const isFav = isFavorite(channel.id);
+                    const hasCatchupSupport = hasCatchup ? hasCatchup(channel) : false;
+
+                    return (
+                      <ChannelRow
+                        channel={channel}
+                        channelNumber={channelIndexOffset + index + 1}
+                        isPlaying={isPlaying}
+                        isFocused={isFocusedChannel}
+                        isFav={isFav}
+                        currentProgram={epgInfo.currentProgram}
+                        progressPercent={epgInfo.progressPercent}
+                        hasCatchupSupport={hasCatchupSupport}
+                        onPress={() => handleChannelPress(channel)}
+                        onLongPress={() => handleToggleFavorite(channel)}
+                        onFocus={() => setFocusedChannelId(channel.id)}
+                        colors={colors}
+                      />
+                    );
+                  }}
+                />
+              ) : (
+                <View style={styles.centeredContainer}>
+                  <Icon name="tv-off" size={48} color={colors.textMuted} />
+                  <Text style={{ color: colors.textSecondary, marginTop: 12 }}>No channels available</Text>
+                </View>
+              )
+            ) : (
+              // EPG Grid view
+              selectedChannels.length > 0 ? (
+                <EpgTimeline
+                  channels={selectedChannels}
+                  onChannelPress={handleChannelPress}
+                  onProgramPress={handleEpgPress}
+                  focusedChannelId={focusedChannelId}
+                  setFocusedChannelId={(id) => {
+                    setFocusedChannelId(id);
+                    setShouldFocusFirstItem(false);
+                  }}
+                  currentStreamId={currentStream?.id}
+                  shouldFocusFirstItem={shouldFocusFirstItem}
+                />
+              ) : (
+                <View style={styles.centeredContainer}>
+                  <Text style={{ color: colors.textSecondary }}>No channels available in this category</Text>
+                </View>
+              )
+            )}
+          </View>
+        )}
+      </View>
 
       {/* Unlock PIN Dialog Overlay */}
       {unlockMode && (
           <View style={StyleSheet.absoluteFill}>
-              <View style={[styles.centeredContainer, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
-                  <View style={{ backgroundColor: '#2C2C2E', padding: 24, borderRadius: 12, alignItems: 'center' }}>
-                      <Text style={{ color: '#FFF', fontSize: 18, marginBottom: 16 }}>Enter PIN to Unlock</Text>
+              <View style={[styles.centeredContainer, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
+                  <View style={{ backgroundColor: colors.card, padding: 24, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.divider }}>
+                      <Icon name="lock" size={32} color={colors.primary} style={{ marginBottom: 12 }} />
+                      <Text style={{ color: colors.text, fontSize: 18, marginBottom: 16, fontWeight: '600' }}>Enter PIN to Unlock</Text>
                       <View style={{ flexDirection: 'row', gap: 16 }}>
-                          <TouchableOpacity onPress={() => setUnlockMode(null)} style={{ padding: 12, backgroundColor: '#444', borderRadius: 8 }}>
-                             <Text style={{ color: '#FFF' }}>Cancel</Text>
+                          <TouchableOpacity onPress={() => setUnlockMode(null)} style={{ padding: 12, paddingHorizontal: 20, backgroundColor: colors.surfaceSecondary, borderRadius: 10 }}>
+                             <Text style={{ color: colors.textSecondary }}>Cancel</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                               onPress={() => {
-                                  // Simplified: Just unlock it since Alert.prompt is not cross-platform and building a full numpad here is out of scope for cleanup.
-                                  // In a real scenario, this would check against the PIN context.
                                   if (pin) {
                                       unlockChannel(unlockMode);
                                       setUnlockMode(null);
-                                      // Optional: Auto-play after unlock
-                                      // playStream({ url: channels.find(c => c.id === unlockMode)?.url || '', id: unlockMode });
-                                      // navigation.navigate('Player');
                                   }
                               }}
-                              style={{ padding: 12, backgroundColor: colors.primary, borderRadius: 8 }}
+                              style={{ padding: 12, paddingHorizontal: 20, backgroundColor: colors.primary, borderRadius: 10 }}
                           >
-                             <Text style={{ color: '#FFF' }}>Unlock</Text>
+                             <Text style={{ color: '#FFF', fontWeight: '600' }}>Unlock</Text>
                           </TouchableOpacity>
                       </View>
                   </View>
@@ -361,74 +540,150 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
 LiveTVFlow.displayName = 'LiveTVFlow';
 
+const tiviStyles = StyleSheet.create({
+  // View mode bar
+  viewModeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  viewModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  groupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 12,
+    flex: 1,
+  },
+  // Category sidebar
+  categorySidebar: {
+    width: Platform.isTV ? 280 : 220,
+    borderRightWidth: 1,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Platform.isTV ? 14 : 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
+  },
+  categoryText: {
+    fontSize: Platform.isTV ? 15 : 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  countBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 28,
+    alignItems: 'center',
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  // Content pane
+  contentPane: {
+    flex: 1,
+  },
+  // TiviMate channel row
+  channelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Platform.isTV ? 10 : 8,
+    paddingHorizontal: Platform.isTV ? 16 : 12,
+    borderBottomWidth: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
+    height: Platform.isTV ? 72 : 64,
+  },
+  channelNumber: {
+    width: Platform.isTV ? 36 : 28,
+    fontSize: Platform.isTV ? 14 : 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  logoContainer: {
+    position: 'relative',
+    marginHorizontal: Platform.isTV ? 12 : 8,
+  },
+  channelLogo: {
+    width: Platform.isTV ? 44 : 36,
+    height: Platform.isTV ? 32 : 26,
+    borderRadius: 4,
+  },
+  logoPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  catchupDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#121212',
+  },
+  channelInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  channelNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  channelName: {
+    fontSize: Platform.isTV ? 15 : 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  epgInline: {
+    marginTop: 3,
+  },
+  programName: {
+    fontSize: Platform.isTV ? 13 : 11,
+    marginBottom: 3,
+  },
+  progressBar: {
+    height: 3,
+    borderRadius: 1.5,
+    overflow: 'hidden',
+    maxWidth: 200,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  noProgramText: {
+    fontSize: Platform.isTV ? 12 : 10,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row',
   },
   centeredContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  categoriesSidebar: {
-    width: Platform.isTV ? 350 : 260,
-    borderRightWidth: 1,
-  },
-  categoryItem: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
-    marginHorizontal: 8,
-    marginBottom: 4,
-  },
-  channelListPane: {
-    width: 350,
-    borderRightWidth: 1,
-  },
-  channelItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 18,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.04)',
-      borderRadius: 12,
-      marginHorizontal: 8,
-      marginBottom: 4,
-  },
-  channelLogo: {
-      width: 50,
-      height: 40,
-      borderRadius: 8,
-  },
-  epgPane: {
-      flex: 1,
-  },
-  epgHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 24,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.08)',
-      borderRadius: 16,
-  },
-  epgHeaderLogo: {
-      width: 80,
-      height: 60,
-      marginRight: 20,
-      borderRadius: 12,
-  },
-  epgRow: {
-      flexDirection: 'row',
-      paddingVertical: 16,
-      paddingHorizontal: 24,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.04)',
-      borderRadius: 12,
-  }
 });
 
 export default LiveTVFlow;

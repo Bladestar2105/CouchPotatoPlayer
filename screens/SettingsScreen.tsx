@@ -185,7 +185,7 @@ const SettingsScreen = () => {
       <TouchableOpacity
         style={[
           styles.categoryItem,
-          isActive && { backgroundColor: 'rgba(59, 130, 246, 0.25)', borderLeftColor: '#3B82F6', borderLeftWidth: 3 }
+          isActive && { backgroundColor: 'rgba(124, 77, 255, 0.2)', borderLeftColor: '#7C4DFF', borderLeftWidth: 3 }
         ]}
         onPress={() => setActiveCategory(id)}
         accessible={true}
@@ -224,8 +224,8 @@ const SettingsScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: '#000' }]}>
-      <View style={[styles.sidebar, { backgroundColor: 'rgba(24,24,27,0.95)' }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.sidebar, { backgroundColor: colors.card }]}>
         <Text style={[styles.sidebarTitle, { color: colors.text }]}>{t('settings')}</Text>
         <ScrollView style={{ flex: 1 }}>
           {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Playlists / Providers')}
