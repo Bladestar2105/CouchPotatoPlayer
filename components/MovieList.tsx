@@ -26,6 +26,8 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             onPress={onPress}
             onFocus={() => { setIsFocused(true); onFocus(); }}
             onBlur={() => setIsFocused(false)}
+            accessible={true}
+            isTVSelectable={true}
             accessibilityRole="tab"
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`Select category ${title}`}
@@ -173,7 +175,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
       <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: colors.background }]}>
         {isMobile && (
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
-              <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }} accessible={true} isTVSelectable={true}>
                 <Icon name="arrow-back" size={24} color={colors.text} />
                 <Text style={{ color: colors.text, marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
               </TouchableOpacity>
@@ -200,17 +202,19 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                 const isFocused = focusedMovieId === item.id;
                 return (
                   <TouchableOpacity
+                    accessible={true}
+                    isTVSelectable={true}
                     hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,
                         isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1 } : {}
                     ]}
-                    onPress={() => navigation.navigate('MediaInfo', { 
-                      id: item.id, 
-                      type: 'vod', 
-                      title: item.name, 
-                      cover: item.cover, 
-                      streamUrl: item.streamUrl, 
+                    onPress={() => navigation.navigate('MediaInfo', {
+                      id: item.id,
+                      type: 'vod',
+                      title: item.name,
+                      cover: item.cover,
+                      streamUrl: item.streamUrl,
                       returnGroupId: selectedGroup,
                       returnScreen: 'Home',
                       returnTab: 'movies',

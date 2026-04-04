@@ -46,10 +46,13 @@ const EpisodeScreen = () => {
     });
   };
 
-  const renderItem = ({ item }: { item: Episode }) => (
+  const renderItem = ({ item, index }: { item: Episode; index: number }) => (
     <TouchableOpacity
       style={[styles.item, { borderBottomColor: colors.divider }]}
       onPress={() => handleEpisodePress(item)}
+      accessible={true}
+      isTVSelectable={true}
+      hasTVPreferredFocus={index === 0}
       accessibilityRole="button"
       accessibilityLabel={`Episode: ${item.name}`}
       accessibilityHint={`Plays episode ${item.name}`}

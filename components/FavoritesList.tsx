@@ -103,6 +103,8 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
           onPress={() => handlePress(item)}
           onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
           onBlur={() => setFocusedItemId(null)}
+          accessible={true}
+          isTVSelectable={true}
           accessibilityRole="button"
           accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
           accessibilityHint={`Plays the ${item.type}`}
@@ -125,6 +127,8 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
             <TouchableOpacity
               style={styles.removeButton}
               onPress={() => removeFavorite(item.id)}
+              accessible={true}
+              isTVSelectable={true}
               accessibilityRole="button"
               accessibilityLabel={`Remove ${item.name} from favorites`}
             >
@@ -172,6 +176,8 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
               ]}
               onPress={() => setSortBy(option.key as SortOption)}
               onFocus={() => setSortBy(option.key as SortOption)}
+              accessible={true}
+              isTVSelectable={true}
             >
               <Text style={[styles.sortButtonText, { color: sortBy === option.key ? '#FAFAFA' : '#A1A1AA' }]}>
                 {option.label}

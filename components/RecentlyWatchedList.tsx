@@ -92,6 +92,8 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
       <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.card }]}
         onPress={() => handlePress(item)}
+        accessible={true}
+        isTVSelectable={true}
         accessibilityRole="button"
         accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
         accessibilityHint={`Plays the ${item.type}`}
@@ -132,6 +134,8 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
           <TouchableOpacity
             style={styles.removeButton}
             onPress={() => removeRecentlyWatched(item.id)}
+            accessible={true}
+            isTVSelectable={true}
             accessibilityRole="button"
             accessibilityLabel={`Remove ${item.name} from recently watched`}
           >
