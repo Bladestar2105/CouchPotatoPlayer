@@ -32,6 +32,8 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             onPress={onPress}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
+            accessible={true}
+            isTVSelectable={true}
             accessibilityRole="tab"
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`Select category ${title}`}
@@ -81,6 +83,8 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
             onLongPress={onLongPress}
             onFocus={() => { setLocalFocused(true); onFocus(); }}
             onBlur={() => setLocalFocused(false)}
+            accessible={true}
+            isTVSelectable={true}
             activeOpacity={0.7}
         >
             {/* Channel Number */}
@@ -173,7 +177,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
       if (firstCategoryRef.current) {
-        // Focus handled by hasTVPreferredFocus
+        firstCategoryRef.current.focus?.();
+        firstCategoryRef.current.setNativeProps?.({ hasTVPreferredFocus: true });
       }
     }
   }));
@@ -435,7 +440,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
           <View style={[tiviStyles.contentPane, { backgroundColor: colors.background }]}>
             {isMobile && (
               <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
-                <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }} accessible={true} isTVSelectable={true}>
                   <Icon name="arrow-back" size={22} color={colors.text} />
                   <Text style={{ color: colors.text, marginLeft: 8, fontSize: 16, fontWeight: '600' }}>{selectedGroup}</Text>
                 </TouchableOpacity>
@@ -522,7 +527,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                       <Icon name="lock" size={32} color={colors.primary} style={{ marginBottom: 12 }} />
                       <Text style={{ color: colors.text, fontSize: 18, marginBottom: 16, fontWeight: '600' }}>Enter PIN to Unlock</Text>
                       <View style={{ flexDirection: 'row', gap: 16 }}>
-                          <TouchableOpacity onPress={() => setUnlockMode(null)} style={{ padding: 12, paddingHorizontal: 20, backgroundColor: colors.surfaceSecondary, borderRadius: 10 }}>
+                          <TouchableOpacity onPress={() => setUnlockMode(null)} style={{ padding: 12, paddingHorizontal: 20, backgroundColor: colors.surfaceSecondary, borderRadius: 10 }} accessible={true} isTVSelectable={true}>
                              <Text style={{ color: colors.textSecondary }}>Cancel</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -533,6 +538,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                                   }
                               }}
                               style={{ padding: 12, paddingHorizontal: 20, backgroundColor: colors.primary, borderRadius: 10 }}
+                              accessible={true}
+                              isTVSelectable={true}
+                              hasTVPreferredFocus={true}
                           >
                              <Text style={{ color: '#FFF', fontWeight: '600' }}>Unlock</Text>
                           </TouchableOpacity>

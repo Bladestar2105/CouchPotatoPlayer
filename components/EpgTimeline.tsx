@@ -50,6 +50,8 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
                     onChannelPress(channel);
                 }
             }}
+            accessible={true}
+            isTVSelectable={true}
             activeOpacity={isClickable ? 0.7 : 1}
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -157,6 +159,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
         <View style={[styles.row, isFocused && styles.rowFocused]}>
             {/* Channel Info Fixed on Left */}
             <TouchableOpacity
+                accessible={true}
+                isTVSelectable={true}
                 hasTVPreferredFocus={hasTVPreferredFocus}
                 style={[
                     styles.channelBox,

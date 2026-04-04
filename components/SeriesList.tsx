@@ -26,6 +26,8 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             onPress={onPress}
             onFocus={() => { setIsFocused(true); onFocus(); }}
             onBlur={() => setIsFocused(false)}
+            accessible={true}
+            isTVSelectable={true}
             accessibilityRole="tab"
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`Select category ${title}`}
@@ -173,9 +175,9 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
       <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: 'rgba(30,30,46,0.9)' }]}>
         {isMobile && (
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(26,26,46,1)', borderBottomWidth: 1, borderBottomColor: 'rgba(124,77,255,0.12)' }}>
-              <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="arrow-back" size={24} color="#FFF" />
-                <Text style={{ color: '#FFF', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
+              <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }} accessible={true} isTVSelectable={true}>
+                <Icon name="arrow-back" size={24} color={colors.text} />
+                <Text style={{ color: colors.text, marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
               </TouchableOpacity>
             </View>
         )}
@@ -200,16 +202,18 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                 const isFocused = focusedSeriesId === item.id;
                 return (
                   <TouchableOpacity
+                    accessible={true}
+                    isTVSelectable={true}
                     hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,
                         isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1 } : {}
                     ]}
-                    onPress={() => navigation.navigate('MediaInfo', { 
-                      id: item.id, 
-                      type: 'series', 
-                      title: item.name, 
-                      cover: item.cover, 
+                    onPress={() => navigation.navigate('MediaInfo', {
+                      id: item.id,
+                      type: 'series',
+                      title: item.name,
+                      cover: item.cover,
                       returnGroupId: selectedGroup,
                       returnScreen: 'Home',
                       returnTab: 'series',

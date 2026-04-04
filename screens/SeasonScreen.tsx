@@ -78,10 +78,13 @@ const SeasonScreen = () => {
     navigation.navigate('Episode', { season: season, returnGroupId, returnTab });
   };
 
-  const renderItem = ({ item }: { item: Season }) => (
+  const renderItem = ({ item, index }: { item: Season; index: number }) => (
     <TouchableOpacity
       style={[styles.item, { borderBottomColor: colors.divider }]}
       onPress={() => handleSeasonPress(item)}
+      accessible={true}
+      isTVSelectable={true}
+      hasTVPreferredFocus={index === 0}
       accessibilityRole="button"
       accessibilityLabel={`Season: ${item.name}`}
       accessibilityHint={`Shows episodes for ${item.name}`}
