@@ -21,7 +21,7 @@ export type ContentRef = {
   focusFirstItem: () => void;
 };
 
-type TabId = 'channels' | 'epg' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search';
+type TabId = 'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search';
 
 interface TabDef {
   id: TabId;
@@ -230,18 +230,15 @@ const MainLayout = () => {
   const contentRef = useRef<ContentRef>(null);
 
   // TV sidebar state (TiviMate-style collapsible)
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
-  const [isSidebarFocused, setIsSidebarFocused] = useState(true);
-  const collapsedWidth = 70;
+  const isSidebarExpanded = true;
+    const collapsedWidth = 70;
   const expandedWidth = 170;
   const sidebarWidth = React.useRef(new Animated.Value(expandedWidth)).current;
-  const sidebarFocusCountRef = useRef(0);
-  const sidebarTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!isTV) return;
     Animated.timing(sidebarWidth, {
-      toValue: isSidebarExpanded ? expandedWidth : collapsedWidth,
+      toValue: expandedWidth,
       duration: 200,
       useNativeDriver: false,
     }).start();
@@ -249,7 +246,7 @@ const MainLayout = () => {
 
   const tabs: TabDef[] = useMemo(() => [
     { id: 'channels', icon: 'live-tv', label: t('channels') },
-    ...(isTV ? [{ id: 'epg' as TabId, icon: 'grid-on', label: 'EPG' }] : []),
+
     { id: 'movies', icon: 'movie', label: t('movies') },
     { id: 'series', icon: 'tv', label: t('series') },
     { id: 'favorites', icon: 'favorite', label: t('favorites') },
@@ -269,49 +266,29 @@ const MainLayout = () => {
   const handleTabPress = (tab: TabId) => {
     setActiveTab(tab);
     if (isTV) {
-      setIsSidebarExpanded(false);
-      setIsSidebarFocused(false);
-      sidebarFocusCountRef.current = 0;
-    }
+
+          }
     setTimeout(() => {
       contentRef.current?.focusFirstItem();
     }, 100);
   };
 
   const handleSidebarFocus = () => {
-    sidebarFocusCountRef.current += 1;
-    if (sidebarTimeoutRef.current) {
-      clearTimeout(sidebarTimeoutRef.current);
-      sidebarTimeoutRef.current = null;
-    }
-    setIsSidebarExpanded(true);
-    setIsSidebarFocused(true);
+
   };
 
   const handleSidebarBlur = () => {
-    sidebarFocusCountRef.current = Math.max(0, sidebarFocusCountRef.current - 1);
-    if (sidebarTimeoutRef.current) {
-      clearTimeout(sidebarTimeoutRef.current);
-    }
-    sidebarTimeoutRef.current = setTimeout(() => {
-      if (sidebarFocusCountRef.current === 0) {
-        setIsSidebarExpanded(false);
-        setIsSidebarFocused(false);
-      }
-    }, 150);
-  };
+              };
 
   const handleSidebarReturn = () => {
-    setIsSidebarExpanded(true);
-    setIsSidebarFocused(true);
-    sidebarFocusCountRef.current = 1;
-  };
+
+      };
 
   const renderContent = () => {
     return (
       <View style={{ flex: 1 }}>
         {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="list" />}
-        {activeTab === 'epg' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="epg" />}
+
         {activeTab === 'movies' && <MovieList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'series' && <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'favorites' && <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
@@ -330,16 +307,7 @@ const MainLayout = () => {
         <Animated.View style={[tvStyles.sidebar, { width: sidebarWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
           <View style={{ paddingVertical: 8, flex: 1 }}>
             {/* Hamburger toggle */}
-            <TouchableOpacity
-              onPress={() => setIsSidebarExpanded(!isSidebarExpanded)}
-              onFocus={handleSidebarFocus}
-              onBlur={handleSidebarBlur}
-              style={[tvStyles.menuItem, { justifyContent: 'center', paddingVertical: 8 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Toggle Sidebar"
-            >
-              <Icon name="menu" size={22} color={colors.text} style={isSidebarExpanded ? tvStyles.menuIcon : {}} />
-            </TouchableOpacity>
+
 
             {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>MENU</Text>}
 

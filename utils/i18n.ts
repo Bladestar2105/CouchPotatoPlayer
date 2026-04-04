@@ -7,7 +7,7 @@ const resources = {
     translation: {
       "appTitle": "My IPTV Profiles",
       "parentalControl": "Parental Control",
-      "channels": "Channels",
+      "channels": "Live-TV",
       "movies": "Movies",
       "series": "Series",
       "favorites": "Favorites",
@@ -81,7 +81,7 @@ const resources = {
     translation: {
       "appTitle": "Meine IPTV-Profile",
       "parentalControl": "Kindersicherung",
-      "channels": "Sender",
+      "channels": "Live-TV",
       "movies": "Filme",
       "series": "Serien",
       "favorites": "Favoriten",
