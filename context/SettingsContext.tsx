@@ -26,30 +26,30 @@ export interface ThemeColors {
 }
 
 export const darkThemeColors: ThemeColors = {
-  background: '#121212',
-  card: '#1E1E2E',
-  surface: '#1A1A2E',
-  surfaceSecondary: '#232340',
-  divider: '#2A2A4A',
-  text: '#EEEEF0',
+  background: '#0F0F13',
+  card: '#1A1A24',
+  surface: '#16161F',
+  surfaceSecondary: '#20202E',
+  divider: '#2A2A3E',
+  text: '#F0F0F2',
   textSecondary: '#9E9EB8',
   textMuted: '#6B6B8D',
   primary: '#7C4DFF',
-  primaryLight: 'rgba(124,77,255,0.18)',
+  primaryLight: 'rgba(124,77,255,0.16)',
   accent: '#B388FF',
   error: '#FF5252',
   success: '#69F0AE',
   warning: '#FFD740',
-  border: '#2A2A4A',
+  border: '#2A2A3E',
 };
 
 export const oledThemeColors: ThemeColors = {
   background: '#000000',
-  card: '#0D0D1A',
-  surface: '#0A0A18',
-  surfaceSecondary: '#12122A',
-  divider: '#1A1A30',
-  text: '#EEEEF0',
+  card: '#0C0C16',
+  surface: '#080812',
+  surfaceSecondary: '#101022',
+  divider: '#1A1A2E',
+  text: '#F0F0F2',
   textSecondary: '#9E9EB8',
   textMuted: '#52527B',
   primary: '#7C4DFF',
@@ -58,7 +58,7 @@ export const oledThemeColors: ThemeColors = {
   error: '#FF5252',
   success: '#69F0AE',
   warning: '#FFD740',
-  border: '#1A1A30',
+  border: '#1A1A2E',
 };
 
 export const lightThemeColors: ThemeColors = {

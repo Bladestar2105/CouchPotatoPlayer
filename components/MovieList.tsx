@@ -136,10 +136,10 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
       {showCategories && (
-      <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: 'rgba(26,26,46,0.95)', borderRightColor: 'rgba(124,77,255,0.12)' }]}>
+      <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.surface, borderRightColor: colors.divider }]}>
         {isMobile && (
-            <View style={{ padding: 16, backgroundColor: 'rgba(26,26,46,1)', borderBottomWidth: 1, borderBottomColor: 'rgba(124,77,255,0.12)' }}>
-              <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
+            <View style={{ padding: 16, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+              <Text style={{ color: colors.text, fontSize: 20, fontWeight: 'bold' }}>Categories</Text>
             </View>
         )}
         <FlatList
@@ -170,12 +170,12 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
 
       {/* Main Content - Movie Grid */}
       {(!isMobile || !showCategories) && (
-      <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: 'rgba(30,30,46,0.9)' }]}>
+      <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: colors.background }]}>
         {isMobile && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: 'rgba(26,26,46,1)', borderBottomWidth: 1, borderBottomColor: 'rgba(124,77,255,0.12)' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
               <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="arrow-back" size={24} color="#FFF" />
-                <Text style={{ color: '#FFF', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
+                <Icon name="arrow-back" size={24} color={colors.text} />
+                <Text style={{ color: colors.text, marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>{selectedGroup}</Text>
               </TouchableOpacity>
             </View>
         )}
@@ -230,7 +230,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                       ]}
                       resizeMode="cover"
                     />
-                    <Text style={[styles.title, { color: isFocused ? '#FFF' : '#AAA' }]} numberOfLines={2}>
+                    <Text style={[styles.title, { color: isFocused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
                       {item.name}
                     </Text>
                   </TouchableOpacity>
@@ -239,7 +239,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
           />
         ) : (
           <View style={styles.centeredContainer}>
-            <Text style={{ color: '#AAA' }}>No movies available</Text>
+            <Text style={{ color: colors.textMuted }}>No movies available</Text>
           </View>
         )}
       </View>
@@ -285,11 +285,10 @@ const styles = StyleSheet.create({
   poster: {
     width: POSTER_WIDTH,
     height: POSTER_WIDTH * 1.5,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1.5,
     marginBottom: 10,
-    backgroundColor: '#1A1A2E',
-    // Modern shadow for depth
+    backgroundColor: '#16161F',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

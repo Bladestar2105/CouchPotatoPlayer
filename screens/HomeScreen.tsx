@@ -47,12 +47,12 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
         tvStyles.menuItem,
         {
           backgroundColor: isFocused
-            ? 'rgba(124, 77, 255, 0.25)'
-            : (isActive ? 'rgba(124, 77, 255, 0.15)' : 'transparent'),
+            ? 'rgba(124, 77, 255, 0.22)'
+            : (isActive ? 'rgba(124, 77, 255, 0.12)' : 'transparent'),
           justifyContent: showLabel ? 'flex-start' : 'center',
           alignItems: 'center',
           borderWidth: isFocused ? 1.5 : 0,
-          borderColor: isFocused ? 'rgba(124, 77, 255, 0.5)' : 'transparent',
+          borderColor: isFocused ? 'rgba(124, 77, 255, 0.45)' : 'transparent',
           borderLeftWidth: isActive ? 3 : 0,
           borderLeftColor: isActive ? colors.primary : 'transparent',
         }
@@ -75,7 +75,7 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
             color: isActive ? colors.primary : (isFocused ? colors.text : colors.textSecondary),
             fontWeight: isActive || isFocused ? '600' : '400',
             fontSize: 13,
-            letterSpacing: 0.2,
+            letterSpacing: 0.3,
           }}
           numberOfLines={1}
         >
@@ -103,24 +103,63 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileNa
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   return (
-    <View style={[mobileTabStyles.container, { backgroundColor: colors.card, borderBottomColor: colors.divider }]}>
-      {/* App branding - tappable for provider switch */}
-      <TouchableOpacity
-        style={mobileTabStyles.brandContainer}
-        onPress={() => profiles.length > 1 && setShowProfileMenu(!showProfileMenu)}
-      >
-        <Image source={require('../assets/icon.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
-        {currentProfileName && (
-          <Text style={[mobileTabStyles.profileName, { color: colors.text }]} numberOfLines={1}>
-            {currentProfileName}
-          </Text>
-        )}
-        {profiles.length > 1 && (
-          <Icon name="arrow-drop-down" size={18} color={colors.textMuted} />
-        )}
-      </TouchableOpacity>
+    <View style={[mobileTabStyles.outerContainer, { backgroundColor: colors.card }]}>
+      {/* Top row: branding + tabs */}
+      <View style={[mobileTabStyles.container, { borderBottomColor: colors.divider }]}>
+        {/* App branding - tappable for provider switch */}
+        <TouchableOpacity
+          style={[mobileTabStyles.brandContainer, { borderRightColor: colors.divider }]}
+          onPress={() => profiles.length > 1 && setShowProfileMenu(!showProfileMenu)}
+          activeOpacity={0.7}
+        >
+          <Image source={require('../assets/icon.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
+          {currentProfileName && (
+            <Text style={[mobileTabStyles.profileName, { color: colors.text }]} numberOfLines={1}>
+              {currentProfileName}
+            </Text>
+          )}
+          {profiles.length > 1 && (
+            <Icon name="arrow-drop-down" size={18} color={colors.textMuted} />
+          )}
+        </TouchableOpacity>
 
-      {/* Provider dropdown */}
+        {/* Tabs - flex: 1 ensures ScrollView fills remaining horizontal space */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={mobileTabStyles.tabsScroll}
+          contentContainerStyle={mobileTabStyles.tabsRow}
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const isFocused = focusedTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                onPress={() => { setShowProfileMenu(false); onTabPress(tab.id); }}
+                onFocus={() => setFocusedTab(tab.id)}
+                onBlur={() => setFocusedTab(null)}
+                style={[
+                  mobileTabStyles.tab,
+                  isActive && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 },
+                  isFocused && { backgroundColor: colors.primaryLight },
+                ]}
+                accessible={true}
+                isTVSelectable={true}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+              >
+                <Icon name={tab.icon as any} size={17} color={isActive ? colors.primary : colors.textMuted} />
+                <Text style={[mobileTabStyles.tabLabel, { color: isActive ? colors.primary : colors.textMuted, fontWeight: isActive ? '700' : '500' }]} numberOfLines={1}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Provider dropdown - rendered outside the tab row to avoid blocking taps */}
       {showProfileMenu && (
         <View style={[mobileTabStyles.profileDropdown, { backgroundColor: colors.card, borderColor: colors.divider }]}>
           {profiles.map((p) => (
@@ -128,86 +167,62 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileNa
               key={p.id}
               style={[mobileTabStyles.profileItem, p.id === currentProfileId && { backgroundColor: colors.primaryLight }]}
               onPress={() => { onProfileSwitch(p); setShowProfileMenu(false); }}
+              activeOpacity={0.7}
             >
               <Icon name={(p.icon?.replace('_', '-') as any) || 'dns'} size={18} color={p.id === currentProfileId ? colors.primary : colors.textSecondary} />
-              <Text style={{ color: p.id === currentProfileId ? colors.primary : colors.text, marginLeft: 8, fontWeight: p.id === currentProfileId ? '700' : '500', fontSize: 13 }} numberOfLines={1}>
+              <Text style={{ color: p.id === currentProfileId ? colors.primary : colors.text, marginLeft: 10, fontWeight: p.id === currentProfileId ? '700' : '500', fontSize: 13 }} numberOfLines={1}>
                 {p.name}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
-
-      {/* Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={mobileTabStyles.tabsRow}>
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          const isFocused = focusedTab === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => { setShowProfileMenu(false); onTabPress(tab.id); }}
-              onFocus={() => setFocusedTab(tab.id)}
-              onBlur={() => setFocusedTab(null)}
-              style={[
-                mobileTabStyles.tab,
-                isActive && { borderBottomColor: colors.primary, borderBottomWidth: 3 },
-                isFocused && { backgroundColor: colors.primaryLight },
-              ]}
-              accessible={true}
-      isTVSelectable={true}
-      accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-            >
-              <Icon name={tab.icon as any} size={18} color={isActive ? colors.primary : colors.textMuted} />
-              <Text style={[mobileTabStyles.tabLabel, { color: isActive ? colors.primary : colors.textMuted, fontWeight: isActive ? '700' : '500' }]} numberOfLines={1}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
     </View>
   );
 };
 
 const mobileTabStyles = StyleSheet.create({
+  outerContainer: {
+    zIndex: 10,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    paddingHorizontal: 8,
-    height: 52,
+    paddingLeft: 10,
+    height: 50,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 12,
+    paddingRight: 10,
     borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.08)',
-    marginRight: 6,
+    marginRight: 4,
     height: '100%',
   },
-  brandLogo: { width: 24, height: 24, borderRadius: 6, marginRight: 6 },
-  profileName: { fontSize: 11, maxWidth: 80, fontWeight: '600' },
+  brandLogo: { width: 26, height: 26, borderRadius: 8, marginRight: 6 },
+  profileName: { fontSize: 11, maxWidth: 72, fontWeight: '600', letterSpacing: 0.2 },
   profileDropdown: {
-    position: 'absolute', top: 52, left: 0, minWidth: 200,
-    borderWidth: 1, borderRadius: 12, zIndex: 100, elevation: 10,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12,
+    position: 'absolute', top: 50, left: 0, minWidth: 220,
+    borderWidth: 1, borderRadius: 14, zIndex: 200, elevation: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16,
     paddingVertical: 6,
   },
   profileItem: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, marginHorizontal: 6, marginVertical: 2,
+    paddingVertical: 11, paddingHorizontal: 16, borderRadius: 10, marginHorizontal: 6, marginVertical: 2,
   },
-  tabsRow: { flexDirection: 'row', alignItems: 'center', height: '100%' },
+  tabsScroll: {
+    flex: 1,
+  },
+  tabsRow: { flexDirection: 'row', alignItems: 'center', height: '100%', paddingRight: 8 },
   tab: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 2,
-    borderBottomWidth: 3, borderBottomColor: 'transparent', borderRadius: 4,
+    paddingHorizontal: 11, paddingVertical: 6, marginHorizontal: 2,
+    borderBottomWidth: 2.5, borderBottomColor: 'transparent', borderRadius: 6,
     height: '100%', justifyContent: 'center',
   },
-  tabLabel: { fontSize: 12, marginLeft: 6, letterSpacing: 0.3 },
+  tabLabel: { fontSize: 12, marginLeft: 5, letterSpacing: 0.3, fontWeight: '500' },
 });
 
 // ============================================================
@@ -309,11 +324,8 @@ const MainLayout = () => {
       <View style={{ flex: 1, backgroundColor: colors.background, flexDirection: 'row' }}>
         {/* TiviMate-style collapsible sidebar */}
         <Animated.View style={[tvStyles.sidebar, { width: sidebarWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
-          <View style={{ paddingVertical: 8, flex: 1 }}>
-            {/* Hamburger toggle */}
-
-
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>MENU</Text>}
+          <View style={{ paddingVertical: 10, flex: 1 }}>
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, marginTop: 2 }]}>MENU</Text>}
 
             {tabs.map((tab) => (
               <TVSidebarItem
@@ -329,8 +341,8 @@ const MainLayout = () => {
               />
             ))}
 
-            <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 12, marginHorizontal: 12 }} />
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, fontSize: 12 }]}>PROVIDERS</Text>}
+            <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 14, marginHorizontal: 14 }} />
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, fontSize: 10 }]}>PROVIDERS</Text>}
 
             {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;
@@ -368,7 +380,7 @@ const MainLayout = () => {
   // ===== MOBILE/TABLET LAYOUT: Top tab bar =====
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card, zIndex: 10 }}>
         <MobileTopTabBar
           tabs={tabs}
           activeTab={activeTab}
@@ -381,7 +393,7 @@ const MainLayout = () => {
         />
       </SafeAreaView>
 
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, zIndex: 1 }}>
         {renderContent()}
       </View>
     </View>
@@ -396,22 +408,22 @@ const tvStyles = StyleSheet.create({
   sidebarSectionTitle: {
     fontSize: 10,
     marginBottom: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     textTransform: 'uppercase',
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginHorizontal: 4,
-    marginBottom: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginHorizontal: 6,
+    marginBottom: 3,
   },
   menuIcon: {
-    marginRight: 10,
+    marginRight: 11,
   },
 });
 
