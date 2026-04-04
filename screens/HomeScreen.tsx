@@ -250,8 +250,7 @@ const MainLayout = () => {
   }, [isSidebarExpanded]);
 
   const tabs: TabDef[] = useMemo(() => [
-    { id: 'channels', icon: 'live-tv', label: t('channels') },
-    ...(isTV ? [{ id: 'epg' as TabId, icon: 'grid-on', label: 'EPG' }] : []),
+    { id: 'channels', icon: 'live-tv', label: 'Live-TV/Sender' },
     { id: 'movies', icon: 'movie', label: t('movies') },
     { id: 'series', icon: 'tv', label: t('series') },
     { id: 'favorites', icon: 'favorite', label: t('favorites') },
@@ -312,8 +311,7 @@ const MainLayout = () => {
   const renderContent = () => {
     return (
       <View style={{ flex: 1 }}>
-        {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="list" />}
-        {activeTab === 'epg' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="epg" />}
+        {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="epg" />}
         {activeTab === 'movies' && <MovieList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'series' && <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'favorites' && <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
