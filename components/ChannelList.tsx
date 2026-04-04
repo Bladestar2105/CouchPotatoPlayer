@@ -49,7 +49,7 @@ const CategoryItem = React.memo(({ title, count, isSelected, onPress, colors, ha
     );
 }, (prevProps, nextProps) => {
     return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
-});
+}));
 
 // TiviMate-style channel row with inline EPG
 const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {

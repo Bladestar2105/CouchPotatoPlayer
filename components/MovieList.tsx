@@ -13,7 +13,7 @@ const POSTER_WIDTH = 120;
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus, ref }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean, ref?: React.Ref<any> }) => {
+const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -38,7 +38,7 @@ const CategoryItem = React.memo(({ title, count, isSelected, onPress, onFocus, c
     );
 }, (prevProps, nextProps) => {
     return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
-});
+}));
 
 const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { movies, isLoading, pin, isAdultUnlocked } = useIPTV();
@@ -64,8 +64,8 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
   // Expose focusFirstItem method to parent
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
-      // Focus the first category item when entering from sidebar
-      // The first category already has hasTVPreferredFocus={true}
+      firstCategoryRef.current?.focus?.();
+      firstCategoryRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
     }
   }));
 

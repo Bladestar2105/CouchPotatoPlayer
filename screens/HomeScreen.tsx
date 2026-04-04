@@ -287,7 +287,7 @@ const MainLayout = () => {
   const renderContent = () => {
     return (
       <View style={{ flex: 1 }}>
-        {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="list" />}
+        {activeTab === 'channels' && <ChannelList ref={contentRef} onReturnToSidebar={handleSidebarReturn} initialViewMode="epg" />}
 
         {activeTab === 'movies' && <MovieList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'series' && <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
