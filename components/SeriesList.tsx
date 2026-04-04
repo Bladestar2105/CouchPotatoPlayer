@@ -54,6 +54,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   useEffect(() => {
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
+      navigation.setParams({ returnGroupId: undefined });
     }
   }, [route.params?.returnGroupId]);
   const [focusedSeriesId, setFocusedSeriesId] = useState<string | null>(null);

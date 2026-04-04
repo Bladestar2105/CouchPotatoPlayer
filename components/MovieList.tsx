@@ -54,6 +54,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
   useEffect(() => {
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
+      navigation.setParams({ returnGroupId: undefined });
     }
   }, [route.params?.returnGroupId]);
   const [focusedMovieId, setFocusedMovieId] = useState<string | null>(null);
