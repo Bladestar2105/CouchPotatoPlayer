@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Platform, NativeModules } from 'react-native';
+import { View, StyleSheet, Platform, NativeModules, NativeSyntheticEvent } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { KSPlayerView } from './KSPlayerView';
@@ -76,7 +76,7 @@ interface VideoPlayerProps {
   onVideoLoad?: (metadata: VideoMetadata) => void;
 }
 
-import { SwiftTSPlayer } from './SwiftTSPlayer';
+import { SwiftTSPlayer, SwiftTSVideoLoadEvent, SwiftTSVideoErrorEvent } from './SwiftTSPlayer';
 
 // ---------------------------------------------------------------------------
 // Apple AVPlayer component (HLS & MP4 ONLY)
@@ -109,7 +109,7 @@ const AppleAVPlayer = ({
       streamUrl={streamUrl}
       paused={paused}
       style={styles.video}
-      onVideoLoad={(event: any) => {
+      onVideoLoad={(event: NativeSyntheticEvent<SwiftTSVideoLoadEvent>) => {
         if (onVideoLoad && event.nativeEvent) {
           onVideoLoad({
             width: event.nativeEvent.width,
@@ -117,7 +117,7 @@ const AppleAVPlayer = ({
           });
         }
       }}
-      onVideoError={(event: any) => {
+      onVideoError={(event: NativeSyntheticEvent<SwiftTSVideoErrorEvent>) => {
         console.warn('[SwiftTSPlayerView] Playback error:', event.nativeEvent?.error);
       }}
     />
@@ -297,10 +297,10 @@ const VideoPlayer = React.forwardRef(
           style={styles.video}
           resizeMode="contain"
           onProgress={onProgress}
-          onError={(error: any) => {
+          onError={(error: { error: { code: number; domain: string } }) => {
             console.warn('[NativeVideoComponent] Playback error:', error);
           }}
-          onLoad={(payload: any) => {
+          onLoad={(payload: { naturalSize: { width: number; height: number }; videoTrack?: { frameRate: number; bitrate: number } }) => {
             if (onVideoLoad && payload?.naturalSize) {
               onVideoLoad({
                 width: payload.naturalSize.width,
@@ -351,7 +351,7 @@ const VideoPlayer = React.forwardRef(
           autoplay={!paused}
           style={styles.video}
           resizeMode="contain"
-          onPlaying={(event: any) => {
+          onPlaying={(event: { videoWidth?: number; videoHeight?: number; target?: { videoWidth?: number; videoHeight?: number } }) => {
             if (onVideoLoad && event) {
               onVideoLoad({
                 width: event.videoWidth || event.target?.videoWidth,

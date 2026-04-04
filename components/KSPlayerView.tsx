@@ -13,12 +13,25 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, Platform, Text, ViewProps } from 'react-native';
+import { View, StyleSheet, Platform, Text, ViewProps, NativeSyntheticEvent } from 'react-native';
 
 export interface KSPlayerVideoMetadata {
   width?: number;
   height?: number;
   duration?: number;
+}
+
+export interface KSPlayerErrorEvent {
+  error: string;
+}
+
+export interface KSPlayerProgressEvent {
+  currentTime: number;
+  duration: number;
+}
+
+export interface KSPlayerStateEvent {
+  state: string;
 }
 
 export interface KSPlayerProps extends ViewProps {
@@ -89,7 +102,7 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
       hardwareDecode={hardwareDecode}
       asynchronousDecompression={asynchronousDecompression}
       displayFrameRate={displayFrameRate}
-      onKSVideoLoad={(event: any) => {
+      onKSVideoLoad={(event: NativeSyntheticEvent<KSPlayerVideoMetadata>) => {
         if (onVideoLoad && event?.nativeEvent) {
           onVideoLoad({
             width: event.nativeEvent.width,
@@ -98,12 +111,12 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
           });
         }
       }}
-      onKSVideoError={(event: any) => {
+      onKSVideoError={(event: NativeSyntheticEvent<KSPlayerErrorEvent>) => {
         if (onVideoError && event?.nativeEvent) {
           onVideoError(event.nativeEvent.error ?? 'Unknown error');
         }
       }}
-      onKSProgress={(event: any) => {
+      onKSProgress={(event: NativeSyntheticEvent<KSPlayerProgressEvent>) => {
         if (onProgress && event?.nativeEvent) {
           onProgress({
             currentTime: event.nativeEvent.currentTime ?? 0,
@@ -111,7 +124,7 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
           });
         }
       }}
-      onKSPlayerState={(event: any) => {
+      onKSPlayerState={(event: NativeSyntheticEvent<KSPlayerStateEvent>) => {
         if (onPlayerState && event?.nativeEvent) {
           onPlayerState(event.nativeEvent.state ?? '');
         }
