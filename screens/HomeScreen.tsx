@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, Pressable } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, Pressable, TVFocusGuideView, TVEventControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -269,16 +269,9 @@ const MainLayout = () => {
   // TV sidebar state (TiviMate-style collapsible)
   const isSidebarExpanded = true;
   const expandedWidth = 170;
-  const sidebarWidth = React.useRef(new Animated.Value(expandedWidth)).current;
 
-  useEffect(() => {
-    if (!isTV) return;
-    Animated.timing(sidebarWidth, {
-      toValue: expandedWidth,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [isSidebarExpanded]);
+  // Ref for sidebar focus guide on tvOS
+  const sidebarRef = useRef<View>(null);
 
   const tabs: TabDef[] = useMemo(() => [
     { id: 'channels', icon: 'live-tv', label: t('channels') },
@@ -299,6 +292,12 @@ const MainLayout = () => {
   // ============================================================
   useEffect(() => {
     if (!isFocused) return;
+
+    // Enable menu key interception on tvOS so the remote's menu button
+    // triggers hardwareBackPress instead of exiting the app
+    if (Platform.isTV && TVEventControl?.enableTVMenuKey) {
+      TVEventControl.enableTVMenuKey();
+    }
 
     const onBack = () => {
       // 1. Let the active content component handle back first
@@ -326,7 +325,12 @@ const MainLayout = () => {
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', onBack);
-    return () => backHandler.remove();
+    return () => {
+      if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+        TVEventControl.disableTVMenuKey();
+      }
+      backHandler.remove();
+    };
   }, [isFocused, activeTab]);
 
   if (isLoading) {
@@ -366,9 +370,9 @@ const MainLayout = () => {
   if (isTV) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, flexDirection: 'row' }}>
-        {/* TiviMate-style collapsible sidebar */}
-        <Animated.View style={[tvStyles.sidebar, { width: sidebarWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
-          <View style={{ paddingVertical: 10, flex: 1 }}>
+        {/* TiviMate-style sidebar with TVFocusGuideView for proper focus navigation */}
+        <TVFocusGuideView style={[tvStyles.sidebar, { width: expandedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]} autoFocus>
+          <View ref={sidebarRef} style={{ paddingVertical: 10, flex: 1 }}>
             {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, marginTop: 2 }]}>MENU</Text>}
 
             {tabs.map((tab) => (
@@ -411,12 +415,12 @@ const MainLayout = () => {
               );
             })}
           </View>
-        </Animated.View>
+        </TVFocusGuideView>
 
-        {/* Main Content */}
-        <View style={{ flex: 1 }}>
+        {/* Main Content - TVFocusGuideView guides focus back to sidebar when pressing left */}
+        <TVFocusGuideView style={{ flex: 1 }} destinations={[sidebarRef]}>
           {renderContent()}
-        </View>
+        </TVFocusGuideView>
       </View>
     );
   }
