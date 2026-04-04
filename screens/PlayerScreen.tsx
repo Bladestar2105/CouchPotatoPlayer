@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { Channel } from '../types';
 import { findCurrentProgramIndex } from '../utils/epgUtils';
-import { StreamHealthMonitor } from '../components/StreamHealthMonitor';
+// StreamHealthMonitor removed - info button was removed for cleaner UI
 
 const defaultLogo = require('../assets/icon.png');
 
@@ -50,7 +50,6 @@ const PlayerScreen = () => {
 
   // TiviMate-style overlay states
   const [showOverlay, setShowOverlay] = useState(false);
-  const [showStreamHealth, setShowStreamHealth] = useState(false);
   const [showChannelSwitch, setShowChannelSwitch] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
@@ -64,7 +63,6 @@ const PlayerScreen = () => {
   const [isExiting, setIsExiting] = useState(false);
 
   const backButtonRef = React.useRef<any>(null);
-  const infoButtonRef = React.useRef<any>(null);
 
   const handleBack = useCallback(() => {
     stopStream();
@@ -155,7 +153,7 @@ const PlayerScreen = () => {
   // Hide overlay on inactivity
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    if (showOverlay && !isPaused && !showStreamHealth) {
+    if (showOverlay && !isPaused) {
         timer = setTimeout(() => {
             setShowOverlay(false);
         }, 6000);
@@ -163,7 +161,7 @@ const PlayerScreen = () => {
     return () => {
         if (timer) clearTimeout(timer);
     };
-  }, [showOverlay, isPaused, showStreamHealth]);
+  }, [showOverlay, isPaused]);
 
   useEffect(() => {
     if (isFocused && currentStream && currentStream.id) {
@@ -204,10 +202,6 @@ const PlayerScreen = () => {
   }, [isFocused]);
 
   const handlePress = () => {
-    if (showStreamHealth) {
-      setShowStreamHealth(false);
-      return;
-    }
     setShowOverlay(prev => !prev);
   };
 
@@ -229,10 +223,6 @@ const PlayerScreen = () => {
     if (!isFocused || !evt) return;
 
     if (evt.eventType === 'menu') {
-      if (showStreamHealth) {
-        setShowStreamHealth(false);
-        return;
-      }
       handleBack();
     } else if (evt.eventType === 'playPause') {
       setIsPaused(prev => !prev);
@@ -256,13 +246,9 @@ const PlayerScreen = () => {
     } else if (evt.eventType === 'down') {
        switchChannel('down');
     } else if (evt.eventType === 'select') {
-       if (showStreamHealth) {
-         setShowStreamHealth(false);
-         return;
-       }
        setShowOverlay(true);
     }
-  }, [isFocused, handleBack, switchChannel, showStreamHealth]);
+  }, [isFocused, handleBack, switchChannel]);
 
   useTVEventHandler(handleTVRemoteEvent);
 
@@ -289,18 +275,6 @@ const PlayerScreen = () => {
 
   return (
     <View style={pStyles.container}>
-      {currentStream && (
-        <StreamHealthMonitor
-          visible={showStreamHealth}
-          streamUrl={currentStream.url}
-          videoData={videoMetadata}
-          bufferHealth={{ isBuffering: false }}
-          currentTime={currentTimeRef.current}
-          duration={0}
-          playbackRate={1}
-        />
-      )}
-
       {/* TiviMate-style channel switch mini-overlay (top-right) */}
       {showChannelSwitch && currentChannel && (
         <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
@@ -321,25 +295,6 @@ const PlayerScreen = () => {
         </Animated.View>
       )}
 
-      {/* Info button (top-right, always when overlay shown) */}
-      {showOverlay && (
-        <View style={pStyles.topRight}>
-          <TouchableOpacity
-            ref={infoButtonRef}
-            onPress={() => setShowStreamHealth(!showStreamHealth)}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Stream Info"
-            isTVSelectable={true}
-            hasTVPreferredFocus={Platform.isTV ? true : false}
-            tvParallaxProperties={{ enabled: false }}
-            style={[pStyles.iconBtn, { backgroundColor: 'rgba(30,30,46,0.75)' }]}
-          >
-            <Icon name="info-outline" size={24} color={showStreamHealth ? colors.success : '#FFF'} />
-          </TouchableOpacity>
-        </View>
-      )}
-
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
@@ -358,7 +313,7 @@ const PlayerScreen = () => {
       </TouchableOpacity>
 
       {showOverlay && (
-        <TVFocusGuideView style={pStyles.overlay} destinations={[backButtonRef.current, infoButtonRef.current]} pointerEvents="box-none">
+        <TVFocusGuideView style={pStyles.overlay} destinations={[backButtonRef.current]} pointerEvents="box-none">
           {/* Top Bar - Back + Channel Number Badge */}
           <View style={pStyles.topBar}>
             <TouchableOpacity
@@ -468,12 +423,6 @@ const pStyles = StyleSheet.create({
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  topRight: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 30,
   },
   iconBtn: {
     padding: 10,

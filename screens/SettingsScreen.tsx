@@ -313,6 +313,21 @@ const SettingsScreen = () => {
                     </View>
                   );
                 })}
+
+                {/* Add New Provider Button */}
+                <TouchableOpacity
+                  style={[styles.addProviderButton, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    unloadProfile();
+                  }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add new provider"
+                  isTVSelectable={true}
+                >
+                  <Tv color="#FFF" size={20} style={{ marginRight: 10 }} />
+                  <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Add New Provider</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -586,6 +601,14 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  addProviderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginTop: 16,
   },
   // SubMenu Styles
   subMenuContainer: {

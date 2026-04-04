@@ -91,7 +91,7 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
             {/* Channel Logo */}
             <View style={tiviStyles.logoContainer}>
                 {channel.logo && channel.logo.startsWith('http') ? (
-                    <ChannelLogo uri={channel.logo} style={tiviStyles.channelLogo} />
+                    <ChannelLogo url={channel.logo} name={channel.name} style={tiviStyles.channelLogo} />
                 ) : (
                     <View style={[tiviStyles.channelLogo, tiviStyles.logoPlaceholder, { backgroundColor: colors.surfaceSecondary }]}>
                         <Icon name="tv" size={18} color={colors.textMuted} />
@@ -370,6 +370,10 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
           <TouchableOpacity
             style={[tiviStyles.viewModeBtn, viewMode === 'list' && { backgroundColor: colors.primary }]}
             onPress={() => setViewMode('list')}
+            isTVSelectable={true}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="List view"
           >
             <Icon name="list" size={18} color={viewMode === 'list' ? '#FFF' : colors.textMuted} />
             <Text style={{ color: viewMode === 'list' ? '#FFF' : colors.textMuted, fontSize: 12, marginLeft: 4, fontWeight: '600' }}>List</Text>
@@ -377,6 +381,10 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
           <TouchableOpacity
             style={[tiviStyles.viewModeBtn, viewMode === 'epg' && { backgroundColor: colors.primary }]}
             onPress={() => setViewMode('epg')}
+            isTVSelectable={true}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="EPG grid view"
           >
             <Icon name="grid-on" size={18} color={viewMode === 'epg' ? '#FFF' : colors.textMuted} />
             <Text style={{ color: viewMode === 'epg' ? '#FFF' : colors.textMuted, fontSize: 12, marginLeft: 4, fontWeight: '600' }}>EPG</Text>

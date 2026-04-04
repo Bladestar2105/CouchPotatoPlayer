@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useMemo } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, FlatList, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Image, BackHandler, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -30,43 +30,95 @@ interface TabDef {
   label: string;
 }
 
-// TiviMate-style top tab bar
-const TopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileName }: {
+// TiviMate-style top tab bar - TV-optimized with proper focus handling
+const TopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileName, profiles, currentProfileId, onProfileSwitch }: {
   tabs: TabDef[];
   activeTab: TabId;
   onTabPress: (tab: TabId) => void;
   colors: any;
   currentProfileName?: string;
+  profiles: any[];
+  currentProfileId?: string;
+  onProfileSwitch: (profile: any) => void;
 }) => {
   const [focusedTab, setFocusedTab] = useState<TabId | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const handleProfilePress = () => {
+    if (profiles.length <= 1) return;
+    setShowProfileMenu(!showProfileMenu);
+  };
 
   return (
     <View style={[topTabStyles.container, { backgroundColor: colors.card, borderBottomColor: colors.divider }]}>
-      {/* App branding - left side */}
-      <View style={topTabStyles.brandContainer}>
+      {/* App branding - left side, tappable for provider switch */}
+      <TouchableOpacity
+        style={topTabStyles.brandContainer}
+        onPress={handleProfilePress}
+        isTVSelectable={true}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`Provider: ${currentProfileName || 'None'}. ${profiles.length > 1 ? 'Press to switch.' : ''}`}
+      >
         <Image source={require('../assets/icon.png')} style={topTabStyles.brandLogo} resizeMode="contain" />
-        {currentProfileName && (
-          <Text style={[topTabStyles.profileName, { color: colors.textSecondary }]} numberOfLines={1}>
-            {currentProfileName}
-          </Text>
-        )}
-      </View>
+        <View>
+          {currentProfileName && (
+            <Text style={[topTabStyles.profileName, { color: colors.text }]} numberOfLines={1}>
+              {currentProfileName}
+            </Text>
+          )}
+          {profiles.length > 1 && (
+            <Text style={{ color: colors.textMuted, fontSize: Platform.isTV ? 10 : 9 }}>
+              <Icon name="swap-vert" size={10} color={colors.textMuted} /> Switch
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
 
-      {/* Tabs - center */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={topTabStyles.tabsContainer}>
-        {tabs.map((tab) => {
+      {/* Provider dropdown overlay */}
+      {showProfileMenu && (
+        <View style={[topTabStyles.profileDropdown, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+          {profiles.map((p) => (
+            <TouchableOpacity
+              key={p.id}
+              style={[
+                topTabStyles.profileDropdownItem,
+                p.id === currentProfileId && { backgroundColor: colors.primaryLight },
+              ]}
+              onPress={() => {
+                onProfileSwitch(p);
+                setShowProfileMenu(false);
+              }}
+              isTVSelectable={true}
+              accessible={true}
+              accessibilityRole="button"
+            >
+              <Icon name={(p.icon?.replace('_', '-') as any) || 'dns'} size={18} color={p.id === currentProfileId ? colors.primary : colors.textSecondary} />
+              <Text style={{ color: p.id === currentProfileId ? colors.primary : colors.text, marginLeft: 8, fontWeight: p.id === currentProfileId ? '700' : '500', fontSize: 13 }} numberOfLines={1}>
+                {p.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Tabs */}
+      <View style={topTabStyles.tabsContainer}>
+        {tabs.map((tab, index) => {
           const isActive = activeTab === tab.id;
           const isFocused = focusedTab === tab.id;
           return (
             <TouchableOpacity
               key={tab.id}
-              onPress={() => onTabPress(tab.id)}
+              onPress={() => { setShowProfileMenu(false); onTabPress(tab.id); }}
               onFocus={() => setFocusedTab(tab.id)}
               onBlur={() => setFocusedTab(null)}
+              isTVSelectable={true}
+              hasTVPreferredFocus={isActive && index === 0}
               style={[
                 topTabStyles.tab,
                 isActive && { borderBottomColor: colors.primary, borderBottomWidth: 3 },
-                isFocused && { backgroundColor: colors.primaryLight },
+                isFocused && { backgroundColor: colors.primaryLight, borderColor: colors.primary, borderWidth: 1.5 },
               ]}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
@@ -92,7 +144,7 @@ const TopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileName }: 
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -123,10 +175,36 @@ const topTabStyles = StyleSheet.create({
   profileName: {
     fontSize: Platform.isTV ? 13 : 11,
     maxWidth: Platform.isTV ? 120 : 80,
+    fontWeight: '600',
+  },
+  profileDropdown: {
+    position: 'absolute',
+    top: Platform.isTV ? 64 : 52,
+    left: 0,
+    minWidth: Platform.isTV ? 250 : 200,
+    borderWidth: 1,
+    borderRadius: 12,
+    zIndex: 100,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    paddingVertical: 6,
+  },
+  profileDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Platform.isTV ? 12 : 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginHorizontal: 6,
+    marginVertical: 2,
   },
   tabsContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    flex: 1,
     height: '100%',
   },
   tab: {
@@ -221,6 +299,9 @@ const MainLayout = () => {
           onTabPress={handleTabPress}
           colors={colors}
           currentProfileName={currentProfile?.name}
+          profiles={profiles}
+          currentProfileId={currentProfile?.id}
+          onProfileSwitch={loadProfile}
         />
       </SafeAreaView>
 
