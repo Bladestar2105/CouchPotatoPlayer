@@ -35,12 +35,11 @@ const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
 // ============================================================
 // TV SIDEBAR - TiviMate-style collapsible left sidebar for TV
 // ============================================================
-const TVSidebarItem = React.forwardRef(({ icon, label, isActive, onPress, showLabel, onFocus, onBlur, colors }: any, ref: React.Ref<any>) => {
+const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlur, colors }: any) => {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
     <TouchableOpacity
-      ref={ref}
       onPress={onPress}
       onFocus={(e: any) => { setIsFocused(true); if (onFocus) onFocus(e); }}
       onBlur={(e: any) => { setIsFocused(false); if (onBlur) onBlur(e); }}
@@ -85,7 +84,7 @@ const TVSidebarItem = React.forwardRef(({ icon, label, isActive, onPress, showLa
       )}
     </TouchableOpacity>
   );
-});
+};
 
 // ============================================================
 // MOBILE TOP TAB BAR - Horizontal tabs for phones/tablets
@@ -271,9 +270,6 @@ const MainLayout = () => {
   const isSidebarExpanded = true;
   const expandedWidth = 170;
 
-  // Ref for the first sidebar item to guide focus on tvOS
-  const firstSidebarItemRef = useRef<TouchableOpacity>(null);
-
   const tabs: TabDef[] = useMemo(() => [
     { id: 'channels', icon: 'live-tv', label: t('channels') },
     { id: 'movies', icon: 'movie', label: t('movies') },
@@ -370,16 +366,16 @@ const MainLayout = () => {
   // ===== TV LAYOUT: TiviMate-style left sidebar =====
   if (isTV) {
     return (
-      <TVFocusGuideView style={{ flex: 1, backgroundColor: colors.background, flexDirection: 'row' }} autoFocus>
-        {/* TiviMate-style sidebar */}
-        <View style={[tvStyles.sidebar, { width: expandedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+      <View style={{ flex: 1, backgroundColor: colors.background, flexDirection: 'row' }}>
+        {/* TiviMate-style sidebar - TVFocusGuideView with autoFocus ensures
+            the focus engine can find sidebar items when navigating left */}
+        <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: expandedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
           <View style={{ paddingVertical: 10, flex: 1 }}>
             {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, marginTop: 2 }]}>MENU</Text>}
 
-            {tabs.map((tab, index) => (
+            {tabs.map((tab) => (
               <TVSidebarItem
                 key={tab.id}
-                ref={index === 0 ? firstSidebarItemRef : undefined}
                 onFocus={handleSidebarFocus}
                 onBlur={handleSidebarBlur}
                 icon={tab.icon}
@@ -417,13 +413,13 @@ const MainLayout = () => {
               );
             })}
           </View>
-        </View>
-
-        {/* Main Content - TVFocusGuideView guides focus back to sidebar when pressing left */}
-        <TVFocusGuideView style={{ flex: 1 }} destinations={[firstSidebarItemRef]}>
-          {renderContent()}
         </TVFocusGuideView>
-      </TVFocusGuideView>
+
+        {/* Main Content */}
+        <View style={{ flex: 1 }}>
+          {renderContent()}
+        </View>
+      </View>
     );
   }
 
