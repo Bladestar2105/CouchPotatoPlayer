@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, Image, BackHandler, Alert, TVFocusGuideView, TVEventControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { useTranslation } from 'react-i18next';
@@ -259,6 +259,7 @@ const MainLayout = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
   const { isLoading, profiles, currentProfile, loadProfile } = useIPTV();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const isFocused = useIsFocused();
@@ -381,8 +382,8 @@ const MainLayout = () => {
         {/* TiviMate-style sidebar - TVFocusGuideView with autoFocus ensures
             the focus engine can find sidebar items when navigating left */}
         <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: expandedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
-          <View style={{ paddingVertical: 10, flex: 1 }}>
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, marginTop: 2 }]}>MENU</Text>}
+          <View style={{ paddingTop: Math.max(insets.top, 18), paddingBottom: Math.max(insets.bottom, 10), flex: 1 }}>
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>MENU</Text>}
 
             {tabs.map((tab) => (
               <TVSidebarItem
@@ -395,7 +396,7 @@ const MainLayout = () => {
                 onPress={() => handleTabPress(tab.id)}
                 showLabel={isSidebarExpanded}
                 colors={colors}
-                hasTVPreferredFocus={tab.id === 'channels'}
+                hasTVPreferredFocus={tab.id === activeTab}
               />
             ))}
 
