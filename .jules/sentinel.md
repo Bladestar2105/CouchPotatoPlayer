@@ -40,3 +40,8 @@
 **Vulnerability:** The application contained a hardcoded TMDB API key placeholder (`'YOUR_API_KEY_HERE'`) in the `MediaInfoScreen.tsx` component. Hardcoding secrets in source code leads to information exposure and prevents secure management/rotation of credentials.
 **Learning:** Hardcoding API keys or secrets in the UI layer (or any source file) is a security risk. It makes the secret accessible to anyone with access to the source code or the bundled application.
 **Prevention:** Never hardcode secrets in source code. Use environment variables (prefixed with `EXPO_PUBLIC_` for Expo) for build-time defaults and provide a UI for users to supply their own keys, persisting them securely in local storage (like `AsyncStorage`). Retrieve secrets via a centralized configuration or context provider.
+
+## 2024-05-24 - Server-Side Request Forgery (SSRF) in Python Proxy Server
+**Vulnerability:** The Python proxy server (`proxy-server.py`) forwarded requests to any URL provided by the user without validating the destination IP address. This allowed an attacker to supply URLs pointing to internal or private IP addresses (e.g., `127.0.0.1`, `169.254.169.254`), resulting in Server-Side Request Forgery (SSRF) and potential exposure of internal services or cloud metadata.
+**Learning:** Checking URL schemes (`http://` vs `file://`) is insufficient to prevent SSRF. Attackers can use valid schemes but direct the request to restricted internal IP addresses, bypassing network boundaries.
+**Prevention:** Always resolve the hostname of the target URL to its IP address (using `socket.getaddrinfo`) and validate the resulting IP against a strict denylist of private, loopback, and link-local ranges (e.g., using `ipaddress`) before initiating the proxy request.
