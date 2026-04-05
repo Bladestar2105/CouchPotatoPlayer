@@ -78,6 +78,18 @@ interface VideoPlayerProps {
 
 import { SwiftTSPlayer, SwiftTSVideoLoadEvent, SwiftTSVideoErrorEvent } from './SwiftTSPlayer';
 
+const toMilliseconds = (value?: number, reference?: number): number => {
+  if (!Number.isFinite(value as number) || value === undefined) return 0;
+  // Some players report seconds, others milliseconds.
+  // If the reference clearly looks like milliseconds, keep value as-is.
+  if (reference !== undefined && reference > 10000) return value;
+  // Otherwise treat small values as seconds and normalize to ms.
+  if (value >= 0 && value <= 10000) {
+    return value * 1000;
+  }
+  return value;
+};
+
 // ---------------------------------------------------------------------------
 // Apple AVPlayer component (HLS & MP4 ONLY)
 // ---------------------------------------------------------------------------
@@ -267,7 +279,12 @@ const VideoPlayer = React.forwardRef(
       <WebVideoComponent
         ref={videoRef}
         key={currentStream?.id}
-        onProgress={onProgress}
+        onProgress={(event: { currentTime?: number; duration?: number }) => {
+          if (!onProgress) return;
+          const durationMs = toMilliseconds(event?.duration, event?.duration);
+          const currentMs = toMilliseconds(event?.currentTime, event?.duration);
+          onProgress({ currentTime: currentMs, duration: durationMs });
+        }}
         source={{ uri: streamUrl! }}
         paused={paused}
         autoplay={!paused}
@@ -295,7 +312,13 @@ const VideoPlayer = React.forwardRef(
           paused={paused}
           style={styles.video}
           resizeMode="contain"
-          onProgress={onProgress}
+          onProgress={(event: { currentTime: number; playableDuration?: number; seekableDuration?: number }) => {
+            if (!onProgress) return;
+            const durationRaw = event?.seekableDuration ?? event?.playableDuration ?? 0;
+            const durationMs = toMilliseconds(durationRaw, durationRaw);
+            const currentMs = toMilliseconds(event?.currentTime, durationRaw);
+            onProgress({ currentTime: currentMs, duration: durationMs });
+          }}
           onError={(error: { error: { code: number; domain: string } }) => {
             console.warn('[NativeVideoComponent] Playback error:', error);
           }}
@@ -344,7 +367,13 @@ const VideoPlayer = React.forwardRef(
         <VLCPlayerComponent
           ref={videoRef}
           key={currentStream?.id}
-          onProgress={onProgress}
+          onProgress={(event: { currentTime?: number; duration?: number }) => {
+            if (!onProgress) return;
+            const durationRaw = event?.duration ?? 0;
+            const durationMs = toMilliseconds(durationRaw, durationRaw);
+            const currentMs = toMilliseconds(event?.currentTime, durationRaw);
+            onProgress({ currentTime: currentMs, duration: durationMs });
+          }}
           source={{ uri: effectiveUrl, initOptions: vlcInitOptions }}
           paused={paused}
           autoplay={!paused}
