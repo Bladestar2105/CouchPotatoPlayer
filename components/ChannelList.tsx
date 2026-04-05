@@ -392,7 +392,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
             onPress={() => setViewMode('list')}
             isTVSelectable={true}
             accessible={true}
-            accessibilityRole="button"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: viewMode === 'list' }}
             accessibilityLabel="List view"
           >
             <Icon name="list" size={18} color={viewMode === 'list' ? '#FFF' : colors.textMuted} />
@@ -403,7 +404,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
             onPress={() => setViewMode('epg')}
             isTVSelectable={true}
             accessible={true}
-            accessibilityRole="button"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: viewMode === 'epg' }}
             accessibilityLabel="EPG grid view"
           >
             <Icon name="grid-on" size={18} color={viewMode === 'epg' ? '#FFF' : colors.textMuted} />
