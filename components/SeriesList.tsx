@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle, TVFocusGuideView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -65,6 +65,8 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
   const firstPosterRef = useRef<any>(null);
+  const [firstCategoryNode, setFirstCategoryNode] = useState<number | undefined>(undefined);
+  const [firstPosterNode, setFirstPosterNode] = useState<number | undefined>(undefined);
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
@@ -163,7 +165,6 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
       {showCategories && (
-      <TVFocusGuideView autoFocus destinations={[firstPosterRef.current]} style={styles.focusGuide}>
       <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.surface, borderRightColor: colors.divider }]}>
         {isMobile && (
             <View style={{ padding: 16, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
@@ -181,7 +182,10 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
               const isFirstItem = index === 0;
               return (
                 <CategoryItem
-                  ref={isFirstItem ? firstCategoryRef : undefined}
+                  ref={isFirstItem ? (el: any) => {
+                    firstCategoryRef.current = el;
+                    setFirstCategoryNode(findNodeHandle(el) ?? undefined);
+                  } : undefined}
                   title={item.title}
                   count={item.data.length}
                   isSelected={isSelected}
@@ -189,18 +193,16 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                   onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
                   colors={colors}
                   // @ts-ignore - supported on TV platforms
-                  nextFocusRight={findNodeHandle(firstPosterRef.current) ?? undefined}
+                  nextFocusRight={firstPosterNode}
                 />
               );
           }}
         />
       </View>
-      </TVFocusGuideView>
       )}
 
       {/* Main Content - Series Grid */}
       {(!isMobile || !showCategories) && (
-      <TVFocusGuideView autoFocus destinations={[firstCategoryRef.current]} style={styles.focusGuide}>
       <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: colors.background }]}>
         {isMobile && (
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
@@ -233,7 +235,10 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                   <TouchableOpacity
                     accessible={true}
                     isTVSelectable={true}
-                    ref={index === 0 ? firstPosterRef : undefined}
+                    ref={index === 0 ? (el: any) => {
+                      firstPosterRef.current = el;
+                      setFirstPosterNode(findNodeHandle(el) ?? undefined);
+                    } : undefined}
                     hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,
@@ -244,7 +249,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                         isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
                     ]}
                     // @ts-ignore - supported on TV platforms
-                    nextFocusLeft={findNodeHandle(firstCategoryRef.current) ?? undefined}
+                    nextFocusLeft={firstCategoryNode}
                     onPress={() => navigation.navigate('MediaInfo', {
                       id: item.id,
                       type: 'series',
@@ -282,7 +287,6 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
           </View>
         )}
       </View>
-      </TVFocusGuideView>
       )}
     </View>
   );
@@ -312,9 +316,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   mainContent: {
-    flex: 1,
-  },
-  focusGuide: {
     flex: 1,
   },
   gridContainer: {
