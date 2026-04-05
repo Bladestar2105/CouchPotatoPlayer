@@ -184,7 +184,6 @@ module.exports = function withKSPlayer(config) {
 
       // Check if we already added the pods
       if (contents.includes("pod 'Libass'") && contents.includes("pod 'KSPlayer/MEPlayer'")) {
-        console.log('[withKSPlayer] Pods already present in Podfile, skipping');
         return config;
       }
 
@@ -216,7 +215,6 @@ module.exports = function withKSPlayer(config) {
       }
 
       fs.writeFileSync(podfilePath, contents);
-      console.log('[withKSPlayer] Added KSPlayer pods to Podfile');
 
       return config;
     },
