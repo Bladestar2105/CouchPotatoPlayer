@@ -8,6 +8,9 @@ import urllib.request
 import urllib.parse
 import sys
 import re
+import socket
+import ipaddress
+import json
 
 ALLOWED_ORIGINS = [
     'http://localhost:8081', # Expo web development
@@ -16,7 +19,46 @@ ALLOWED_ORIGINS = [
     'http://localhost'      # Nginx/Docker default
 ]
 
+DISALLOWED_IPS = [
+    '127.0.0.0/8',    # Loopback
+    '10.0.0.0/8',     # Private-use (RFC 1918)
+    '172.16.0.0/12',  # Private-use (RFC 1918)
+    '192.168.0.0/16', # Private-use (RFC 1918)
+    '169.254.0.0/16', # Link-local
+    '::1/128',        # IPv6 loopback
+    'fc00::/7',       # IPv6 Unique Local Address
+    'fe80::/10',      # IPv6 link-local
+]
+
 class CORSProxyHandler(BaseHTTPRequestHandler):
+    def is_safe_url(self, url):
+        try:
+            parsed = urllib.parse.urlparse(url)
+            if parsed.scheme not in ('http', 'https'):
+                return False, "Invalid URL scheme. Must be http:// or https://"
+
+            hostname = parsed.hostname
+            if not hostname:
+                return False, "Invalid hostname"
+
+            # Resolve all IP addresses for the hostname
+            try:
+                addr_info = socket.getaddrinfo(hostname, parsed.port or (80 if parsed.scheme == 'http' else 443))
+            except socket.gaierror:
+                return False, f"Could not resolve hostname: {hostname}"
+
+            for family, _, _, _, sockaddr in addr_info:
+                ip_str = sockaddr[0]
+                ip = ipaddress.ip_address(ip_str)
+
+                for disallowed in DISALLOWED_IPS:
+                    if ip in ipaddress.ip_network(disallowed):
+                        return False, f"Access to disallowed IP range: {ip_str}"
+
+            return True, None
+        except Exception as e:
+            return False, f"URL validation error: {str(e)}"
+
     def get_cors_origin(self):
         origin = self.headers.get('Origin')
         if origin in ALLOWED_ORIGINS:
@@ -24,15 +66,23 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
         return ""
 
     def do_GET(self):
+        cors_origin = self.get_cors_origin()
+        if not cors_origin:
+            self.send_response(403)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Origin not allowed"}).encode())
+            return
+
         if self.path.startswith('/proxy/'):
             url = self.path[7:]  # Remove '/proxy/' prefix
 
-            # SSRF mitigation: Only proxy http and https schemes
-            if not url.startswith('http://') and not url.startswith('https://'):
+            is_safe, error_msg = self.is_safe_url(url)
+            if not is_safe:
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(b'{"error": "Invalid URL scheme. Must be http:// or https://"}')
+                self.wfile.write(json.dumps({"error": error_msg}).encode())
                 return
 
             try:
@@ -40,9 +90,7 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 req.add_header('User-Agent', 'Mozilla/5.0')
                 with urllib.request.urlopen(req, timeout=30) as response:
                     self.send_response(200)
-                    cors_origin = self.get_cors_origin()
-                    if cors_origin:
-                        self.send_header('Access-Control-Allow-Origin', cors_origin)
+                    self.send_header('Access-Control-Allow-Origin', cors_origin)
                     self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
                     self.send_header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range')
                     content_type = response.headers.get('Content-Type', 'application/octet-stream')
@@ -53,16 +101,22 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(b'{"error": "Proxy error occurred"}')
+                self.wfile.write(json.dumps({"error": f"Proxy error: {str(e)}"}).encode())
         else:
             self.send_response(404)
             self.end_headers()
     
     def do_OPTIONS(self):
-        self.send_response(200)
         cors_origin = self.get_cors_origin()
-        if cors_origin:
-            self.send_header('Access-Control-Allow-Origin', cors_origin)
+        if not cors_origin:
+            self.send_response(403)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Origin not allowed"}).encode())
+            return
+
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', cors_origin)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range')
         self.end_headers()
