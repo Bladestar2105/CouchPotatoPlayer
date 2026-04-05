@@ -410,9 +410,10 @@ const VideoPlayer = React.forwardRef(
           style={styles.video}
           streamUrl={effectiveUrl}
           paused={paused}
-          hardwareAcceleration={ksplayerHardwareDecode}
-          asyncDecompression={ksplayerAsynchronousDecompression}
-          adaptiveFrameRate={ksplayerDisplayFrameRate}
+          hardwareDecode={ksplayerHardwareDecode}
+          asynchronousDecompression={ksplayerAsynchronousDecompression}
+          displayFrameRate={ksplayerDisplayFrameRate}
+          seekPosition={seekPosition}
           onVideoLoad={(metadata) => {
             if (onVideoLoad) {
               onVideoLoad({

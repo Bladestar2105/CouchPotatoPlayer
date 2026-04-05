@@ -45,6 +45,8 @@ export interface KSPlayerProps extends ViewProps {
   asynchronousDecompression?: boolean;
   /** Whether to use adaptive display frame rate */
   displayFrameRate?: boolean;
+  /** Seek target in milliseconds. */
+  seekPosition?: number;
   /** Called when the video is ready to play. */
   onVideoLoad?: (metadata: KSPlayerVideoMetadata) => void;
   /** Called when a playback error occurs. */
@@ -72,6 +74,7 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
   hardwareDecode = true,
   asynchronousDecompression = false,
   displayFrameRate = true,
+  seekPosition,
   onVideoLoad,
   onVideoError,
   onProgress,
@@ -102,6 +105,7 @@ export const KSPlayerView: React.FC<KSPlayerProps> = ({
       hardwareDecode={hardwareDecode}
       asynchronousDecompression={asynchronousDecompression}
       displayFrameRate={displayFrameRate}
+      seekPosition={seekPosition}
       onKSVideoLoad={(event: NativeSyntheticEvent<KSPlayerVideoMetadata>) => {
         if (onVideoLoad && event?.nativeEvent) {
           onVideoLoad({
