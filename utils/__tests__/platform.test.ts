@@ -122,6 +122,48 @@ describe("platform utils", () => {
     expect(utils.adaptiveValue(opts)).toBe('mobile-val');
   });
 
+  test("adaptiveValue handles edge cases and falsy values", async () => {
+    // 1. Web fallback to mobile if web option is undefined
+    mock.module("react-native", () => ({
+      Platform: { OS: 'web', isTV: false },
+      Dimensions: { get: () => ({ width: 1920, height: 1080 }) }
+    }));
+    let utils = await getPlatformUtils();
+    expect(utils.adaptiveValue({ tv: 'tv', mobile: 'mobile' })).toBe('mobile');
+
+    // 2. Falsy values (0)
+    mock.module("react-native", () => ({
+      Platform: { OS: 'web', isTV: false },
+      Dimensions: { get: () => ({ width: 1920, height: 1080 }) }
+    }));
+    utils = await getPlatformUtils();
+    expect(utils.adaptiveValue({ tv: 1, mobile: 2, web: 0 })).toBe(0);
+
+    // 3. Falsy values ("")
+    mock.module("react-native", () => ({
+      Platform: { OS: 'ios', isTV: true },
+      Dimensions: { get: () => ({ width: 1920, height: 1080 }) }
+    }));
+    utils = await getPlatformUtils();
+    expect(utils.adaptiveValue({ tv: "", mobile: "mobile" })).toBe("");
+
+    // 4. Falsy values (false)
+    mock.module("react-native", () => ({
+      Platform: { OS: 'ios', isTV: false },
+      Dimensions: { get: () => ({ width: 390, height: 844 }) }
+    }));
+    utils = await getPlatformUtils();
+    expect(utils.adaptiveValue({ tv: true, mobile: false })).toBe(false);
+
+    // 5. Falsy values (null)
+    mock.module("react-native", () => ({
+      Platform: { OS: 'ios', isTV: false },
+      Dimensions: { get: () => ({ width: 390, height: 844 }) }
+    }));
+    utils = await getPlatformUtils();
+    expect(utils.adaptiveValue({ tv: {}, mobile: null })).toBe(null);
+  });
+
   test("gridColumns returns correct values", async () => {
     // TV
     mock.module("react-native", () => ({
