@@ -39,8 +39,6 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             </Text>
         </TouchableOpacity>
     );
-}, (prevProps, nextProps) => {
-    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 }));
 
 const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
@@ -181,7 +179,6 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                   onPress={() => handleGroupSelect(item.title)}
                   onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
                   colors={colors}
-                  hasTVPreferredFocus={isFirstItem}
                 />
               );
           }}

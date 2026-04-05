@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Platform, findNodeHandle } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
@@ -20,12 +20,23 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const inputRef = useRef<TextInput>(null);
+  const searchFieldFocusRef = useRef<any>(null);
+  const [shouldFocusSearchField, setShouldFocusSearchField] = useState(false);
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
-      inputRef.current?.focus();
+      setShouldFocusSearchField(true);
+      requestAnimationFrame(() => {
+        searchFieldFocusRef.current?.focus?.();
+      });
     },
   }));
+
+  React.useEffect(() => {
+    if (!shouldFocusSearchField) return;
+    const timer = setTimeout(() => setShouldFocusSearchField(false), 150);
+    return () => clearTimeout(timer);
+  }, [shouldFocusSearchField]);
 
   // ⚡ Bolt: Debounce search input to prevent heavy UI blocking on every keystroke
   React.useEffect(() => {
@@ -133,7 +144,20 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
           autoCapitalize="none"
           autoCorrect={false}
           tvFocusable={true}
+          isTVSelectable={true}
+          hasTVPreferredFocus={shouldFocusSearchField}
           autoFocus={!Platform.isTV}
+        />
+        <TouchableOpacity
+          ref={searchFieldFocusRef}
+          style={styles.tvFocusProxy}
+          isTVSelectable={true}
+          hasTVPreferredFocus={shouldFocusSearchField}
+          accessibilityRole="button"
+          accessibilityLabel="Focus search input"
+          nextFocusRight={findNodeHandle(inputRef.current) ?? undefined}
+          onFocus={() => inputRef.current?.focus()}
+          onPress={() => inputRef.current?.focus()}
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel="Clear search query">
@@ -183,6 +207,14 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  tvFocusProxy: {
+    position: 'absolute',
+    left: 20,
+    top: 20,
+    width: 1,
+    height: 1,
+    opacity: 0.01,
   },
   center: {
     flex: 1,
