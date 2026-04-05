@@ -420,11 +420,11 @@ const PlayerScreen = () => {
                                     </Text>
                                 </View>
 
-                                {nextProgram && (
-                                    <Text style={pStyles.nextProgramText} numberOfLines={1}>
-                                        Next: {timeFormatter.format(nextProgram.start)} - {nextProgram.title}
-                                    </Text>
-                                )}
+                                <Text style={pStyles.nextProgramText} numberOfLines={1}>
+                                  {nextProgram
+                                    ? `Next: ${timeFormatter.format(nextProgram.start)} - ${nextProgram.title}`
+                                    : 'Next: —'}
+                                </Text>
                             </View>
                          ) : (
                              <Text style={pStyles.noEpgText}>No EPG Data Available</Text>
@@ -592,12 +592,14 @@ const pStyles = StyleSheet.create({
   bottomBar: {
     backgroundColor: 'rgba(18, 18, 30, 0.92)',
     borderTopWidth: 3,
+    height: Platform.isTV ? 188 : 160,
+    justifyContent: 'center',
   },
   infoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    paddingBottom: 36,
+    paddingBottom: 20,
   },
   channelLogo: {
       width: 80,
@@ -611,7 +613,7 @@ const pStyles = StyleSheet.create({
   },
   vodInfoContainer: {
     padding: 20,
-    paddingBottom: 36,
+    paddingBottom: 20,
   },
   vodHeaderRow: {
     flexDirection: 'row',

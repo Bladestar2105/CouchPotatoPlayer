@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle, TVFocusGuideView } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -164,6 +164,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
       {showCategories && (
+      <TVFocusGuideView autoFocus destinations={[firstPosterRef.current]} style={styles.focusGuide}>
       <View style={[styles.categoriesSidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.surface, borderRightColor: colors.divider }]}>
         {isMobile && (
             <View style={{ padding: 16, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
@@ -195,10 +196,12 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
           }}
         />
       </View>
+      </TVFocusGuideView>
       )}
 
       {/* Main Content - Movie Grid */}
       {(!isMobile || !showCategories) && (
+      <TVFocusGuideView autoFocus destinations={[firstCategoryRef.current]} style={styles.focusGuide}>
       <View style={[styles.mainContent, isMobile ? { flex: 1 } : { backgroundColor: colors.background }]}>
         {isMobile && (
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
@@ -281,6 +284,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
           </View>
         )}
       </View>
+      </TVFocusGuideView>
       )}
     </View>
   );
@@ -310,6 +314,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   mainContent: {
+    flex: 1,
+  },
+  focusGuide: {
     flex: 1,
   },
   gridContainer: {

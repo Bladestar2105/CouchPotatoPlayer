@@ -32,6 +32,13 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
         searchFieldFocusRef.current?.focus?.();
       });
     },
+    handleBack: () => {
+      if (inputRef.current?.isFocused?.()) {
+        inputRef.current.blur();
+        return true;
+      }
+      return false;
+    },
   }));
 
   React.useEffect(() => {
@@ -148,7 +155,6 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
             accessibilityLabel="Search input"
             onFocus={() => {
               setIsActivatorFocused(true);
-              inputRef.current?.focus();
             }}
             onBlur={() => setIsActivatorFocused(false)}
             onPress={() => inputRef.current?.focus()}
@@ -170,7 +176,7 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
           autoCorrect={false}
           tvFocusable={true}
           isTVSelectable={true}
-          hasTVPreferredFocus={shouldFocusSearchField}
+          hasTVPreferredFocus={!isTV && shouldFocusSearchField}
           autoFocus={!Platform.isTV}
         />
         {query.length > 0 && (

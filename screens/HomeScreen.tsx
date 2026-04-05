@@ -343,20 +343,20 @@ const MainLayout = () => {
                 TVEventControl.disableTVMenuKey();
               }
 
-              try {
-                BackHandler.exitApp();
-              } catch (_) {}
-
               const rnExitApp = (NativeModules as any)?.RNExitApp;
               if (rnExitApp?.exitApp) {
                 try {
                   rnExitApp.exitApp();
                 } catch (_) {}
               }
+
+              try {
+                BackHandler.exitApp();
+              } catch (_) {}
             },
           },
         ],
-        { cancelable: true }
+        { cancelable: false }
       );
       return true;
     };
