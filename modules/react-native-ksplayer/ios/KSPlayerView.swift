@@ -93,7 +93,7 @@ class KSPlayerView: UIView {
             let targetSeconds = max(0, seekPosition.doubleValue / 1000.0)
             DispatchQueue.main.async { [weak self] in
                 guard let self, let playerLayer = self.playerLayer else { return }
-                playerLayer.seek(time: targetSeconds, autoPlay: !self.paused, completion: {})
+                playerLayer.seek(time: targetSeconds, autoPlay: !self.paused, completion: { _ in })
             }
         }
     }
