@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { IPTVProvider } from './context/IPTVContext';
 import { StatusBar } from 'react-native';
+import { tvTextSize } from './utils/tvAccessibility';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SettingsProvider } from './context/SettingsContext';
 import './utils/i18n';
@@ -49,7 +50,7 @@ const App = () => {
             initialRouteName="Home"
             screenOptions={{
               headerStyle: {
-                backgroundColor: '#1A1A24',
+                backgroundColor: '#2D4263',
                 borderBottomWidth: 0,
                 shadowOpacity: 0,
                 elevation: 0,
@@ -58,6 +59,7 @@ const App = () => {
               headerTitleStyle: {
                 fontWeight: '600',
                 letterSpacing: 0.3,
+                fontSize: tvTextSize(20),
               },
             }}
           >

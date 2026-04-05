@@ -46,12 +46,12 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
         tvStyles.menuItem,
         {
           backgroundColor: isFocused
-            ? 'rgba(124, 77, 255, 0.22)'
-            : (isActive ? 'rgba(124, 77, 255, 0.12)' : 'transparent'),
+            ? 'rgba(233, 105, 42, 0.22)'
+            : (isActive ? 'rgba(233, 105, 42, 0.12)' : 'transparent'),
           justifyContent: showLabel ? 'flex-start' : 'center',
           alignItems: 'center',
           borderWidth: isFocused ? 1.5 : 0,
-          borderColor: isFocused ? 'rgba(124, 77, 255, 0.45)' : 'transparent',
+          borderColor: isFocused ? 'rgba(233, 105, 42, 0.45)' : 'transparent',
           borderLeftWidth: isActive ? 3 : 0,
           borderLeftColor: isActive ? colors.primary : 'transparent',
         }
@@ -66,7 +66,7 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
     >
       <Icon
         name={icon}
-        size={20}
+        size={24}
         color={isActive ? colors.primary : (isFocused ? colors.text : colors.textMuted)}
         style={[showLabel ? tvStyles.menuIcon : {}, { textAlign: 'center' }]}
       />
@@ -75,7 +75,7 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
           style={{
             color: isActive ? colors.primary : (isFocused ? colors.text : colors.textSecondary),
             fontWeight: isActive || isFocused ? '600' : '400',
-            fontSize: 13,
+            fontSize: 16,
             letterSpacing: 0.3,
           }}
           numberOfLines={1}
@@ -277,10 +277,19 @@ const MainLayout = () => {
   }, [route.params?.returnTab]);
 
   const contentRef = useRef<ContentRef>(null);
+  const searchRef = useRef<ContentRef>(null);
+  const settingsRef = useRef<ContentRef>(null);
+
+  const getActiveContentRef = useCallback(() => {
+    if (activeTab === 'settings') return settingsRef;
+    if (activeTab === 'search') return searchRef;
+    return contentRef;
+  }, [activeTab]);
 
   // TV sidebar state (TiviMate-style collapsible)
-  const isSidebarExpanded = true;
-  const expandedWidth = 170;
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const expandedWidth = 230;
+  const collapsedWidth = 86;
 
   const tabs: TabDef[] = useMemo(() => [
     { id: 'channels', icon: 'live-tv', label: t('channels') },
@@ -310,7 +319,7 @@ const MainLayout = () => {
 
     const onBack = () => {
       // 1. Let the active content component handle back first
-      if (contentRef.current?.handleBack?.()) {
+      if (getActiveContentRef().current?.handleBack?.()) {
         return true;
       }
 
@@ -359,14 +368,19 @@ const MainLayout = () => {
       }
       backHandler.remove();
     };
-  }, [isFocused, activeTab]);
+  }, [isFocused, activeTab, getActiveContentRef]);
 
-  const handleTabPress = useCallback((tab: TabId) => {
+  const handleTabPress = useCallback((tab: TabId, options?: { collapseSidebar?: boolean }) => {
     setActiveTab(tab);
+
+    if (isTV && options?.collapseSidebar) {
+      setIsSidebarExpanded(false);
+    }
+
     setTimeout(() => {
-      contentRef.current?.focusFirstItem();
+      getActiveContentRef().current?.focusFirstItem();
     }, 100);
-  }, []);
+  }, [getActiveContentRef]);
 
   if (isLoading) {
     return (
@@ -376,9 +390,15 @@ const MainLayout = () => {
     );
   }
 
-  const handleSidebarFocus = () => {};
+  const handleSidebarFocus = () => {
+    setIsSidebarExpanded(true);
+  };
+
   const handleSidebarBlur = () => {};
-  const handleSidebarReturn = () => {};
+
+  const handleSidebarReturn = () => {
+    setIsSidebarExpanded(true);
+  };
 
   const renderContent = () => {
     return (
@@ -388,8 +408,8 @@ const MainLayout = () => {
         {activeTab === 'series' && <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'favorites' && <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'recent' && <RecentlyWatchedList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
-        {activeTab === 'settings' && <SettingsScreen />}
-        {activeTab === 'search' && <SearchScreen />}
+        {activeTab === 'settings' && <SettingsScreen ref={settingsRef} />}
+        {activeTab === 'search' && <SearchScreen ref={searchRef} />}
       </View>
     );
   };
@@ -400,7 +420,7 @@ const MainLayout = () => {
       <View style={{ flex: 1, backgroundColor: colors.background, flexDirection: 'row' }}>
         {/* TiviMate-style sidebar - TVFocusGuideView with autoFocus ensures
             the focus engine can find sidebar items when navigating left */}
-        <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: expandedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+        <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: isSidebarExpanded ? expandedWidth : collapsedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
           <View style={{ paddingTop: Math.max(insets.top, 18), paddingBottom: Math.max(insets.bottom, 10), flex: 1 }}>
             {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>MENU</Text>}
 
@@ -412,15 +432,15 @@ const MainLayout = () => {
                 icon={tab.icon}
                 label={tab.label}
                 isActive={activeTab === tab.id}
-                onPress={() => handleTabPress(tab.id)}
+                onPress={() => handleTabPress(tab.id, { collapseSidebar: true })}
                 showLabel={isSidebarExpanded}
                 colors={colors}
-                hasTVPreferredFocus={tab.id === activeTab}
+                hasTVPreferredFocus={isSidebarExpanded && tab.id === activeTab}
               />
             ))}
 
             <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 14, marginHorizontal: 14 }} />
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, fontSize: 10 }]}>PROVIDERS</Text>}
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>PROVIDERS</Text>}
 
             {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;
@@ -483,9 +503,9 @@ const tvStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   sidebarSectionTitle: {
-    fontSize: 10,
-    marginBottom: 8,
-    paddingHorizontal: 14,
+    fontSize: 13,
+    marginBottom: 10,
+    paddingHorizontal: 18,
     textTransform: 'uppercase',
     fontWeight: '700',
     letterSpacing: 1.2,
@@ -493,14 +513,14 @@ const tvStyles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginHorizontal: 6,
-    marginBottom: 3,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginHorizontal: 8,
+    marginBottom: 6,
   },
   menuIcon: {
-    marginRight: 11,
+    marginRight: 14,
   },
 });
 

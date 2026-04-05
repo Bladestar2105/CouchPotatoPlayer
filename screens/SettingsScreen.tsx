@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Platform, Modal, FlatList } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
@@ -18,7 +18,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle } from 'lucide-react-native';
 
-const SettingsScreen = () => {
+type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
+
+const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
   const { t } = useTranslation();
   const { currentProfile, profiles, pin, isAdultUnlocked, unlockAdultContent, lockAdultContent, removeProfile, loadProfile, unloadProfile } = useIPTV();
   const {
@@ -35,6 +37,21 @@ const SettingsScreen = () => {
 
   const [activeCategory, setActiveCategory] = useState<'playlists' | 'general' | 'appearance' | 'playback' | 'parental' | 'advanced'>('playlists');
   const [activeSubMenu, setActiveSubMenu] = useState<{ title: string, options: any[], onSelect: (val: any) => void, selectedValue: any } | null>(null);
+  const firstCategoryRef = useRef<any>(null);
+
+  useImperativeHandle(ref, () => ({
+    focusFirstItem: () => {
+      firstCategoryRef.current?.focus?.();
+      firstCategoryRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
+    },
+    handleBack: () => {
+      if (activeSubMenu) {
+        setActiveSubMenu(null);
+        return true;
+      }
+      return false;
+    },
+  }), [activeSubMenu]);
 
   const [updateInterval, setUpdateInterval] = React.useState<number>(24);
 
@@ -211,18 +228,20 @@ const SettingsScreen = () => {
 
   // UI Components
 
-  const renderCategoryItem = (id: typeof activeCategory, icon: any, label: string) => {
+  const renderCategoryItem = (id: typeof activeCategory, icon: any, label: string, index: number) => {
     const isActive = activeCategory === id;
     return (
       <TouchableOpacity
+        ref={index === 0 ? firstCategoryRef : undefined}
         style={[
           styles.categoryItem,
-          isActive && { backgroundColor: 'rgba(124, 77, 255, 0.2)', borderLeftColor: '#7C4DFF', borderLeftWidth: 3 }
+          isActive && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 }
         ]}
         onPress={() => setActiveCategory(id)}
         accessible={true}
         accessibilityRole="button"
         isTVSelectable={true}
+        hasTVPreferredFocus={index === 0}
       >
         {icon}
         <Text style={[styles.categoryText, { color: isActive ? '#FAFAFA' : '#A1A1AA' }]}>{label}</Text>
@@ -260,12 +279,12 @@ const SettingsScreen = () => {
       <View style={[styles.sidebar, { backgroundColor: colors.card }]}>
         <Text style={[styles.sidebarTitle, { color: colors.text }]}>{t('settings')}</Text>
         <ScrollView style={{ flex: 1 }}>
-          {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Playlists / Providers')}
-          {renderCategoryItem('general', <Settings color={activeCategory === 'general' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'General')}
-          {renderCategoryItem('appearance', <Palette color={activeCategory === 'appearance' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Appearance')}
-          {renderCategoryItem('playback', <PlayCircle color={activeCategory === 'playback' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Playback')}
-          {renderCategoryItem('parental', <Shield color={activeCategory === 'parental' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Parental Control')}
-          {renderCategoryItem('advanced', <Database color={activeCategory === 'advanced' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Advanced')}
+          {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Playlists / Providers', 0)}
+          {renderCategoryItem('general', <Settings color={activeCategory === 'general' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'General', 1)}
+          {renderCategoryItem('appearance', <Palette color={activeCategory === 'appearance' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Appearance', 2)}
+          {renderCategoryItem('playback', <PlayCircle color={activeCategory === 'playback' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Playback', 3)}
+          {renderCategoryItem('parental', <Shield color={activeCategory === 'parental' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Parental Control', 4)}
+          {renderCategoryItem('advanced', <Database color={activeCategory === 'advanced' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Advanced', 5)}
         </ScrollView>
       </View>
 
@@ -545,7 +564,7 @@ const SettingsScreen = () => {
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

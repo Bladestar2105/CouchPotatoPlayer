@@ -944,6 +944,15 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [recentlyWatched]);
 
+  const clearRecentlyWatched = useCallback(async () => {
+    try {
+      setRecentlyWatched([]);
+      await AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify([]));
+    } catch (e) {
+      Logger.error("Error clearing recently watched", e);
+    }
+  }, []);
+
   // --- Channel Lock/Unlock ---
   const lockChannel = useCallback(async (id: string) => {
     try {
@@ -1061,6 +1070,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addRecentlyWatched,
     updatePlaybackPosition,
     removeRecentlyWatched,
+    clearRecentlyWatched,
     setPinCode,
     unlockAdultContent,
     lockAdultContent,
@@ -1106,6 +1116,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addRecentlyWatched,
     updatePlaybackPosition,
     removeRecentlyWatched,
+    clearRecentlyWatched,
     setPinCode,
     unlockAdultContent,
     lockAdultContent,
