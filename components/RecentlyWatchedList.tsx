@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#7C4DFF',
+    backgroundColor: '#E9692A',
     borderBottomLeftRadius: 14,
   },
   continueBadge: {

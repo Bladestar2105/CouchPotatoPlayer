@@ -27,7 +27,7 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
                 tiviStyles.categoryItem,
                 { borderBottomColor: colors.divider },
                 isSelected && { backgroundColor: colors.primaryLight, borderLeftColor: colors.primary, borderLeftWidth: 3 },
-                isFocused && { backgroundColor: 'rgba(124,77,255,0.25)', borderLeftColor: colors.primary, borderLeftWidth: 3 }
+                isFocused && { backgroundColor: 'rgba(233,105,42,0.25)', borderLeftColor: colors.primary, borderLeftWidth: 3 }
             ]}
             onPress={onPress}
             onFocus={() => setIsFocused(true)}
@@ -76,8 +76,8 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
             style={[
                 tiviStyles.channelRow,
                 { borderBottomColor: colors.divider },
-                isPlaying && { backgroundColor: 'rgba(124,77,255,0.12)', borderLeftColor: colors.primary, borderLeftWidth: 3 },
-                focused && { backgroundColor: 'rgba(124,77,255,0.18)' },
+                isPlaying && { backgroundColor: 'rgba(233,105,42,0.12)', borderLeftColor: colors.primary, borderLeftWidth: 3 },
+                focused && { backgroundColor: 'rgba(233,105,42,0.18)' },
             ]}
             onPress={onPress}
             onLongPress={onLongPress}

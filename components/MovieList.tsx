@@ -20,8 +20,8 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             ref={ref}
             style={[
                 styles.categoryItem,
-                isSelected ? { backgroundColor: 'rgba(124, 77, 255, 0.2)', borderLeftColor: '#7C4DFF', borderLeftWidth: 3 } : { borderLeftWidth: 3, borderLeftColor: 'transparent' },
-                isFocused ? { backgroundColor: 'rgba(124, 77, 255, 0.3)', borderLeftColor: '#7C4DFF', borderLeftWidth: 3 } : {}
+                isSelected ? { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : { borderLeftWidth: 3, borderLeftColor: 'transparent' },
+                isFocused ? { backgroundColor: 'rgba(233, 105, 42, 0.3)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : {}
             ]}
             onPress={onPress}
             onFocus={() => { setIsFocused(true); onFocus(); }}

@@ -98,7 +98,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
           style={[
               styles.card,
               { backgroundColor: 'rgba(30,30,46,0.9)' },
-              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#7C4DFF', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
+              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#E9692A', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
           ]}
           onPress={() => handlePress(item)}
           onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
@@ -121,7 +121,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
                 <Icon name={getTypeIcon(item.type)} size={48} color={colors.textSecondary} />
               </View>
             )}
-            <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#69F0AE' : item.type === 'vod' ? '#7C4DFF' : '#FFD740' }]}>
+            <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#69F0AE' : item.type === 'vod' ? '#E9692A' : '#FFD740' }]}>
               <Icon name={getTypeIcon(item.type)} size={16} color="#FFF" />
             </View>
             <TouchableOpacity

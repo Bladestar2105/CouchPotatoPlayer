@@ -217,7 +217,7 @@ const SettingsScreen = () => {
       <TouchableOpacity
         style={[
           styles.categoryItem,
-          isActive && { backgroundColor: 'rgba(124, 77, 255, 0.2)', borderLeftColor: '#7C4DFF', borderLeftWidth: 3 }
+          isActive && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 }
         ]}
         onPress={() => setActiveCategory(id)}
         accessible={true}

@@ -46,12 +46,12 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
         tvStyles.menuItem,
         {
           backgroundColor: isFocused
-            ? 'rgba(124, 77, 255, 0.22)'
-            : (isActive ? 'rgba(124, 77, 255, 0.12)' : 'transparent'),
+            ? 'rgba(233, 105, 42, 0.22)'
+            : (isActive ? 'rgba(233, 105, 42, 0.12)' : 'transparent'),
           justifyContent: showLabel ? 'flex-start' : 'center',
           alignItems: 'center',
           borderWidth: isFocused ? 1.5 : 0,
-          borderColor: isFocused ? 'rgba(124, 77, 255, 0.45)' : 'transparent',
+          borderColor: isFocused ? 'rgba(233, 105, 42, 0.45)' : 'transparent',
           borderLeftWidth: isActive ? 3 : 0,
           borderLeftColor: isActive ? colors.primary : 'transparent',
         }
