@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, Pressable, TVFocusGuideView, TVEventControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, Image, BackHandler, Alert, TVFocusGuideView, TVEventControl } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,6 @@ import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
 import SearchScreen from './SearchScreen';
-import { RecentlyWatchedItem } from '../types';
 
 export type ContentRef = {
   focusFirstItem: () => void;
@@ -35,7 +34,7 @@ const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
 // ============================================================
 // TV SIDEBAR - TiviMate-style collapsible left sidebar for TV
 // ============================================================
-const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlur, colors }: any) => {
+const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onBlur, colors, hasTVPreferredFocus = false }: any) => {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -62,6 +61,8 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={label}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      activeOpacity={0.85}
     >
       <Icon
         name={icon}
@@ -99,10 +100,12 @@ const MobileTabItem = React.memo(({ tab, isActive, onPress, colors }: {
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   return (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
+      activeOpacity={0.85}
+      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
       style={[
         mobileTabStyles.tab,
         isActive && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 },
@@ -113,6 +116,7 @@ const MobileTabItem = React.memo(({ tab, isActive, onPress, colors }: {
       isTVSelectable={true}
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
+      accessibilityLabel={tab.label}
     >
       <Icon name={tab.icon as any} size={17} color={isActive ? colors.primary : colors.textMuted} />
       <Text
@@ -124,16 +128,15 @@ const MobileTabItem = React.memo(({ tab, isActive, onPress, colors }: {
       >
         {tab.label}
       </Text>
-    </Pressable>
+    </TouchableOpacity>
   );
 });
 
-const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileName, profiles, currentProfileId, onProfileSwitch }: {
+const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, currentProfileId, onProfileSwitch }: {
   tabs: TabDef[];
   activeTab: TabId;
   onTabPress: (tab: TabId) => void;
   colors: any;
-  currentProfileName?: string;
   profiles: any[];
   currentProfileId?: string;
   onProfileSwitch: (profile: any) => void;
@@ -195,6 +198,8 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileNa
 const mobileTabStyles = StyleSheet.create({
   outerContainer: {
     zIndex: 10,
+    position: 'relative',
+    elevation: 10,
   },
   container: {
     flexDirection: 'row',
@@ -202,6 +207,7 @@ const mobileTabStyles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingLeft: 6,
     height: 48,
+    overflow: 'visible',
   },
   brandContainer: {
     flexDirection: 'row',
@@ -209,6 +215,9 @@ const mobileTabStyles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRightWidth: 1,
     height: '100%',
+    minWidth: 46,
+    flexShrink: 0,
+    marginRight: 4,
   },
   brandLogo: { width: 26, height: 26, borderRadius: 8, marginRight: 2 },
   profileDropdown: {
@@ -227,6 +236,7 @@ const mobileTabStyles = StyleSheet.create({
     alignItems: 'center',
     height: '100%',
     paddingHorizontal: 2,
+    paddingLeft: 2,
   },
   tab: {
     flex: 1,
@@ -248,13 +258,12 @@ const mobileTabStyles = StyleSheet.create({
 const MainLayout = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
-  const { channels, movies, series, isLoading, profiles, currentProfile, loadProfile, recentlyWatched, playStream, addRecentlyWatched } = useIPTV();
-  const dimensions = useWindowDimensions();
+  const { isLoading, profiles, currentProfile, loadProfile } = useIPTV();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const isFocused = useIsFocused();
 
-  const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<TabId>('channels');
 
   // Handle return parameters from Player
@@ -333,6 +342,13 @@ const MainLayout = () => {
     };
   }, [isFocused, activeTab]);
 
+  const handleTabPress = useCallback((tab: TabId) => {
+    setActiveTab(tab);
+    setTimeout(() => {
+      contentRef.current?.focusFirstItem();
+    }, 100);
+  }, []);
+
   if (isLoading) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
@@ -340,13 +356,6 @@ const MainLayout = () => {
       </View>
     );
   }
-
-  const handleTabPress = (tab: TabId) => {
-    setActiveTab(tab);
-    setTimeout(() => {
-      contentRef.current?.focusFirstItem();
-    }, 100);
-  };
 
   const handleSidebarFocus = () => {};
   const handleSidebarBlur = () => {};
@@ -373,8 +382,8 @@ const MainLayout = () => {
         {/* TiviMate-style sidebar - TVFocusGuideView with autoFocus ensures
             the focus engine can find sidebar items when navigating left */}
         <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: expandedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
-          <View style={{ paddingVertical: 10, flex: 1 }}>
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, marginTop: 2 }]}>MENU</Text>}
+          <View style={{ paddingTop: Math.max(insets.top, 18), paddingBottom: Math.max(insets.bottom, 10), flex: 1 }}>
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>MENU</Text>}
 
             {tabs.map((tab) => (
               <TVSidebarItem
@@ -387,6 +396,7 @@ const MainLayout = () => {
                 onPress={() => handleTabPress(tab.id)}
                 showLabel={isSidebarExpanded}
                 colors={colors}
+                hasTVPreferredFocus={tab.id === activeTab}
               />
             ))}
 
@@ -429,13 +439,12 @@ const MainLayout = () => {
   // ===== MOBILE/TABLET LAYOUT: Top tab bar =====
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card, zIndex: 10 }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card, zIndex: 10, elevation: 10 }}>
         <MobileTopTabBar
           tabs={tabs}
           activeTab={activeTab}
           onTabPress={handleTabPress}
           colors={colors}
-          currentProfileName={currentProfile?.name}
           profiles={profiles}
           currentProfileId={currentProfile?.id}
           onProfileSwitch={loadProfile}
