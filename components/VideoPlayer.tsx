@@ -84,36 +84,35 @@ import { SwiftTSPlayer, SwiftTSVideoLoadEvent, SwiftTSVideoErrorEvent } from './
 const AppleAVPlayer = ({
   streamUrl,
   paused,
+  seekPosition,
   onProgress,
   onVideoLoad,
 }: {
   streamUrl: string;
   paused: boolean;
+  seekPosition?: number;
   onProgress?: VideoPlayerProps['onProgress'];
   onVideoLoad?: VideoPlayerProps['onVideoLoad'];
 }) => {
-  React.useEffect(() => {
-    if (!onProgress) return;
-    let time = 0;
-    const interval = setInterval(() => {
-      if (!paused) {
-        time += 1;
-        onProgress({ currentTime: time * 1000, duration: 0 });
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [paused, onProgress]);
-
   return (
     <SwiftTSPlayer
       streamUrl={streamUrl}
       paused={paused}
+      seekPosition={seekPosition}
       style={styles.video}
       onVideoLoad={(event: NativeSyntheticEvent<SwiftTSVideoLoadEvent>) => {
         if (onVideoLoad && event.nativeEvent) {
           onVideoLoad({
             width: event.nativeEvent.width,
             height: event.nativeEvent.height,
+          });
+        }
+      }}
+      onProgress={(event) => {
+        if (onProgress && event?.nativeEvent) {
+          onProgress({
+            currentTime: event.nativeEvent.currentTime || 0,
+            duration: event.nativeEvent.duration || 0,
           });
         }
       }}
@@ -242,11 +241,10 @@ const VideoPlayer = React.forwardRef(
 
     React.useEffect(() => {
       if (seekPosition === undefined) return;
-      if (effectivePlayer === 'avkit') return;
       if (videoRef.current?.seek) {
         videoRef.current.seek(seekPosition / 1000.0);
       }
-    }, [seekPosition, effectivePlayer]);
+    }, [seekPosition]);
 
     // -----------------------------------------------------------------------
     // Render helpers
@@ -258,6 +256,7 @@ const VideoPlayer = React.forwardRef(
         <AppleAVPlayer
           streamUrl={streamUrl}
           paused={paused}
+          seekPosition={seekPosition}
           onProgress={onProgress}
           onVideoLoad={onVideoLoad}
         />

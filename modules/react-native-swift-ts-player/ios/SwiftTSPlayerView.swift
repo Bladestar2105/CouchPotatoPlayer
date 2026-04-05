@@ -19,6 +19,7 @@ class SwiftTSPlayerView: UIView {
     private var likelyToKeepUpObserver: NSKeyValueObservation?
     private var stalledObserver: NSObjectProtocol?
     private var failedObserver: NSObjectProtocol?
+    private var timeObserverToken: Any?
     private var retryCount: Int = 0
     private let maxRetries: Int = 3
     private var retryTimer: Timer?
@@ -43,8 +44,17 @@ class SwiftTSPlayerView: UIView {
         }
     }
 
+    @objc var seekPosition: NSNumber? {
+        didSet {
+            guard let seekPosition = seekPosition else { return }
+            let targetMs = seekPosition.doubleValue
+            seek(toMilliseconds: targetMs)
+        }
+    }
+
     @objc var onSwiftVideoLoad: RCTDirectEventBlock?
     @objc var onSwiftVideoError: RCTDirectEventBlock?
+    @objc var onSwiftProgress: RCTDirectEventBlock?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -89,6 +99,10 @@ class SwiftTSPlayerView: UIView {
             NotificationCenter.default.removeObserver(obs)
         }
         failedObserver = nil
+        if let token = timeObserverToken {
+            player?.removeTimeObserver(token)
+        }
+        timeObserverToken = nil
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         playerItem = nil
@@ -117,6 +131,7 @@ class SwiftTSPlayerView: UIView {
         player = AVPlayer(playerItem: playerItem)
         player?.automaticallyWaitsToMinimizeStalling = true
         playerLayer?.player = player
+        addPeriodicTimeObserver()
 
         // Observe player status
         playerStatusObserver = playerItem?.observe(\.status, options: [.new]) { [weak self] item, _ in
@@ -236,6 +251,26 @@ class SwiftTSPlayerView: UIView {
         retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             guard let self = self, let url = self.streamUrl else { return }
             self.setupPlayer(with: url)
+        }
+    }
+
+    // MARK: - Seek + Progress
+
+    private func seek(toMilliseconds milliseconds: Double) {
+        guard let player = player else { return }
+        let seconds = max(0, milliseconds / 1000.0)
+        let targetTime = CMTime(seconds: seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func addPeriodicTimeObserver() {
+        guard timeObserverToken == nil, let player = player else { return }
+        let interval = CMTime(seconds: 1.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            guard let self = self else { return }
+            let currentMs = CMTimeGetSeconds(time) * 1000.0
+            let durationMs = CMTimeGetSeconds(player.currentItem?.duration ?? CMTime.zero) * 1000.0
+            self.onSwiftProgress?(["currentTime": currentMs.isFinite ? currentMs : 0, "duration": durationMs.isFinite ? durationMs : 0])
         }
     }
 
