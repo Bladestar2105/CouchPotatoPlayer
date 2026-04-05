@@ -342,6 +342,13 @@ const MainLayout = () => {
     };
   }, [isFocused, activeTab]);
 
+  const handleTabPress = useCallback((tab: TabId) => {
+    setActiveTab(tab);
+    setTimeout(() => {
+      contentRef.current?.focusFirstItem();
+    }, 100);
+  }, []);
+
   if (isLoading) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
@@ -349,13 +356,6 @@ const MainLayout = () => {
       </View>
     );
   }
-
-  const handleTabPress = useCallback((tab: TabId) => {
-    setActiveTab(tab);
-    setTimeout(() => {
-      contentRef.current?.focusFirstItem();
-    }, 100);
-  }, []);
 
   const handleSidebarFocus = () => {};
   const handleSidebarBlur = () => {};
