@@ -66,7 +66,7 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
     >
       <Icon
         name={icon}
-        size={20}
+        size={24}
         color={isActive ? colors.primary : (isFocused ? colors.text : colors.textMuted)}
         style={[showLabel ? tvStyles.menuIcon : {}, { textAlign: 'center' }]}
       />
@@ -75,7 +75,7 @@ const TVSidebarItem = ({ icon, label, isActive, onPress, showLabel, onFocus, onB
           style={{
             color: isActive ? colors.primary : (isFocused ? colors.text : colors.textSecondary),
             fontWeight: isActive || isFocused ? '600' : '400',
-            fontSize: 13,
+            fontSize: 16,
             letterSpacing: 0.3,
           }}
           numberOfLines={1}
@@ -279,8 +279,9 @@ const MainLayout = () => {
   const contentRef = useRef<ContentRef>(null);
 
   // TV sidebar state (TiviMate-style collapsible)
-  const isSidebarExpanded = true;
-  const expandedWidth = 170;
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const expandedWidth = 230;
+  const collapsedWidth = 86;
 
   const tabs: TabDef[] = useMemo(() => [
     { id: 'channels', icon: 'live-tv', label: t('channels') },
@@ -361,8 +362,13 @@ const MainLayout = () => {
     };
   }, [isFocused, activeTab]);
 
-  const handleTabPress = useCallback((tab: TabId) => {
+  const handleTabPress = useCallback((tab: TabId, options?: { collapseSidebar?: boolean }) => {
     setActiveTab(tab);
+
+    if (isTV && options?.collapseSidebar) {
+      setIsSidebarExpanded(false);
+    }
+
     setTimeout(() => {
       contentRef.current?.focusFirstItem();
     }, 100);
@@ -376,9 +382,15 @@ const MainLayout = () => {
     );
   }
 
-  const handleSidebarFocus = () => {};
+  const handleSidebarFocus = () => {
+    setIsSidebarExpanded(true);
+  };
+
   const handleSidebarBlur = () => {};
-  const handleSidebarReturn = () => {};
+
+  const handleSidebarReturn = () => {
+    setIsSidebarExpanded(true);
+  };
 
   const renderContent = () => {
     return (
@@ -400,7 +412,7 @@ const MainLayout = () => {
       <View style={{ flex: 1, backgroundColor: colors.background, flexDirection: 'row' }}>
         {/* TiviMate-style sidebar - TVFocusGuideView with autoFocus ensures
             the focus engine can find sidebar items when navigating left */}
-        <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: expandedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+        <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: isSidebarExpanded ? expandedWidth : collapsedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
           <View style={{ paddingTop: Math.max(insets.top, 18), paddingBottom: Math.max(insets.bottom, 10), flex: 1 }}>
             {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>MENU</Text>}
 
@@ -412,7 +424,7 @@ const MainLayout = () => {
                 icon={tab.icon}
                 label={tab.label}
                 isActive={activeTab === tab.id}
-                onPress={() => handleTabPress(tab.id)}
+                onPress={() => handleTabPress(tab.id, { collapseSidebar: true })}
                 showLabel={isSidebarExpanded}
                 colors={colors}
                 hasTVPreferredFocus={tab.id === activeTab}
@@ -420,7 +432,7 @@ const MainLayout = () => {
             ))}
 
             <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 14, marginHorizontal: 14 }} />
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted, fontSize: 10 }]}>PROVIDERS</Text>}
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>PROVIDERS</Text>}
 
             {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;
@@ -483,9 +495,9 @@ const tvStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   sidebarSectionTitle: {
-    fontSize: 10,
-    marginBottom: 8,
-    paddingHorizontal: 14,
+    fontSize: 13,
+    marginBottom: 10,
+    paddingHorizontal: 18,
     textTransform: 'uppercase',
     fontWeight: '700',
     letterSpacing: 1.2,
@@ -493,14 +505,14 @@ const tvStyles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginHorizontal: 6,
-    marginBottom: 3,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginHorizontal: 8,
+    marginBottom: 6,
   },
   menuIcon: {
-    marginRight: 11,
+    marginRight: 14,
   },
 });
 
