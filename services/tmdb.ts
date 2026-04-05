@@ -1,5 +1,5 @@
 const TMDB_BASE = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/tremendous/t/p'; // Usually 'https://image.tmdb.org/t/p' but lets just use a generic format or exact from patch
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'; // TMDB image base URL
 
 export interface TMDBConfig {
   apiKey: string;
@@ -119,8 +119,8 @@ export class TMDBService {
         title: type === 'movie' ? (item.title || item.name) : (item.name || item.title),
         originalTitle: type === 'movie' ? (item.original_title || '') : (item.original_name || ''),
         overview: item.overview || '',
-        posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : null,
-        backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : null,
+        posterUrl: item.poster_path ? `${TMDB_IMAGE_BASE}/w342${item.poster_path}` : null,
+        backdropUrl: item.backdrop_path ? `${TMDB_IMAGE_BASE}/w780${item.backdrop_path}` : null,
         rating: item.vote_average || 0,
         releaseDate: type === 'movie' ? (item.release_date || '') : (item.first_air_date || ''),
         genres: (item.genre_ids || []).map((id: number) =>
@@ -168,8 +168,8 @@ export class TMDBService {
           title: item.title || item.name,
           originalTitle: item.original_title || item.original_name || '',
           overview: item.overview || '',
-          posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
-          backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : null,
+          posterUrl: item.poster_path ? `${TMDB_IMAGE_BASE}/w500${item.poster_path}` : null,
+          backdropUrl: item.backdrop_path ? `${TMDB_IMAGE_BASE}/w1280${item.backdrop_path}` : null,
           rating: item.vote_average || 0,
           releaseDate: item.release_date || item.first_air_date || '',
           genres: (item.genre_ids || []).map((id: number) =>

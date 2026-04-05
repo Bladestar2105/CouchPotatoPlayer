@@ -16,7 +16,8 @@ export function proxyImageUrl(url: string | undefined | null): string | undefine
   if (cached) return cached;
 
   let proxied = url;
-  if (url.startsWith('http://') || url.includes(':25461') || url.includes(':8080') || url.includes('picon') || url.includes('tivi-ott')) {
+  const isHttpUrl = /^https?:\/\//i.test(url);
+  if (isHttpUrl || url.includes(':25461') || url.includes(':8080') || url.includes('picon') || url.includes('tivi-ott')) {
     proxied = `/proxy/${url}`;
   }
 
