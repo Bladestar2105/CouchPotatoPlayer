@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, useWindowDimensions, Animated, Image, BackHandler, Alert, Pressable, TVFocusGuideView, TVEventControl } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, Image, BackHandler, Alert, Pressable, TVFocusGuideView, TVEventControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -15,7 +15,6 @@ import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
 import SearchScreen from './SearchScreen';
-import { RecentlyWatchedItem } from '../types';
 
 export type ContentRef = {
   focusFirstItem: () => void;
@@ -128,12 +127,11 @@ const MobileTabItem = React.memo(({ tab, isActive, onPress, colors }: {
   );
 });
 
-const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, currentProfileName, profiles, currentProfileId, onProfileSwitch }: {
+const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, currentProfileId, onProfileSwitch }: {
   tabs: TabDef[];
   activeTab: TabId;
   onTabPress: (tab: TabId) => void;
   colors: any;
-  currentProfileName?: string;
   profiles: any[];
   currentProfileId?: string;
   onProfileSwitch: (profile: any) => void;
@@ -209,6 +207,8 @@ const mobileTabStyles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRightWidth: 1,
     height: '100%',
+    minWidth: 46,
+    flexShrink: 0,
   },
   brandLogo: { width: 26, height: 26, borderRadius: 8, marginRight: 2 },
   profileDropdown: {
@@ -227,6 +227,7 @@ const mobileTabStyles = StyleSheet.create({
     alignItems: 'center',
     height: '100%',
     paddingHorizontal: 2,
+    paddingLeft: 8,
   },
   tab: {
     flex: 1,
@@ -248,13 +249,11 @@ const mobileTabStyles = StyleSheet.create({
 const MainLayout = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
-  const { channels, movies, series, isLoading, profiles, currentProfile, loadProfile, recentlyWatched, playStream, addRecentlyWatched } = useIPTV();
-  const dimensions = useWindowDimensions();
+  const { isLoading, profiles, currentProfile, loadProfile } = useIPTV();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const isFocused = useIsFocused();
 
-  const isSmallScreen = dimensions.width < 768;
   const [activeTab, setActiveTab] = useState<TabId>('channels');
 
   // Handle return parameters from Player
@@ -341,12 +340,12 @@ const MainLayout = () => {
     );
   }
 
-  const handleTabPress = (tab: TabId) => {
+  const handleTabPress = useCallback((tab: TabId) => {
     setActiveTab(tab);
     setTimeout(() => {
       contentRef.current?.focusFirstItem();
     }, 100);
-  };
+  }, []);
 
   const handleSidebarFocus = () => {};
   const handleSidebarBlur = () => {};
@@ -435,7 +434,6 @@ const MainLayout = () => {
           activeTab={activeTab}
           onTabPress={handleTabPress}
           colors={colors}
-          currentProfileName={currentProfile?.name}
           profiles={profiles}
           currentProfileId={currentProfile?.id}
           onProfileSwitch={loadProfile}
