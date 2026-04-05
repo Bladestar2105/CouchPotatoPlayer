@@ -277,6 +277,14 @@ const MainLayout = () => {
   }, [route.params?.returnTab]);
 
   const contentRef = useRef<ContentRef>(null);
+  const searchRef = useRef<ContentRef>(null);
+  const settingsRef = useRef<ContentRef>(null);
+
+  const getActiveContentRef = useCallback(() => {
+    if (activeTab === 'settings') return settingsRef;
+    if (activeTab === 'search') return searchRef;
+    return contentRef;
+  }, [activeTab]);
 
   // TV sidebar state (TiviMate-style collapsible)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -311,7 +319,7 @@ const MainLayout = () => {
 
     const onBack = () => {
       // 1. Let the active content component handle back first
-      if (contentRef.current?.handleBack?.()) {
+      if (getActiveContentRef().current?.handleBack?.()) {
         return true;
       }
 
@@ -360,7 +368,7 @@ const MainLayout = () => {
       }
       backHandler.remove();
     };
-  }, [isFocused, activeTab]);
+  }, [isFocused, activeTab, getActiveContentRef]);
 
   const handleTabPress = useCallback((tab: TabId, options?: { collapseSidebar?: boolean }) => {
     setActiveTab(tab);
@@ -370,9 +378,9 @@ const MainLayout = () => {
     }
 
     setTimeout(() => {
-      contentRef.current?.focusFirstItem();
+      getActiveContentRef().current?.focusFirstItem();
     }, 100);
-  }, []);
+  }, [getActiveContentRef]);
 
   if (isLoading) {
     return (
@@ -400,8 +408,8 @@ const MainLayout = () => {
         {activeTab === 'series' && <SeriesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'favorites' && <FavoritesList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
         {activeTab === 'recent' && <RecentlyWatchedList ref={contentRef} onReturnToSidebar={handleSidebarReturn} />}
-        {activeTab === 'settings' && <SettingsScreen />}
-        {activeTab === 'search' && <SearchScreen />}
+        {activeTab === 'settings' && <SettingsScreen ref={settingsRef} />}
+        {activeTab === 'search' && <SearchScreen ref={searchRef} />}
       </View>
     );
   };

@@ -186,6 +186,7 @@ export type IPTVContextType = {
   addRecentlyWatched: (item: RecentlyWatchedItem) => Promise<void>;
   updatePlaybackPosition: (id: string, position: number, duration?: number) => Promise<void>;
   removeRecentlyWatched: (id: string) => Promise<void>;
+  clearRecentlyWatched: () => Promise<void>;
 
   pin: string | null;
   isAdultUnlocked: boolean;

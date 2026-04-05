@@ -64,6 +64,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
 
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
+  const firstPosterRef = useRef<any>(null);
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
@@ -71,13 +72,19 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
   // Expose focusFirstItem and handleBack methods to parent
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
+      if (!isMobile) {
+        firstPosterRef.current?.focus?.();
+        firstPosterRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
+        return;
+      }
       firstCategoryRef.current?.focus?.();
       firstCategoryRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
     },
     handleBack: () => {
-      // If viewing movie grid on mobile, go back to categories
-      if (isMobile && !showCategories) {
+      // Go back from content grid to categories before leaving section
+      if (!showCategories) {
         setShowCategories(true);
+        props.onReturnToSidebar?.();
         return true;
       }
       return false;
@@ -217,6 +224,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                   <TouchableOpacity
                     accessible={true}
                     isTVSelectable={true}
+                    ref={index === 0 ? firstPosterRef : undefined}
                     hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,

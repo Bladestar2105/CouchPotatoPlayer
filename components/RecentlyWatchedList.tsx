@@ -1,5 +1,5 @@
-import React, { forwardRef, useImperativeHandle } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions } from 'react-native';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -12,17 +12,20 @@ export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolea
 type RecentlyWatchedScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
-  const { recentlyWatched, removeRecentlyWatched, playStream, addRecentlyWatched } = useIPTV();
+  const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, playStream, addRecentlyWatched } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
   const dimensions = useWindowDimensions();
   const isTvMode = dimensions.width >= 1200;
 
+  const firstItemRef = useRef<any>(null);
+
   // Expose focusFirstItem method to parent
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
-      // Focus the first item when entering from sidebar
-    }
+      firstItemRef.current?.focus?.();
+      firstItemRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
+    },
   }));
 
   const handlePress = (item: RecentlyWatchedItem) => {
@@ -82,22 +85,24 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
     return `vor ${days} Tag${days > 1 ? 'en' : ''}`;
   };
 
-  const renderItem = ({ item }: { item: RecentlyWatchedItem }) => {
+  const renderItem = ({ item, index }: { item: RecentlyWatchedItem; index: number }) => {
     // Calculate progress percentage
     const progressPercent = (item.position && item.duration && item.duration > 0)
       ? (item.position / item.duration) * 100
       : 0;
 
     return (
-      <TouchableOpacity
-        style={[styles.card, { backgroundColor: colors.card }]}
-        onPress={() => handlePress(item)}
-        accessible={true}
-        isTVSelectable={true}
-        accessibilityRole="button"
-        accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
-        accessibilityHint={`Plays the ${item.type}`}
-      >
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <TouchableOpacity
+          ref={index === 0 ? firstItemRef : undefined}
+          style={styles.cardPressable}
+          onPress={() => handlePress(item)}
+          accessible={true}
+          isTVSelectable={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
+          accessibilityHint={`Plays the ${item.type}`}
+        >
         <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
           {item.icon ? (
             <Image
@@ -130,17 +135,6 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
             </View>
           )}
           
-          {/* Remove Button */}
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => removeRecentlyWatched(item.id)}
-            accessible={true}
-            isTVSelectable={true}
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${item.name} from recently watched`}
-          >
-            <Icon name="close" size={16} color="#FFF" />
-          </TouchableOpacity>
         </View>
         
         <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
@@ -158,7 +152,19 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
             {formatTimeAgo(item.lastWatchedAt)}
           </Text>
         </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.removeAction}
+          onPress={() => removeRecentlyWatched(item.id)}
+          accessible={true}
+          isTVSelectable={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${item.name} from recently watched`}
+        >
+          <Icon name="delete-outline" size={16} color="#FFF" />
+          <Text style={styles.removeActionText}>Entfernen</Text>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -176,6 +182,28 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.actionsBar}>
+        <TouchableOpacity
+          style={[styles.clearAllButton, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            Alert.alert(
+              'Verlauf löschen',
+              'Möchtest du den kompletten Verlauf wirklich löschen?',
+              [
+                { text: 'Abbrechen', style: 'cancel' },
+                { text: 'Löschen', style: 'destructive', onPress: () => clearRecentlyWatched() },
+              ]
+            );
+          }}
+          accessible={true}
+          isTVSelectable={true}
+          accessibilityRole="button"
+          accessibilityLabel="Clear complete recently watched list"
+        >
+          <Icon name="delete-sweep" size={18} color="#FFF" />
+          <Text style={styles.clearAllText}>Liste leeren</Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={recentlyWatched}
         keyExtractor={(item, index) => `${item.id || index}-${item.type || 'unknown'}`}
@@ -218,6 +246,25 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
   },
+  actionsBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  clearAllButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  clearAllText: {
+    color: '#FFF',
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   card: {
     flex: 1,
     margin: 8,
@@ -231,6 +278,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 3,
+  },
+  cardPressable: {
+    width: '100%',
+    alignItems: 'center',
   },
   imageContainer: {
     width: '100%',
@@ -289,16 +340,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  removeButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 26,
-    height: 26,
+  removeAction: {
+    marginTop: 8,
+    alignSelf: 'stretch',
     borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(220,38,38,0.9)',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeActionText: {
+    color: '#FFF',
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: '600',
   },
   name: {
     fontSize: 13,

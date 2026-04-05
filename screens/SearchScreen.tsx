@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
@@ -10,13 +10,22 @@ const defaultLogo = require('../assets/icon.png');
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
-const SearchScreen = () => {
+type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
+
+const SearchScreen = forwardRef<ContentRef>((props, ref) => {
   const { channels, movies, series, playStream } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<SearchScreenNavigationProp>();
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const inputRef = useRef<TextInput>(null);
+
+  useImperativeHandle(ref, () => ({
+    focusFirstItem: () => {
+      inputRef.current?.focus();
+    },
+  }));
 
   // ⚡ Bolt: Debounce search input to prevent heavy UI blocking on every keystroke
   React.useEffect(() => {
@@ -114,6 +123,7 @@ const SearchScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.searchBarContainer, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
         <TextInput
+          ref={inputRef}
           style={[styles.input, { color: colors.text }]}
           placeholder="Search channels, movies, series..."
           placeholderTextColor={colors.textSecondary}
@@ -150,7 +160,7 @@ const SearchScreen = () => {
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

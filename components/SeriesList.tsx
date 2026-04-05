@@ -64,6 +64,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
+  const firstPosterRef = useRef<any>(null);
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
@@ -71,12 +72,18 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   // Expose focusFirstItem and handleBack methods to parent
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
+      if (!isMobile) {
+        firstPosterRef.current?.focus?.();
+        firstPosterRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
+        return;
+      }
       firstCategoryRef.current?.focus?.();
       firstCategoryRef.current?.setNativeProps?.({ hasTVPreferredFocus: true });
     },
     handleBack: () => {
-      if (isMobile && !showCategories) {
+      if (!showCategories) {
         setShowCategories(true);
+        props.onReturnToSidebar?.();
         return true;
       }
       return false;
@@ -216,6 +223,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                   <TouchableOpacity
                     accessible={true}
                     isTVSelectable={true}
+                    ref={index === 0 ? firstPosterRef : undefined}
                     hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,
