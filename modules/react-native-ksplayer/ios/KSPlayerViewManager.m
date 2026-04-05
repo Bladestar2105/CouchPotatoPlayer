@@ -15,6 +15,7 @@ RCT_EXPORT_VIEW_PROPERTY(paused, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(hardwareDecode, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(asynchronousDecompression, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(displayFrameRate, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(seekPosition, NSNumber)
 
 RCT_EXPORT_VIEW_PROPERTY(onKSVideoLoad, RCTBubblingEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onKSVideoError, RCTBubblingEventBlock)

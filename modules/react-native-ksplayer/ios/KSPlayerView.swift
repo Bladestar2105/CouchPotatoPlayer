@@ -87,6 +87,17 @@ class KSPlayerView: UIView {
         }
     }
 
+    @objc var seekPosition: NSNumber? {
+        didSet {
+            guard let seekPosition else { return }
+            let targetSeconds = max(0, seekPosition.doubleValue / 1000.0)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let playerLayer = self.playerLayer else { return }
+                playerLayer.seek(time: targetSeconds, autoPlay: !self.paused, completion: { _ in })
+            }
+        }
+    }
+
     // MARK: - Private State
     private var playerLayer: KSPlayerLayer?
 

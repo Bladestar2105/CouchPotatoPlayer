@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, Image, BackHandler, Alert, TVFocusGuideView, TVEventControl } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, Image, BackHandler, Alert, TVFocusGuideView, TVEventControl, NativeModules } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -326,7 +326,26 @@ const MainLayout = () => {
         'Möchten Sie CouchPotatoPlayer wirklich beenden?',
         [
           { text: 'Nein', style: 'cancel' },
-          { text: 'Ja', onPress: () => BackHandler.exitApp() },
+          {
+            text: 'Ja',
+            style: 'destructive',
+            onPress: () => {
+              if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+                TVEventControl.disableTVMenuKey();
+              }
+
+              try {
+                BackHandler.exitApp();
+              } catch (_) {}
+
+              const rnExitApp = (NativeModules as any)?.RNExitApp;
+              if (rnExitApp?.exitApp) {
+                try {
+                  rnExitApp.exitApp();
+                } catch (_) {}
+              }
+            },
+          },
         ],
         { cancelable: true }
       );

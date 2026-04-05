@@ -78,42 +78,53 @@ interface VideoPlayerProps {
 
 import { SwiftTSPlayer, SwiftTSVideoLoadEvent, SwiftTSVideoErrorEvent } from './SwiftTSPlayer';
 
+const toMilliseconds = (value?: number, reference?: number): number => {
+  if (!Number.isFinite(value as number) || value === undefined) return 0;
+  // Some players report seconds, others milliseconds.
+  // If the reference clearly looks like milliseconds, keep value as-is.
+  if (reference !== undefined && reference > 10000) return value;
+  // Otherwise treat small values as seconds and normalize to ms.
+  if (value >= 0 && value <= 10000) {
+    return value * 1000;
+  }
+  return value;
+};
+
 // ---------------------------------------------------------------------------
 // Apple AVPlayer component (HLS & MP4 ONLY)
 // ---------------------------------------------------------------------------
 const AppleAVPlayer = ({
   streamUrl,
   paused,
+  seekPosition,
   onProgress,
   onVideoLoad,
 }: {
   streamUrl: string;
   paused: boolean;
+  seekPosition?: number;
   onProgress?: VideoPlayerProps['onProgress'];
   onVideoLoad?: VideoPlayerProps['onVideoLoad'];
 }) => {
-  React.useEffect(() => {
-    if (!onProgress) return;
-    let time = 0;
-    const interval = setInterval(() => {
-      if (!paused) {
-        time += 1;
-        onProgress({ currentTime: time * 1000, duration: 0 });
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [paused, onProgress]);
-
   return (
     <SwiftTSPlayer
       streamUrl={streamUrl}
       paused={paused}
+      seekPosition={seekPosition}
       style={styles.video}
       onVideoLoad={(event: NativeSyntheticEvent<SwiftTSVideoLoadEvent>) => {
         if (onVideoLoad && event.nativeEvent) {
           onVideoLoad({
             width: event.nativeEvent.width,
             height: event.nativeEvent.height,
+          });
+        }
+      }}
+      onProgress={(event) => {
+        if (onProgress && event?.nativeEvent) {
+          onProgress({
+            currentTime: event.nativeEvent.currentTime || 0,
+            duration: event.nativeEvent.duration || 0,
           });
         }
       }}
@@ -242,11 +253,10 @@ const VideoPlayer = React.forwardRef(
 
     React.useEffect(() => {
       if (seekPosition === undefined) return;
-      if (effectivePlayer === 'avkit') return;
       if (videoRef.current?.seek) {
         videoRef.current.seek(seekPosition / 1000.0);
       }
-    }, [seekPosition, effectivePlayer]);
+    }, [seekPosition]);
 
     // -----------------------------------------------------------------------
     // Render helpers
@@ -258,6 +268,7 @@ const VideoPlayer = React.forwardRef(
         <AppleAVPlayer
           streamUrl={streamUrl}
           paused={paused}
+          seekPosition={seekPosition}
           onProgress={onProgress}
           onVideoLoad={onVideoLoad}
         />
@@ -268,7 +279,12 @@ const VideoPlayer = React.forwardRef(
       <WebVideoComponent
         ref={videoRef}
         key={currentStream?.id}
-        onProgress={onProgress}
+        onProgress={(event: { currentTime?: number; duration?: number }) => {
+          if (!onProgress) return;
+          const durationMs = toMilliseconds(event?.duration, event?.duration);
+          const currentMs = toMilliseconds(event?.currentTime, event?.duration);
+          onProgress({ currentTime: currentMs, duration: durationMs });
+        }}
         source={{ uri: streamUrl! }}
         paused={paused}
         autoplay={!paused}
@@ -296,7 +312,13 @@ const VideoPlayer = React.forwardRef(
           paused={paused}
           style={styles.video}
           resizeMode="contain"
-          onProgress={onProgress}
+          onProgress={(event: { currentTime: number; playableDuration?: number; seekableDuration?: number }) => {
+            if (!onProgress) return;
+            const durationRaw = event?.seekableDuration ?? event?.playableDuration ?? 0;
+            const durationMs = toMilliseconds(durationRaw, durationRaw);
+            const currentMs = toMilliseconds(event?.currentTime, durationRaw);
+            onProgress({ currentTime: currentMs, duration: durationMs });
+          }}
           onError={(error: { error: { code: number; domain: string } }) => {
             console.warn('[NativeVideoComponent] Playback error:', error);
           }}
@@ -345,7 +367,13 @@ const VideoPlayer = React.forwardRef(
         <VLCPlayerComponent
           ref={videoRef}
           key={currentStream?.id}
-          onProgress={onProgress}
+          onProgress={(event: { currentTime?: number; duration?: number }) => {
+            if (!onProgress) return;
+            const durationRaw = event?.duration ?? 0;
+            const durationMs = toMilliseconds(durationRaw, durationRaw);
+            const currentMs = toMilliseconds(event?.currentTime, durationRaw);
+            onProgress({ currentTime: currentMs, duration: durationMs });
+          }}
           source={{ uri: effectiveUrl, initOptions: vlcInitOptions }}
           paused={paused}
           autoplay={!paused}
@@ -382,9 +410,10 @@ const VideoPlayer = React.forwardRef(
           style={styles.video}
           streamUrl={effectiveUrl}
           paused={paused}
-          hardwareAcceleration={ksplayerHardwareDecode}
-          asyncDecompression={ksplayerAsynchronousDecompression}
-          adaptiveFrameRate={ksplayerDisplayFrameRate}
+          hardwareDecode={ksplayerHardwareDecode}
+          asynchronousDecompression={ksplayerAsynchronousDecompression}
+          displayFrameRate={ksplayerDisplayFrameRate}
+          seekPosition={seekPosition}
           onVideoLoad={(metadata) => {
             if (onVideoLoad) {
               onVideoLoad({

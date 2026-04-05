@@ -54,6 +54,7 @@ const PlayerScreen = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
+  const [playbackProgress, setPlaybackProgress] = useState<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 });
 
   // Channel switch animation
   const channelSwitchOpacity = useRef(new Animated.Value(0)).current;
@@ -108,6 +109,29 @@ const PlayerScreen = () => {
     return index !== undefined ? index + 1 : 0;
   }, [currentStream?.id, channelIndexMap]);
 
+  const canSeek = useMemo(() => {
+    if (!currentStream?.id) return false;
+    if (currentStream.id.includes('_catchup_')) return true;
+    return !channelIndexMap.has(currentStream.id);
+  }, [currentStream?.id, channelIndexMap]);
+
+  const formatDuration = useCallback((ms: number) => {
+    if (!ms || ms < 0 || !Number.isFinite(ms)) return '00:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, []);
+
+  const playbackPercent = useMemo(() => {
+    if (!playbackProgress.duration || playbackProgress.duration <= 0) return 0;
+    return Math.min(100, Math.max(0, (playbackProgress.currentTime / playbackProgress.duration) * 100));
+  }, [playbackProgress]);
+
   const getEpgKey = (channel: Channel | null): string => {
     if (!channel) return '';
     if (channel.epgChannelId && channel.epgChannelId.length > 0) {
@@ -139,6 +163,14 @@ const PlayerScreen = () => {
 
      return { currentProgram, nextProgram, progressPercent };
   }, [channelEpg]);
+
+  const playbackTitle = useMemo(() => {
+    const stream = currentStream as any;
+    if (stream?.name && typeof stream.name === 'string') return stream.name;
+    if (currentProgram?.title) return currentProgram.title;
+    if (currentChannel?.name) return currentChannel.name;
+    return t('player');
+  }, [currentStream, currentProgram?.title, currentChannel?.name, t]);
 
   // Show channel switch mini-overlay
   const showChannelSwitchBriefly = useCallback(() => {
@@ -174,6 +206,9 @@ const PlayerScreen = () => {
       });
       setShowOverlay(true);
       setVideoMetadata(null);
+      setSeekTime(undefined);
+      currentTimeRef.current = 0;
+      setPlaybackProgress({ currentTime: 0, duration: 0 });
     }
   }, [isFocused, currentStream]);
 
@@ -228,11 +263,13 @@ const PlayerScreen = () => {
       setIsPaused(prev => !prev);
       setShowOverlay(true);
     } else if (evt.eventType === 'left') {
+      if (!canSeek) return;
       const newSeekTime = Math.max(0, currentTimeRef.current - 10000);
       setSeekTime(newSeekTime);
       currentTimeRef.current = newSeekTime;
       setShowOverlay(true);
     } else if (evt.eventType === 'right') {
+      if (!canSeek) return;
       const newSeekTime = currentTimeRef.current + 10000;
       setSeekTime(newSeekTime);
       currentTimeRef.current = newSeekTime;
@@ -248,7 +285,7 @@ const PlayerScreen = () => {
     } else if (evt.eventType === 'select') {
        setShowOverlay(true);
     }
-  }, [isFocused, handleBack, switchChannel]);
+  }, [isFocused, handleBack, switchChannel, canSeek]);
 
   useTVEventHandler(handleTVRemoteEvent);
 
@@ -305,6 +342,7 @@ const PlayerScreen = () => {
           seekPosition={seekTime}
           onProgress={(data) => {
              currentTimeRef.current = data.currentTime;
+             setPlaybackProgress({ currentTime: data.currentTime, duration: data.duration });
           }}
           onVideoLoad={(metadata) => {
              setVideoMetadata(metadata);
@@ -403,6 +441,28 @@ const PlayerScreen = () => {
                      </View>
                  </View>
               </View>
+          )}
+
+          {/* VOD/Series/Catchup info bar */}
+          {!currentChannel && (
+            <View style={[pStyles.bottomBar, { borderTopColor: colors.primary }]}>
+              <View style={pStyles.vodInfoContainer}>
+                <View style={pStyles.vodHeaderRow}>
+                  <Text style={pStyles.vodTitle} numberOfLines={1}>{playbackTitle}</Text>
+                  <Text style={pStyles.timeText}>{timeFormatter.format(new Date())}</Text>
+                </View>
+
+                <View style={pStyles.progressRow}>
+                  <Text style={pStyles.programTimeText}>{formatDuration(playbackProgress.currentTime)}</Text>
+                  <View style={pStyles.progressBarContainer}>
+                    <View style={[pStyles.progressBarFill, { width: `${playbackPercent}%`, backgroundColor: colors.primary }]} />
+                  </View>
+                  <Text style={pStyles.programTimeText}>
+                    {playbackProgress.duration > 0 ? formatDuration(playbackProgress.duration) : '--:--'}
+                  </Text>
+                </View>
+              </View>
+            </View>
           )}
         </TVFocusGuideView>
       )}
@@ -548,6 +608,23 @@ const pStyles = StyleSheet.create({
   },
   textContainer: {
       flex: 1,
+  },
+  vodInfoContainer: {
+    padding: 20,
+    paddingBottom: 36,
+  },
+  vodHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  vodTitle: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 12,
   },
   headerRow: {
       flexDirection: 'row',
