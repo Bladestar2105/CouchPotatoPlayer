@@ -8,7 +8,8 @@ import { useSettings } from '../context/SettingsContext';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/icon.png');
-const POSTER_WIDTH = 120;
+const POSTER_WIDTH = Platform.isTV ? 150 : 130;
+const MAX_POSTER_COLUMNS = 6;
 
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
@@ -82,7 +83,10 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
       return false;
     },
   }));
-  const numColumns = Math.max(2, Math.floor((isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310) / (POSTER_WIDTH + 16)));
+  const numColumns = Math.min(
+    MAX_POSTER_COLUMNS,
+    Math.max(2, Math.floor((isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310) / (POSTER_WIDTH + 16)))
+  );
 
   const { groups, groupMap } = useMemo(() => {
     if (movies.length === 0) return { groups: [], groupMap: {} };
@@ -216,7 +220,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                     hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,
-                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1 } : {}
+                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
                     ]}
                     onPress={() => navigation.navigate('MediaInfo', {
                       id: item.id,
@@ -239,7 +243,6 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                       style={[
                           styles.poster,
                           { borderColor: isFocused ? colors.primary : colors.divider },
-                          isFocused ? { borderWidth: 3 } : {}
                       ]}
                       resizeMode="cover"
                     />
@@ -294,6 +297,10 @@ const styles = StyleSheet.create({
     width: POSTER_WIDTH,
     marginRight: 14,
     marginBottom: 20,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderRadius: 16,
+    padding: 4,
   },
   poster: {
     width: POSTER_WIDTH,

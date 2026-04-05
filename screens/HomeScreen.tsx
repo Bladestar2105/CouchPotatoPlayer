@@ -427,7 +427,7 @@ const MainLayout = () => {
                 onPress={() => handleTabPress(tab.id, { collapseSidebar: true })}
                 showLabel={isSidebarExpanded}
                 colors={colors}
-                hasTVPreferredFocus={tab.id === activeTab}
+                hasTVPreferredFocus={isSidebarExpanded && tab.id === activeTab}
               />
             ))}
 
