@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert, findNodeHandle } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -19,6 +19,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
   const isTvMode = dimensions.width >= 1200;
 
   const firstItemRef = useRef<any>(null);
+  const clearAllButtonRef = useRef<any>(null);
 
   // Expose focusFirstItem method to parent
   useImperativeHandle(ref, () => ({
@@ -102,6 +103,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
           accessibilityRole="button"
           accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
           accessibilityHint={`Plays the ${item.type}`}
+          nextFocusUp={index === 0 ? (findNodeHandle(clearAllButtonRef.current) ?? undefined) : undefined}
         >
         <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
           {item.icon ? (
@@ -184,6 +186,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.actionsBar}>
         <TouchableOpacity
+          ref={clearAllButtonRef}
           style={[styles.clearAllButton, { backgroundColor: colors.primary }]}
           onPress={() => {
             Alert.alert(
@@ -199,12 +202,13 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
           isTVSelectable={true}
           accessibilityRole="button"
           accessibilityLabel="Clear complete recently watched list"
+          nextFocusDown={findNodeHandle(firstItemRef.current) ?? undefined}
         >
           <Icon name="delete-sweep" size={18} color="#FFF" />
           <Text style={styles.clearAllText}>Liste leeren</Text>
         </TouchableOpacity>
       </View>
-      <FlatList
+        <FlatList
         data={recentlyWatched}
         keyExtractor={(item, index) => `${item.id || index}-${item.type || 'unknown'}`}
         renderItem={renderItem}

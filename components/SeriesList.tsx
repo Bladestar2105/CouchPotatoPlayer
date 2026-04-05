@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -8,13 +8,13 @@ import { useSettings } from '../context/SettingsContext';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/icon.png');
-const POSTER_WIDTH = Platform.isTV ? 150 : 130;
-const MAX_POSTER_COLUMNS = 6;
+const BASE_POSTER_WIDTH = Platform.isTV ? 150 : 130;
+const MAX_POSTER_COLUMNS = 10;
 
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
+const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus, nextFocusRight }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean, nextFocusRight?: number }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -33,14 +33,14 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`Select category ${title}`}
             hasTVPreferredFocus={hasTVPreferredFocus}
+            // @ts-ignore - supported on TV platforms
+            nextFocusRight={nextFocusRight}
         >
             <Text style={{ color: isSelected || isFocused ? '#FAFAFA' : '#A1A1AA', fontWeight: isSelected || isFocused ? '600' : '400', fontSize: Platform.isTV ? 15 : 15 }}>
                 {title} ({count})
             </Text>
         </TouchableOpacity>
     );
-}, (prevProps, nextProps) => {
-    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 }));
 
 const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
@@ -65,6 +65,8 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
   const firstPosterRef = useRef<any>(null);
+  const [firstCategoryNode, setFirstCategoryNode] = useState<number | undefined>(undefined);
+  const [firstPosterNode, setFirstPosterNode] = useState<number | undefined>(undefined);
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
@@ -83,15 +85,21 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     handleBack: () => {
       if (!showCategories) {
         setShowCategories(true);
-        props.onReturnToSidebar?.();
         return true;
       }
       return false;
     },
   }));
+  const availableGridWidth = (isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310);
   const numColumns = Math.min(
     MAX_POSTER_COLUMNS,
-    Math.max(2, Math.floor((isMobile && !showCategories ? dimensions.width - 32 : dimensions.width - 310) / (POSTER_WIDTH + 16)))
+    Math.max(2, Math.floor(availableGridWidth / (BASE_POSTER_WIDTH + 14)))
+  );
+  const gridGap = 14;
+  const gridPadding = 20;
+  const posterWidth = Math.max(
+    115,
+    Math.floor((availableGridWidth - (gridPadding * 2) - (gridGap * (numColumns - 1))) / numColumns)
   );
 
   const { groups, groupMap } = useMemo(() => {
@@ -174,14 +182,18 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
               const isFirstItem = index === 0;
               return (
                 <CategoryItem
-                  ref={isFirstItem ? firstCategoryRef : undefined}
+                  ref={isFirstItem ? (el: any) => {
+                    firstCategoryRef.current = el;
+                    setFirstCategoryNode(findNodeHandle(el) ?? undefined);
+                  } : undefined}
                   title={item.title}
                   count={item.data.length}
                   isSelected={isSelected}
                   onPress={() => handleGroupSelect(item.title)}
                   onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
                   colors={colors}
-                  hasTVPreferredFocus={isFirstItem}
+                  // @ts-ignore - supported on TV platforms
+                  nextFocusRight={firstPosterNode}
                 />
               );
           }}
@@ -213,7 +225,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
             removeClippedSubviews={true}
             getItemLayout={(data, index) => {
                // Calculate row height based on poster + margins.
-               const rowHeight = (POSTER_WIDTH * 1.5) + 8 + 16 + 24; // poster height + margin + text + bottom margin
+               const rowHeight = (posterWidth * 1.5) + 8 + 16 + 24; // poster height + margin + text + bottom margin
                const rowIndex = Math.floor(index / numColumns);
                return { length: rowHeight, offset: rowHeight * rowIndex, index };
             }}
@@ -223,12 +235,21 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                   <TouchableOpacity
                     accessible={true}
                     isTVSelectable={true}
-                    ref={index === 0 ? firstPosterRef : undefined}
+                    ref={index === 0 ? (el: any) => {
+                      firstPosterRef.current = el;
+                      setFirstPosterNode(findNodeHandle(el) ?? undefined);
+                    } : undefined}
                     hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                     style={[
                         styles.posterContainer,
+                        {
+                          width: posterWidth,
+                          marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
+                        },
                         isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
                     ]}
+                    // @ts-ignore - supported on TV platforms
+                    nextFocusLeft={firstCategoryNode}
                     onPress={() => navigation.navigate('MediaInfo', {
                       id: item.id,
                       type: 'series',
@@ -248,6 +269,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                       source={item.cover && item.cover.startsWith('http') ? { uri: item.cover } : defaultLogo}
                       style={[
                           styles.poster,
+                          { width: posterWidth, height: posterWidth * 1.5 },
                           { borderColor: isFocused ? colors.primary : colors.divider },
                       ]}
                       resizeMode="cover"
@@ -300,8 +322,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   posterContainer: {
-    width: POSTER_WIDTH,
-    marginRight: 14,
     marginBottom: 20,
     borderWidth: 3,
     borderColor: 'transparent',
@@ -309,8 +329,6 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   poster: {
-    width: POSTER_WIDTH,
-    height: POSTER_WIDTH * 1.5,
     borderRadius: 14,
     borderWidth: 1.5,
     marginBottom: 10,

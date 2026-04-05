@@ -20,12 +20,32 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const inputRef = useRef<TextInput>(null);
+  const searchFieldFocusRef = useRef<any>(null);
+  const [shouldFocusSearchField, setShouldFocusSearchField] = useState(false);
+  const [isActivatorFocused, setIsActivatorFocused] = useState(false);
+  const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
-      inputRef.current?.focus();
+      setShouldFocusSearchField(true);
+      requestAnimationFrame(() => {
+        searchFieldFocusRef.current?.focus?.();
+      });
+    },
+    handleBack: () => {
+      if (inputRef.current?.isFocused?.()) {
+        inputRef.current.blur();
+        return true;
+      }
+      return false;
     },
   }));
+
+  React.useEffect(() => {
+    if (!shouldFocusSearchField) return;
+    const timer = setTimeout(() => setShouldFocusSearchField(false), 150);
+    return () => clearTimeout(timer);
+  }, [shouldFocusSearchField]);
 
   // ⚡ Bolt: Debounce search input to prevent heavy UI blocking on every keystroke
   React.useEffect(() => {
@@ -122,9 +142,31 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.searchBarContainer, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
+        {isTV && (
+          <TouchableOpacity
+            ref={searchFieldFocusRef}
+            style={[
+              styles.tvSearchActivator,
+              { borderColor: isActivatorFocused ? colors.primary : colors.divider, backgroundColor: colors.background },
+            ]}
+            isTVSelectable={true}
+            hasTVPreferredFocus={shouldFocusSearchField}
+            accessibilityRole="button"
+            accessibilityLabel="Search input"
+            onFocus={() => {
+              setIsActivatorFocused(true);
+            }}
+            onBlur={() => setIsActivatorFocused(false)}
+            onPress={() => inputRef.current?.focus()}
+          >
+            <Text style={{ color: query ? colors.text : colors.textSecondary }} numberOfLines={1}>
+              {query || 'Search channels, movies, series...'}
+            </Text>
+          </TouchableOpacity>
+        )}
         <TextInput
           ref={inputRef}
-          style={[styles.input, { color: colors.text }]}
+          style={[styles.input, { color: colors.text }, isTV && styles.tvHiddenInput]}
           placeholder="Search channels, movies, series..."
           placeholderTextColor={colors.textSecondary}
           accessibilityLabel="Search query"
@@ -133,6 +175,8 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
           autoCapitalize="none"
           autoCorrect={false}
           tvFocusable={true}
+          isTVSelectable={true}
+          hasTVPreferredFocus={!isTV && shouldFocusSearchField}
           autoFocus={!Platform.isTV}
         />
         {query.length > 0 && (
@@ -183,6 +227,22 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  tvSearchActivator: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    marginRight: 10,
+  },
+  tvHiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0.01,
+    right: 0,
   },
   center: {
     flex: 1,

@@ -343,20 +343,20 @@ const MainLayout = () => {
                 TVEventControl.disableTVMenuKey();
               }
 
-              try {
-                BackHandler.exitApp();
-              } catch (_) {}
-
               const rnExitApp = (NativeModules as any)?.RNExitApp;
               if (rnExitApp?.exitApp) {
                 try {
                   rnExitApp.exitApp();
                 } catch (_) {}
               }
+
+              try {
+                BackHandler.exitApp();
+              } catch (_) {}
             },
           },
         ],
-        { cancelable: true }
+        { cancelable: false }
       );
       return true;
     };
@@ -467,10 +467,13 @@ const MainLayout = () => {
           </View>
         </TVFocusGuideView>
 
-        {/* Main Content */}
-        <View style={{ flex: 1 }}>
-          {renderContent()}
-        </View>
+        {/* Main Content - wrapped in TVFocusGuideView so directional navigation
+            from sidebar works even when target items are not on the exact same Y position */}
+        <TVFocusGuideView autoFocus style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            {renderContent()}
+          </View>
+        </TVFocusGuideView>
       </View>
     );
   }

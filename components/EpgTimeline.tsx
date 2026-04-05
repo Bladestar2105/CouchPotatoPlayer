@@ -54,11 +54,11 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
             isTVSelectable={true}
             activeOpacity={isClickable ? 0.7 : 1}
         >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={styles.programTitleRow}>
                 {isCatchupAvailable && !isNow && (
                     <Icon name="play-circle-outline" size={Platform.isTV ? 14 : 12} color="#69F0AE" style={{ marginRight: 2 }} />
                 )}
-                <Text style={[styles.programTitle, (isPast && !isCatchupAvailable) ? { color: '#71717A' } : { color: '#FAFAFA' }, { fontSize: Platform.isTV ? 15 : 13, flex: 1 }]} numberOfLines={1}>{prog.title}</Text>
+                <Text style={[styles.programTitle, (isPast && !isCatchupAvailable) ? { color: '#71717A' } : { color: '#FAFAFA' }, { fontSize: Platform.isTV ? 15 : 13 }]} numberOfLines={1}>{prog.title}</Text>
             </View>
             <Text style={[styles.programTime, { fontSize: Platform.isTV ? 14 : 12 }]} numberOfLines={1}>
                 {formatTime(prog.start)} - {formatTime(prog.end)}
@@ -232,12 +232,10 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const maxCatchupDays = useMemo(() => {
     let max = 0;
     for (const channel of channels) {
-      if (hasCatchup && hasCatchup(channel)) {
-         max = Math.max(max, getCatchupDays(channel));
-      }
+      max = Math.max(max, getCatchupDays(channel));
     }
     return max;
-  }, [channels, hasCatchup]);
+  }, [channels]);
 
   const TIMELINE_START_OFFSET_HOURS = useMemo(() => {
     // Show either 2 hours before now (default) or max catchup days available
@@ -250,12 +248,28 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const { colors } = useSettings();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const [now] = useState(new Date());
+  const [now, setNow] = useState(new Date());
+
+  // Keep the timeline synchronized with real time (updates each minute).
+  useEffect(() => {
+    let minuteInterval: ReturnType<typeof setInterval> | null = null;
+    const updateNow = () => setNow(new Date());
+    const msToNextMinute = 60000 - (Date.now() % 60000);
+
+    const alignTimer = setTimeout(() => {
+      updateNow();
+      minuteInterval = setInterval(updateNow, 60000);
+    }, msToNextMinute);
+
+    return () => {
+      clearTimeout(alignTimer);
+      if (minuteInterval) clearInterval(minuteInterval);
+    };
+  }, []);
 
   const timelineStart = useMemo(() => {
     const d = new Date(now);
     d.setHours(d.getHours() - TIMELINE_START_OFFSET_HOURS);
-    d.setMinutes(0, 0, 0);
     return d;
   }, [now]);
 
@@ -275,7 +289,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 
   // Scroll to current time on mount
   useEffect(() => {
-    const targetX = Math.max(0, nowPosition - (visibleWidth / 2));
+    const targetX = Math.max(0, nowPosition - (visibleWidth * 0.35));
     if (scrollViewRef.current && targetX > 0) {
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({ x: targetX, animated: false });
@@ -503,17 +517,26 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: Platform.isTV ? 10 : 6,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  programTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   programTitle: {
     fontSize: Platform.isTV ? 15 : 12,
     fontWeight: '600',
     letterSpacing: 0.1,
+    textAlign: 'center',
   },
   programTime: {
     fontSize: Platform.isTV ? 13 : 10,
     color: '#71717A',
     marginTop: 3,
     fontWeight: '400',
+    textAlign: 'center',
   }
 });
 
