@@ -8,6 +8,8 @@ import urllib.request
 import urllib.parse
 import sys
 import re
+import socket
+import ipaddress
 
 ALLOWED_ORIGINS = [
     'http://localhost:8081', # Expo web development
@@ -35,10 +37,39 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 self.wfile.write(b'{"error": "Invalid URL scheme. Must be http:// or https://"}')
                 return
 
+            # SSRF mitigation: Block requests to private/internal IPs
             try:
+                parsed_url = urllib.parse.urlparse(url)
+                hostname = parsed_url.hostname
+
+                if not hostname:
+                    raise ValueError("Invalid hostname")
+
+                addr_info = socket.getaddrinfo(hostname, None)
+                for info in addr_info:
+                    ip = ipaddress.ip_address(info[4][0])
+                    if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+                        self.send_response(403)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(b'{"error": "Access to internal networks is forbidden"}')
+                        return
+            except Exception as e:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(f'{{"error": "DNS resolution failed or invalid hostname: {str(e)}" }}'.encode())
+                return
+
+            try:
+                class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+                    def redirect_request(self, req, fp, code, msg, headers, newurl):
+                        return None # Disable redirects to prevent SSRF bypass via 301/302
+
+                opener = urllib.request.build_opener(NoRedirectHandler)
                 req = urllib.request.Request(url)
                 req.add_header('User-Agent', 'Mozilla/5.0')
-                with urllib.request.urlopen(req, timeout=30) as response:
+                with opener.open(req, timeout=30) as response:
                     self.send_response(200)
                     cors_origin = self.get_cors_origin()
                     if cors_origin:
