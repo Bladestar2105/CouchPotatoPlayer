@@ -46,7 +46,21 @@
       "./plugins/withFixHermescPath",
       "./plugins/withFixSwiftImports",
       "./plugins/withKSPlayer",
-      "@react-native-tvos/config-tv",
+      [
+        "@react-native-tvos/config-tv",
+        {
+          "isTV": true,
+          "appleTVImages": {
+            "icon": "./assets/store/tvos/app-icon-large-1280x768.png",
+            "iconSmall": "./assets/store/tvos/app-icon-small-400x240.png",
+            "iconSmall2x": "./assets/store/tvos/app-icon-small2x-800x480.png",
+            "topShelf": "./assets/store/tvos/top-shelf-1920x720.png",
+            "topShelf2x": "./assets/store/tvos/top-shelf2x-3840x1440.png",
+            "topShelfWide": "./assets/store/tvos/top-shelf-wide-2320x720.png",
+            "topShelfWide2x": "./assets/store/tvos/top-shelf-wide2x-4640x1440.png"
+          }
+        }
+      ],
       "expo-asset",
       "expo-video",
       "react-native-vlc-media-player",

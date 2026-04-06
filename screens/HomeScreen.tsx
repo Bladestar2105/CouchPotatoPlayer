@@ -153,7 +153,7 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, curren
           onPress={() => profiles.length > 1 && setShowProfileMenu(!showProfileMenu)}
           activeOpacity={0.7}
         >
-          <Image source={require('../assets/brand-mark.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
+          <Image source={require('../assets/brand-mark-small.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
           {profiles.length > 1 && (
             <Icon name="arrow-drop-down" size={18} color={colors.textMuted} />
           )}
