@@ -23,6 +23,11 @@ interface EpgTimelineProps {
 // ⚡ Bolt: Cache Intl.DateTimeFormat instance to avoid slow initialization overhead on every render
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 const formatTime = (d: Date | number) => timeFormatter.format(d);
+const alignToHalfHour = (date: Date) => {
+  const aligned = new Date(date);
+  aligned.setMinutes(aligned.getMinutes() < 30 ? 0 : 30, 0, 0);
+  return aligned;
+};
 
 const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvailable, leftOffset, width, colors, onProgramPress, onChannelPress }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
@@ -269,13 +274,10 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   }, []);
 
   const timelineStart = useMemo(() => {
-    const d = new Date(now);
+    const d = new Date();
     d.setHours(d.getHours() - TIMELINE_START_OFFSET_HOURS);
-    // Align to full or half-hour markers (xx:00 / xx:30) for stable TV grid labels.
-    const minutes = d.getMinutes();
-    d.setMinutes(minutes < 30 ? 0 : 30, 0, 0);
-    return d;
-  }, [now, TIMELINE_START_OFFSET_HOURS]);
+    return alignToHalfHour(d);
+  }, [TIMELINE_START_OFFSET_HOURS]);
 
   const timelineEnd = useMemo(() => {
     const d = new Date(timelineStart);

@@ -22,7 +22,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
   const numColumns = isTvMode ? 6 : Math.max(3, Math.floor(dimensions.width / 160));
   const horizontalPadding = 32; // list container left+right padding
   const cardGap = 16; // combined left+right margin from styles.card
-  const cardWidth = Math.min(220, Math.max(140, Math.floor((dimensions.width - horizontalPadding - (cardGap * numColumns)) / numColumns)));
+  const cardWidth = Math.min(190, Math.max(140, Math.floor((dimensions.width - horizontalPadding - (cardGap * numColumns)) / numColumns)));
 
   const firstItemRef = useRef<any>(null);
   const clearAllButtonRef = useRef<any>(null);

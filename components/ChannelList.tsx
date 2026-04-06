@@ -20,7 +20,7 @@ const { height } = Dimensions.get('window');
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
 // TiviMate-style category item with count badge
-const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
+const CategoryItem = React.forwardRef(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -41,7 +41,7 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             accessibilityLabel={`Select category ${title}`}
             hasTVPreferredFocus={hasTVPreferredFocus}
         >
-            <Text style={[tiviStyles.categoryText, { color: isSelected || isFocused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
+            <Text style={[tiviStyles.categoryText, { color: isSelected || isFocused ? colors.text : colors.textSecondary }]} numberOfLines={3}>
                 {title}
             </Text>
             {count !== undefined && (
@@ -51,12 +51,10 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             )}
         </TouchableOpacity>
     );
-}), (prevProps: any, nextProps: any) => {
-    return prevProps.title === nextProps.title && prevProps.isSelected === nextProps.isSelected && prevProps.count === nextProps.count && prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus;
 });
 
 // TiviMate-style channel row with inline EPG
-const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {
+const ChannelRow = React.forwardRef(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {
     channel: Channel;
     channelNumber: number;
     isPlaying: boolean;
@@ -112,7 +110,7 @@ const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlay
             {/* Channel Info + EPG */}
             <View style={tiviStyles.channelInfo}>
                 <View style={tiviStyles.channelNameRow}>
-                    <Text style={[tiviStyles.channelName, { color: focused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
+                    <Text style={[tiviStyles.channelName, { color: focused ? colors.text : colors.textSecondary }]} numberOfLines={3}>
                         {channel.name}
                     </Text>
                     {isFav && <Icon name="favorite" size={14} color={colors.primary} style={{ marginLeft: 4 }} />}
@@ -134,13 +132,6 @@ const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlay
             </View>
         </TouchableOpacity>
     );
-}, (prevProps, nextProps) => {
-    return prevProps.isPlaying === nextProps.isPlaying &&
-           prevProps.isFocused === nextProps.isFocused &&
-           prevProps.isFav === nextProps.isFav &&
-           prevProps.currentProgram === nextProps.currentProgram &&
-           prevProps.progressPercent === nextProps.progressPercent &&
-           prevProps.channel === nextProps.channel;
 });
 
 // View mode toggle: list vs EPG grid
@@ -621,7 +612,7 @@ const tiviStyles = StyleSheet.create({
   },
   // Category sidebar
   categorySidebar: {
-    width: Platform.isTV ? 320 : 220,
+    width: Platform.isTV ? 360 : 240,
     borderRightWidth: 1,
   },
   categoryItem: {
@@ -635,9 +626,10 @@ const tiviStyles = StyleSheet.create({
     borderLeftColor: 'transparent',
   },
   categoryText: {
-    fontSize: Platform.isTV ? 15 : 14,
+    fontSize: Platform.isTV ? 17 : 14,
     fontWeight: '500',
     flex: 1,
+    lineHeight: Platform.isTV ? 22 : 19,
   },
   countBadge: {
     borderRadius: 10,
@@ -676,8 +668,8 @@ const tiviStyles = StyleSheet.create({
     marginHorizontal: Platform.isTV ? 12 : 8,
   },
   channelLogo: {
-    width: Platform.isTV ? 80 : 36,
-    height: Platform.isTV ? 56 : 26,
+    width: Platform.isTV ? 92 : 42,
+    height: Platform.isTV ? 64 : 30,
     borderRadius: 4,
   },
   logoPlaceholder: {
@@ -703,9 +695,10 @@ const tiviStyles = StyleSheet.create({
     alignItems: 'center',
   },
   channelName: {
-    fontSize: Platform.isTV ? 17 : 14,
+    fontSize: Platform.isTV ? 19 : 14,
     fontWeight: '600',
     flex: 1,
+    lineHeight: Platform.isTV ? 24 : 18,
   },
   epgInline: {
     marginTop: 3,

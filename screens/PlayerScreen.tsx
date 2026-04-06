@@ -48,6 +48,13 @@ const PlayerScreen = () => {
     channelId: focusChannelId || currentStream?.id || null,
   });
 
+  useEffect(() => {
+    lastNavigationState.current = {
+      groupId: returnGroupId || lastNavigationState.current.groupId,
+      channelId: currentStream?.id || focusChannelId || lastNavigationState.current.channelId,
+    };
+  }, [returnGroupId, focusChannelId, currentStream?.id]);
+
   // TiviMate-style overlay states
   const [showOverlay, setShowOverlay] = useState(false);
   const [showChannelSwitch, setShowChannelSwitch] = useState(false);
@@ -164,7 +171,7 @@ const PlayerScreen = () => {
   const playbackTitle = useMemo(() => {
     const stream = currentStream as any;
     if (route.params?.title && typeof route.params.title === 'string') return route.params.title;
-    if (stream?.name && typeof stream.name === 'string') return stream.name;
+    if (stream?.name && typeof stream.name === 'string' && stream.name.toLowerCase() !== 'player') return stream.name;
     if (currentProgram?.title) return currentProgram.title;
     if (currentChannel?.name) return currentChannel.name;
     return t('nowPlaying');
