@@ -10,7 +10,7 @@ export interface Channel {
   tvgId?: string;
   isAdult?: boolean;
   epgChannelId?: string;
-  streamId?: number;
+  streamId?: string | number;
   categoryId?: string;
   containerExtension?: string;
   // Catchup/Archive support

@@ -24,13 +24,30 @@ import { Series, Season } from './types';
 
 // Mettre à jour la liste des écrans (SAUF Splash)
 export type RootStackParamList = {
-  Home: undefined;
-  Player: undefined;
-  Season: { series: Series };
-  Episode: { season: Season };
+  Home: {
+    focusChannelId?: string;
+    returnGroupId?: string | null;
+    returnTab?: 'channels' | 'movies' | 'series' | 'favorites' | 'recent';
+  } | undefined;
+  Player: {
+    focusChannelId?: string;
+    returnGroupId?: string | null;
+    returnTab?: 'channels' | 'movies' | 'series' | 'favorites' | 'recent';
+    returnScreen?: 'Home';
+  } | undefined;
+  Season: { series: Series; returnGroupId?: string | null; returnTab?: 'series' };
+  Episode: { season: Season; returnGroupId?: string | null; returnTab?: 'series' };
   PinSetup: undefined;
   Search: undefined;
-  MediaInfo: { id: string; type: 'vod' | 'series'; title: string; cover?: string; streamUrl?: string; };
+  MediaInfo: {
+    id: string;
+    type: 'vod' | 'series';
+    title: string;
+    cover?: string;
+    streamUrl?: string;
+    returnGroupId?: string | null;
+    returnTab?: 'movies' | 'series';
+  };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();

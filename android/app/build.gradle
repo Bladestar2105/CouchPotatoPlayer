@@ -87,13 +87,14 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.couchpotatoplayer'
+    namespace 'de.teamei.couchpotatoplayer'
     defaultConfig {
-        applicationId 'com.anonymous.couchpotatoplayer'
+        applicationId 'de.teamei.couchpotatoplayer'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        resConfigs "en", "de", "fr", "el"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

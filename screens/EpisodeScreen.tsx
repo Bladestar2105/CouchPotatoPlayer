@@ -15,10 +15,10 @@ const EpisodeScreen = () => {
   const route = useRoute<EpisodeScreenRouteProp>();
   const navigation = useNavigation<EpisodeScreenNavigationProp>();
   const isFocused = useIsFocused();
-  const { playStream, stopStream } = useIPTV();
+  const { playStream } = useIPTV();
   const { colors } = useSettings();
 
-  const { season, returnGroupId, returnTab } = route.params as any;
+  const { season, returnGroupId, returnTab } = route.params;
 
   // Handle back button / Apple TV menu button to navigate properly instead of closing app
   useEffect(() => {

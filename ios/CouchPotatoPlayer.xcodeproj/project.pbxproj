@@ -308,7 +308,7 @@ fi
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.anonymous.couchpotatoplayer";
+				PRODUCT_BUNDLE_IDENTIFIER = "de.teamei.couchpotatoplayer";
 				PRODUCT_NAME = "CouchPotatoPlayer";
 				SWIFT_OBJC_BRIDGING_HEADER = "CouchPotatoPlayer/CouchPotatoPlayer-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -337,7 +337,7 @@ fi
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.anonymous.couchpotatoplayer";
+				PRODUCT_BUNDLE_IDENTIFIER = "de.teamei.couchpotatoplayer";
 				PRODUCT_NAME = "CouchPotatoPlayer";
 				SWIFT_OBJC_BRIDGING_HEADER = "CouchPotatoPlayer/CouchPotatoPlayer-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
