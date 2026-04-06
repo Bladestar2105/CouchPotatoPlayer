@@ -49,7 +49,6 @@
       [
         "@react-native-tvos/config-tv",
         {
-          "isTV": true,
           "appleTVImages": {
             "icon": "./assets/store/tvos/app-icon-large-1280x768.png",
             "iconSmall": "./assets/store/tvos/app-icon-small-400x240.png",
