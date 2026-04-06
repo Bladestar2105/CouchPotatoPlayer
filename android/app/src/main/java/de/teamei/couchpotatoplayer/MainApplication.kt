@@ -1,4 +1,4 @@
-package com.anonymous.couchpotatoplayer
+package de.teamei.couchpotatoplayer
 
 import android.app.Application
 import android.content.res.Configuration

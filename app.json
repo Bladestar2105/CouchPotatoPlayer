@@ -17,7 +17,7 @@
     "ios": {
       "icon": "./assets/store/ios/app-store-icon-1024.png",
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.couchpotatoplayer",
+      "bundleIdentifier": "de.teamei.couchpotatoplayer",
       "infoPlist": {
         "CFBundleDevelopmentRegion": "en",
         "CFBundleLocalizations": [
@@ -41,7 +41,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#E4E4E7"
       },
-      "package": "com.anonymous.couchpotatoplayer"
+      "package": "de.teamei.couchpotatoplayer"
     },
     "web": {
       "favicon": "./assets/favicon.png",
