@@ -250,6 +250,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                     ]}
                     // @ts-ignore - supported on TV platforms
                     nextFocusLeft={firstCategoryNode}
+                    tvParallaxProperties={{ enabled: false }}
                     onPress={() => navigation.navigate('MediaInfo', {
                       id: item.id,
                       type: 'series',

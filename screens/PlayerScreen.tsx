@@ -68,6 +68,7 @@ const PlayerScreen = () => {
   const channelSwitchOpacity = useRef(new Animated.Value(0)).current;
 
   const currentTimeRef = React.useRef(0);
+  const seekDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isExiting, setIsExiting] = useState(false);
 
@@ -136,6 +137,15 @@ const PlayerScreen = () => {
     if (!playbackProgress.duration || playbackProgress.duration <= 0) return 0;
     return Math.min(100, Math.max(0, (playbackProgress.currentTime / playbackProgress.duration) * 100));
   }, [playbackProgress]);
+
+  const metadataItems = useMemo(() => {
+    const items: string[] = [];
+    if (videoMetadata?.width && videoMetadata?.height) items.push(`${videoMetadata.width}x${videoMetadata.height}`);
+    if (videoMetadata?.fps) items.push(`${Math.round(videoMetadata.fps)} FPS`);
+    if (videoMetadata?.bitrate) items.push(`${Math.round(videoMetadata.bitrate / 1000)} kbps`);
+    items.push(canSeek ? t('vod') : t('live'));
+    return items;
+  }, [videoMetadata, canSeek, t]);
 
   const getEpgKey = (channel: Channel | null): string => {
     if (!channel) return '';
@@ -206,6 +216,14 @@ const PlayerScreen = () => {
     const timer = setTimeout(() => setSeekTime(undefined), 180);
     return () => clearTimeout(timer);
   }, [seekTime]);
+
+  useEffect(() => {
+    return () => {
+      if (seekDebounceTimerRef.current) {
+        clearTimeout(seekDebounceTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isFocused && currentStream && currentStream.id) {
@@ -338,7 +356,7 @@ const PlayerScreen = () => {
   return (
     <View style={pStyles.container}>
       {/* TiviMate-style channel switch mini-overlay (top-right) */}
-      {showChannelSwitch && false && currentChannel && (
+      {showChannelSwitch && currentChannel && (
         <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
           <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: colors.primary }]}>
             <View style={[pStyles.channelNumberBadge, { backgroundColor: colors.primary }]}>
@@ -440,12 +458,9 @@ const PlayerScreen = () => {
                          )}
 
                          {/* Metadata row */}
-                         {videoMetadata?.width && videoMetadata?.height && (
+                         {metadataItems.length > 0 && (
                            <View style={pStyles.metadataRow}>
-                             <Text style={pStyles.metadataText}>{videoMetadata.width}x{videoMetadata.height}</Text>
-                             {videoMetadata.fps ? <Text style={pStyles.metadataText}> • {Math.round(videoMetadata.fps)} FPS</Text> : null}
-                             {videoMetadata.bitrate ? <Text style={pStyles.metadataText}> • {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
-                             <Text style={pStyles.metadataText}> • {canSeek ? t('vod') : t('live')}</Text>
+                             <Text style={pStyles.metadataText}>{metadataItems.join(' • ')}</Text>
                            </View>
                          )}
                      </View>

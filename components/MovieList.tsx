@@ -251,6 +251,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                     ]}
                     // @ts-ignore - supported on TV platforms
                     nextFocusLeft={firstCategoryNode}
+                    tvParallaxProperties={{ enabled: false }}
                     onPress={() => navigation.navigate('MediaInfo', {
                       id: item.id,
                       type: 'vod',
