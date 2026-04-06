@@ -244,12 +244,12 @@ const WelcomeScreen = () => {
             style={[
               styles.input,
               focusedField === 'name' && styles.inputFocused,
-              { color: isAppleTV ? '#0F172A' : '#2D4263' }
+              { color: isAppleTV ? '#000000' : '#2D4263' }
             ]}
             placeholder="Provider Name"
             placeholderTextColor='#888888'
             selectionColor="#E9692A"
-            keyboardAppearance={isAppleTV ? "dark" : "default"}
+            keyboardAppearance={isAppleTV ? "light" : "default"}
             accessibilityLabel="Provider Name"
             value={name}
             onChangeText={setName}
@@ -261,12 +261,12 @@ const WelcomeScreen = () => {
             style={[
               styles.input,
               focusedField === 'serverUrl' && styles.inputFocused,
-              { color: isAppleTV ? '#0F172A' : '#2D4263' }
+              { color: isAppleTV ? '#000000' : '#2D4263' }
             ]}
             placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
             placeholderTextColor='#888888'
             selectionColor="#E9692A"
-            keyboardAppearance={isAppleTV ? "dark" : "default"}
+            keyboardAppearance={isAppleTV ? "light" : "default"}
             accessibilityLabel={type === 'xtream' ? "Server URL" : "M3U Playlist URL"}
             value={serverUrl}
             onChangeText={setServerUrl}
@@ -283,12 +283,12 @@ const WelcomeScreen = () => {
                 style={[
                   styles.input,
                   focusedField === 'username' && styles.inputFocused,
-                  { color: isAppleTV ? '#0F172A' : '#2D4263' }
+                  { color: isAppleTV ? '#000000' : '#2D4263' }
                 ]}
                 placeholder="Username"
                 placeholderTextColor='#888888'
                 selectionColor="#E9692A"
-            keyboardAppearance={isAppleTV ? "dark" : "default"}
+            keyboardAppearance={isAppleTV ? "light" : "default"}
                 accessibilityLabel="Username"
                 value={username}
                 onChangeText={setUsername}
@@ -301,12 +301,12 @@ const WelcomeScreen = () => {
                 style={[
                   styles.input,
                   focusedField === 'password' && styles.inputFocused,
-                  { color: isAppleTV ? '#0F172A' : '#2D4263' }
+                  { color: isAppleTV ? '#000000' : '#2D4263' }
                 ]}
                 placeholder="Password"
                 placeholderTextColor='#888888'
                 selectionColor="#E9692A"
-            keyboardAppearance={isAppleTV ? "dark" : "default"}
+            keyboardAppearance={isAppleTV ? "light" : "default"}
                 accessibilityLabel="Password"
                 value={password}
                 onChangeText={setPassword}
@@ -320,12 +320,12 @@ const WelcomeScreen = () => {
               style={[
                 styles.input,
                 focusedField === 'epgUrl' && styles.inputFocused,
-                { color: isAppleTV ? '#0F172A' : '#2D4263' }
+                { color: isAppleTV ? '#000000' : '#2D4263' }
               ]}
               placeholder="XMLTV EPG URL (Optional)"
               placeholderTextColor='#888888'
               selectionColor="#E9692A"
-            keyboardAppearance={isAppleTV ? "dark" : "default"}
+            keyboardAppearance={isAppleTV ? "light" : "default"}
               accessibilityLabel="XMLTV EPG URL"
               value={epgUrl}
               onChangeText={setEpgUrl}
@@ -450,13 +450,13 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    paddingHorizontal: Platform.isTV ? 14 : 16,
-    paddingVertical: Platform.isTV ? 10 : 12,
+    paddingHorizontal: Platform.isTV ? 18 : 16,
+    paddingVertical: Platform.isTV ? 12 : 12,
     borderRadius: 14,
     marginBottom: 14,
-    fontSize: Platform.isTV ? 16 : 16,
-    lineHeight: Platform.isTV ? 20 : 22,
-    minHeight: Platform.isTV ? 56 : 52,
+    fontSize: Platform.isTV ? 21 : 16,
+    lineHeight: Platform.isTV ? 26 : 22,
+    minHeight: Platform.isTV ? 64 : 52,
     borderWidth: 1.5,
     borderColor: 'rgba(45, 66, 99, 0.2)',
     backgroundColor: '#FFFFFF',
