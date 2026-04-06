@@ -17,6 +17,10 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
   const dimensions = useWindowDimensions();
   const isTvMode = dimensions.width >= 1200;
+  const numColumns = isTvMode ? 6 : 3;
+  const horizontalPadding = 32; // list container left+right padding
+  const cardGap = 16; // combined left+right margin from styles.card
+  const cardWidth = Math.max(140, Math.floor((dimensions.width - horizontalPadding - (cardGap * numColumns)) / numColumns));
 
   const firstItemRef = useRef<any>(null);
   const clearAllButtonRef = useRef<any>(null);
@@ -93,7 +97,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
       : 0;
 
     return (
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <View style={[styles.card, { backgroundColor: colors.card, width: cardWidth, maxWidth: cardWidth }]}>
         <TouchableOpacity
           ref={index === 0 ? firstItemRef : undefined}
           style={styles.cardPressable}
@@ -179,8 +183,6 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
       </View>
     );
   }
-
-  const numColumns = isTvMode ? 6 : 3;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -270,7 +272,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    flex: 1,
     margin: 8,
     borderRadius: 16,
     overflow: 'hidden',

@@ -188,7 +188,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                         </View>
                     )}
                 </View>
-              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 16 : 14 }]} numberOfLines={1}>{channel.name}</Text>
+              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 17 : 14 }]} numberOfLines={2}>{channel.name}</Text>
             </TouchableOpacity>
 
             {/* Programs Timeline */}
@@ -270,8 +270,11 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const timelineStart = useMemo(() => {
     const d = new Date(now);
     d.setHours(d.getHours() - TIMELINE_START_OFFSET_HOURS);
+    // Align to full or half-hour markers (xx:00 / xx:30) for stable TV grid labels.
+    const minutes = d.getMinutes();
+    d.setMinutes(minutes < 30 ? 0 : 30, 0, 0);
     return d;
-  }, [now]);
+  }, [now, TIMELINE_START_OFFSET_HOURS]);
 
   const timelineEnd = useMemo(() => {
     const d = new Date(timelineStart);
@@ -368,10 +371,10 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                  initialNumToRender={10}
                  maxToRenderPerBatch={10}
                  windowSize={5}
-                 removeClippedSubviews={true}
+                 removeClippedSubviews={false}
                  getItemLayout={(data, index) => ({
-                    length: Platform.isTV ? 80 : 60,
-                    offset: (Platform.isTV ? 80 : 60) * index,
+                    length: Platform.isTV ? 92 : 60,
+                    offset: (Platform.isTV ? 92 : 60) * index,
                     index,
                  })}
                  renderItem={({ item: channel, index }) => {
@@ -458,7 +461,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    height: Platform.isTV ? 80 : 64,
+    height: Platform.isTV ? 92 : 64,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
@@ -475,13 +478,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1E2E',
     position: 'absolute',
     left: 0,
-    height: Platform.isTV ? 80 : 64,
+    height: Platform.isTV ? 92 : 64,
     zIndex: 10,
     borderRadius: 0,
   },
   channelLogo: {
-    width: Platform.isTV ? 48 : 36,
-    height: Platform.isTV ? 32 : 24,
+    width: Platform.isTV ? 62 : 36,
+    height: Platform.isTV ? 40 : 24,
     marginBottom: 4,
     borderRadius: 6,
   },
@@ -501,9 +504,10 @@ const styles = StyleSheet.create({
   },
   channelName: {
     color: '#FAFAFA',
-    fontSize: Platform.isTV ? 16 : 11,
+    fontSize: Platform.isTV ? 17 : 11,
     textAlign: 'center',
     fontWeight: '500',
+    paddingHorizontal: 4,
   },
   programsContainer: {
     flex: 1,
@@ -512,7 +516,7 @@ const styles = StyleSheet.create({
   },
   programBlock: {
     position: 'absolute',
-    height: Platform.isTV ? 70 : 52,
+    height: Platform.isTV ? 80 : 52,
     top: 6,
     borderRadius: 10,
     padding: Platform.isTV ? 10 : 6,

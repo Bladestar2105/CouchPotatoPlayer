@@ -34,6 +34,7 @@ export type RootStackParamList = {
     returnGroupId?: string | null;
     returnTab?: 'channels' | 'movies' | 'series' | 'favorites' | 'recent';
     returnScreen?: 'Home';
+    title?: string;
   } | undefined;
   Season: { series: Series; returnGroupId?: string | null; returnTab?: 'series' };
   Episode: { season: Season; returnGroupId?: string | null; returnTab?: 'series' };

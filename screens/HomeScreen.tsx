@@ -270,10 +270,14 @@ const MainLayout = () => {
   // Handle return parameters from Player
   useEffect(() => {
     if (route.params?.returnTab) {
-
       setActiveTab(route.params.returnTab);
+      if (isTV && route.params.returnTab === 'channels') {
+        setIsSidebarExpanded(false);
+        setTimeout(() => {
+          contentRef.current?.focusFirstItem();
+        }, 120);
+      }
       navigation.setParams({ returnTab: undefined });
-
     }
   }, [route.params?.returnTab]);
 
@@ -332,12 +336,12 @@ const MainLayout = () => {
 
       // 3. On default tab with nothing to go back to: show exit dialog
       Alert.alert(
-        'App beenden?',
-        'Möchten Sie CouchPotatoPlayer wirklich beenden?',
+        t('exitAppTitle'),
+        t('exitAppMessage'),
         [
-          { text: 'Nein', style: 'cancel' },
+          { text: t('no'), style: 'cancel' },
           {
-            text: 'Ja',
+            text: t('yes'),
             style: 'destructive',
             onPress: () => {
               if (isTV && TVEventControl?.disableTVMenuKey) {
@@ -423,7 +427,7 @@ const MainLayout = () => {
             the focus engine can find sidebar items when navigating left */}
         <TVFocusGuideView autoFocus style={[tvStyles.sidebar, { width: isSidebarExpanded ? expandedWidth : collapsedWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
           <View style={{ paddingTop: Math.max(insets.top, 18), paddingBottom: Math.max(insets.bottom, 10), flex: 1 }}>
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>MENU</Text>}
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('menu')}</Text>}
 
             {tabs.map((tab) => (
               <TVSidebarItem
@@ -441,7 +445,7 @@ const MainLayout = () => {
             ))}
 
             <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 14, marginHorizontal: 14 }} />
-            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>PROVIDERS</Text>}
+            {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('providers')}</Text>}
 
             {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;

@@ -72,7 +72,23 @@ export const resources = {
       "settings.updatePlaylist": "Update Playlist",
       "settings.updateEPG": "Update EPG",
       "back": "Back",
-      "info": "Info"
+      "info": "Info",
+      "categories": "Categories",
+      "noChannelsAvailable": "No channels available",
+      "noChannelsInCategory": "No channels available in this category",
+      "enterPinToUnlock": "Enter PIN to unlock",
+      "unlock": "Unlock",
+      "nowPlaying": "Now Playing",
+      "episode": "Episode",
+      "playEpisodeHint": "Plays episode {{name}}",
+      "vod": "VOD",
+      "live": "Live",
+      "exitAppTitle": "Exit app?",
+      "exitAppMessage": "Do you really want to close CouchPotatoPlayer?",
+      "yes": "Yes",
+      "no": "No",
+      "menu": "MENU",
+      "providers": "PROVIDERS"
     }
   },
   de: {
@@ -146,7 +162,23 @@ export const resources = {
       "settings.updatePlaylist": "Playlist aktualisieren",
       "settings.updateEPG": "EPG aktualisieren",
       "back": "Zurück",
-      "info": "Info"
+      "info": "Info",
+      "categories": "Kategorien",
+      "noChannelsAvailable": "Keine Kanäle verfügbar",
+      "noChannelsInCategory": "Keine Kanäle in dieser Kategorie verfügbar",
+      "enterPinToUnlock": "PIN zum Entsperren eingeben",
+      "unlock": "Entsperren",
+      "nowPlaying": "Jetzt läuft",
+      "episode": "Episode",
+      "playEpisodeHint": "Spielt Episode {{name}} ab",
+      "vod": "VOD",
+      "live": "Live",
+      "exitAppTitle": "App beenden?",
+      "exitAppMessage": "Möchten Sie CouchPotatoPlayer wirklich beenden?",
+      "yes": "Ja",
+      "no": "Nein",
+      "menu": "MENÜ",
+      "providers": "ANBIETER"
     }
   },
   fr: {
@@ -220,7 +252,23 @@ export const resources = {
       "settings.updatePlaylist": "Mettre à jour la playlist",
       "settings.updateEPG": "Mettre à jour l'EPG",
       "back": "Retour",
-      "info": "Info"
+      "info": "Info",
+      "categories": "Catégories",
+      "noChannelsAvailable": "Aucune chaîne disponible",
+      "noChannelsInCategory": "Aucune chaîne disponible dans cette catégorie",
+      "enterPinToUnlock": "Entrez le code PIN pour déverrouiller",
+      "unlock": "Déverrouiller",
+      "nowPlaying": "Lecture en cours",
+      "episode": "Épisode",
+      "playEpisodeHint": "Lance l'épisode {{name}}",
+      "vod": "VOD",
+      "live": "Direct",
+      "exitAppTitle": "Quitter l'application ?",
+      "exitAppMessage": "Voulez-vous vraiment fermer CouchPotatoPlayer ?",
+      "yes": "Oui",
+      "no": "Non",
+      "menu": "MENU",
+      "providers": "FOURNISSEURS"
     }
   },
   el: {
@@ -294,7 +342,23 @@ export const resources = {
       "settings.updatePlaylist": "Ενημέρωση playlist",
       "settings.updateEPG": "Ενημέρωση EPG",
       "back": "Πίσω",
-      "info": "Πληροφορίες"
+      "info": "Πληροφορίες",
+      "categories": "Κατηγορίες",
+      "noChannelsAvailable": "Δεν υπάρχουν διαθέσιμα κανάλια",
+      "noChannelsInCategory": "Δεν υπάρχουν διαθέσιμα κανάλια σε αυτή την κατηγορία",
+      "enterPinToUnlock": "Εισάγετε PIN για ξεκλείδωμα",
+      "unlock": "Ξεκλείδωμα",
+      "nowPlaying": "Αναπαραγωγή τώρα",
+      "episode": "Επεισόδιο",
+      "playEpisodeHint": "Αναπαράγει το επεισόδιο {{name}}",
+      "vod": "VOD",
+      "live": "Ζωντανά",
+      "exitAppTitle": "Έξοδος από την εφαρμογή;",
+      "exitAppMessage": "Θέλετε σίγουρα να κλείσετε το CouchPotatoPlayer;",
+      "yes": "Ναι",
+      "no": "Όχι",
+      "menu": "ΜΕΝΟΥ",
+      "providers": "ΠΑΡΟΧΟΙ"
     }
   }
 };

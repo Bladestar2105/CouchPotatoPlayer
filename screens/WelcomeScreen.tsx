@@ -21,6 +21,7 @@ const WelcomeScreen = () => {
   const [error, setError] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('dns');
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const isAppleTV = Platform.isTV && Platform.OS === 'ios';
   // Show add form if: no profiles exist, or explicitly requested via route params
   const [showAddForm, setShowAddForm] = useState(profiles.length === 0 || route.params?.showAddForm === true);
 
@@ -195,7 +196,7 @@ const WelcomeScreen = () => {
           </Text>
 
           {/* Type Selector */}
-          <View style={[styles.typeSelector, { backgroundColor: 'rgba(45, 66, 99, 0.1)' }]} accessibilityRole="tablist">
+          <View style={[styles.typeSelector, { backgroundColor: '#FFFFFF' }]} accessibilityRole="tablist">
             <TouchableOpacity
               style={[styles.typeButton, type === 'xtream' && { backgroundColor: '#E9692A' }]}
               onPress={() => setType('xtream')}
@@ -243,10 +244,11 @@ const WelcomeScreen = () => {
             style={[
               styles.input,
               focusedField === 'name' && styles.inputFocused,
-              { color: '#2D4263' }
+              { color: isAppleTV ? '#0F172A' : '#2D4263' }
             ]}
             placeholder="Provider Name"
             placeholderTextColor='rgba(45, 66, 99, 0.6)'
+            selectionColor="#E9692A"
             accessibilityLabel="Provider Name"
             value={name}
             onChangeText={setName}
@@ -258,10 +260,11 @@ const WelcomeScreen = () => {
             style={[
               styles.input,
               focusedField === 'serverUrl' && styles.inputFocused,
-              { color: '#2D4263' }
+              { color: isAppleTV ? '#0F172A' : '#2D4263' }
             ]}
             placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
             placeholderTextColor='rgba(45, 66, 99, 0.6)'
+            selectionColor="#E9692A"
             accessibilityLabel={type === 'xtream' ? "Server URL" : "M3U Playlist URL"}
             value={serverUrl}
             onChangeText={setServerUrl}
@@ -278,10 +281,11 @@ const WelcomeScreen = () => {
                 style={[
                   styles.input,
                   focusedField === 'username' && styles.inputFocused,
-                  { color: '#2D4263' }
+                  { color: isAppleTV ? '#0F172A' : '#2D4263' }
                 ]}
                 placeholder="Username"
                 placeholderTextColor='rgba(45, 66, 99, 0.6)'
+                selectionColor="#E9692A"
                 accessibilityLabel="Username"
                 value={username}
                 onChangeText={setUsername}
@@ -294,10 +298,11 @@ const WelcomeScreen = () => {
                 style={[
                   styles.input,
                   focusedField === 'password' && styles.inputFocused,
-                  { color: '#2D4263' }
+                  { color: isAppleTV ? '#0F172A' : '#2D4263' }
                 ]}
                 placeholder="Password"
                 placeholderTextColor='rgba(45, 66, 99, 0.6)'
+                selectionColor="#E9692A"
                 accessibilityLabel="Password"
                 value={password}
                 onChangeText={setPassword}
@@ -311,10 +316,11 @@ const WelcomeScreen = () => {
               style={[
                 styles.input,
                 focusedField === 'epgUrl' && styles.inputFocused,
-                { color: '#2D4263' }
+                { color: isAppleTV ? '#0F172A' : '#2D4263' }
               ]}
               placeholder="XMLTV EPG URL (Optional)"
               placeholderTextColor='rgba(45, 66, 99, 0.6)'
+              selectionColor="#E9692A"
               accessibilityLabel="XMLTV EPG URL"
               value={epgUrl}
               onChangeText={setEpgUrl}
@@ -424,6 +430,8 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: 24,
     width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 66, 99, 0.12)',
   },
   typeButton: {
     flex: 1,
@@ -446,7 +454,7 @@ const styles = StyleSheet.create({
     minHeight: Platform.isTV ? 56 : 52,
     borderWidth: 1.5,
     borderColor: 'rgba(45, 66, 99, 0.2)',
-    backgroundColor: Platform.isTV ? 'rgba(248, 250, 252, 1)' : '#FFFFFF',
+    backgroundColor: '#FFFFFF',
   },
   inputFocused: {
     borderColor: '#E9692A',
@@ -503,7 +511,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: 'rgba(45, 66, 99, 0.2)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FFFFFF',
   },
   profileTile: {
     flexDirection: 'row',

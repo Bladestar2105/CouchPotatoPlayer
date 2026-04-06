@@ -7,6 +7,7 @@ import { Episode } from '../types';
 import { useIPTV } from '../context/IPTVContext';
 import Logger from '../utils/logger';
 import { useSettings } from '../context/SettingsContext';
+import { useTranslation } from 'react-i18next';
 
 type EpisodeScreenRouteProp = RouteProp<RootStackParamList, 'Episode'>;
 type EpisodeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Episode'>;
@@ -17,6 +18,7 @@ const EpisodeScreen = () => {
   const isFocused = useIsFocused();
   const { playStream } = useIPTV();
   const { colors } = useSettings();
+  const { t } = useTranslation();
 
   const { season, returnGroupId, returnTab } = route.params;
 
@@ -46,12 +48,13 @@ const EpisodeScreen = () => {
   }, [isFocused, navigation]);
 
   const handleEpisodePress = (episode: Episode) => {
-    Logger.log('CLIC SUR ÉPISODE:', episode.name);
-    playStream({ url: episode.streamUrl, id: episode.id });
+    Logger.log('[EpisodeScreen] Play episode:', episode.name);
+    playStream({ url: episode.streamUrl, id: episode.id, name: episode.name, type: 'series' } as any);
     navigation.navigate('Player', {
       returnGroupId,
       returnTab: returnTab || 'series',
       returnScreen: 'Home',
+      title: episode.name,
     });
   };
 
@@ -63,8 +66,8 @@ const EpisodeScreen = () => {
       isTVSelectable={true}
       hasTVPreferredFocus={index === 0}
       accessibilityRole="button"
-      accessibilityLabel={`Episode: ${item.name}`}
-      accessibilityHint={`Plays episode ${item.name}`}
+      accessibilityLabel={`${t('episode')}: ${item.name}`}
+      accessibilityHint={t('playEpisodeHint', { name: item.name })}
     >
       <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
     </TouchableOpacity>

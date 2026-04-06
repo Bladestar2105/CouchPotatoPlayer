@@ -10,6 +10,7 @@ import { findCurrentProgramIndex } from '../utils/epgUtils';
 import { ChannelLogo } from './ChannelLogo';
 import EpgTimeline from './EpgTimeline';
 import { isTV as isTVPlatform } from '../utils/platform';
+import { useTranslation } from 'react-i18next';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/icon.png');
@@ -86,6 +87,7 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
             onBlur={() => setLocalFocused(false)}
             accessible={true}
             isTVSelectable={true}
+            hasTVPreferredFocus={isFocused}
             activeOpacity={0.7}
         >
             {/* Channel Number */}
@@ -110,7 +112,7 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
             {/* Channel Info + EPG */}
             <View style={tiviStyles.channelInfo}>
                 <View style={tiviStyles.channelNameRow}>
-                    <Text style={[tiviStyles.channelName, { color: focused ? colors.text : colors.textSecondary }]} numberOfLines={1}>
+                    <Text style={[tiviStyles.channelName, { color: focused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
                         {channel.name}
                     </Text>
                     {isFav && <Icon name="favorite" size={14} color={colors.primary} style={{ marginLeft: 4 }} />}
@@ -145,6 +147,7 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
 type ViewMode = 'list' | 'epg';
 
 const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; initialViewMode?: ViewMode }>((props, ref) => {
+  const { t } = useTranslation();
   const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
@@ -153,6 +156,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(props.initialViewMode || 'list');
+  const [restoreFocusOnSelectedChannel, setRestoreFocusOnSelectedChannel] = useState(false);
 
   useEffect(() => {
     if (route.params?.returnGroupId) {
@@ -162,6 +166,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       setFocusedChannelId(route.params.focusChannelId);
     }
     if (route.params?.returnGroupId || route.params?.focusChannelId) {
+      setRestoreFocusOnSelectedChannel(true);
       navigation.setParams({ returnGroupId: undefined, focusChannelId: undefined });
     }
   }, [route.params?.returnGroupId, route.params?.focusChannelId]);
@@ -181,6 +186,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
+      if (viewMode === 'epg' || restoreFocusOnSelectedChannel) return;
       if (firstCategoryRef.current) {
         firstCategoryRef.current.focus?.();
         firstCategoryRef.current.setNativeProps?.({ hasTVPreferredFocus: true });
@@ -200,6 +206,12 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       return false;
     },
   }));
+
+  useEffect(() => {
+    if (!restoreFocusOnSelectedChannel) return;
+    const timer = setTimeout(() => setRestoreFocusOnSelectedChannel(false), 450);
+    return () => clearTimeout(timer);
+  }, [restoreFocusOnSelectedChannel]);
 
   const { groups, groupMap, channelMap } = useMemo(() => {
     const len = channels.length;
@@ -422,7 +434,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
           <View style={[tiviStyles.categorySidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.card, borderRightColor: colors.divider }]}>
             {isMobile && (
               <View style={{ padding: 14, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
-                <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>Categories</Text>
+                <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>{t('categories')}</Text>
               </View>
             )}
             <FlatList
@@ -475,8 +487,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                   windowSize={7}
                   removeClippedSubviews={true}
                   getItemLayout={(data, index) => ({
-                    length: Platform.isTV ? 72 : 64,
-                    offset: (Platform.isTV ? 72 : 64) * index,
+                    length: Platform.isTV ? 84 : 64,
+                    offset: (Platform.isTV ? 84 : 64) * index,
                     index,
                   })}
                   renderItem={({ item: channel, index }) => {
@@ -507,7 +519,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
               ) : (
                 <View style={styles.centeredContainer}>
                   <Icon name="tv-off" size={48} color={colors.textMuted} />
-                  <Text style={{ color: colors.textSecondary, marginTop: 12 }}>No channels available</Text>
+                  <Text style={{ color: colors.textSecondary, marginTop: 12 }}>{t('noChannelsAvailable')}</Text>
                 </View>
               )
             ) : (
@@ -527,7 +539,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                 />
               ) : (
                 <View style={styles.centeredContainer}>
-                  <Text style={{ color: colors.textSecondary }}>No channels available in this category</Text>
+                  <Text style={{ color: colors.textSecondary }}>{t('noChannelsInCategory')}</Text>
                 </View>
               )
             )}
@@ -541,10 +553,10 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
               <View style={[styles.centeredContainer, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
                   <View style={{ backgroundColor: colors.card, padding: 24, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.divider }}>
                       <Icon name="lock" size={32} color={colors.primary} style={{ marginBottom: 12 }} />
-                      <Text style={{ color: colors.text, fontSize: 18, marginBottom: 16, fontWeight: '600' }}>Enter PIN to Unlock</Text>
+                      <Text style={{ color: colors.text, fontSize: 18, marginBottom: 16, fontWeight: '600' }}>{t('enterPinToUnlock')}</Text>
                       <View style={{ flexDirection: 'row', gap: 16 }}>
                           <TouchableOpacity onPress={() => setUnlockMode(null)} style={{ padding: 12, paddingHorizontal: 20, backgroundColor: colors.surfaceSecondary, borderRadius: 10 }} accessible={true} isTVSelectable={true}>
-                             <Text style={{ color: colors.textSecondary }}>Cancel</Text>
+                             <Text style={{ color: colors.textSecondary }}>{t('cancel')}</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                               onPress={() => {
@@ -558,7 +570,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                               isTVSelectable={true}
                               hasTVPreferredFocus={true}
                           >
-                             <Text style={{ color: '#FFF', fontWeight: '600' }}>Unlock</Text>
+                             <Text style={{ color: '#FFF', fontWeight: '600' }}>{t('unlock')}</Text>
                           </TouchableOpacity>
                       </View>
                   </View>
@@ -639,7 +651,7 @@ const tiviStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderLeftWidth: 3,
     borderLeftColor: 'transparent',
-    height: Platform.isTV ? 72 : 64,
+    height: Platform.isTV ? 84 : 64,
   },
   channelNumber: {
     width: Platform.isTV ? 36 : 28,
@@ -652,8 +664,8 @@ const tiviStyles = StyleSheet.create({
     marginHorizontal: Platform.isTV ? 12 : 8,
   },
   channelLogo: {
-    width: Platform.isTV ? 44 : 36,
-    height: Platform.isTV ? 32 : 26,
+    width: Platform.isTV ? 56 : 36,
+    height: Platform.isTV ? 40 : 26,
     borderRadius: 4,
   },
   logoPlaceholder: {
@@ -679,7 +691,7 @@ const tiviStyles = StyleSheet.create({
     alignItems: 'center',
   },
   channelName: {
-    fontSize: Platform.isTV ? 15 : 14,
+    fontSize: Platform.isTV ? 17 : 14,
     fontWeight: '600',
     flex: 1,
   },
@@ -694,7 +706,7 @@ const tiviStyles = StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
     overflow: 'hidden',
-    maxWidth: 200,
+    maxWidth: Platform.isTV ? 320 : 200,
   },
   progressFill: {
     height: '100%',

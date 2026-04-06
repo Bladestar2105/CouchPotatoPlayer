@@ -67,16 +67,11 @@ const PlayerScreen = () => {
 
   const handleBack = useCallback(() => {
     stopStream();
-
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('Home', {
-        focusChannelId: lastNavigationState.current.channelId,
-        returnGroupId: lastNavigationState.current.groupId,
-        returnTab: returnTab,
-      });
-    }
+    navigation.navigate('Home', {
+      focusChannelId: lastNavigationState.current.channelId,
+      returnGroupId: lastNavigationState.current.groupId,
+      returnTab,
+    });
 
     return true;
   }, [navigation, stopStream, returnTab]);
@@ -112,8 +107,10 @@ const PlayerScreen = () => {
   const canSeek = useMemo(() => {
     if (!currentStream?.id) return false;
     if (currentStream.id.includes('_catchup_')) return true;
-    return !channelIndexMap.has(currentStream.id);
-  }, [currentStream?.id, channelIndexMap]);
+    const isLiveChannel = channelIndexMap.has(currentStream.id);
+    if (isLiveChannel) return false;
+    return playbackProgress.duration > 0;
+  }, [currentStream?.id, channelIndexMap, playbackProgress.duration]);
 
   const formatDuration = useCallback((ms: number) => {
     if (!ms || ms < 0 || !Number.isFinite(ms)) return '00:00';
@@ -169,7 +166,8 @@ const PlayerScreen = () => {
     if (stream?.name && typeof stream.name === 'string') return stream.name;
     if (currentProgram?.title) return currentProgram.title;
     if (currentChannel?.name) return currentChannel.name;
-    return t('player');
+    if (route.params?.title && typeof route.params.title === 'string') return route.params.title;
+    return t('nowPlaying');
   }, [currentStream, currentProgram?.title, currentChannel?.name, t]);
 
   // Show channel switch mini-overlay
@@ -194,6 +192,12 @@ const PlayerScreen = () => {
         if (timer) clearTimeout(timer);
     };
   }, [showOverlay, isPaused]);
+
+  useEffect(() => {
+    if (seekTime === undefined) return;
+    const timer = setTimeout(() => setSeekTime(undefined), 180);
+    return () => clearTimeout(timer);
+  }, [seekTime]);
 
   useEffect(() => {
     if (isFocused && currentStream && currentStream.id) {
@@ -367,22 +371,6 @@ const PlayerScreen = () => {
               <Icon name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
 
-            {/* Channel Number Badge - TiviMate style */}
-            {currentChannel && (
-              <View style={[pStyles.topChannelBadge, { backgroundColor: 'rgba(30,30,46,0.75)' }]}>
-                <View style={[pStyles.channelNumCircle, { backgroundColor: colors.primary }]}>
-                  <Text style={pStyles.channelNumText}>{currentChannelNumber}</Text>
-                </View>
-                <Text style={pStyles.topChannelName} numberOfLines={1}>{currentChannel.name}</Text>
-                {videoMetadata?.width && videoMetadata?.height && (
-                  <View style={[pStyles.qualityBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={pStyles.qualityText}>
-                      {videoMetadata.height >= 2160 ? '4K' : videoMetadata.height >= 1080 ? 'HD' : videoMetadata.height >= 720 ? '720p' : 'SD'}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
           </View>
 
           {/* Pause Indicator */}
@@ -434,8 +422,9 @@ const PlayerScreen = () => {
                          {videoMetadata?.width && videoMetadata?.height && (
                            <View style={pStyles.metadataRow}>
                              <Text style={pStyles.metadataText}>{videoMetadata.width}x{videoMetadata.height}</Text>
-                             {videoMetadata.fps ? <Text style={pStyles.metadataText}> | {Math.round(videoMetadata.fps)} FPS</Text> : null}
-                             {videoMetadata.bitrate ? <Text style={pStyles.metadataText}> | {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
+                             {videoMetadata.fps ? <Text style={pStyles.metadataText}> • {Math.round(videoMetadata.fps)} FPS</Text> : null}
+                             {videoMetadata.bitrate ? <Text style={pStyles.metadataText}> • {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
+                             <Text style={pStyles.metadataText}> • {canSeek ? t('vod') : t('live')}</Text>
                            </View>
                          )}
                      </View>
