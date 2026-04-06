@@ -4,6 +4,7 @@ node_modules/
 # Cache et builds d'Expo
 .expo/
 dist/
+build/
 .idea/
 
 # Fichiers de logs

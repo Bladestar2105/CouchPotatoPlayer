@@ -62,21 +62,21 @@ export const oledThemeColors: ThemeColors = {
 };
 
 export const lightThemeColors: ThemeColors = {
-  background: '#F5F5FA',
+  background: '#E4E4E7',
   card: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceSecondary: '#F0F0F8',
-  divider: '#E0E0EE',
+  surfaceSecondary: '#F7F7F9',
+  divider: '#D4D4DA',
   text: '#1A1A2E',
-  textSecondary: '#52527B',
-  textMuted: '#9E9EB8',
+  textSecondary: '#374A6E',
+  textMuted: '#7A8599',
   primary: '#E9692A',
   primaryLight: 'rgba(233,105,42,0.1)',
-  accent: '#E9692A',
+  accent: '#2D4263',
   error: '#FF1744',
   success: '#00C853',
   warning: '#FFAB00',
-  border: '#E0E0EE',
+  border: '#D4D4DA',
 };
 
 export const getThemeColors = (mode: ThemeMode): ThemeColors => {

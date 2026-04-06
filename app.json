@@ -5,16 +5,17 @@
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#121212"
+      "backgroundColor": "#E4E4E7"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
+      "icon": "./assets/store/ios/app-store-icon-1024.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.couchpotatoplayer",
       "infoPlist": {
@@ -23,10 +24,15 @@
         }
       }
     },
+    "appleTV": {
+      "icon": "./assets/store/tvos/app-icon-large-1280x768.png",
+      "topShelfImage": "./assets/store/tvos/top-shelf-1920x720.png",
+      "topShelfImageWide": "./assets/store/tvos/top-shelf-wide-2320x720.png"
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#121212"
+        "backgroundColor": "#E4E4E7"
       },
       "package": "com.anonymous.couchpotatoplayer"
     },
