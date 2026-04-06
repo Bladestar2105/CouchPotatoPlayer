@@ -26,6 +26,14 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
         return ""
 
     def do_GET(self):
+        cors_origin = self.get_cors_origin()
+        if not cors_origin:
+            self.send_response(403)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"error": "Forbidden: Invalid or missing Origin"}')
+            return
+
         if self.path.startswith('/proxy/'):
             url = self.path[7:]  # Remove '/proxy/' prefix
 
@@ -71,9 +79,7 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 req.add_header('User-Agent', 'Mozilla/5.0')
                 with opener.open(req, timeout=30) as response:
                     self.send_response(200)
-                    cors_origin = self.get_cors_origin()
-                    if cors_origin:
-                        self.send_header('Access-Control-Allow-Origin', cors_origin)
+                    self.send_header('Access-Control-Allow-Origin', cors_origin)
                     self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
                     self.send_header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range')
                     content_type = response.headers.get('Content-Type', 'application/octet-stream')
@@ -90,10 +96,14 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
     
     def do_OPTIONS(self):
-        self.send_response(200)
         cors_origin = self.get_cors_origin()
-        if cors_origin:
-            self.send_header('Access-Control-Allow-Origin', cors_origin)
+        if not cors_origin:
+            self.send_response(403)
+            self.end_headers()
+            return
+
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', cors_origin)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range')
         self.end_headers()
