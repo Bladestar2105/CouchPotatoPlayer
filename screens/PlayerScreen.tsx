@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, TVFocusGuideView, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, Animated } from 'react-native';
+import TVFocusGuideView from '../components/TVFocusGuideView';
 // @ts-ignore - TVEventControl is available in react-native-tvos but not in standard React Native types
 import { TVEventControl, useTVEventHandler as _useTVEventHandler } from 'react-native';
 
@@ -23,7 +24,7 @@ import { Channel } from '../types';
 import { findCurrentProgramIndex } from '../utils/epgUtils';
 // StreamHealthMonitor removed - info button was removed for cleaner UI
 
-const defaultLogo = require('../assets/icon.png');
+const defaultLogo = require('../assets/character_logo.png');
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
