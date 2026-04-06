@@ -252,7 +252,6 @@ const WelcomeScreen = () => {
             onChangeText={setName}
             onFocus={() => setFocusedField('name')}
             onBlur={() => setFocusedField(null)}
-            tvFocusable={true}
             autoFocus={!Platform.isTV}
           />
           <TextInput
@@ -271,7 +270,6 @@ const WelcomeScreen = () => {
             keyboardType="url"
             autoCapitalize="none"
             autoCorrect={false}
-            tvFocusable={true}
           />
 
           {type === 'xtream' ? (
@@ -291,7 +289,6 @@ const WelcomeScreen = () => {
                 onBlur={() => setFocusedField(null)}
                 autoCapitalize="none"
                 autoCorrect={false}
-                tvFocusable={true}
               />
               <TextInput
                 style={[
@@ -307,7 +304,6 @@ const WelcomeScreen = () => {
                 onFocus={() => setFocusedField('password')}
                 onBlur={() => setFocusedField(null)}
                 secureTextEntry
-                tvFocusable={true}
               />
             </>
           ) : (
@@ -327,7 +323,6 @@ const WelcomeScreen = () => {
               keyboardType="url"
               autoCapitalize="none"
               autoCorrect={false}
-              tvFocusable={true}
             />
           )}
 

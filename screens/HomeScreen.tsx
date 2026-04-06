@@ -15,6 +15,7 @@ import FavoritesList from '../components/FavoritesList';
 import RecentlyWatchedList from '../components/RecentlyWatchedList';
 import SettingsScreen from './SettingsScreen';
 import SearchScreen from './SearchScreen';
+import { isTV as isTVPlatform } from '../utils/platform';
 
 export type ContentRef = {
   focusFirstItem: () => void;
@@ -29,7 +30,7 @@ interface TabDef {
   label: string;
 }
 
-const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
+const isTV = isTVPlatform;
 
 // ============================================================
 // TV SIDEBAR - TiviMate-style collapsible left sidebar for TV
@@ -313,7 +314,7 @@ const MainLayout = () => {
 
     // Enable menu key interception on tvOS so the remote's menu button
     // triggers hardwareBackPress instead of exiting the app
-    if (Platform.isTV && TVEventControl?.enableTVMenuKey) {
+    if (isTV && TVEventControl?.enableTVMenuKey) {
       TVEventControl.enableTVMenuKey();
     }
 
@@ -339,7 +340,7 @@ const MainLayout = () => {
             text: 'Ja',
             style: 'destructive',
             onPress: () => {
-              if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+              if (isTV && TVEventControl?.disableTVMenuKey) {
                 TVEventControl.disableTVMenuKey();
               }
 
@@ -363,7 +364,7 @@ const MainLayout = () => {
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', onBack);
     return () => {
-      if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+      if (isTV && TVEventControl?.disableTVMenuKey) {
         TVEventControl.disableTVMenuKey();
       }
       backHandler.remove();

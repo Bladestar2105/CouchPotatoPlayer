@@ -1146,7 +1146,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useIPTV = () => {
   const context = useContext(IPTVContext);
   if (!context) {
-    throw new Error('useIPTV() doit être utilisé à l\'intérieur d\'un IPTVProvider');
+    throw new Error('useIPTV() must be used within an IPTVProvider');
   }
   return context;
 };

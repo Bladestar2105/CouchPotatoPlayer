@@ -9,6 +9,7 @@ import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { findCurrentProgramIndex } from '../utils/epgUtils';
 import { ChannelLogo } from './ChannelLogo';
 import EpgTimeline from './EpgTimeline';
+import { isTV as isTVPlatform } from '../utils/platform';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/icon.png');
@@ -166,7 +167,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   }, [route.params?.returnGroupId, route.params?.focusChannelId]);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
-  const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
+  const isTV = isTVPlatform;
   const isMobile = !isTV && Dimensions.get('window').width < 768;
   const [showCategories, setShowCategories] = useState<boolean>(true);
 
@@ -176,7 +177,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
 
   useEffect(() => {
     loadEPG();
-  }, []);
+  }, [loadEPG]);
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
