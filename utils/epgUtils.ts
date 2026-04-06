@@ -2,12 +2,12 @@ import { EPGProgram } from '../types';
 
 // ⚡ Bolt Optimization: Binary search utility for O(log N) lookup of the
 // current program in chronologically-sorted EPG arrays, avoiding costly O(N) linear scans.
-export const findCurrentProgramIndex = (epg: EPGProgram[], time: Date): number => {
+export const findCurrentProgramIndex = (epg: EPGProgram[], time: Date | number): number => {
   if (!epg || epg.length === 0) return -1;
 
   let left = 0;
   let right = epg.length - 1;
-  const timeMs = time.getTime();
+  const timeMs = time instanceof Date ? time.getTime() : time;
 
   while (left <= right) {
     const mid = Math.floor((left + right) / 2);
@@ -29,7 +29,7 @@ export const findCurrentProgramIndex = (epg: EPGProgram[], time: Date): number =
   return -1;
 };
 
-export const findCurrentProgram = (epg: EPGProgram[], time: Date): EPGProgram | undefined => {
+export const findCurrentProgram = (epg: EPGProgram[], time: Date | number): EPGProgram | undefined => {
   const index = findCurrentProgramIndex(epg, time);
   return index !== -1 ? epg[index] : undefined;
 };

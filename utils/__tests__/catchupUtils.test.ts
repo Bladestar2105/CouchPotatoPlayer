@@ -171,13 +171,15 @@ describe('catchupUtils', () => {
     });
 
     test('should return xc format by default if config is not provided', () => {
+      const durationMinutes = Math.ceil(duration / 60);
       const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password);
-      expect(url).toBe(`http://test-server.com/timeshift/${startUnix}/${endUnix}/12345.ts`);
+      expect(url).toBe(`http://test-server.com/timeshift/${username}/${password}/${durationMinutes}/2023-11-01:12-00/12345.ts`);
     });
 
     test('should return xc format', () => {
+      const durationMinutes = Math.ceil(duration / 60);
       const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'xc' });
-      expect(url).toBe(`http://test-server.com/timeshift/${startUnix}/${endUnix}/12345.ts`);
+      expect(url).toBe(`http://test-server.com/timeshift/${username}/${password}/${durationMinutes}/2023-11-01:12-00/12345.ts`);
     });
 
     test('should return flussonic format', () => {
@@ -212,11 +214,12 @@ describe('catchupUtils', () => {
     });
 
     test('should return append format with custom source', () => {
+      const durationMinutes = Math.ceil(duration / 60);
       const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, {
         type: 'append',
         source: '?start=${start}&end=${end}&dur=${duration}&now=${timestamp}'
       });
-      expect(url?.startsWith(`http://test.com/stream?start=${startUnix}&end=${endUnix}&dur=${duration}&now=`)).toBe(true);
+      expect(url?.startsWith(`http://test.com/stream?start=${startUnix}&end=${endUnix}&dur=${durationMinutes}&now=`)).toBe(true);
     });
 
     test('should return null for append format if source is missing', () => {
@@ -225,8 +228,9 @@ describe('catchupUtils', () => {
     });
 
     test('should return default format', () => {
+      const durationMinutes = Math.ceil(duration / 60);
       const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'default' });
-      expect(url).toBe(`http://test-server.com/timeshift/testuser/testpassword/${startUnix}/${endUnix}/12345.ts`);
+      expect(url).toBe(`http://test-server.com/timeshift/${username}/${password}/${durationMinutes}/2023-11-01:12-00/12345.ts`);
     });
   });
 });
