@@ -7,6 +7,11 @@ dist/
 build/
 .idea/
 
+# Artefakte aus lokalem iOS/tvOS Prebuild / CocoaPods
+ios/*.xcworkspace/
+ios/Podfile.lock
+ios/CouchPotatoPlayer/PrivacyInfo.xcprivacy
+
 # Fichiers de logs
 npm-debug.log*
 yarn-debug.log*

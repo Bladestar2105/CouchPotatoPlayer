@@ -121,6 +121,11 @@ const WelcomeScreen = () => {
         resizeMode="contain"
       />
       <Text style={[styles.subtitle, { color: '#2D4263' }]}>Select a Provider</Text>
+      {currentProfile?.name ? (
+        <Text style={styles.currentProviderText} numberOfLines={1}>
+          Current: {currentProfile.name}
+        </Text>
+      ) : null}
 
       <FlatList
         data={profiles}
@@ -244,7 +249,7 @@ const WelcomeScreen = () => {
             style={[
               styles.input,
               focusedField === 'name' && styles.inputFocused,
-              { color: isAppleTV ? '#000000' : '#2D4263' }
+              { color: '#111827' }
             ]}
             placeholder="Provider Name"
             placeholderTextColor='#888888'
@@ -261,7 +266,7 @@ const WelcomeScreen = () => {
             style={[
               styles.input,
               focusedField === 'serverUrl' && styles.inputFocused,
-              { color: isAppleTV ? '#000000' : '#2D4263' }
+              { color: '#111827' }
             ]}
             placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
             placeholderTextColor='#888888'
@@ -283,7 +288,7 @@ const WelcomeScreen = () => {
                 style={[
                   styles.input,
                   focusedField === 'username' && styles.inputFocused,
-                  { color: isAppleTV ? '#000000' : '#2D4263' }
+                  { color: '#111827' }
                 ]}
                 placeholder="Username"
                 placeholderTextColor='#888888'
@@ -301,7 +306,7 @@ const WelcomeScreen = () => {
                 style={[
                   styles.input,
                   focusedField === 'password' && styles.inputFocused,
-                  { color: isAppleTV ? '#000000' : '#2D4263' }
+                  { color: '#111827' }
                 ]}
                 placeholder="Password"
                 placeholderTextColor='#888888'
@@ -320,7 +325,7 @@ const WelcomeScreen = () => {
               style={[
                 styles.input,
                 focusedField === 'epgUrl' && styles.inputFocused,
-                { color: isAppleTV ? '#000000' : '#2D4263' }
+                { color: '#111827' }
               ]}
               placeholder="XMLTV EPG URL (Optional)"
               placeholderTextColor='#888888'
@@ -429,6 +434,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
   },
+  currentProviderText: {
+    color: '#2D4263',
+    fontSize: 13,
+    marginTop: -18,
+    marginBottom: 18,
+    opacity: 0.75,
+    textAlign: 'center',
+  },
   typeSelector: {
     flexDirection: 'row',
     borderRadius: 16,
@@ -451,11 +464,11 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     paddingHorizontal: Platform.isTV ? 18 : 16,
-    paddingVertical: Platform.isTV ? 12 : 12,
+    paddingVertical: Platform.isTV ? 14 : 12,
     borderRadius: 14,
     marginBottom: 14,
-    fontSize: Platform.isTV ? 21 : 16,
-    lineHeight: Platform.isTV ? 26 : 22,
+    fontSize: Platform.isTV ? 20 : 16,
+    lineHeight: Platform.isTV ? 24 : 22,
     minHeight: Platform.isTV ? 64 : 52,
     borderWidth: 1.5,
     borderColor: 'rgba(45, 66, 99, 0.2)',
@@ -463,10 +476,8 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: '#E9692A',
-    shadowColor: '#E9692A',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
+    borderWidth: 2,
+    borderRadius: 14,
   },
   loginButton: {
     width: '100%',

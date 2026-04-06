@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Text, TextInput, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import bcrypt from 'bcryptjs';
@@ -10,43 +10,55 @@ const PinSetupScreen = () => {
   const [setupMode, setSetupMode] = useState(!pin);
 
   const [unlockMode, setUnlockMode] = useState(!!pin && !isAdultUnlocked);
+  const inputValueRef = useRef('');
+  const confirmValueRef = useRef('');
+
+  useEffect(() => {
+    setSetupMode(!pin);
+    setUnlockMode(!!pin && !isAdultUnlocked);
+  }, [pin, isAdultUnlocked]);
 
   const handleAction = async () => {
     const isStrict4Digits = (val: string) => /^\d{4}$/.test(val);
+    const input = inputValueRef.current;
+    const confirm = confirmValueRef.current;
 
     if (setupMode) {
-      if (!isStrict4Digits(inputValue)) {
+      if (!isStrict4Digits(input)) {
          Alert.alert('Error', 'The PIN code must be exactly 4 digits (0-9).');
          return;
       }
-      if (inputValue !== confirmValue) {
+      if (input !== confirm) {
          Alert.alert('Error', 'PINs do not match.');
          return;
       }
-      await setPinCode(inputValue);
+      await setPinCode(input);
       setInputValue('');
       setConfirmValue('');
+      inputValueRef.current = '';
+      confirmValueRef.current = '';
       setSetupMode(false);
       setUnlockMode(false);
       Alert.alert('Success', 'PIN code configured successfully.');
     } else if (unlockMode) {
       // Unlock adult content for session
-      const unlocked = unlockAdultContent(inputValue);
+      const unlocked = unlockAdultContent(input);
       if (unlocked) {
          Alert.alert('Success', 'Adult content unlocked for this session.');
          setInputValue('');
+         inputValueRef.current = '';
          setUnlockMode(false);
       } else {
          Alert.alert('Error', 'Incorrect PIN code.');
       }
     } else {
       // Manage existing PIN (Change or Remove)
-      if (pin && !bcrypt.compareSync(inputValue, pin)) {
+      if (pin && !bcrypt.compareSync(input, pin)) {
          Alert.alert('Error', 'Incorrect PIN code.');
          return;
       }
 
-      if (confirmValue.length === 0) {
+      if (confirm.length === 0) {
          // Remove PIN
          await setPinCode(null);
          lockAdultContent(); // Reset adult lock if PIN is removed
@@ -54,16 +66,20 @@ const PinSetupScreen = () => {
          setUnlockMode(false);
          setInputValue('');
          setConfirmValue('');
+         inputValueRef.current = '';
+         confirmValueRef.current = '';
          Alert.alert('Success', 'PIN code removed.');
       } else {
          // Change PIN
-         if (!isStrict4Digits(confirmValue)) {
+         if (!isStrict4Digits(confirm)) {
             Alert.alert('Error', 'New PIN must be exactly 4 digits (0-9).');
             return;
          }
-         await setPinCode(confirmValue);
+         await setPinCode(confirm);
          setInputValue('');
          setConfirmValue('');
+         inputValueRef.current = '';
+         confirmValueRef.current = '';
          Alert.alert('Success', 'PIN code updated successfully.');
       }
     }
@@ -89,7 +105,11 @@ const PinSetupScreen = () => {
         secureTextEntry
         maxLength={4}
         value={inputValue}
-        onChangeText={(text) => setInputValue(text.replace(/[^0-9]/g, ''))}
+        onChangeText={(text) => {
+          const sanitized = text.replace(/[^0-9]/g, '');
+          inputValueRef.current = sanitized;
+          setInputValue(sanitized);
+        }}
         placeholder={setupMode ? "New PIN" : unlockMode ? "PIN Code" : "Current PIN"}
         placeholderTextColor="#888"
         accessibilityLabel={setupMode ? "New PIN" : unlockMode ? "PIN Code" : "Current PIN"}
@@ -104,7 +124,11 @@ const PinSetupScreen = () => {
           secureTextEntry
           maxLength={4}
           value={confirmValue}
-          onChangeText={(text) => setConfirmValue(text.replace(/[^0-9]/g, ''))}
+          onChangeText={(text) => {
+            const sanitized = text.replace(/[^0-9]/g, '');
+            confirmValueRef.current = sanitized;
+            setConfirmValue(sanitized);
+          }}
           placeholder={setupMode ? "Confirm PIN" : "New PIN (Optional)"}
           placeholderTextColor="#888"
           accessibilityLabel={setupMode ? "Confirm PIN" : "New PIN (Optional)"}
