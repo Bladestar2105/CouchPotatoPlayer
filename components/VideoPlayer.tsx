@@ -103,9 +103,10 @@ const AppleAVPlayer = ({
       }}
       onProgress={(event) => {
         if (onProgress && event?.nativeEvent) {
+          const durationRaw = event.nativeEvent.duration || 0;
           onProgress({
-            currentTime: event.nativeEvent.currentTime || 0,
-            duration: event.nativeEvent.duration || 0,
+            currentTime: toMilliseconds(event.nativeEvent.currentTime, durationRaw),
+            duration: toMilliseconds(durationRaw, durationRaw),
           });
         }
       }}
@@ -395,9 +396,10 @@ const VideoPlayer = React.forwardRef(
           }}
           onProgress={(data) => {
             if (onProgress) {
+              const durationRaw = data.duration ?? 0;
               onProgress({
-                currentTime: data.currentTime,
-                duration: data.duration,
+                currentTime: toMilliseconds(data.currentTime, durationRaw),
+                duration: toMilliseconds(durationRaw, durationRaw),
               });
             }
           }}

@@ -48,6 +48,13 @@ const PlayerScreen = () => {
     channelId: focusChannelId || currentStream?.id || null,
   });
 
+  useEffect(() => {
+    lastNavigationState.current = {
+      groupId: returnGroupId || lastNavigationState.current.groupId,
+      channelId: currentStream?.id || focusChannelId || lastNavigationState.current.channelId,
+    };
+  }, [returnGroupId, focusChannelId, currentStream?.id]);
+
   // TiviMate-style overlay states
   const [showOverlay, setShowOverlay] = useState(false);
   const [showChannelSwitch, setShowChannelSwitch] = useState(false);
@@ -67,16 +74,11 @@ const PlayerScreen = () => {
 
   const handleBack = useCallback(() => {
     stopStream();
-
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('Home', {
-        focusChannelId: lastNavigationState.current.channelId,
-        returnGroupId: lastNavigationState.current.groupId,
-        returnTab: returnTab,
-      });
-    }
+    navigation.navigate('Home', {
+      focusChannelId: lastNavigationState.current.channelId,
+      returnGroupId: lastNavigationState.current.groupId,
+      returnTab,
+    });
 
     return true;
   }, [navigation, stopStream, returnTab]);
@@ -112,8 +114,10 @@ const PlayerScreen = () => {
   const canSeek = useMemo(() => {
     if (!currentStream?.id) return false;
     if (currentStream.id.includes('_catchup_')) return true;
-    return !channelIndexMap.has(currentStream.id);
-  }, [currentStream?.id, channelIndexMap]);
+    const isLiveChannel = channelIndexMap.has(currentStream.id);
+    if (isLiveChannel) return false;
+    return playbackProgress.duration > 0;
+  }, [currentStream?.id, channelIndexMap, playbackProgress.duration]);
 
   const formatDuration = useCallback((ms: number) => {
     if (!ms || ms < 0 || !Number.isFinite(ms)) return '00:00';
@@ -166,11 +170,12 @@ const PlayerScreen = () => {
 
   const playbackTitle = useMemo(() => {
     const stream = currentStream as any;
-    if (stream?.name && typeof stream.name === 'string') return stream.name;
+    if (route.params?.title && typeof route.params.title === 'string') return route.params.title;
+    if (stream?.name && typeof stream.name === 'string' && stream.name.toLowerCase() !== 'player') return stream.name;
     if (currentProgram?.title) return currentProgram.title;
     if (currentChannel?.name) return currentChannel.name;
-    return t('player');
-  }, [currentStream, currentProgram?.title, currentChannel?.name, t]);
+    return t('nowPlaying');
+  }, [currentStream, currentProgram?.title, currentChannel?.name, route.params?.title, t]);
 
   // Show channel switch mini-overlay
   const showChannelSwitchBriefly = useCallback(() => {
@@ -194,6 +199,12 @@ const PlayerScreen = () => {
         if (timer) clearTimeout(timer);
     };
   }, [showOverlay, isPaused]);
+
+  useEffect(() => {
+    if (seekTime === undefined) return;
+    const timer = setTimeout(() => setSeekTime(undefined), 180);
+    return () => clearTimeout(timer);
+  }, [seekTime]);
 
   useEffect(() => {
     if (isFocused && currentStream && currentStream.id) {
@@ -262,17 +273,30 @@ const PlayerScreen = () => {
     } else if (evt.eventType === 'playPause') {
       setIsPaused(prev => !prev);
       setShowOverlay(true);
+
+
     } else if (evt.eventType === 'left') {
       if (!canSeek) return;
       const newSeekTime = Math.max(0, currentTimeRef.current - 10000);
-      setSeekTime(newSeekTime);
       currentTimeRef.current = newSeekTime;
+      setPlaybackProgress(prev => ({ ...prev, currentTime: newSeekTime }));
+
+      if (seekDebounceTimerRef.current) clearTimeout(seekDebounceTimerRef.current);
+      seekDebounceTimerRef.current = setTimeout(() => {
+         setSeekTime(newSeekTime);
+      }, 500);
       setShowOverlay(true);
     } else if (evt.eventType === 'right') {
       if (!canSeek) return;
-      const newSeekTime = currentTimeRef.current + 10000;
-      setSeekTime(newSeekTime);
+      const maxTime = playbackProgress.duration || Infinity;
+      const newSeekTime = Math.min(maxTime, currentTimeRef.current + 10000);
       currentTimeRef.current = newSeekTime;
+      setPlaybackProgress(prev => ({ ...prev, currentTime: newSeekTime }));
+
+      if (seekDebounceTimerRef.current) clearTimeout(seekDebounceTimerRef.current);
+      seekDebounceTimerRef.current = setTimeout(() => {
+         setSeekTime(newSeekTime);
+      }, 500);
       setShowOverlay(true);
     } else if (evt.eventType === 'pageUp' || evt.eventType === 'channelUp') {
        switchChannel('up');
@@ -313,7 +337,7 @@ const PlayerScreen = () => {
   return (
     <View style={pStyles.container}>
       {/* TiviMate-style channel switch mini-overlay (top-right) */}
-      {showChannelSwitch && currentChannel && (
+      {showChannelSwitch && false && currentChannel && (
         <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
           <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: colors.primary }]}>
             <View style={[pStyles.channelNumberBadge, { backgroundColor: colors.primary }]}>
@@ -367,22 +391,6 @@ const PlayerScreen = () => {
               <Icon name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
 
-            {/* Channel Number Badge - TiviMate style */}
-            {currentChannel && (
-              <View style={[pStyles.topChannelBadge, { backgroundColor: 'rgba(30,30,46,0.75)' }]}>
-                <View style={[pStyles.channelNumCircle, { backgroundColor: colors.primary }]}>
-                  <Text style={pStyles.channelNumText}>{currentChannelNumber}</Text>
-                </View>
-                <Text style={pStyles.topChannelName} numberOfLines={1}>{currentChannel.name}</Text>
-                {videoMetadata?.width && videoMetadata?.height && (
-                  <View style={[pStyles.qualityBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={pStyles.qualityText}>
-                      {videoMetadata.height >= 2160 ? '4K' : videoMetadata.height >= 1080 ? 'HD' : videoMetadata.height >= 720 ? '720p' : 'SD'}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
           </View>
 
           {/* Pause Indicator */}
@@ -434,8 +442,9 @@ const PlayerScreen = () => {
                          {videoMetadata?.width && videoMetadata?.height && (
                            <View style={pStyles.metadataRow}>
                              <Text style={pStyles.metadataText}>{videoMetadata.width}x{videoMetadata.height}</Text>
-                             {videoMetadata.fps ? <Text style={pStyles.metadataText}> | {Math.round(videoMetadata.fps)} FPS</Text> : null}
-                             {videoMetadata.bitrate ? <Text style={pStyles.metadataText}> | {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
+                             {videoMetadata.fps ? <Text style={pStyles.metadataText}> • {Math.round(videoMetadata.fps)} FPS</Text> : null}
+                             {videoMetadata.bitrate ? <Text style={pStyles.metadataText}> • {Math.round(videoMetadata.bitrate / 1000)} kbps</Text> : null}
+                             <Text style={pStyles.metadataText}> • {canSeek ? t('vod') : t('live')}</Text>
                            </View>
                          )}
                      </View>
@@ -602,8 +611,8 @@ const pStyles = StyleSheet.create({
     paddingBottom: 20,
   },
   channelLogo: {
-      width: 80,
-      height: 80,
+      width: 100,
+      height: 100,
       marginRight: 20,
       backgroundColor: 'rgba(255,255,255,0.05)',
       borderRadius: 8,
