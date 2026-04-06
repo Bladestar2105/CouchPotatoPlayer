@@ -17,7 +17,7 @@ const SeasonScreen = () => {
   const { getSeriesInfo, currentProfile } = useIPTV();
   const { colors } = useSettings();
 
-  const { series, returnGroupId, returnTab } = route.params as any;
+  const { series, returnGroupId, returnTab } = route.params;
   const [seasons, setSeasons] = useState<Season[]>(series.seasons || []);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -84,7 +84,7 @@ const SeasonScreen = () => {
   }, [series.id]);
 
   const handleSeasonPress = (season: Season) => {
-    navigation.navigate('Episode', { season: season, returnGroupId, returnTab });
+    navigation.navigate('Episode', { season, returnGroupId, returnTab });
   };
 
   const renderItem = ({ item, index }: { item: Season; index: number }) => (

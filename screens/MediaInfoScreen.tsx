@@ -11,11 +11,39 @@ import { Play, Star, Calendar, ArrowLeft, Heart } from 'lucide-react-native';
 
 type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
 
+const firstNonEmptyString = (...values: unknown[]): string | null => {
+  for (const value of values) {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) return trimmed;
+    }
+  }
+  return null;
+};
+
+const parseGenres = (rawGenre: unknown): string[] => {
+  if (typeof rawGenre !== 'string') return [];
+  return rawGenre
+    .split(',')
+    .map(g => g.trim())
+    .filter(Boolean);
+};
+
+const formatRating = (rawRating: string | null, tmdbRating?: number): string | null => {
+  if (rawRating) {
+    return rawRating.includes('/') ? rawRating : `${rawRating}/10`;
+  }
+  if (typeof tmdbRating === 'number' && Number.isFinite(tmdbRating)) {
+    return `${tmdbRating.toFixed(1)}/10`;
+  }
+  return null;
+};
+
 const MediaInfoScreen = () => {
   const route = useRoute<MediaInfoRouteProp>();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
-  const { id, type, title, cover, streamUrl, returnGroupId, returnTab } = route.params as any;
+  const { id, type, title, cover, streamUrl, returnGroupId, returnTab } = route.params;
   const { getVodInfo, getSeriesInfo, playStream, series, favorites, addFavorite, removeFavorite } = useIPTV();
   const { colors, tmdbApiKey } = useSettings();
   const dimensions = useWindowDimensions();
@@ -66,8 +94,21 @@ const MediaInfoScreen = () => {
 
       setInfo(data);
 
+      const providerInfo = data?.info || {};
+      const hasProviderMetadata = Boolean(
+        firstNonEmptyString(
+          providerInfo.plot,
+          providerInfo.description,
+          providerInfo.cover_big,
+          providerInfo.movie_image,
+          providerInfo.cover,
+          providerInfo.backdrop_path,
+          providerInfo.genre
+        ) || providerInfo.rating || providerInfo.year || providerInfo.releasedate
+      );
+
       const tmdb = new TMDBService({ apiKey: tmdbApiKey });
-      if (tmdb.isAvailable()) {
+      if (tmdb.isAvailable() && !hasProviderMetadata) {
         const enhanced = await tmdb.enrichTitle(title, type === 'series' ? 'tv' : 'movie');
         if (enhanced) setTmdbData(enhanced);
       }
@@ -106,11 +147,31 @@ const MediaInfoScreen = () => {
     }
   };
 
-  const backdrop = tmdbData?.backdropUrl || cover;
-  const poster = tmdbData?.posterUrl || cover;
-  const desc = tmdbData?.overview || info?.info?.plot || 'No description available.';
-  const rating = tmdbData?.rating ? `${tmdbData.rating.toFixed(1)}/10` : info?.info?.rating ? `${info.info.rating}/10` : null;
-  const year = tmdbData?.releaseDate?.split('-')[0] || info?.info?.releasedate?.split('-')[0] || info?.info?.year || null;
+  const providerInfo = info?.info || {};
+  const providerBackdrop = firstNonEmptyString(
+    providerInfo.backdrop_path,
+    ...(Array.isArray(providerInfo.backdrop_paths) ? providerInfo.backdrop_paths : [])
+  );
+  const providerPoster = firstNonEmptyString(
+    providerInfo.cover_big,
+    providerInfo.movie_image,
+    providerInfo.cover
+  );
+  const providerDescription = firstNonEmptyString(providerInfo.plot, providerInfo.description);
+  const providerRating = firstNonEmptyString(providerInfo.rating, providerInfo.vote_average);
+  const providerYear = firstNonEmptyString(
+    providerInfo.year,
+    typeof providerInfo.releasedate === 'string' ? providerInfo.releasedate.split('-')[0] : null,
+    typeof providerInfo.release_date === 'string' ? providerInfo.release_date.split('-')[0] : null
+  );
+  const providerGenres = parseGenres(providerInfo.genre);
+
+  // Provider data is primary. TMDB only enriches when provider data is missing.
+  const backdrop = providerBackdrop || tmdbData?.backdropUrl || cover;
+  const poster = providerPoster || tmdbData?.posterUrl || cover;
+  const desc = providerDescription || tmdbData?.overview || 'No description available.';
+  const rating = formatRating(providerRating, tmdbData?.rating);
+  const year = providerYear || tmdbData?.releaseDate?.split('-')[0] || null;
 
   if (loading) {
     return (
@@ -155,17 +216,19 @@ const MediaInfoScreen = () => {
                   )}
                 </View>
 
-                {tmdbData?.genres ? (
+                {providerGenres.length > 0 ? (
+                  <View style={styles.genresRow}>
+                    {providerGenres.map((g, i) => (
+                      <View key={i} style={styles.genrePill}><Text style={styles.genreText}>{g}</Text></View>
+                    ))}
+                  </View>
+                ) : tmdbData?.genres?.length ? (
                   <View style={styles.genresRow}>
                     {tmdbData.genres.map((g: string, i: number) => (
                       <View key={i} style={styles.genrePill}><Text style={styles.genreText}>{g}</Text></View>
                     ))}
                   </View>
-                ) : info?.info?.genre && (
-                  <View style={styles.genresRow}>
-                    <View style={styles.genrePill}><Text style={styles.genreText}>{info.info.genre}</Text></View>
-                  </View>
-                )}
+                ) : null}
 
                 <Text style={[styles.desc, isMobile && { textAlign: 'center' }]} numberOfLines={isMobile ? 4 : 6}>{desc}</Text>
 

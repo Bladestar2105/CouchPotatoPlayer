@@ -19,6 +19,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.couchpotatoplayer",
       "infoPlist": {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": [
+          "en",
+          "de",
+          "fr",
+          "el"
+        ],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }

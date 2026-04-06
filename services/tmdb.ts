@@ -34,6 +34,23 @@ const TV_GENRES: Record<number, string> = {
   10767: 'Talk', 10768: 'War & Politics', 37: 'Western',
 };
 
+type TMDBItem = {
+  id: number;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  overview?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
+  genre_ids?: number[];
+  popularity?: number;
+  media_type?: string;
+};
+
 function cleanTitle(title: string): string {
   return title
     .replace(/\s*\[.*?\]\s*/g, '')
@@ -75,6 +92,29 @@ function setCache<T>(cache: Map<string, T>, key: string, value: T): void {
   }
 }
 
+function buildTmdbImageUrl(size: string, path: string | null | undefined): string | null {
+  if (!path) return null;
+  return `${TMDB_IMAGE_BASE}/${size}${path}`;
+}
+
+function mapTmdbItemToSearchResult(item: TMDBItem, type: 'movie' | 'tv'): TMDBSearchResult {
+  const genreMap = type === 'movie' ? MOVIE_GENRES : TV_GENRES;
+
+  return {
+    id: item.id,
+    title: type === 'movie' ? (item.title || item.name || '') : (item.name || item.title || ''),
+    originalTitle: type === 'movie' ? (item.original_title || '') : (item.original_name || ''),
+    overview: item.overview || '',
+    posterUrl: buildTmdbImageUrl(type === 'movie' ? 'w342' : 'w500', item.poster_path),
+    backdropUrl: buildTmdbImageUrl(type === 'movie' ? 'w780' : 'w1280', item.backdrop_path),
+    rating: item.vote_average || 0,
+    releaseDate: type === 'movie' ? (item.release_date || '') : (item.first_air_date || ''),
+    genres: (item.genre_ids || []).map((id: number) => genreMap[id] || 'Unknown'),
+    mediaType: type,
+    popularity: item.popularity || 0,
+  };
+}
+
 export class TMDBService {
   private apiKey: string;
   private language: string;
@@ -114,21 +154,9 @@ export class TMDBService {
       if (!res.ok) return [];
 
       const data = await res.json();
-      const results: TMDBSearchResult[] = (data.results || []).slice(0, 5).map((item: any) => ({
-        id: item.id,
-        title: type === 'movie' ? (item.title || item.name) : (item.name || item.title),
-        originalTitle: type === 'movie' ? (item.original_title || '') : (item.original_name || ''),
-        overview: item.overview || '',
-        posterUrl: item.poster_path ? `${TMDB_IMAGE_BASE}/w342${item.poster_path}` : null,
-        backdropUrl: item.backdrop_path ? `${TMDB_IMAGE_BASE}/w780${item.backdrop_path}` : null,
-        rating: item.vote_average || 0,
-        releaseDate: type === 'movie' ? (item.release_date || '') : (item.first_air_date || ''),
-        genres: (item.genre_ids || []).map((id: number) =>
-          (type === 'movie' ? MOVIE_GENRES : TV_GENRES)[id] || 'Unknown'
-        ),
-        mediaType: type,
-        popularity: item.popularity || 0,
-      }));
+      const results: TMDBSearchResult[] = (data.results || [])
+        .slice(0, 5)
+        .map((item: TMDBItem) => mapTmdbItemToSearchResult(item, type));
 
       setCache(searchCache, cacheKey, results);
       return results;
@@ -161,23 +189,9 @@ export class TMDBService {
       if (!res.ok) return [];
 
       const data = await res.json();
-      const results: TMDBSearchResult[] = (data.results || []).slice(0, 10).map((item: any) => {
+      const results: TMDBSearchResult[] = (data.results || []).slice(0, 10).map((item: TMDBItem) => {
         const mType = item.media_type === 'tv' ? 'tv' : 'movie';
-        return {
-          id: item.id,
-          title: item.title || item.name,
-          originalTitle: item.original_title || item.original_name || '',
-          overview: item.overview || '',
-          posterUrl: item.poster_path ? `${TMDB_IMAGE_BASE}/w500${item.poster_path}` : null,
-          backdropUrl: item.backdrop_path ? `${TMDB_IMAGE_BASE}/w1280${item.backdrop_path}` : null,
-          rating: item.vote_average || 0,
-          releaseDate: item.release_date || item.first_air_date || '',
-          genres: (item.genre_ids || []).map((id: number) =>
-            (mType === 'movie' ? MOVIE_GENRES : TV_GENRES)[id] || 'Unknown'
-          ),
-          mediaType: mType as 'movie' | 'tv',
-          popularity: item.popularity || 0,
-        };
+        return mapTmdbItemToSearchResult(item, mType as 'movie' | 'tv');
       });
 
       setCache(searchCache, cacheKey, results);
