@@ -109,12 +109,12 @@ const WelcomeScreen = () => {
   const renderExistingProfiles = () => (
     <View style={styles.profilesContainer}>
       <Image
-        source={require('../assets/brand-mark-small.png')}
+        source={require('../assets/character_logo.png')}
         style={styles.appLogo}
         resizeMode="contain"
       />
       <Image
-        source={require('../assets/brand-wordmark.png')}
+        source={require('../assets/brand-wordmark-white.png')}
         style={styles.wordmark}
         resizeMode="contain"
       />
@@ -127,7 +127,7 @@ const WelcomeScreen = () => {
         contentContainerStyle={{ paddingHorizontal: 16 }}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.profileTile, { backgroundColor: colors.card, borderColor: colors.divider }]}
+            style={[styles.profileTile, { backgroundColor: '#FFFFFF', borderColor: colors.divider }]}
             onPress={() => handleLoadProfile(item)}
             accessibilityRole="button"
             accessibilityLabel={`Load ${item.name}`}
@@ -163,11 +163,11 @@ const WelcomeScreen = () => {
 
   const renderAddForm = () => (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: '#FFFFFF' }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, { backgroundColor: '#FFFFFF' }]}>
           {profiles.length > 0 && (
             <TouchableOpacity
               style={styles.backToList}
@@ -180,12 +180,12 @@ const WelcomeScreen = () => {
           )}
 
           <Image
-            source={require('../assets/brand-mark-small.png')}
+            source={require('../assets/character_logo.png')}
             style={styles.appLogo}
             resizeMode="contain"
           />
           <Image
-            source={require('../assets/brand-wordmark.png')}
+            source={require('../assets/brand-wordmark-white.png')}
             style={styles.wordmark}
             resizeMode="contain"
           />
@@ -323,7 +323,7 @@ const WelcomeScreen = () => {
   // If profiles exist and we're not showing the add form, show the profile list
   if (profiles.length > 0 && !showAddForm) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
         {loading && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color={colors.primary} />
