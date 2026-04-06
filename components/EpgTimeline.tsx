@@ -182,10 +182,10 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
             >
                 <View style={styles.logoContainer}>
                     <Image
-                        source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : require('../assets/icon.png')}
+                        source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : require('../assets/character_logo.png')}
                         style={styles.channelLogo}
                         resizeMode="contain"
-                        defaultSource={require('../assets/icon.png')}
+                        defaultSource={require('../assets/character_logo.png')}
                     />
                     {/* Catchup badge */}
                     {hasCatchup && hasCatchup(channel) && (
@@ -332,7 +332,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
     return channel.tvgId || channel.id;
   };
 
-  const defaultLogo = require('../assets/icon.png'); // fallback
+  const defaultLogo = require('../assets/character_logo.png'); // fallback
 
   return (
     <View style={styles.container}>

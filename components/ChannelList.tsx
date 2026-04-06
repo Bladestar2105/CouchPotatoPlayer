@@ -13,7 +13,7 @@ import { isTV as isTVPlatform } from '../utils/platform';
 import { useTranslation } from 'react-i18next';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
-const defaultLogo = require('../assets/icon.png');
+const defaultLogo = require('../assets/character_logo.png');
 const { height } = Dimensions.get('window');
 
 // Cache time formatter

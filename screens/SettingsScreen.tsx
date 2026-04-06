@@ -243,7 +243,9 @@ const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
         ref={index === 0 ? firstCategoryRef : undefined}
         style={[
           styles.categoryItem,
-          isActive && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 }
+          isActive && (Platform.isTV
+            ? { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 }
+            : { backgroundColor: 'rgba(233, 105, 42, 0.16)', borderBottomColor: '#E9692A', borderBottomWidth: 2 })
         ]}
         onPress={() => setActiveCategory(id)}
         accessible={true}
@@ -284,9 +286,14 @@ const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.sidebar, { backgroundColor: colors.card }]}>
+      <View style={[styles.sidebar, { backgroundColor: colors.card, borderColor: colors.divider }]}>
         <Text style={[styles.sidebarTitle, { color: colors.text }]}>{t('settings')}</Text>
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          horizontal={!Platform.isTV}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={!Platform.isTV ? styles.mobileCategoryRow : undefined}
+        >
           {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Playlists / Providers', 0)}
           {renderCategoryItem('general', <Settings color={activeCategory === 'general' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'General', 1)}
           {renderCategoryItem('appearance', <Palette color={activeCategory === 'appearance' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, 'Appearance', 2)}
@@ -572,27 +579,37 @@ const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: Platform.isTV ? 'row' : 'column',
   },
   sidebar: {
-    width: Platform.isTV ? 280 : 250,
-    borderRightWidth: 1,
-    borderRightColor: '#27272A',
-    paddingTop: 20,
+    width: Platform.isTV ? 280 : '100%',
+    borderRightWidth: Platform.isTV ? 1 : 0,
+    borderBottomWidth: Platform.isTV ? 0 : 1,
+    paddingTop: Platform.isTV ? 20 : 10,
+    paddingBottom: Platform.isTV ? 0 : 8,
   },
   sidebarTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: Platform.isTV ? 20 : 10,
     paddingHorizontal: 20,
+    display: Platform.isTV ? 'flex' : 'none',
+  },
+  mobileCategoryRow: {
+    paddingHorizontal: 12,
+    alignItems: 'center',
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderLeftWidth: 3,
+    paddingVertical: Platform.isTV ? 14 : 10,
+    paddingHorizontal: Platform.isTV ? 20 : 14,
+    borderLeftWidth: Platform.isTV ? 3 : 0,
     borderLeftColor: 'transparent',
+    borderBottomWidth: Platform.isTV ? 0 : 2,
+    borderBottomColor: 'transparent',
+    borderRadius: Platform.isTV ? 0 : 10,
+    marginRight: Platform.isTV ? 0 : 8,
   },
   categoryText: {
     fontSize: 16,

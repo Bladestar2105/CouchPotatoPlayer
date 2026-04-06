@@ -7,7 +7,7 @@ import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
-const defaultLogo = require('../assets/icon.png');
+const defaultLogo = require('../assets/character_logo.png');
 const BASE_POSTER_WIDTH = Platform.isTV ? 150 : 130;
 const MAX_POSTER_COLUMNS = 10;
 

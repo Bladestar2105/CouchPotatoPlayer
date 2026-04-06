@@ -7,7 +7,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { isTV as isTVPlatform } from '../utils/platform';
 
-const defaultLogo = require('../assets/icon.png');
+const defaultLogo = require('../assets/character_logo.png');
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 

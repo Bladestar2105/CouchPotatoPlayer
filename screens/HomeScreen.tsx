@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, Image, BackHandler, Alert, TVFocusGuideView, TVEventControl, NativeModules } from 'react-native';
+import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, Image, BackHandler, Alert, TVEventControl, NativeModules, ScrollView } from 'react-native';
+import TVFocusGuideView from '../components/TVFocusGuideView';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTV } from '../context/IPTVContext';
@@ -160,8 +161,13 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, curren
           )}
         </TouchableOpacity>
 
-        {/* Tabs - plain View row, NO ScrollView to avoid Android touch issues */}
-        <View style={mobileTabStyles.tabsRow}>
+        {/* Tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={mobileTabStyles.tabsRow}
+          bounces={false}
+        >
           {tabs.map((tab) => (
             <MobileTabItem
               key={tab.id}
@@ -171,7 +177,7 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, curren
               colors={colors}
             />
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       {/* Provider dropdown - rendered outside the tab row to avoid blocking taps */}
@@ -207,7 +213,7 @@ const mobileTabStyles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     paddingLeft: 6,
-    height: 48,
+    height: 56,
     overflow: 'visible',
   },
   brandContainer: {
@@ -216,13 +222,13 @@ const mobileTabStyles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRightWidth: 1,
     height: '100%',
-    minWidth: 46,
+    minWidth: 58,
     flexShrink: 0,
     marginRight: 4,
   },
-  brandLogo: { width: 28, height: 28, marginRight: 2 },
+  brandLogo: { width: 34, height: 34, marginRight: 2 },
   profileDropdown: {
-    position: 'absolute', top: 48, left: 0, minWidth: 220,
+    position: 'absolute', top: 56, left: 0, minWidth: 220,
     borderWidth: 1, borderRadius: 14, zIndex: 200, elevation: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16,
     paddingVertical: 6,
@@ -232,25 +238,23 @@ const mobileTabStyles = StyleSheet.create({
     paddingVertical: 11, paddingHorizontal: 16, borderRadius: 10, marginHorizontal: 6, marginVertical: 2,
   },
   tabsRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    height: '100%',
-    paddingHorizontal: 2,
-    paddingLeft: 2,
+    paddingHorizontal: 6,
+    paddingRight: 12,
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderBottomWidth: 2.5,
     borderBottomColor: 'transparent',
-    height: '100%',
-    minWidth: 0,
+    height: 56,
+    minWidth: 88,
   },
-  tabLabel: { fontSize: 10, marginLeft: 3, letterSpacing: 0.2, fontWeight: '500' },
+  tabLabel: { fontSize: 12, marginLeft: 5, letterSpacing: 0.2, fontWeight: '600' },
 });
 
 // ============================================================
@@ -581,7 +585,7 @@ const HomeScreen = () => {
   if (isInitializing || (isLoading && !currentProfile)) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
-         <Image source={require('../assets/icon.png')} style={{ width: 150, height: 150, marginBottom: 20 }} resizeMode="contain" />
+         <Image source={require('../assets/character_logo.png')} style={{ width: 150, height: 150, marginBottom: 20 }} resizeMode="contain" />
          <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );

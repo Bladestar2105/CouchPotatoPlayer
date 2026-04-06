@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, BackHandler, TVEventControl, TVFocusGuideView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, BackHandler, TVEventControl } from 'react-native';
+import TVFocusGuideView from '../components/TVFocusGuideView';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
