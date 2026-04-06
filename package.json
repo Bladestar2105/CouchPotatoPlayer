@@ -12,7 +12,8 @@
     "build:tvos-device": "./scripts/build_tvos_device.sh",
     "build:android-sim": "./scripts/build_android_sim.sh",
     "build:android-tv-sim": "./scripts/build_android_tv_sim.sh",
-    "build:web": "./scripts/build_web.sh"
+    "build:web": "./scripts/build_web.sh",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@expo/metro-runtime": "56.0.0-canary-20260305-5163746",
