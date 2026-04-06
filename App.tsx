@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NetworkMonitor } from './components/NetworkMonitor';
 
-// Importez les écrans (SAUF SplashScreen)
+// Screen imports (SplashScreen is intentionally omitted)
 import HomeScreen from './screens/HomeScreen';
 import PlayerScreen from './screens/PlayerScreen';
 import SeasonScreen from './screens/SeasonScreen';
@@ -22,7 +22,7 @@ import MediaInfoScreen from './screens/MediaInfoScreen';
 import SearchScreen from './screens/SearchScreen';
 import { Series, Season } from './types';
 
-// Mettre à jour la liste des écrans (SAUF Splash)
+// Navigation route map (without Splash route)
 export type RootStackParamList = {
   Home: {
     focusChannelId?: string;
@@ -63,7 +63,7 @@ const App = () => {
           <NetworkMonitor />
         <NavigationContainer>
           <Stack.Navigator
-            // --- L'ÉCRAN DE DÉMARRAGE EST DE RETOUR SUR "Home" ---
+            // App starts directly on Home.
             initialRouteName="Home"
             screenOptions={{
               headerStyle: {
@@ -80,7 +80,7 @@ const App = () => {
               },
             }}
           >
-            {/* On a supprimé l'écran "Splash" */}
+            {/* Splash route intentionally removed */}
             <Stack.Screen
               name="Home"
               component={HomeScreen}

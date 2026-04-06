@@ -1,5 +1,5 @@
 /**
- * Représente une chaîne (Live TV)
+ * Represents a live TV channel.
  */
 export interface Channel {
   id: string;
@@ -22,7 +22,7 @@ export interface Channel {
 }
 
 /**
- * Représente un Film (VOD)
+ * Represents a VOD movie.
  */
 export interface Movie {
   id: string;
@@ -36,7 +36,7 @@ export interface Movie {
 }
 
 /**
- * Représente un épisode de Série
+ * Represents a single series episode.
  */
 export interface Episode {
   id: string;
@@ -47,7 +47,7 @@ export interface Episode {
 }
 
 /**
- * Représente une seule saison
+ * Represents a single season.
  */
 export interface Season {
   id: string;
@@ -57,7 +57,7 @@ export interface Season {
 }
 
 /**
- * Représente une série complète
+ * Represents a complete series.
  */
 export interface Series {
   id: string;
@@ -70,7 +70,7 @@ export interface Series {
 }
 
 /**
- * Programme EPG avec support pour timestamps Unix
+ * EPG program with Unix timestamp support.
  */
 export interface EPGProgram {
   id: string;
@@ -87,7 +87,7 @@ export interface EPGProgram {
 }
 
 /**
- * Élément favori avec métadonnées complètes
+ * Favorite item with full metadata.
  */
 export interface FavoriteItem {
   id: string;
@@ -100,7 +100,7 @@ export interface FavoriteItem {
 }
 
 /**
- * Élément récemment regardé avec progression
+ * Recently watched item with progress metadata.
  */
 export interface RecentlyWatchedItem {
   id: string;
@@ -119,7 +119,7 @@ export interface RecentlyWatchedItem {
 }
 
 /**
- * Catégorie IPTV
+ * IPTV category.
  */
 export interface Category {
   category_id: string;

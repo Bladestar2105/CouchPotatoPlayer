@@ -1,10 +1,11 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
+import { isTV as isTVPlatform } from '../utils/platform';
 
 const defaultLogo = require('../assets/icon.png');
 
@@ -23,7 +24,7 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
   const searchFieldFocusRef = useRef<any>(null);
   const [shouldFocusSearchField, setShouldFocusSearchField] = useState(false);
   const [isActivatorFocused, setIsActivatorFocused] = useState(false);
-  const isTV = Platform.isTV || (Platform.OS as any) === 'tvos';
+  const isTV = isTVPlatform;
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
@@ -177,7 +178,7 @@ const SearchScreen = forwardRef<ContentRef>((props, ref) => {
           tvFocusable={true}
           isTVSelectable={true}
           hasTVPreferredFocus={!isTV && shouldFocusSearchField}
-          autoFocus={!Platform.isTV}
+          autoFocus={!isTV}
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel="Clear search query">
