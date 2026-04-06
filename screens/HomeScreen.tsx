@@ -153,7 +153,7 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, curren
           onPress={() => profiles.length > 1 && setShowProfileMenu(!showProfileMenu)}
           activeOpacity={0.7}
         >
-          <Image source={require('../assets/icon.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
+          <Image source={require('../assets/brand-mark.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
           {profiles.length > 1 && (
             <Icon name="arrow-drop-down" size={18} color={colors.textMuted} />
           )}
@@ -219,7 +219,7 @@ const mobileTabStyles = StyleSheet.create({
     flexShrink: 0,
     marginRight: 4,
   },
-  brandLogo: { width: 26, height: 26, borderRadius: 8, marginRight: 2 },
+  brandLogo: { width: 28, height: 28, marginRight: 2 },
   profileDropdown: {
     position: 'absolute', top: 48, left: 0, minWidth: 220,
     borderWidth: 1, borderRadius: 14, zIndex: 200, elevation: 12,

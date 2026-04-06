@@ -109,11 +109,15 @@ const WelcomeScreen = () => {
   const renderExistingProfiles = () => (
     <View style={styles.profilesContainer}>
       <Image
-        source={require('../assets/icon.png')}
+        source={require('../assets/brand-mark.png')}
         style={styles.appLogo}
         resizeMode="contain"
       />
-      <Text style={[styles.title, { color: colors.text }]}>CouchPotatoPlayer</Text>
+      <Image
+        source={require('../assets/brand-wordmark.png')}
+        style={styles.wordmark}
+        resizeMode="contain"
+      />
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Select a Provider</Text>
 
       <FlatList
@@ -176,11 +180,15 @@ const WelcomeScreen = () => {
           )}
 
           <Image
-            source={require('../assets/icon.png')}
+            source={require('../assets/brand-mark.png')}
             style={styles.appLogo}
             resizeMode="contain"
           />
-          <Text style={[styles.title, { color: colors.text }]}>CouchPotatoPlayer</Text>
+          <Image
+            source={require('../assets/brand-wordmark.png')}
+            style={styles.wordmark}
+            resizeMode="contain"
+          />
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {profiles.length > 0 ? 'Add New Provider' : 'Welcome'}
           </Text>
@@ -369,17 +377,14 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   appLogo: {
-    width: 100,
-    height: 100,
-    marginBottom: 24,
-    borderRadius: 24,
+    width: 136,
+    height: 112,
+    marginBottom: 18,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-    letterSpacing: -0.5,
+  wordmark: {
+    width: 320,
+    height: 72,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 16,
