@@ -127,7 +127,7 @@ const MediaInfoScreen = () => {
         {/* Modern Hero Backdrop */}
         <ImageBackground source={{ uri: backdrop }} style={styles.heroBackdrop}>
           <View style={[styles.heroOverlay, { backgroundColor: 'rgba(13,13,15,0.85)' }]}>
-<TouchableOpacity style={styles.backBtn} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate('Home'); }} accessible={true} isTVSelectable={true} accessibilityRole="button" accessibilityLabel="Go back">
+<TouchableOpacity style={styles.backBtn} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate('Home'); }} accessible={true} isTVSelectable={true} accessibilityRole="button" accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
               <ArrowLeft color="#FFF" size={24} />
             </TouchableOpacity>
 
@@ -178,12 +178,13 @@ const MediaInfoScreen = () => {
                     hasTVPreferredFocus={true}
                     accessibilityRole="button"
                     accessibilityLabel={type === 'series' ? 'Episodes' : 'Play'}
+                    accessibilityHint={type === 'series' ? 'Shows episodes for this series' : 'Plays this media'}
                   >
                     <Play color="#FFF" size={20} fill="#FFF" />
                     <Text style={styles.playText}>{type === 'series' ? 'Episodes' : 'Play'}</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.favBtn} onPress={toggleFavorite} accessible={true} isTVSelectable={true} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
+                  <TouchableOpacity style={styles.favBtn} onPress={toggleFavorite} accessible={true} isTVSelectable={true} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'} accessibilityHint={isFavorite ? 'Removes this media from your favorites list' : 'Adds this media to your favorites list'}>
                     {isFavorite ? <Heart color="#EF4444" size={24} fill="#EF4444" /> : <Heart color="#FAFAFA" size={24} />}
                   </TouchableOpacity>
                 </View>
