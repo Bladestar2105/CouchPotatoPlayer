@@ -3,3 +3,7 @@
 **Action:** Default to using `TouchableOpacity` (or `Pressable`) with `accessibilityRole="button"` and `accessibilityLabel` for better accessibility and consistent cross-platform styling instead of standard native `Button`s.\n## 2025-05-25 - [Use accessibilityRole="tab" for Custom Selectors]
 **Learning:** When using horizontal TouchableOpacity groups as a toggle/selector (like choosing between 'Xtream Codes' and 'M3U Playlist'), screen readers just read them as plain buttons unless we define the relationship.
 **Action:** Always use `accessibilityRole="tab"` and `accessibilityState={{ selected: bool }}` for these grouped selectors so users understand their current selection context.
+
+## 2026-04-06 - Add accessibility hints to primary media actions
+**Learning:** While `accessibilityLabel` describes what an element is (e.g. 'Play'), `accessibilityHint` is crucial for explaining the result of interacting with it (e.g. 'Plays this media'), significantly improving the experience for screen reader users on key call-to-actions.
+**Action:** Always pair `accessibilityLabel` with `accessibilityHint` on prominent interactive elements.
