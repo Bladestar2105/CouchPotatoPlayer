@@ -379,11 +379,11 @@ const styles = StyleSheet.create({
   appLogo: {
     width: 136,
     height: 112,
-    marginBottom: 18,
+    marginBottom: -10,
   },
   wordmark: {
-    width: 400,
-    height: 100,
+    width: 480,
+    height: 120,
     marginBottom: 6,
   },
   subtitle: {

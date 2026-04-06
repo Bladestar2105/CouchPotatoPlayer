@@ -7,3 +7,6 @@
 ## 2026-04-06 - Add accessibility hints to primary media actions
 **Learning:** While `accessibilityLabel` describes what an element is (e.g. 'Play'), `accessibilityHint` is crucial for explaining the result of interacting with it (e.g. 'Plays this media'), significantly improving the experience for screen reader users on key call-to-actions.
 **Action:** Always pair `accessibilityLabel` with `accessibilityHint` on prominent interactive elements.
+## 2026-04-06 - [Apply Custom Branding and Light Theme to Welcome Screen]
+**Learning:** When adopting a light theme for specific initial login/welcome screens in an otherwise dark-theme application, text contrast and icon visibility immediately suffer unless standard text styling overrides are thoroughly applied alongside the background color changes.
+**Action:** Always map explicit dark/brand colors (e.g. , ) to text elements, borders, and SVGs/icons when shifting a component's container background to white () to ensure WCAG compliant contrast and correct visual branding.
