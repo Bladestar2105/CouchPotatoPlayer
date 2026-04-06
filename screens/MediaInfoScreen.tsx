@@ -65,6 +65,9 @@ const MediaInfoScreen = () => {
     }
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+        TVEventControl.disableTVMenuKey();
+      }
       if (navigation.canGoBack()) {
         navigation.goBack();
         return true;

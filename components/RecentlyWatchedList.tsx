@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { RecentlyWatchedItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
@@ -14,13 +15,14 @@ type RecentlyWatchedScreenNavigationProp = StackNavigationProp<RootStackParamLis
 const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, playStream, addRecentlyWatched } = useIPTV();
   const { colors } = useSettings();
+  const { t } = useTranslation();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
   const dimensions = useWindowDimensions();
   const isTvMode = dimensions.width >= 1200;
-  const numColumns = isTvMode ? 6 : 3;
+  const numColumns = isTvMode ? 6 : Math.max(3, Math.floor(dimensions.width / 160));
   const horizontalPadding = 32; // list container left+right padding
   const cardGap = 16; // combined left+right margin from styles.card
-  const cardWidth = Math.max(140, Math.floor((dimensions.width - horizontalPadding - (cardGap * numColumns)) / numColumns));
+  const cardWidth = Math.min(220, Math.max(140, Math.floor((dimensions.width - horizontalPadding - (cardGap * numColumns)) / numColumns)));
 
   const firstItemRef = useRef<any>(null);
   const clearAllButtonRef = useRef<any>(null);
@@ -168,7 +170,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
           accessibilityLabel={`Remove ${item.name} from recently watched`}
         >
           <Icon name="delete-outline" size={16} color="#FFF" />
-          <Text style={styles.removeActionText}>Entfernen</Text>
+          <Text style={styles.removeActionText}>{t('remove', 'Entfernen')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -178,8 +180,8 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
     return (
       <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
         <Icon name="history" size={64} color={colors.textSecondary} />
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Kein Verlauf vorhanden.</Text>
-        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>Schaue Kanäle, Filme oder Serien, um sie hier zu sehen.</Text>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('noHistory', 'Kein Verlauf vorhanden.')}</Text>
+        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>{t('historyHint', 'Schaue Kanäle, Filme oder Serien, um sie hier zu sehen.')}</Text>
       </View>
     );
   }
@@ -207,7 +209,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
           nextFocusDown={findNodeHandle(firstItemRef.current) ?? undefined}
         >
           <Icon name="delete-sweep" size={18} color="#FFF" />
-          <Text style={styles.clearAllText}>Liste leeren</Text>
+          <Text style={styles.clearAllText}>{t('clearList', 'Liste leeren')}</Text>
         </TouchableOpacity>
       </View>
         <FlatList
