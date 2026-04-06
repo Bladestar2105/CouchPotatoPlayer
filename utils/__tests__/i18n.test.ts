@@ -8,11 +8,19 @@ mock.module('expo-localization', () => {
   };
 });
 
-import i18n from '../i18n';
+import i18n, { resolveLanguage } from '../i18n';
 
 describe('i18n', () => {
   test('should fallback to en when locale is not supported', async () => {
     expect(i18n.language).toBe('en');
+  });
+
+  test('should resolve language from languageCode', () => {
+    expect(resolveLanguage([{ languageCode: 'de' } as any])).toBe('de');
+  });
+
+  test('should resolve language from languageTag when languageCode is unavailable', () => {
+    expect(resolveLanguage([{ languageTag: 'de-DE' } as any])).toBe('de');
   });
 
   test('should have English translations', () => {

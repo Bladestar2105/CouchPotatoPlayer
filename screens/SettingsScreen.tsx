@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle } from 'lucide-react-native';
+import { getAvailablePlayerTypesForPlatform } from '../components/player/PlayerAdapter';
 
 type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
@@ -190,10 +191,17 @@ const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
 
   const getPlayerTypeName = (type: PlayerType) => {
     if (type === 'avkit') return 'AVKit (HLS & MP4 only)';
-    if (type === 'vlc') return 'VLC (All Formats)';
+    if (type === 'vlc') return 'VLC (Android)';
     if (type === 'ksplayer') return 'KSPlayer (FFmpeg)';
     return getNativePlayerName();
   };
+
+  const playerTypeOptions = getAvailablePlayerTypesForPlatform(Platform.OS, Platform.isTV).map((type) => {
+    if (type === 'ksplayer') return { label: 'KSPlayer (FFmpeg)', value: 'ksplayer' as PlayerType };
+    if (type === 'avkit') return { label: 'AVKit (HLS & MP4 only)', value: 'avkit' as PlayerType };
+    if (type === 'vlc') return { label: 'VLC (Android)', value: 'vlc' as PlayerType };
+    return { label: getNativePlayerName(), value: 'native' as PlayerType };
+  });
 
   const handleToggleAdultContent = (value: boolean) => {
     if (!value) {
@@ -433,12 +441,7 @@ const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
                   t('playerSettings', 'Video Player Engine'),
                   getPlayerTypeName(playerType),
                   <Text style={{ color: colors.primary }}>Change</Text>,
-                  () => openSubMenu('Video Player Engine', [
-                    { label: 'VLC (All Formats)', value: 'vlc' },
-                    { label: 'KSPlayer (FFmpeg)', value: 'ksplayer' },
-                    { label: 'AVKit (HLS & MP4 only)', value: 'avkit' },
-                    { label: getNativePlayerName(), value: 'native' }
-                  ], setPlayerType, playerType)
+                  () => openSubMenu('Video Player Engine', playerTypeOptions, setPlayerType, playerType)
                 )}
 
                 {renderSettingRow(

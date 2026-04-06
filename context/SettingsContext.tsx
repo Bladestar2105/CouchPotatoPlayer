@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/logger';
+import { getDefaultPlayerTypeForPlatform, normalizePlayerTypeForPlatform } from '../components/player/PlayerAdapter';
 
 export type ThemeMode = 'dark' | 'oled' | 'light';
 
@@ -118,7 +119,9 @@ const SettingsContext = createContext<SettingsContextProps | undefined>(undefine
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
   const [bufferSize, setBufferSizeState] = useState<number>(32);
-  const [playerType, setPlayerTypeState] = useState<PlayerType>(Platform.isTV ? 'vlc' : 'native');
+  const [playerType, setPlayerTypeState] = useState<PlayerType>(
+    getDefaultPlayerTypeForPlatform(Platform.OS, Platform.isTV),
+  );
   const [vlcHardwareAcceleration, setVlcHardwareAccelerationState] = useState<boolean>(true);
   const [ksplayerHardwareDecode, setKsplayerHardwareDecodeState] = useState<boolean>(true);
   const [ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompressionState] = useState<boolean>(false);
@@ -141,7 +144,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         const storedPlayerType = await AsyncStorage.getItem('app_player_type');
         if (storedPlayerType === 'native' || storedPlayerType === 'vlc' || storedPlayerType === 'avkit' || storedPlayerType === 'ksplayer') {
-          setPlayerTypeState(storedPlayerType as PlayerType);
+          setPlayerTypeState(normalizePlayerTypeForPlatform(storedPlayerType as PlayerType, Platform.OS, Platform.isTV));
         }
 
         const storedVlcHwAccel = await AsyncStorage.getItem('app_vlc_hw_accel');
@@ -196,9 +199,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const setPlayerType = async (type: PlayerType) => {
-    setPlayerTypeState(type);
+    const normalizedType = normalizePlayerTypeForPlatform(type, Platform.OS, Platform.isTV);
+    setPlayerTypeState(normalizedType);
     try {
-      await AsyncStorage.setItem('app_player_type', type);
+      await AsyncStorage.setItem('app_player_type', normalizedType);
     } catch (e) {
       Logger.error('Failed to save player type', e);
     }
