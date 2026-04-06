@@ -3,6 +3,7 @@ import { View, StyleSheet, Platform, NativeModules, NativeSyntheticEvent } from 
 import { useIPTV } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { KSPlayerView } from './KSPlayerView';
+import { detectStreamKind, needsAppleProxy, selectEffectivePlayer, type EffectivePlayer, type StreamKind } from './player/PlayerAdapter';
 
 // ---------------------------------------------------------------------------
 // Platform-gated player imports
@@ -35,26 +36,6 @@ if (Platform.OS === 'web') {
       console.warn('[VideoPlayer] react-native-video not available:', e);
     }
   }
-}
-
-// ---------------------------------------------------------------------------
-// Stream type detection
-// ---------------------------------------------------------------------------
-
-type StreamKind = 'hls' | 'mp4' | 'ts' | 'unknown';
-
-function detectStreamKind(url: string): StreamKind {
-  const lower = url.toLowerCase().split('?')[0].split('#')[0];
-  if (lower.includes('.m3u8') || lower.includes('/m3u8')) return 'hls';
-  if (lower.endsWith('.mp4') || lower.includes('.mp4?')) return 'mp4';
-  if (lower.endsWith('.ts') || lower.includes('.ts?') || lower.includes('/ts')) return 'ts';
-  // Many IPTV streams are raw TS without extension
-  return 'unknown';
-}
-
-/** AVPlayer can only handle HLS and MP4 natively */
-function canAVPlayerHandle(kind: StreamKind): boolean {
-  return kind === 'hls' || kind === 'mp4';
 }
 
 // ---------------------------------------------------------------------------
@@ -199,8 +180,15 @@ const VideoPlayer = React.forwardRef(
         setResolvedProxyUrl(null);
         return;
       }
-      // Only VLC and KSPlayer need proxy resolution on Apple platforms
-      if (Platform.OS === 'ios' && (playerType === 'vlc' || playerType === 'ksplayer')) {
+      const targetPlayer = selectEffectivePlayer({
+        platformOS: Platform.OS,
+        isTV: Platform.isTV,
+        preferredPlayer: playerType,
+        streamKind,
+      });
+
+      // Only players that rely on the Apple proxy should resolve via native module.
+      if (needsAppleProxy(Platform.OS, targetPlayer)) {
         let cancelled = false;
         resolveProxyUrl(streamUrl).then((url) => {
           if (!cancelled) setResolvedProxyUrl(url);
@@ -208,36 +196,16 @@ const VideoPlayer = React.forwardRef(
         return () => { cancelled = true; };
       }
       setResolvedProxyUrl(streamUrl);
-    }, [streamUrl, playerType]);
+    }, [streamKind, streamUrl, playerType]);
 
     // Determine the effective player to use (with smart fallback)
-    const effectivePlayer = useMemo(() => {
-      if (Platform.OS === 'web') return 'web';
-
-      if (Platform.isTV) {
-        // tvOS: if user chose avkit but stream is TS, auto-fallback to vlc
-        if (playerType === 'avkit' && canAVPlayerHandle(streamKind)) return 'avkit';
-        if (playerType === 'ksplayer') return 'ksplayer';
-        // Default: VLC for everything on tvOS (handles all formats)
-        return 'vlc';
-      }
-
-      // iOS (phone/tablet)
-      if (Platform.OS === 'ios') {
-        if (playerType === 'avkit' && canAVPlayerHandle(streamKind)) return 'avkit';
-        if (playerType === 'avkit' && !canAVPlayerHandle(streamKind)) {
-          // AVKit can't handle TS — auto-fallback
-          console.warn('[VideoPlayer] AVKit cannot play TS stream, falling back to VLC');
-          return 'vlc';
-        }
-        if (playerType === 'vlc') return 'vlc';
-        if (playerType === 'ksplayer') return 'ksplayer';
-        return 'native';
-      }
-
-      // Android
-      if (playerType === 'vlc') return 'vlc';
-      return 'native';
+    const effectivePlayer = useMemo<EffectivePlayer>(() => {
+      return selectEffectivePlayer({
+        platformOS: Platform.OS,
+        isTV: Platform.isTV,
+        preferredPlayer: playerType,
+        streamKind,
+      });
     }, [playerType, streamKind]);
 
     // Ref for imperative seek
@@ -398,10 +366,10 @@ const VideoPlayer = React.forwardRef(
       const effectiveUrl = resolvedProxyUrl || streamUrl;
       if (!effectiveUrl) return null;
 
-      // KSPlayerView is only available on iOS/tvOS; on other platforms fall back to VLC
+      // KSPlayerView is only available on iOS/tvOS.
       if (Platform.OS !== 'ios') {
-        console.warn('[VideoPlayer] KSPlayer is only available on iOS/tvOS, falling back to VLC');
-        return renderVLCPlayer();
+        console.warn('[VideoPlayer] KSPlayer is only available on iOS/tvOS');
+        return null;
       }
 
       return (
