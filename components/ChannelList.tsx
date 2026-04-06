@@ -359,7 +359,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     const programs = epg[key] || [];
     if (programs.length === 0) return { currentProgram: null, progressPercent: 0 };
 
-    const idx = findCurrentProgramIndex(programs, new Date(now));
+    const idx = findCurrentProgramIndex(programs, now);
     if (idx === -1) return { currentProgram: null, progressPercent: 0 };
 
     const prog = programs[idx];
