@@ -163,12 +163,12 @@ const PlayerScreen = () => {
 
   const playbackTitle = useMemo(() => {
     const stream = currentStream as any;
+    if (route.params?.title && typeof route.params.title === 'string') return route.params.title;
     if (stream?.name && typeof stream.name === 'string') return stream.name;
     if (currentProgram?.title) return currentProgram.title;
     if (currentChannel?.name) return currentChannel.name;
-    if (route.params?.title && typeof route.params.title === 'string') return route.params.title;
     return t('nowPlaying');
-  }, [currentStream, currentProgram?.title, currentChannel?.name, t]);
+  }, [currentStream, currentProgram?.title, currentChannel?.name, route.params?.title, t]);
 
   // Show channel switch mini-overlay
   const showChannelSwitchBriefly = useCallback(() => {
@@ -266,17 +266,30 @@ const PlayerScreen = () => {
     } else if (evt.eventType === 'playPause') {
       setIsPaused(prev => !prev);
       setShowOverlay(true);
+
+
     } else if (evt.eventType === 'left') {
       if (!canSeek) return;
       const newSeekTime = Math.max(0, currentTimeRef.current - 10000);
-      setSeekTime(newSeekTime);
       currentTimeRef.current = newSeekTime;
+      setPlaybackProgress(prev => ({ ...prev, currentTime: newSeekTime }));
+
+      if (seekDebounceTimerRef.current) clearTimeout(seekDebounceTimerRef.current);
+      seekDebounceTimerRef.current = setTimeout(() => {
+         setSeekTime(newSeekTime);
+      }, 500);
       setShowOverlay(true);
     } else if (evt.eventType === 'right') {
       if (!canSeek) return;
-      const newSeekTime = currentTimeRef.current + 10000;
-      setSeekTime(newSeekTime);
+      const maxTime = playbackProgress.duration || Infinity;
+      const newSeekTime = Math.min(maxTime, currentTimeRef.current + 10000);
       currentTimeRef.current = newSeekTime;
+      setPlaybackProgress(prev => ({ ...prev, currentTime: newSeekTime }));
+
+      if (seekDebounceTimerRef.current) clearTimeout(seekDebounceTimerRef.current);
+      seekDebounceTimerRef.current = setTimeout(() => {
+         setSeekTime(newSeekTime);
+      }, 500);
       setShowOverlay(true);
     } else if (evt.eventType === 'pageUp' || evt.eventType === 'channelUp') {
        switchChannel('up');
@@ -317,7 +330,7 @@ const PlayerScreen = () => {
   return (
     <View style={pStyles.container}>
       {/* TiviMate-style channel switch mini-overlay (top-right) */}
-      {showChannelSwitch && currentChannel && (
+      {showChannelSwitch && false && currentChannel && (
         <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
           <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: colors.primary }]}>
             <View style={[pStyles.channelNumberBadge, { backgroundColor: colors.primary }]}>
@@ -591,8 +604,8 @@ const pStyles = StyleSheet.create({
     paddingBottom: 20,
   },
   channelLogo: {
-      width: 80,
-      height: 80,
+      width: 100,
+      height: 100,
       marginRight: 20,
       backgroundColor: 'rgba(255,255,255,0.05)',
       borderRadius: 8,

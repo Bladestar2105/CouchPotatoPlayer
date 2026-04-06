@@ -605,7 +605,7 @@ const HomeScreen = () => {
        {isUpdating && (
           <View style={[StyleSheet.absoluteFill, styles.centeredContainer, { backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999 }]}>
              <ActivityIndicator size="large" color={colors.primary} />
-             <Text style={{ color: colors.text, marginTop: 16, fontSize: 18, fontWeight: '600' }}>Aktualisiere Playlist...</Text>
+             <Text style={{ color: colors.text, marginTop: 16, fontSize: 18, fontWeight: '600' }}>{t('playlistUpdating', 'Aktualisiere Playlist...')}</Text>
           </View>
        )}
     </View>

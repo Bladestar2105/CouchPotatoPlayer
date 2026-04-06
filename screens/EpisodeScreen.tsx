@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, BackHandler, TVEventControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, BackHandler, TVEventControl, TVFocusGuideView } from 'react-native';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
@@ -31,6 +31,9 @@ const EpisodeScreen = () => {
     }
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (Platform.isTV && TVEventControl?.disableTVMenuKey) {
+        TVEventControl.disableTVMenuKey();
+      }
       if (navigation.canGoBack()) {
         navigation.goBack();
         return true;
@@ -75,11 +78,13 @@ const EpisodeScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
+      <TVFocusGuideView autoFocus style={{flex: 1}}>
+        <FlatList
         data={season.episodes}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
       />
+      </TVFocusGuideView>
     </View>
   );
 };

@@ -247,8 +247,9 @@ const WelcomeScreen = () => {
               { color: isAppleTV ? '#0F172A' : '#2D4263' }
             ]}
             placeholder="Provider Name"
-            placeholderTextColor='rgba(45, 66, 99, 0.6)'
+            placeholderTextColor='#888888'
             selectionColor="#E9692A"
+            keyboardAppearance={isAppleTV ? "dark" : "default"}
             accessibilityLabel="Provider Name"
             value={name}
             onChangeText={setName}
@@ -263,8 +264,9 @@ const WelcomeScreen = () => {
               { color: isAppleTV ? '#0F172A' : '#2D4263' }
             ]}
             placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
-            placeholderTextColor='rgba(45, 66, 99, 0.6)'
+            placeholderTextColor='#888888'
             selectionColor="#E9692A"
+            keyboardAppearance={isAppleTV ? "dark" : "default"}
             accessibilityLabel={type === 'xtream' ? "Server URL" : "M3U Playlist URL"}
             value={serverUrl}
             onChangeText={setServerUrl}
@@ -284,8 +286,9 @@ const WelcomeScreen = () => {
                   { color: isAppleTV ? '#0F172A' : '#2D4263' }
                 ]}
                 placeholder="Username"
-                placeholderTextColor='rgba(45, 66, 99, 0.6)'
+                placeholderTextColor='#888888'
                 selectionColor="#E9692A"
+            keyboardAppearance={isAppleTV ? "dark" : "default"}
                 accessibilityLabel="Username"
                 value={username}
                 onChangeText={setUsername}
@@ -301,8 +304,9 @@ const WelcomeScreen = () => {
                   { color: isAppleTV ? '#0F172A' : '#2D4263' }
                 ]}
                 placeholder="Password"
-                placeholderTextColor='rgba(45, 66, 99, 0.6)'
+                placeholderTextColor='#888888'
                 selectionColor="#E9692A"
+            keyboardAppearance={isAppleTV ? "dark" : "default"}
                 accessibilityLabel="Password"
                 value={password}
                 onChangeText={setPassword}
@@ -319,8 +323,9 @@ const WelcomeScreen = () => {
                 { color: isAppleTV ? '#0F172A' : '#2D4263' }
               ]}
               placeholder="XMLTV EPG URL (Optional)"
-              placeholderTextColor='rgba(45, 66, 99, 0.6)'
+              placeholderTextColor='#888888'
               selectionColor="#E9692A"
+            keyboardAppearance={isAppleTV ? "dark" : "default"}
               accessibilityLabel="XMLTV EPG URL"
               value={epgUrl}
               onChangeText={setEpgUrl}

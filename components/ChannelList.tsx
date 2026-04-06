@@ -41,7 +41,7 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
             accessibilityLabel={`Select category ${title}`}
             hasTVPreferredFocus={hasTVPreferredFocus}
         >
-            <Text style={[tiviStyles.categoryText, { color: isSelected || isFocused ? colors.text : colors.textSecondary }]} numberOfLines={1}>
+            <Text style={[tiviStyles.categoryText, { color: isSelected || isFocused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
                 {title}
             </Text>
             {count !== undefined && (
@@ -56,7 +56,7 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
 });
 
 // TiviMate-style channel row with inline EPG
-const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {
+const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {
     channel: Channel;
     channelNumber: number;
     isPlaying: boolean;
@@ -69,7 +69,7 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
     onLongPress: () => void;
     onFocus: () => void;
     colors: any;
-}) => {
+}, ref: React.Ref<any>) => {
     const [localFocused, setLocalFocused] = useState(false);
     const focused = isFocused || localFocused;
 
@@ -101,7 +101,7 @@ const ChannelRow = React.memo(({ channel, channelNumber, isPlaying, isFocused, i
                     <ChannelLogo url={channel.logo} name={channel.name} style={tiviStyles.channelLogo} />
                 ) : (
                     <View style={[tiviStyles.channelLogo, tiviStyles.logoPlaceholder, { backgroundColor: colors.surfaceSecondary }]}>
-                        <Icon name="tv" size={18} color={colors.textMuted} />
+                        <Icon name="tv" size={Platform.isTV ? 24 : 18} color={colors.textMuted} />
                     </View>
                 )}
                 {hasCatchupSupport && (
@@ -157,6 +157,19 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(props.initialViewMode || 'list');
   const [restoreFocusOnSelectedChannel, setRestoreFocusOnSelectedChannel] = useState(false);
+
+  const channelRefs = useRef<{[key: string]: any}>({});
+
+  useEffect(() => {
+    if (restoreFocusOnSelectedChannel && focusedChannelId) {
+        setTimeout(() => {
+            if (channelRefs.current[focusedChannelId]) {
+                channelRefs.current[focusedChannelId].focus?.();
+            }
+        }, 300);
+    }
+  }, [restoreFocusOnSelectedChannel, focusedChannelId]);
+
 
   useEffect(() => {
     if (route.params?.returnGroupId) {
@@ -499,8 +512,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                     const hasCatchupSupport = hasCatchup ? hasCatchup(channel) : false;
 
                     return (
-                      <ChannelRow
-                        channel={channel}
+                      <ChannelRow ref={(el: any) => (channelRefs.current[channel.id] = el)} channel={channel}
                         channelNumber={channelIndexOffset + index + 1}
                         isPlaying={isPlaying}
                         isFocused={isFocusedChannel}
@@ -609,7 +621,7 @@ const tiviStyles = StyleSheet.create({
   },
   // Category sidebar
   categorySidebar: {
-    width: Platform.isTV ? 280 : 220,
+    width: Platform.isTV ? 320 : 220,
     borderRightWidth: 1,
   },
   categoryItem: {
@@ -664,8 +676,8 @@ const tiviStyles = StyleSheet.create({
     marginHorizontal: Platform.isTV ? 12 : 8,
   },
   channelLogo: {
-    width: Platform.isTV ? 56 : 36,
-    height: Platform.isTV ? 40 : 26,
+    width: Platform.isTV ? 80 : 36,
+    height: Platform.isTV ? 56 : 26,
     borderRadius: 4,
   },
   logoPlaceholder: {
