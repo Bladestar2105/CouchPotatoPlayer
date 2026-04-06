@@ -26,6 +26,10 @@ typealias RCTBubblingEventBlock = ([String: Any]) -> Void
 
 @objc(KSPlayerView)
 class KSPlayerView: UIView {
+    static let configureKSLog: Void = {
+        KSLog.logLevel = .off
+    }()
+
 
     // MARK: - React Native Callbacks
     @objc var onKSVideoLoad: RCTBubblingEventBlock?
@@ -36,67 +40,67 @@ class KSPlayerView: UIView {
     // MARK: - Props
     @objc var streamUrl: String = "" {
         didSet {
-            guard streamUrl != oldValue, !streamUrl.isEmpty else { return }
+            guard streamUrl != oldValue, !streamUrl.isEmpty else { return
             DispatchQueue.main.async { [weak self] in
                 self?.loadStream(urlString: self?.streamUrl ?? "")
-            }
-        }
-    }
+
+
+
 
     @objc var paused: Bool = false {
         didSet {
-            guard paused != oldValue else { return }
+            guard paused != oldValue else { return
             DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
+                guard let self else { return
                 if self.paused {
                     self.playerLayer?.pause()
-                } else {
+                 else {
                     self.playerLayer?.play()
-                }
-            }
-        }
-    }
+
+
+
+
 
     @objc var hardwareDecode: Bool = true {
         didSet {
             if hardwareDecode != oldValue && !streamUrl.isEmpty {
                  DispatchQueue.main.async { [weak self] in
                      self?.loadStream(urlString: self?.streamUrl ?? "")
-                 }
-            }
-        }
-    }
+
+
+
+
 
     @objc var asynchronousDecompression: Bool = false {
         didSet {
              if asynchronousDecompression != oldValue && !streamUrl.isEmpty {
                  DispatchQueue.main.async { [weak self] in
                      self?.loadStream(urlString: self?.streamUrl ?? "")
-                 }
-            }
-        }
-    }
+
+
+
+
 
     @objc var displayFrameRate: Bool = true {
          didSet {
              if displayFrameRate != oldValue && !streamUrl.isEmpty {
                  DispatchQueue.main.async { [weak self] in
                      self?.loadStream(urlString: self?.streamUrl ?? "")
-                 }
-            }
-        }
-    }
+
+
+
+
 
     @objc var seekPosition: NSNumber? {
         didSet {
-            guard let seekPosition else { return }
+            guard let seekPosition else { return
             let targetSeconds = max(0, seekPosition.doubleValue / 1000.0)
             DispatchQueue.main.async { [weak self] in
-                guard let self, let playerLayer = self.playerLayer else { return }
-                playerLayer.seek(time: targetSeconds, autoPlay: !self.paused, completion: { _ in })
-            }
-        }
-    }
+                guard let self, let playerLayer = self.playerLayer else { return
+                playerLayer.seek(time: targetSeconds, autoPlay: !self.paused, completion: { _ in )
+
+
+
 
     // MARK: - Private State
     private var playerLayer: KSPlayerLayer?
@@ -104,16 +108,17 @@ class KSPlayerView: UIView {
     // MARK: - Init
     override init(frame: CGRect) {
         super.init(frame: frame)
+        _ = KSPlayerView.configureKSLog
         backgroundColor = .black
         // Force KSMEPlayer (FFmpegKit) as the primary player type for TS/live streams
         // KSAVPlayer remains as fallback for HLS/MP4 via KSOptions.secondPlayerType
         KSOptions.firstPlayerType = KSMEPlayer.self
         KSOptions.secondPlayerType = KSAVPlayer.self
-    }
+
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
+
 
     deinit {
         // KSPlayerLayer is @MainActor — schedule teardown on main thread
@@ -124,9 +129,9 @@ class KSPlayerView: UIView {
                 layer.delegate = nil
                 layer.player.view?.removeFromSuperview()
                 layer.stop()
-            }
-        }
-    }
+
+
+
 
     // MARK: - Layout
     override func layoutSubviews() {
@@ -134,8 +139,8 @@ class KSPlayerView: UIView {
         // Keep player view filling our bounds
         if let renderView = playerLayer?.player.view {
             renderView.frame = bounds
-        }
-    }
+
+
 
     // MARK: - Stream Loading
     @MainActor
@@ -145,7 +150,7 @@ class KSPlayerView: UIView {
         guard let url = URL(string: urlString) else {
             sendError("Invalid URL: \(urlString)")
             return
-        }
+
 
         let options = buildOptions(for: url)
 
@@ -156,7 +161,7 @@ class KSPlayerView: UIView {
             delegate: self
         )
         playerLayer = layer
-    }
+
 
     private func buildOptions(for url: URL) -> KSOptions {
         let options = KSOptions()
@@ -187,7 +192,7 @@ class KSPlayerView: UIView {
         if self.displayFrameRate {
             options.display = .plane
             options.formatContextOptions["video_size"] = "" // Let player adapt naturally
-        }
+
 
         // Actually, KSPlayer natively implements asynchronousDecompression inside KSOptions.
         // options.asynchronousDecompression = self.asynchronousDecompression
@@ -197,11 +202,11 @@ class KSPlayerView: UIView {
             options.nobuffer = true          // minimize buffering delay
             options.maxBufferDuration = 10   // 10 seconds max buffer
             options.preferredForwardBufferDuration = 2 // start playing quickly
-        } else {
+         else {
             // VOD (HLS / MP4) — optimize for smooth playback
             options.maxBufferDuration = 30
             options.preferredForwardBufferDuration = 4
-        }
+
 
         // Reconnect on disconnect — essential for live IPTV streams
         // (already set in KSOptions.init via formatContextOptions["reconnect"] = 1)
@@ -213,37 +218,37 @@ class KSPlayerView: UIView {
         options.registerRemoteControll = false
 
         return options
-    }
+
 
     /// Must be called on the main thread (KSPlayerLayer is @MainActor)
     @MainActor
     private func tearDown() {
-        guard let layer = playerLayer else { return }
+        guard let layer = playerLayer else { return
         playerLayer = nil // nil first to prevent delegate callbacks during teardown
         layer.delegate = nil
         // Remove the render view from our view hierarchy
         layer.player.view?.removeFromSuperview()
         // Fully stop and release resources
         layer.stop()
-    }
+
 
     // MARK: - Stream Kind Detection
-    private enum StreamKind { case hls, mp4, ts, unknown }
+    private enum StreamKind { case hls, mp4, ts, unknown
 
     private func detectStreamKind(url: URL) -> StreamKind {
         let path = url.path.lowercased()
-        if path.hasSuffix(".m3u8") || path.contains("/m3u8") { return .hls }
-        if path.hasSuffix(".mp4") || path.contains(".mp4?") { return .mp4 }
-        if path.hasSuffix(".ts") || path.contains(".ts?") { return .ts }
+        if path.hasSuffix(".m3u8") || path.contains("/m3u8") { return .hls
+        if path.hasSuffix(".mp4") || path.contains(".mp4?") { return .mp4
+        if path.hasSuffix(".ts") || path.contains(".ts?") { return .ts
         return .unknown
-    }
+
 
     // MARK: - Error Helper
     private func sendError(_ message: String) {
         print("[KSPlayerView] ❌ \(message)")
         onKSVideoError?(["error": message])
-    }
-}
+
+
 
 // MARK: - KSPlayerLayerDelegate
 @MainActor
@@ -256,7 +261,7 @@ extension KSPlayerView: KSPlayerLayerDelegate {
         switch state {
         case .readyToPlay:
             DispatchQueue.main.async { [weak self, weak layer] in
-                guard let self, let layer else { return }
+                guard let self, let layer else { return
                 self.attachRenderView(from: layer)
                 let size = layer.player.naturalSize
                 let duration = layer.player.duration
@@ -265,40 +270,37 @@ extension KSPlayerView: KSPlayerLayerDelegate {
                     "height": size.height,
                     "duration": duration,
                 ])
-            }
+
 
         case .error:
             sendError("KSPlayer playback error")
 
         default:
             break
-        }
-    }
+
+
 
     func player(layer: KSPlayerLayer, currentTime: TimeInterval, totalTime: TimeInterval) {
         onKSProgress?([
             "currentTime": currentTime * 1000,
             "duration": totalTime * 1000,
         ])
-    }
+
 
     func player(layer: KSPlayerLayer, finish error: Error?) {
         if let error {
             sendError(error.localizedDescription)
-        }
-    }
+
+
 
     func player(layer: KSPlayerLayer, bufferedCount: Int, consumeTime: TimeInterval) {
         // Could report buffering status to JS if needed
-    }
+
 
     // MARK: - Render View Attachment
     private func attachRenderView(from layer: KSPlayerLayer) {
-        guard let renderView = layer.player.view else { return }
+        guard let renderView = layer.player.view else { return
         if renderView.superview != self {
             renderView.frame = bounds
             renderView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             addSubview(renderView)
-        }
-    }
-}
