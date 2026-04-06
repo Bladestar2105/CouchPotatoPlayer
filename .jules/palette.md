@@ -8,3 +8,9 @@
 **Why:** The split between 'Sender' and 'EPG' confused users. The auto-collapsing sidebar caused a lot of flickering and focus management issues.
 **Before/After:** Previously, the user had to open a specific 'EPG' tab to see timeline data, and the sidebar would jitter and close on blur. Now, everything lives under 'Live-TV' and the sidebar is permanently pinned open for stable navigation.
 **Accessibility:** Relied fully on native focus engine by completely stripping manual JavaScript-based auto-collapse layout updates, reducing forced re-renders and improving D-pad responsiveness.
+## 2026-04-06 - [Fix huge local Image silent failures on Apple TV Simulator]
+**Learning:** tvOS  components using  will fail silently if the source file is massively out of proportion (e.g., 2700x800) and forced into a tiny view frame (e.g., 28x28). iOS gracefully handles it, but tvOS completely drops the render.
+**Action:** Always pre-scale huge local PNG assets targeting small UI footprints to avoid tvOS simulator visual omissions.
+## 2026-04-06 - [Fix huge local Image silent failures on Apple TV Simulator]
+**Learning:** tvOS Image components using require('path.png') will fail silently if the source file is massively out of proportion (e.g., 2700x800) and forced into a tiny view frame (e.g., 28x28). iOS gracefully handles it, but tvOS completely drops the render.
+**Action:** Always pre-scale huge local PNG assets targeting small UI footprints to avoid tvOS simulator visual omissions.

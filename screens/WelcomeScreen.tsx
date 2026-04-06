@@ -109,7 +109,7 @@ const WelcomeScreen = () => {
   const renderExistingProfiles = () => (
     <View style={styles.profilesContainer}>
       <Image
-        source={require('../assets/brand-mark.png')}
+        source={require('../assets/brand-mark-small.png')}
         style={styles.appLogo}
         resizeMode="contain"
       />
@@ -180,7 +180,7 @@ const WelcomeScreen = () => {
           )}
 
           <Image
-            source={require('../assets/brand-mark.png')}
+            source={require('../assets/brand-mark-small.png')}
             style={styles.appLogo}
             resizeMode="contain"
           />
