@@ -118,7 +118,7 @@ const WelcomeScreen = () => {
         style={styles.wordmark}
         resizeMode="contain"
       />
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Select a Provider</Text>
+      <Text style={[styles.subtitle, { color: '#2D4263' }]}>Select a Provider</Text>
 
       <FlatList
         data={profiles}
@@ -133,15 +133,15 @@ const WelcomeScreen = () => {
             accessibilityLabel={`Load ${item.name}`}
           >
             <View style={styles.profileIconContainer}>
-              <Icon name={(item.icon?.replace('_', '-') as any) || 'dns'} size={28} color={colors.primary} />
+              <Icon name={(item.icon?.replace('_', '-') as any) || 'dns'} size={28} color='#E9692A' />
             </View>
             <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: colors.text }]}>{item.name}</Text>
-              <Text style={[styles.profileType, { color: colors.textSecondary }]}>
+              <Text style={[styles.profileName, { color: '#2D4263' }]}>{item.name}</Text>
+              <Text style={[styles.profileType, { color: '#2D4263' }]}>
                 {item.type === 'xtream' ? 'Xtream Codes' : 'M3U Playlist'}
               </Text>
               {item.providerInfo && (
-                <Text style={[styles.profileChannels, { color: colors.textSecondary }]}>
+                <Text style={[styles.profileChannels, { color: '#2D4263' }]}>
                   {item.providerInfo.channelsCount || 0} channels
                 </Text>
               )}
@@ -152,7 +152,7 @@ const WelcomeScreen = () => {
       />
 
       <TouchableOpacity
-        style={[styles.addNewButton, { backgroundColor: colors.primary }]}
+        style={[styles.addNewButton, { backgroundColor: '#E9692A' }]}
         onPress={() => setShowAddForm(true)}
       >
         <Icon name="add" size={24} color="#FFF" />
@@ -175,7 +175,7 @@ const WelcomeScreen = () => {
               accessibilityRole="button"
             >
               <Icon name="arrow-back" size={24} color={colors.textSecondary} />
-              <Text style={[styles.backToListText, { color: colors.textSecondary }]}>Back to Providers</Text>
+              <Text style={[styles.backToListText, { color: '#2D4263' }]}>Back to Providers</Text>
             </TouchableOpacity>
           )}
 
@@ -189,49 +189,49 @@ const WelcomeScreen = () => {
             style={styles.wordmark}
             resizeMode="contain"
           />
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.subtitle, { color: '#2D4263' }]}>
             {profiles.length > 0 ? 'Add New Provider' : 'Welcome'}
           </Text>
 
           {/* Type Selector */}
-          <View style={[styles.typeSelector, { backgroundColor: colors.divider }]} accessibilityRole="tablist">
+          <View style={[styles.typeSelector, { backgroundColor: 'rgba(45, 66, 99, 0.1)' }]} accessibilityRole="tablist">
             <TouchableOpacity
-              style={[styles.typeButton, type === 'xtream' && { backgroundColor: colors.primary }]}
+              style={[styles.typeButton, type === 'xtream' && { backgroundColor: '#E9692A' }]}
               onPress={() => setType('xtream')}
               accessibilityRole="tab"
               accessibilityState={{ selected: type === 'xtream' }}
               accessibilityLabel="Select Xtream Codes type"
             >
-              <Text style={[styles.typeText, { color: type === 'xtream' ? '#FFF' : colors.textSecondary }]}>Xtream Codes</Text>
+              <Text style={[styles.typeText, { color: type === 'xtream' ? '#FFF' : '#2D4263' }]}>Xtream Codes</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.typeButton, type === 'm3u' && { backgroundColor: colors.primary }]}
+              style={[styles.typeButton, type === 'm3u' && { backgroundColor: '#E9692A' }]}
               onPress={() => setType('m3u')}
               accessibilityRole="tab"
               accessibilityState={{ selected: type === 'm3u' }}
               accessibilityLabel="Select M3U Playlist type"
             >
-              <Text style={[styles.typeText, { color: type === 'm3u' ? '#FFF' : colors.textSecondary }]}>M3U Playlist</Text>
+              <Text style={[styles.typeText, { color: type === 'm3u' ? '#FFF' : '#2D4263' }]}>M3U Playlist</Text>
             </TouchableOpacity>
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <View style={{ width: '100%', marginBottom: 12 }}>
-             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Select Icon:</Text>
+             <Text style={[styles.inputLabel, { color: '#2D4263' }]}>Select Icon:</Text>
              <View style={styles.iconContainer}>
                {predefinedIcons.map((iconName) => (
                  <TouchableOpacity
                    key={iconName}
                    style={[
                      styles.iconWrapper,
-                     selectedIcon === iconName && { backgroundColor: 'rgba(0, 122, 255, 0.3)', borderColor: colors.primary }
+                     selectedIcon === iconName && { backgroundColor: 'rgba(0, 122, 255, 0.3)', borderColor: '#E9692A' }
                    ]}
                    onPress={() => setSelectedIcon(iconName)}
                    accessibilityRole="button"
                    accessibilityLabel={`Select ${iconName.replace('_', ' ')} icon`}
                  >
-                   <Icon name={iconName.replace('_', '-') as any} size={24} color={selectedIcon === iconName ? colors.primary : '#FFF'} />
+                   <Icon name={iconName.replace('_', '-') as any} size={24} color={selectedIcon === iconName ? '#E9692A' : '#2D4263'} />
                  </TouchableOpacity>
                ))}
              </View>
@@ -239,9 +239,9 @@ const WelcomeScreen = () => {
 
           {/* Inputs */}
           <TextInput
-            style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
+            style={[styles.input, { backgroundColor: '#FFFFFF', color: '#2D4263', borderColor: 'rgba(45, 66, 99, 0.2)' }]}
             placeholder="Provider Name"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor='rgba(45, 66, 99, 0.6)'
             accessibilityLabel="Provider Name"
             value={name}
             onChangeText={setName}
@@ -249,9 +249,9 @@ const WelcomeScreen = () => {
             autoFocus={!Platform.isTV}
           />
           <TextInput
-            style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
+            style={[styles.input, { backgroundColor: '#FFFFFF', color: '#2D4263', borderColor: 'rgba(45, 66, 99, 0.2)' }]}
             placeholder={type === 'xtream' ? "Server URL (http://...)" : "M3U Playlist URL"}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor='rgba(45, 66, 99, 0.6)'
             accessibilityLabel={type === 'xtream' ? "Server URL" : "M3U Playlist URL"}
             value={serverUrl}
             onChangeText={setServerUrl}
@@ -264,9 +264,9 @@ const WelcomeScreen = () => {
           {type === 'xtream' ? (
             <>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
+                style={[styles.input, { backgroundColor: '#FFFFFF', color: '#2D4263', borderColor: 'rgba(45, 66, 99, 0.2)' }]}
                 placeholder="Username"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor='rgba(45, 66, 99, 0.6)'
                 accessibilityLabel="Username"
                 value={username}
                 onChangeText={setUsername}
@@ -275,9 +275,9 @@ const WelcomeScreen = () => {
                 tvFocusable={true}
               />
               <TextInput
-                style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
+                style={[styles.input, { backgroundColor: '#FFFFFF', color: '#2D4263', borderColor: 'rgba(45, 66, 99, 0.2)' }]}
                 placeholder="Password"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor='rgba(45, 66, 99, 0.6)'
                 accessibilityLabel="Password"
                 value={password}
                 onChangeText={setPassword}
@@ -287,9 +287,9 @@ const WelcomeScreen = () => {
             </>
           ) : (
             <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.divider }]}
+              style={[styles.input, { backgroundColor: '#FFFFFF', color: '#2D4263', borderColor: 'rgba(45, 66, 99, 0.2)' }]}
               placeholder="XMLTV EPG URL (Optional)"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor='rgba(45, 66, 99, 0.6)'
               accessibilityLabel="XMLTV EPG URL"
               value={epgUrl}
               onChangeText={setEpgUrl}
@@ -302,7 +302,7 @@ const WelcomeScreen = () => {
 
           {/* Login Button */}
           <TouchableOpacity
-            style={[styles.loginButton, { backgroundColor: colors.primary }]}
+            style={[styles.loginButton, { backgroundColor: '#E9692A' }]}
             onPress={handleLogin}
             disabled={loading}
             accessibilityRole="button"
@@ -326,7 +326,7 @@ const WelcomeScreen = () => {
       <View style={[styles.container, { backgroundColor: '#FFFFFF' }]}>
         {loading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color='#E9692A' />
           </View>
         )}
         {renderExistingProfiles()}
@@ -382,8 +382,8 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   wordmark: {
-    width: 320,
-    height: 72,
+    width: 400,
+    height: 100,
     marginBottom: 6,
   },
   subtitle: {
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     fontSize: Platform.isTV ? 28 : 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(45, 66, 99, 0.2)',
   },
   loginButton: {
     width: '100%',
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(45, 66, 99, 0.2)',
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
   profileTile: {
