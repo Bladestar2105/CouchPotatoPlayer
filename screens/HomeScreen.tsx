@@ -32,6 +32,18 @@ interface TabDef {
 }
 
 const isTV = isTVPlatform;
+const VALID_PROFILE_ICONS = new Set([
+  'tv',
+  'movie',
+  'star',
+  'public',
+  'dns',
+  'live-tv',
+  'sports-soccer',
+  'music-note',
+  'child-care',
+  'business',
+]);
 
 // ============================================================
 // TV SIDEBAR - TiviMate-style collapsible left sidebar for TV
@@ -283,7 +295,7 @@ const MainLayout = () => {
       }
       navigation.setParams({ returnTab: undefined });
     }
-  }, [route.params?.returnTab]);
+  }, [route.params?.returnTab, navigation]);
 
   const contentRef = useRef<ContentRef>(null);
   const searchRef = useRef<ContentRef>(null);
@@ -377,7 +389,7 @@ const MainLayout = () => {
       }
       backHandler.remove();
     };
-  }, [isFocused, activeTab, getActiveContentRef]);
+  }, [isFocused, activeTab, getActiveContentRef, t]);
 
   const handleTabPress = useCallback((tab: TabId, options?: { collapseSidebar?: boolean }) => {
     setActiveTab(tab);
@@ -454,8 +466,7 @@ const MainLayout = () => {
             {profiles.map(p => {
               const isCurrent = currentProfile?.id === p.id;
               let iconName = p.icon || 'dns';
-              const validIcons = ['tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business'];
-              if (!validIcons.includes(iconName.replace('_', '-'))) {
+              if (!VALID_PROFILE_ICONS.has(iconName.replace('_', '-'))) {
                 iconName = 'dns';
               }
 
@@ -540,7 +551,7 @@ const HomeScreen = () => {
   const { isInitializing, currentProfile, pin, channels, movies, series, isLoading, isUpdating, loadProfile, hasCheckedOnStartup, setHasCheckedOnStartup } = useIPTV();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
-  const isFocused = useIsFocused();
+  const { t } = useTranslation();
 
   const hasAdultContentRef = React.useRef(false);
   const prevProfileIdRef = React.useRef(currentProfile?.id);
