@@ -33,6 +33,9 @@ export const ChannelLogo = ({
           { width: size, height: size, borderRadius, backgroundColor },
           style,
         ]}
+        accessible={true}
+        accessibilityRole="image"
+        accessibilityLabel={name !== '?' ? `Logo for ${name}` : 'Channel logo placeholder'}
       >
         <Text style={[styles.fallbackText, { color: textColor, fontSize: size * 0.45 }]}>
           {initial}
@@ -47,6 +50,9 @@ export const ChannelLogo = ({
       style={[styles.image, { width: size, height: size, borderRadius }, style]}
       resizeMode="contain"
       onError={() => setError(true)}
+      accessible={true}
+      accessibilityRole="image"
+      accessibilityLabel={name !== '?' ? `Logo for ${name}` : 'Channel logo'}
     />
   );
 };
