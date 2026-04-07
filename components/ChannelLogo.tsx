@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ViewStyle, ImageStyle } from 'react-native';
+import React, { memo, useMemo, useState } from 'react';
+import { View, Text, Image, StyleSheet, StyleProp, ViewStyle, ImageStyle } from 'react-native';
 import { proxyImageUrl } from '../utils/imageProxy';
 
 interface ChannelLogoProps {
   url?: string | null;
   name?: string;
   size?: number;
-  style?: any;
+  style?: StyleProp<ImageStyle>;
   borderRadius?: number;
   backgroundColor?: string;
   textColor?: string;
 }
 
-export const ChannelLogo = ({
+const ChannelLogoComponent = ({
   url,
   name = '?',
   size = 50,
@@ -22,7 +22,7 @@ export const ChannelLogo = ({
   textColor = '#FFF',
 }: ChannelLogoProps) => {
   const [error, setError] = useState(false);
-  const proxiedUrl = proxyImageUrl(url);
+  const proxiedUrl = useMemo(() => proxyImageUrl(url), [url]);
 
   if (!proxiedUrl || error) {
     const initial = name ? name.charAt(0).toUpperCase() : '?';
@@ -31,7 +31,7 @@ export const ChannelLogo = ({
         style={[
           styles.fallbackContainer,
           { width: size, height: size, borderRadius, backgroundColor },
-          style,
+          style as StyleProp<ViewStyle>,
         ]}
         accessible={true}
         accessibilityRole="image"
@@ -56,6 +56,8 @@ export const ChannelLogo = ({
     />
   );
 };
+
+export const ChannelLogo = memo(ChannelLogoComponent);
 
 const styles = StyleSheet.create({
   fallbackContainer: {
