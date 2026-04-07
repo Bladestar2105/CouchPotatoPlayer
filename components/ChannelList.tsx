@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle, useWindowDimensions } from 'react-native';
 import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
@@ -177,7 +177,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
   const isTV = isTVPlatform;
-  const isMobile = !isTV && Dimensions.get('window').width < 768;
+  const { width: windowWidth } = useWindowDimensions();
+  const isCompactLayout = !isTV && windowWidth < 600;
   const [showCategories, setShowCategories] = useState<boolean>(true);
 
   const firstCategoryRef = useRef<any>(null);
@@ -202,8 +203,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         setUnlockMode(null);
         return true;
       }
-      // If viewing channel list on mobile, go back to categories
-      if (isMobile && !showCategories) {
+      // If viewing channel list in compact layout, go back to categories
+      if (isCompactLayout && !showCategories) {
         setShowCategories(true);
         return true;
       }
@@ -273,7 +274,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const handleGroupSelect = (title: string) => {
     setSelectedGroup(title);
     setShouldFocusFirstItem(true);
-    if (isMobile) {
+    if (isCompactLayout) {
       setShowCategories(false);
     }
   };
@@ -402,7 +403,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     <View style={[styles.container, { backgroundColor: colors.background }]}>
 
       {/* View mode toggle - hidden on TV where sidebar handles navigation */}
-      {!isMobile && !isTV && (
+      {!isCompactLayout && !isTV && (
         <View style={[tiviStyles.viewModeBar, { backgroundColor: colors.card, borderBottomColor: colors.divider }]}>
           <TouchableOpacity
             style={[tiviStyles.viewModeBtn, viewMode === 'list' && { backgroundColor: colors.primary }]}
@@ -435,8 +436,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       <View style={{ flex: 1, flexDirection: 'row' }}>
         {/* LEFT: Category Groups */}
         {showCategories && (
-          <View style={[tiviStyles.categorySidebar, isMobile ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.card, borderRightColor: colors.divider }]}>
-            {isMobile && (
+          <View style={[tiviStyles.categorySidebar, isCompactLayout ? { width: '100%', flex: 1, borderRightWidth: 0 } : { backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+            {isCompactLayout && (
               <View style={{ padding: 14, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
                 <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>{t('categories')}</Text>
               </View>
@@ -468,9 +469,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         )}
 
         {/* RIGHT: Channel List or EPG Grid */}
-        {(!isMobile || !showCategories) && (
+        {(!isCompactLayout || !showCategories) && (
           <View style={[tiviStyles.contentPane, { backgroundColor: colors.background }]}>
-            {isMobile && (
+            {isCompactLayout && (
               <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
                 <TouchableOpacity onPress={() => setShowCategories(true)} style={{ flexDirection: 'row', alignItems: 'center' }} accessible={true} isTVSelectable={true}>
                   <Icon name="arrow-back" size={22} color={colors.text} />
@@ -479,7 +480,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
               </View>
             )}
 
-            {viewMode === 'list' || isMobile ? (
+            {viewMode === 'list' || isCompactLayout ? (
               // TiviMate-style channel list
               selectedChannels.length > 0 ? (
                 <FlatList

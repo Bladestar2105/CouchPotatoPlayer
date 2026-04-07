@@ -169,6 +169,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                 hasTVPreferredFocus={hasTVPreferredFocus}
                 style={[
                     styles.channelBox,
+                    { left: scrollX },
                     isPlaying && { borderLeftWidth: 3, borderLeftColor: '#E9692A' },
                     isFocused && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderWidth: 2, borderColor: '#E9692A' }
                 ]}
@@ -356,10 +357,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                 if (scrollViewRef.current) {
                     scrollViewRef.current.scrollTo({ x: newScrollX, animated: false });
                 }
-                // Debounce state updates to avoid excessive re-renders during smooth scrolling
-                if (Math.abs(scrollX - newScrollX) > 500) {
-                   setScrollX(newScrollX);
-                }
+                setScrollX(newScrollX);
             }}
             scrollEventThrottle={16}
         >
