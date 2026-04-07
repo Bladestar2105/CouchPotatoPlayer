@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, Platform, Animated } from 'react-native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTV } from '../context/IPTVContext';
@@ -78,7 +78,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
            prevProps.width === nextProps.width;
 });
 
-const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus, hasCatchup, scrollX, visibleWidth }: any) => {
+const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus, hasCatchup, scrollX, visibleWidth, scrollXAnimated }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
     // recalculating boundaries, offsets, and time comparisons on every render.
     const programLayoutData = useMemo(() => {
@@ -169,7 +169,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
                 hasTVPreferredFocus={hasTVPreferredFocus}
                 style={[
                     styles.channelBox,
-                    { left: scrollX },
+                    { transform: [{ translateX: scrollXAnimated }] },
                     isPlaying && { borderLeftWidth: 3, borderLeftColor: '#E9692A' },
                     isFocused && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderWidth: 2, borderColor: '#E9692A' }
                 ]}
@@ -232,7 +232,9 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 
   const [scrollX, setScrollX] = useState(0);
   const [visibleWidth, setVisibleWidth] = useState(1000);
-  const mainScrollViewRef = useRef<ScrollView>(null);
+  const mainScrollViewRef = useRef<any>(null);
+  const scrollXAnimated = useRef(new Animated.Value(0)).current;
+  const scrollXRef = useRef(0);
 
   // Calculate max catchup days across all visible channels
   const maxCatchupDays = useMemo(() => {
@@ -348,17 +350,27 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
       </View>
 
       <View style={{ flex: 1 }} onLayout={(e) => setVisibleWidth(e.nativeEvent.layout.width)}>
-        <ScrollView
+        <Animated.ScrollView
             horizontal
             showsHorizontalScrollIndicator={true}
             ref={mainScrollViewRef}
-            onScroll={(e) => {
-                const newScrollX = e.nativeEvent.contentOffset.x;
-                if (scrollViewRef.current) {
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollXAnimated } } }],
+              {
+                useNativeDriver: true,
+                listener: (e: any) => {
+                  const newScrollX = e.nativeEvent.contentOffset.x;
+                  if (scrollViewRef.current) {
                     scrollViewRef.current.scrollTo({ x: newScrollX, animated: false });
-                }
-                setScrollX(newScrollX);
-            }}
+                  }
+
+                  if (Math.abs(scrollXRef.current - newScrollX) > 120) {
+                    scrollXRef.current = newScrollX;
+                    setScrollX(newScrollX);
+                  }
+                },
+              }
+            )}
             scrollEventThrottle={16}
         >
           <View style={{ width: totalWidth + (Platform.isTV ? 160 : 120) }}>
@@ -406,12 +418,13 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                             hasCatchup={hasCatchup}
                             scrollX={scrollX}
                             visibleWidth={visibleWidth}
+                            scrollXAnimated={scrollXAnimated}
                         />
                     );
                  }}
               />
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
     </View>
   );
