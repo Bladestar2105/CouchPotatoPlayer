@@ -489,9 +489,6 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: 'rgba(255,255,255,0.06)',
     backgroundColor: '#1E1E2E',
-    position: 'absolute',
-    left: 0,
-    height: Platform.isTV ? 92 : 64,
     zIndex: 10,
     borderRadius: 0,
   },
@@ -525,7 +522,7 @@ const styles = StyleSheet.create({
   programsContainer: {
     flex: 1,
     position: 'relative',
-    marginLeft: Platform.isTV ? 160 : 120,
+    overflow: 'hidden',
   },
   programBlock: {
     position: 'absolute',
