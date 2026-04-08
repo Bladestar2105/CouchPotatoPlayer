@@ -136,26 +136,44 @@ const PinSetupScreen = () => {
         />
       )}
 
-      <TouchableOpacity style={styles.button} onPress={handleAction}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleAction}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={unlockMode ? 'Unlock adult content' : 'Save PIN code'}
+      >
         <Text style={styles.buttonText}>
            {unlockMode ? 'Unlock' : 'Save'}
         </Text>
       </TouchableOpacity>
 
       {!setupMode && !unlockMode && isAdultUnlocked && (
-        <TouchableOpacity style={[styles.button, styles.clearButton, { marginTop: 10 }]} onPress={() => {
-           lockAdultContent();
-           setUnlockMode(true);
-           Alert.alert('Success', 'Adult content locked.');
-        }}>
+        <TouchableOpacity
+          style={[styles.button, styles.clearButton, { marginTop: 10 }]}
+          onPress={() => {
+             lockAdultContent();
+             setUnlockMode(true);
+             Alert.alert('Success', 'Adult content locked.');
+          }}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Lock adult content"
+        >
           <Text style={styles.buttonText}>Lock Adult Content</Text>
         </TouchableOpacity>
       )}
 
       {!setupMode && unlockMode && (
-        <TouchableOpacity style={[styles.button, styles.clearButton, { marginTop: 10 }]} onPress={() => {
-           setUnlockMode(false);
-        }}>
+        <TouchableOpacity
+          style={[styles.button, styles.clearButton, { marginTop: 10 }]}
+          onPress={() => {
+             setUnlockMode(false);
+          }}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Manage PIN settings"
+        >
           <Text style={styles.buttonText}>Manage PIN Settings</Text>
         </TouchableOpacity>
       )}
