@@ -10,6 +10,7 @@ export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolea
 const defaultLogo = require('../assets/character_logo.png');
 const BASE_POSTER_WIDTH = Platform.isTV ? 150 : 130;
 const MAX_POSTER_COLUMNS = 10;
+const getMoviePosterKey = (movie: Movie): string => `${movie.group || 'Unknown'}::${movie.id}::${movie.streamUrl}::${movie.name}`;
 
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
@@ -56,15 +57,15 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
     }
-    if (route.params?.returnContentId) {
-      setSelectedMovieId(route.params.returnContentId);
+    if (route.params?.returnContentKey) {
+      setSelectedMovieKey(route.params.returnContentKey);
     }
-    if (route.params?.returnGroupId || route.params?.returnContentId) {
-      navigation.setParams({ returnGroupId: undefined, returnContentId: undefined });
+    if (route.params?.returnGroupId || route.params?.returnContentKey) {
+      navigation.setParams({ returnGroupId: undefined, returnContentKey: undefined });
     }
-  }, [navigation, route.params?.returnContentId, route.params?.returnGroupId]);
-  const [focusedMovieId, setFocusedMovieId] = useState<string | null>(null);
-  const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
+  }, [navigation, route.params?.returnContentKey, route.params?.returnGroupId]);
+  const [focusedMovieKey, setFocusedMovieKey] = useState<string | null>(null);
+  const [selectedMovieKey, setSelectedMovieKey] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState<boolean>(true);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
@@ -143,6 +144,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
 
   const handleGroupSelect = (title: string) => {
     setSelectedGroup(title);
+    setFocusedMovieKey(null);
     setShouldFocusFirstItem(true);
     if (isMobile) {
       setShowCategories(false);
@@ -169,11 +171,16 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
   }, [groupMap, selectedGroup]);
 
   useEffect(() => {
-    if (!selectedMovieId) return;
-    if (!selectedMovies.some((movie) => movie.id === selectedMovieId)) {
-      setSelectedMovieId(null);
+    if (!focusedMovieKey && !selectedMovieKey) return;
+
+    const keysInGroup = new Set(selectedMovies.map(getMoviePosterKey));
+    if (focusedMovieKey && !keysInGroup.has(focusedMovieKey)) {
+      setFocusedMovieKey(null);
     }
-  }, [selectedMovieId, selectedMovies]);
+    if (selectedMovieKey && !keysInGroup.has(selectedMovieKey)) {
+      setSelectedMovieKey(null);
+    }
+  }, [focusedMovieKey, selectedMovieKey, selectedMovies]);
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
@@ -229,9 +236,10 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
         {selectedMovies.length > 0 ? (
           <FlatList
             data={selectedMovies}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => getMoviePosterKey(item)}
             numColumns={numColumns}
             key={numColumns} // Force re-render if columns change
+            extraData={{ focusedMovieKey, selectedMovieKey, selectedGroup }}
             contentContainerStyle={styles.gridContainer}
             initialNumToRender={12}
             maxToRenderPerBatch={12}
@@ -244,8 +252,9 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                return { length: rowHeight, offset: rowHeight * rowIndex, index };
             }}
             renderItem={({ item, index }) => {
-                const isFocused = focusedMovieId === item.id;
-                const isSelected = selectedMovieId === item.id;
+                const movieKey = getMoviePosterKey(item);
+                const isFocused = focusedMovieKey === movieKey;
+                const isSelected = selectedMovieKey === movieKey;
                 return (
                   <TouchableOpacity
                     accessible={true}
@@ -268,7 +277,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                     nextFocusLeft={firstCategoryNode}
                     tvParallaxProperties={{ enabled: false }}
                     onPress={() => {
-                      setSelectedMovieId(item.id);
+                      setSelectedMovieKey(movieKey);
                       navigation.navigate('MediaInfo', {
                         id: item.id,
                         type: 'vod',
@@ -276,16 +285,16 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                         cover: item.cover,
                         streamUrl: item.streamUrl,
                         returnGroupId: selectedGroup,
-                        returnContentId: item.id,
+                        returnContentKey: movieKey,
                         returnScreen: 'Home',
                         returnTab: 'movies',
                       });
                     }}
                     onFocus={() => {
-                      setFocusedMovieId(item.id);
+                      setFocusedMovieKey(movieKey);
                       setShouldFocusFirstItem(false);
                     }}
-                    onBlur={() => setFocusedMovieId(null)}
+                    onBlur={() => setFocusedMovieKey((current) => (current === movieKey ? null : current))}
                   >
                     <Image
                       source={item.cover && item.cover.startsWith('http') ? { uri: item.cover } : defaultLogo}
