@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    height: Platform.isTV ? 92 : 64,
+    height: Platform.isTV ? 92 : 60,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
@@ -520,6 +520,7 @@ const styles = StyleSheet.create({
   },
   channelBox: {
     width: Platform.isTV ? 160 : 120,
+    height: Platform.isTV ? 92 : 60,
     padding: 6,
     justifyContent: 'center',
     alignItems: 'center',
