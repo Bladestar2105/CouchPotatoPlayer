@@ -109,6 +109,7 @@ const ChannelColumnItem = React.memo(({ channel, isFocused, isPlaying, isFav, ha
             )}
         </View>
         <Text style={[styles.channelName, { fontSize: Platform.isTV ? 17 : 14 }]} numberOfLines={2}>{channel.name}</Text>
+        {isFocused && <View style={styles.focusRightEdge} />}
     </TouchableOpacity>
 ));
 
@@ -527,6 +528,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1E2E',
     zIndex: 10,
     borderRadius: 0,
+  },
+  focusRightEdge: {
+    position: 'absolute',
+    right: -1,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#E9692A',
+    zIndex: 30,
   },
   channelLogo: {
     width: Platform.isTV ? 62 : 36,
