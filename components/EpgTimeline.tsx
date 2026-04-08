@@ -78,7 +78,41 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
            prevProps.width === nextProps.width;
 });
 
-const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, colors, focusedChannelId, setFocusedChannelId, onChannelPress, onProgramPress, addFavorite, removeFavorite, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasTVPreferredFocus, hasCatchup, scrollX, visibleWidth, scrollXAnimated }: any) => {
+const ChannelColumnItem = React.memo(({ channel, isFocused, isPlaying, isFav, hasTVPreferredFocus, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, hasCatchup }: any) => (
+    <TouchableOpacity
+        accessible={true}
+        isTVSelectable={true}
+        hasTVPreferredFocus={hasTVPreferredFocus}
+        style={[
+            styles.channelBox,
+            isPlaying && { borderLeftWidth: 3, borderLeftColor: '#E9692A' },
+            isFocused && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderWidth: 2, borderColor: '#E9692A' }
+        ]}
+        onPress={() => onChannelPress(channel)}
+        onFocus={() => setFocusedChannelId(channel.id)}
+        onLongPress={() => {
+            if (isFav) removeFavorite(channel.id);
+            else addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
+        }}
+    >
+        <View style={styles.logoContainer}>
+            <Image
+                source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : require('../assets/character_logo.png')}
+                style={styles.channelLogo}
+                resizeMode="contain"
+                defaultSource={require('../assets/character_logo.png')}
+            />
+            {hasCatchup && hasCatchup(channel) && (
+                <View style={styles.catchupBadge}>
+                    <Icon name="history" size={10} color="#FFF" />
+                </View>
+            )}
+        </View>
+        <Text style={[styles.channelName, { fontSize: Platform.isTV ? 17 : 14 }]} numberOfLines={2}>{channel.name}</Text>
+    </TouchableOpacity>
+));
+
+const EpgRow = React.memo(({ channel, programs, isFocused, colors, onChannelPress, onProgramPress, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasCatchup, scrollX, visibleWidth }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
     // recalculating boundaries, offsets, and time comparisons on every render.
     const programLayoutData = useMemo(() => {
@@ -162,42 +196,6 @@ const EpgRow = React.memo(({ channel, programs, isFocused, isPlaying, isFav, col
 
     return (
         <View style={[styles.row, isFocused && styles.rowFocused]}>
-            {/* Channel Info Fixed on Left */}
-            <TouchableOpacity
-                accessible={true}
-                isTVSelectable={true}
-                hasTVPreferredFocus={hasTVPreferredFocus}
-                style={[
-                    styles.channelBox,
-                    { transform: [{ translateX: scrollXAnimated }] },
-                    isPlaying && { borderLeftWidth: 3, borderLeftColor: '#E9692A' },
-                    isFocused && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderWidth: 2, borderColor: '#E9692A' }
-                ]}
-                onPress={() => onChannelPress(channel)}
-                onFocus={() => setFocusedChannelId(channel.id)}
-                onLongPress={() => {
-                   if (isFav) removeFavorite(channel.id);
-                   else addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
-                }}
-            >
-                <View style={styles.logoContainer}>
-                    <Image
-                        source={channel.logo && channel.logo.startsWith('http') ? { uri: channel.logo } : require('../assets/character_logo.png')}
-                        style={styles.channelLogo}
-                        resizeMode="contain"
-                        defaultSource={require('../assets/character_logo.png')}
-                    />
-                    {/* Catchup badge */}
-                    {hasCatchup && hasCatchup(channel) && (
-                        <View style={styles.catchupBadge}>
-                            <Icon name="history" size={10} color="#FFF" />
-                        </View>
-                    )}
-                </View>
-              <Text style={[styles.channelName, { fontSize: Platform.isTV ? 17 : 14 }]} numberOfLines={2}>{channel.name}</Text>
-            </TouchableOpacity>
-
-            {/* Programs Timeline */}
             <View style={styles.programsContainer}>
                 {programLayoutData.map((item) => (
                     <ProgramBlock
@@ -233,6 +231,10 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const [scrollX, setScrollX] = useState(0);
   const [visibleWidth, setVisibleWidth] = useState(1000);
   const mainScrollViewRef = useRef<any>(null);
+  const channelListRef = useRef<FlatList>(null);
+  const syncVerticalScroll = (offsetY: number) => {
+    channelListRef.current?.scrollToOffset({ offset: offsetY, animated: false });
+  };
   const scrollXAnimated = useRef(new Animated.Value(0)).current;
   const scrollXRef = useRef(0);
 
@@ -354,6 +356,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
             horizontal
             showsHorizontalScrollIndicator={true}
             ref={mainScrollViewRef}
+            style={{ marginLeft: Platform.isTV ? 160 : 120 }}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { x: scrollXAnimated } } }],
               {
@@ -373,13 +376,15 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
             )}
             scrollEventThrottle={16}
         >
-          <View style={{ width: totalWidth + (Platform.isTV ? 160 : 120) }}>
+          <View style={{ width: totalWidth }}>
               {/* Vertical Time Line across all rows */}
-              <View style={[styles.currentTimeLine, { left: (Platform.isTV ? 160 : 120) + nowPosition }]} />
+              <View style={[styles.currentTimeLine, { left: nowPosition }]} />
 
               <FlatList
                  data={channels}
                  keyExtractor={item => item.id}
+                 onScroll={(e) => syncVerticalScroll(e.nativeEvent.contentOffset.y)}
+                 scrollEventThrottle={16}
                  initialNumToRender={10}
                  maxToRenderPerBatch={10}
                  windowSize={5}
@@ -393,38 +398,59 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                     const epgKey = getEpgKey(channel);
                     const programs = epg[epgKey] || [];
                     const isFocused = focusedChannelId === channel.id;
-                    const isPlaying = currentStreamId === channel.id;
-                    const isFav = isFavorite(channel.id);
 
                     return (
                         <EpgRow
                             channel={channel}
                             programs={programs}
                             isFocused={isFocused}
-                            isPlaying={isPlaying}
-                            isFav={isFav}
                             colors={colors}
-                            focusedChannelId={focusedChannelId}
-                            setFocusedChannelId={setFocusedChannelId}
                             onChannelPress={onChannelPress}
                             onProgramPress={onProgramPress}
-                            addFavorite={addFavorite}
-                            removeFavorite={removeFavorite}
                             timelineStart={timelineStart}
                             timelineEnd={timelineEnd}
                             now={now}
                             PIXELS_PER_MINUTE={PIXELS_PER_MINUTE}
-                            hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
                             hasCatchup={hasCatchup}
                             scrollX={scrollX}
                             visibleWidth={visibleWidth}
-                            scrollXAnimated={scrollXAnimated}
                         />
                     );
                  }}
               />
           </View>
         </Animated.ScrollView>
+        <View style={[styles.fixedChannelColumn, { width: Platform.isTV ? 160 : 120 }]}>
+          <FlatList
+            ref={channelListRef}
+            data={channels}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={false}
+            getItemLayout={(data, index) => ({
+              length: Platform.isTV ? 92 : 60,
+              offset: (Platform.isTV ? 92 : 60) * index,
+              index,
+            })}
+            renderItem={({ item: channel, index }) => (
+              <ChannelColumnItem
+                channel={channel}
+                isFocused={focusedChannelId === channel.id}
+                isPlaying={currentStreamId === channel.id}
+                isFav={isFavorite(channel.id)}
+                hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
+                setFocusedChannelId={setFocusedChannelId}
+                onChannelPress={onChannelPress}
+                addFavorite={addFavorite}
+                removeFavorite={removeFavorite}
+                hasCatchup={hasCatchup}
+              />
+            )}
+          />
+        </View>
       </View>
     </View>
   );
@@ -480,6 +506,16 @@ const styles = StyleSheet.create({
   },
   rowFocused: {
     backgroundColor: 'rgba(233,105,42,0.1)',
+  },
+  fixedChannelColumn: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#1E1E2E',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,255,255,0.06)',
+    zIndex: 20,
   },
   channelBox: {
     width: Platform.isTV ? 160 : 120,
