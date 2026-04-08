@@ -55,10 +55,16 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
   useEffect(() => {
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
-      navigation.setParams({ returnGroupId: undefined });
     }
-  }, [route.params?.returnGroupId]);
+    if (route.params?.returnContentId) {
+      setSelectedMovieId(route.params.returnContentId);
+    }
+    if (route.params?.returnGroupId || route.params?.returnContentId) {
+      navigation.setParams({ returnGroupId: undefined, returnContentId: undefined });
+    }
+  }, [navigation, route.params?.returnContentId, route.params?.returnGroupId]);
   const [focusedMovieId, setFocusedMovieId] = useState<string | null>(null);
+  const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState<boolean>(true);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
@@ -162,6 +168,13 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
 
+  useEffect(() => {
+    if (!selectedMovieId) return;
+    if (!selectedMovies.some((movie) => movie.id === selectedMovieId)) {
+      setSelectedMovieId(null);
+    }
+  }, [selectedMovieId, selectedMovies]);
+
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
@@ -232,6 +245,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
             }}
             renderItem={({ item, index }) => {
                 const isFocused = focusedMovieId === item.id;
+                const isSelected = selectedMovieId === item.id;
                 return (
                   <TouchableOpacity
                     accessible={true}
@@ -247,21 +261,26 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                           width: posterWidth,
                           marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
                         },
-                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
+                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {},
+                        !isFocused && isSelected ? { borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
                     ]}
                     // @ts-ignore - supported on TV platforms
                     nextFocusLeft={firstCategoryNode}
                     tvParallaxProperties={{ enabled: false }}
-                    onPress={() => navigation.navigate('MediaInfo', {
-                      id: item.id,
-                      type: 'vod',
-                      title: item.name,
-                      cover: item.cover,
-                      streamUrl: item.streamUrl,
-                      returnGroupId: selectedGroup,
-                      returnScreen: 'Home',
-                      returnTab: 'movies',
-                    })}
+                    onPress={() => {
+                      setSelectedMovieId(item.id);
+                      navigation.navigate('MediaInfo', {
+                        id: item.id,
+                        type: 'vod',
+                        title: item.name,
+                        cover: item.cover,
+                        streamUrl: item.streamUrl,
+                        returnGroupId: selectedGroup,
+                        returnContentId: item.id,
+                        returnScreen: 'Home',
+                        returnTab: 'movies',
+                      });
+                    }}
                     onFocus={() => {
                       setFocusedMovieId(item.id);
                       setShouldFocusFirstItem(false);
@@ -273,11 +292,11 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                       style={[
                           styles.poster,
                           { width: posterWidth, height: posterWidth * 1.5 },
-                          { borderColor: isFocused ? colors.primary : colors.divider },
+                          { borderColor: isFocused || isSelected ? colors.primary : colors.divider },
                       ]}
                       resizeMode="cover"
                     />
-                    <Text style={[styles.title, { color: isFocused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
+                    <Text style={[styles.title, { color: isFocused || isSelected ? colors.text : colors.textSecondary }]} numberOfLines={2}>
                       {item.name}
                     </Text>
                   </TouchableOpacity>

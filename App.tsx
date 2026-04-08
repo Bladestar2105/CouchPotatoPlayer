@@ -47,6 +47,7 @@ export type RootStackParamList = {
     cover?: string;
     streamUrl?: string;
     returnGroupId?: string | null;
+    returnContentId?: string;
     returnTab?: 'movies' | 'series';
   };
 };

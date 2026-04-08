@@ -55,10 +55,16 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   useEffect(() => {
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
-      navigation.setParams({ returnGroupId: undefined });
     }
-  }, [route.params?.returnGroupId]);
+    if (route.params?.returnContentId) {
+      setSelectedSeriesId(route.params.returnContentId);
+    }
+    if (route.params?.returnGroupId || route.params?.returnContentId) {
+      navigation.setParams({ returnGroupId: undefined, returnContentId: undefined });
+    }
+  }, [navigation, route.params?.returnContentId, route.params?.returnGroupId]);
   const [focusedSeriesId, setFocusedSeriesId] = useState<string | null>(null);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState<boolean>(true);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
@@ -161,6 +167,13 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
 
+  useEffect(() => {
+    if (!selectedSeriesId) return;
+    if (!selectedSeries.some((entry) => entry.id === selectedSeriesId)) {
+      setSelectedSeriesId(null);
+    }
+  }, [selectedSeries, selectedSeriesId]);
+
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Categories Sidebar */}
@@ -231,6 +244,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
             }}
             renderItem={({ item, index }) => {
                 const isFocused = focusedSeriesId === item.id;
+                const isSelected = selectedSeriesId === item.id;
                 return (
                   <TouchableOpacity
                     accessible={true}
@@ -246,20 +260,25 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                           width: posterWidth,
                           marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
                         },
-                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
+                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {},
+                        !isFocused && isSelected ? { borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
                     ]}
                     // @ts-ignore - supported on TV platforms
                     nextFocusLeft={firstCategoryNode}
                     tvParallaxProperties={{ enabled: false }}
-                    onPress={() => navigation.navigate('MediaInfo', {
-                      id: item.id,
-                      type: 'series',
-                      title: item.name,
-                      cover: item.cover,
-                      returnGroupId: selectedGroup,
-                      returnScreen: 'Home',
-                      returnTab: 'series',
-                    })}
+                    onPress={() => {
+                      setSelectedSeriesId(item.id);
+                      navigation.navigate('MediaInfo', {
+                        id: item.id,
+                        type: 'series',
+                        title: item.name,
+                        cover: item.cover,
+                        returnGroupId: selectedGroup,
+                        returnContentId: item.id,
+                        returnScreen: 'Home',
+                        returnTab: 'series',
+                      });
+                    }}
                     onFocus={() => {
                       setFocusedSeriesId(item.id);
                       setShouldFocusFirstItem(false);
@@ -271,11 +290,11 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                       style={[
                           styles.poster,
                           { width: posterWidth, height: posterWidth * 1.5 },
-                          { borderColor: isFocused ? colors.primary : colors.divider },
+                          { borderColor: isFocused || isSelected ? colors.primary : colors.divider },
                       ]}
                       resizeMode="cover"
                     />
-                    <Text style={[styles.title, { color: isFocused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
+                    <Text style={[styles.title, { color: isFocused || isSelected ? colors.text : colors.textSecondary }]} numberOfLines={2}>
                       {item.name}
                     </Text>
                   </TouchableOpacity>
