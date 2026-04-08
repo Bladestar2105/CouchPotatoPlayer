@@ -19,8 +19,9 @@ const { height } = Dimensions.get('window');
 // Cache time formatter
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
-// TiviMate-style category item with count badge
-const CategoryItem = React.forwardRef(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
+// ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
+// when selecting a new group.
+const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -51,10 +52,16 @@ const CategoryItem = React.forwardRef(({ title, count, isSelected, onPress, colo
             )}
         </TouchableOpacity>
     );
+}), (prevProps, nextProps) => {
+    return prevProps.title === nextProps.title &&
+           prevProps.count === nextProps.count &&
+           prevProps.isSelected === nextProps.isSelected &&
+           prevProps.hasTVPreferredFocus === nextProps.hasTVPreferredFocus &&
+           prevProps.colors === nextProps.colors;
 });
 
-// TiviMate-style channel row with inline EPG
-const ChannelRow = React.forwardRef(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {
+// ⚡ Bolt: Wrap ChannelRow in React.memo to prevent unnecessary re-renders when parent state updates.
+const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlaying, isFocused, isFav, currentProgram, progressPercent, hasCatchupSupport, onPress, onLongPress, onFocus, colors }: {
     channel: Channel;
     channelNumber: number;
     isPlaying: boolean;
@@ -132,6 +139,16 @@ const ChannelRow = React.forwardRef(({ channel, channelNumber, isPlaying, isFocu
             </View>
         </TouchableOpacity>
     );
+}), (prevProps, nextProps) => {
+    return prevProps.channel.id === nextProps.channel.id &&
+           prevProps.channelNumber === nextProps.channelNumber &&
+           prevProps.isPlaying === nextProps.isPlaying &&
+           prevProps.isFocused === nextProps.isFocused &&
+           prevProps.isFav === nextProps.isFav &&
+           prevProps.currentProgram?.id === nextProps.currentProgram?.id &&
+           prevProps.progressPercent === nextProps.progressPercent &&
+           prevProps.hasCatchupSupport === nextProps.hasCatchupSupport &&
+           prevProps.colors === nextProps.colors;
 });
 
 // View mode toggle: list vs EPG grid
