@@ -1,80 +1,85 @@
-# Vorschläge aus Codebasis-Review
+# Vorschläge aus Codebasis-Review (aktualisiert)
 
-## 1) Aufgabe: Tippfehler korrigieren (TMDB-Kommentar)
+Stand dieser Liste: **9. April 2026**.
 
-**Beobachtung**
-- In `services/tmdb.ts` steht im Kommentar `lets` statt `let's`.
+## Erledigt / bereits umgesetzt
 
-**Warum wichtig**
-- Kleine Tippfehler in Kommentaren senken die Lesbarkeit und wirken unprofessionell.
+### 1) Image-Proxy unterstützt HTTP **und** HTTPS
 
-**Vorschlag (Task)**
-- Korrigiere den Tippfehler im Kommentar und formuliere den Satz klarer.
+**Status**
+- Die Proxy-Logik erkennt bereits `http://` und `https://` per Regex.
 
-**Akzeptanzkriterien**
-- Der Kommentar enthält keinen Tippfehler mehr (`let's` oder eine komplett überarbeitete Formulierung).
-- Der Kommentar beschreibt nachvollziehbar, warum die gewählte URL verwendet wird.
+**Code-Hinweis**
+- `utils/imageProxy.ts` nutzt `^https?:\/\/` und proxyt dann über `/proxy/...`.
 
 ---
 
-## 2) Aufgabe: Programmierfehler korrigieren (HTTPS wird im Image-Proxy nicht berücksichtigt)
+### 2) Unit-Tests für Image-Proxy sind vorhanden
 
-**Beobachtung**
-- `utils/imageProxy.ts` proxyt nur URLs mit `http://`, aber nicht `https://`.
-- Dadurch werden viele moderne Bildquellen nicht über `/proxy/` geleitet.
+**Status**
+- Es existieren Unit-Tests inklusive HTTPS-Regressionstest.
 
-**Warum wichtig**
-- Bei Web-Deployments können dadurch CORS-Probleme oder inkonsistentes Verhalten auftreten.
-
-**Vorschlag (Task)**
-- Erweitere die Proxy-Logik, sodass sowohl `http://` als auch `https://` erkannt werden.
-- Optional: Nutze eine robustere Protokollprüfung statt String-Matching (z. B. via URL-Parsing mit Fallback).
-
-**Akzeptanzkriterien**
-- `proxyImageUrl('http://...')` und `proxyImageUrl('https://...')` liefern jeweils einen `/proxy/...`-Pfad.
-- Bestehendes Verhalten für interne/nicht-proxy-relevante URLs bleibt unverändert.
+**Code-Hinweis**
+- `utils/__tests__/imageProxy.test.ts` enthält Fälle für HTTP, HTTPS, relative URLs und Cache-Stabilität.
 
 ---
 
-## 3) Aufgabe: Kommentar-/Doku-Unstimmigkeit korrigieren (TMDB-Bildbasis)
+### 3) TMDB-Bildbasis ist konsistent
 
-**Beobachtung**
-- `TMDB_IMAGE_BASE` ist auf einen offensichtlich falschen Pfad gesetzt (`.../tremendous/t/p`) und wird im restlichen Code nicht verwendet.
-- Gleichzeitig werden Bild-URLs mehrfach als Literal (`https://image.tmdb.org/t/p/...`) zusammengesetzt.
+**Status**
+- `TMDB_IMAGE_BASE` ist korrekt (`https://image.tmdb.org/t/p`) und wird für Poster/Backdrop-URLs genutzt.
 
-**Warum wichtig**
-- Das ist eine Unstimmigkeit zwischen Kommentar, Konstante und tatsächlicher Implementierung.
-- Solche Altlasten erhöhen das Risiko zukünftiger Copy/Paste-Fehler.
-
-**Vorschlag (Task)**
-- Vereinheitliche die Bild-URL-Erzeugung:
-  - Entweder `TMDB_IMAGE_BASE` korrekt setzen und überall nutzen,
-  - oder die tote Konstante entfernen und Kommentar bereinigen.
-
-**Akzeptanzkriterien**
-- Keine falsche/stale TMDB-Bildbasis mehr im Code.
-- Genau eine zentrale Quelle für TMDB-Bildpfade (oder bewusst keine Konstante, dann ohne Widersprüche).
+**Code-Hinweis**
+- `services/tmdb.ts` verwendet `buildTmdbImageUrl(...)` zentral.
 
 ---
 
-## 4) Aufgabe: Testverbesserung (Image-Proxy abdecken)
+## Offene, priorisierte Aufgaben
+
+## 1) i18n-Testisolation verbessern (verhindert suite-übergreifende Nebenwirkungen)
 
 **Beobachtung**
-- Es gibt aktuell keine Unit-Tests für `utils/imageProxy.ts`.
+- In Tests werden i18n-Ressourcen dynamisch ergänzt; ohne Cleanup kann das andere Tests beeinflussen.
 
 **Warum wichtig**
-- Die Proxy-Entscheidung ist plattformabhängig und fehleranfällig (z. B. Protokoll, Cache-Verhalten).
+- Vermeidet flakige Tests und schwer nachvollziehbare Reihenfolgeabhängigkeiten.
 
 **Vorschlag (Task)**
-- Ergänze Tests für `proxyImageUrl` mit Fokus auf Web-Verhalten.
-
-**Empfohlene Testfälle**
-1. `http://...` wird geproxyt.
-2. `https://...` wird geproxyt.
-3. Nicht relevante URLs bleiben unverändert.
-4. `undefined`/`null` wird korrekt behandelt.
-5. Cache liefert bei erneutem Aufruf denselben Wert (idempotentes Verhalten).
+- Testdaten nach jedem manipulativen i18n-Test explizit entfernen oder in isolierter i18n-Instanz testen.
 
 **Akzeptanzkriterien**
-- Neue Tests sind grün.
-- Ein Regressionstest deckt explizit den HTTPS-Fall ab.
+- `bun test utils/__tests__` ist stabil grün, unabhängig von Test-Reihenfolge.
+
+---
+
+## 2) Start-Performance: AsyncStorage-Reads parallelisieren
+
+**Beobachtung**
+- In `context/IPTVContext.tsx` und `context/SettingsContext.tsx` werden viele Storage-Reads seriell ausgeführt.
+
+**Warum wichtig**
+- Kann die Zeit bis zur ersten interaktiven Ansicht erhöhen (insbesondere auf TV-Geräten).
+
+**Vorschlag (Task)**
+- Reads per `multiGet` oder `Promise.all` bündeln; Parsing/Fehlerbehandlung beibehalten.
+
+**Akzeptanzkriterien**
+- Kein Regressionsverhalten bei beschädigten Storage-Einträgen.
+- Messbar reduzierte Initialisierungszeit im Profiling.
+
+---
+
+## 3) Context-Granularität erhöhen (Rerender-Last senken)
+
+**Beobachtung**
+- `IPTVContext` bündelt viele Zustände/Funktionen in einem Provider.
+
+**Warum wichtig**
+- Änderungen an Teilzuständen können unnötige Rerender in vielen Consumer-Komponenten auslösen.
+
+**Vorschlag (Task)**
+- Kontext in fachliche Teil-Provider aufsplitten (z. B. Profile, Playback, EPG, Favoriten) oder selector-basierten Zugriff einführen.
+
+**Akzeptanzkriterien**
+- Messbar weniger Rerender bei häufigen Updates (z. B. Playback/EPG).
+- Keine API-Regression für bestehende Screens.
