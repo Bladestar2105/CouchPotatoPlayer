@@ -40,3 +40,7 @@
 ## 2024-03-31 - [Virtualize massive horizontal timelines]
 **Learning:** Rendering every time block inside an EPG horizontal timeline for multiple days out of view blocks the UI thread because React Native instantiates views for everything rendered, even if `ScrollView` hides them visually.
 **Action:** Always constrain rendering large horizontal lists/blocks inside `ScrollView` to a visible window. Track `scrollX` via `onScroll` debounced, and calculate a `visibleStartMs` and `visibleEndMs` with a buffer to only push objects onto the render array that fall within that range.
+
+## 2024-04-08 - [Memoize FlatList items to prevent unnecessary re-renders]
+**Learning:** In React Native `FlatList` components, passing inline functions (like `onPress={() => handleChannelPress(channel)}`) as props to list item components causes every single item to re-render unnecessarily whenever the parent state changes (e.g., when a user focuses a different item). This leads to severe UI thread blocking and input lag, especially on low-end TV devices with hundreds of items.
+**Action:** Always extract list item components into their own `React.memo` wrappers. Provide a custom equality function `(prevProps, nextProps) => boolean` to explicitly define which primitive prop changes (like `isFocused`, `channel.id`) should trigger a re-render, effectively ignoring the inline function references.
