@@ -770,9 +770,12 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (typeof raw !== 'string') return undefined;
         const normalized = raw.trim().replace(/\\\//g, '/');
         if (!normalized) return undefined;
-        if (normalized.startsWith('//')) return `https:${normalized}`;
-        if (/^https?:\/\//i.test(normalized)) return normalized;
-        if (normalized.startsWith('/')) return `${cleanServerUrl}${normalized}`;
+        if (normalized.startsWith('//')) return encodeURI(`https:${normalized}`);
+        if (/^https?:\/\//i.test(normalized)) return encodeURI(normalized);
+        if (normalized.startsWith('/')) return encodeURI(`${cleanServerUrl}${normalized}`);
+        if (normalized.startsWith('www.')) return encodeURI(`https://${normalized}`);
+        if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(normalized)) return encodeURI(`https://${normalized}`);
+        if (/^[^/][^:]*\/.+/.test(normalized)) return encodeURI(`${cleanServerUrl}/${normalized.replace(/^\/+/, '')}`);
         return undefined;
       };
 

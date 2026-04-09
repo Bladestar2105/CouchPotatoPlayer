@@ -16,8 +16,10 @@ const getPosterUri = (cover?: string): string | undefined => {
   if (!cover) return undefined;
   const normalized = cover.trim().replace(/\\\//g, '/');
   if (!normalized) return undefined;
-  if (normalized.startsWith('//')) return proxyImageUrl(`https:${normalized}`);
-  if (/^https?:\/\//i.test(normalized)) return proxyImageUrl(normalized);
+  if (normalized.startsWith('//')) return proxyImageUrl(encodeURI(`https:${normalized}`));
+  if (/^https?:\/\//i.test(normalized)) return proxyImageUrl(encodeURI(normalized));
+  if (normalized.startsWith('www.')) return proxyImageUrl(encodeURI(`https://${normalized}`));
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(normalized)) return proxyImageUrl(encodeURI(`https://${normalized}`));
   return undefined;
 };
 
