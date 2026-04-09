@@ -56,6 +56,9 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
                 }
             }}
             accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${prog.title}, from ${formatTime(prog.start)} to ${formatTime(prog.end)}${isNow ? ', live now' : isCatchupAvailable ? ', available for catchup' : ''}`}
+            accessibilityHint={isNow ? "Plays this channel" : isCatchupAvailable ? "Plays this program from catchup" : "Program information"}
             isTVSelectable={true}
             activeOpacity={isClickable ? 0.7 : 1}
         >
@@ -81,6 +84,9 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
 const ChannelColumnItem = React.memo(({ channel, isFocused, isPlaying, isFav, hasTVPreferredFocus, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, hasCatchup }: any) => (
     <TouchableOpacity
         accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`Channel: ${channel.name}${isFav ? ', Favorite' : ''}${isPlaying ? ', Currently playing' : ''}`}
+        accessibilityHint="Plays this channel. Long press to toggle favorite."
         isTVSelectable={true}
         hasTVPreferredFocus={hasTVPreferredFocus}
         style={[
