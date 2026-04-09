@@ -5,12 +5,21 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Movie } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { proxyImageUrl } from '../utils/imageProxy';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/character_logo.png');
 const BASE_POSTER_WIDTH = Platform.isTV ? 150 : 130;
 const MAX_POSTER_COLUMNS = 10;
 const getMoviePosterKey = (movie: Movie): string => `${movie.group || 'Unknown'}::${movie.id}::${movie.streamUrl}::${movie.name}`;
+const getPosterUri = (cover?: string): string | undefined => {
+  if (!cover) return undefined;
+  const normalized = cover.trim().replace(/\\\//g, '/');
+  if (!normalized) return undefined;
+  if (normalized.startsWith('//')) return proxyImageUrl(`https:${normalized}`);
+  if (/^https?:\/\//i.test(normalized)) return proxyImageUrl(normalized);
+  return undefined;
+};
 
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
@@ -255,10 +264,12 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                 const movieKey = getMoviePosterKey(item);
                 const isFocused = focusedMovieKey === movieKey;
                 const isSelected = selectedMovieKey === movieKey;
+                const posterUri = getPosterUri(item.cover);
                 return (
                   <TouchableOpacity
                     accessible={true}
                     isTVSelectable={true}
+                    activeOpacity={1}
                     ref={index === 0 ? (el: any) => {
                       firstPosterRef.current = el;
                       setFirstPosterNode(findNodeHandle(el) ?? undefined);
@@ -297,7 +308,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((pr
                     onBlur={() => setFocusedMovieKey((current) => (current === movieKey ? null : current))}
                   >
                     <Image
-                      source={item.cover && item.cover.startsWith('http') ? { uri: item.cover } : defaultLogo}
+                      source={posterUri ? { uri: posterUri } : defaultLogo}
                       style={[
                           styles.poster,
                           { width: posterWidth, height: posterWidth * 1.5 },
