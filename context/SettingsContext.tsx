@@ -132,42 +132,63 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const storedTheme = await AsyncStorage.getItem('app_theme_mode');
+        const [
+          themeEntry,
+          bufferEntry,
+          playerTypeEntry,
+          vlcHwAccelEntry,
+          ksHwDecodeEntry,
+          ksAsyncEntry,
+          ksFrameRateEntry,
+          tmdbKeyEntry,
+        ] = await AsyncStorage.multiGet([
+          'app_theme_mode',
+          'app_buffer_size',
+          'app_player_type',
+          'app_vlc_hw_accel',
+          'app_ks_hw_decode',
+          'app_ks_async_decomp',
+          'app_ks_display_frame_rate',
+          'app_tmdb_api_key',
+        ]);
+
+        const storedTheme = themeEntry?.[1] ?? null;
+        const storedBuffer = bufferEntry?.[1] ?? null;
+        const storedPlayerType = playerTypeEntry?.[1] ?? null;
+        const storedVlcHwAccel = vlcHwAccelEntry?.[1] ?? null;
+        const storedKSHwDecode = ksHwDecodeEntry?.[1] ?? null;
+        const storedKSAsync = ksAsyncEntry?.[1] ?? null;
+        const storedKSFrameRate = ksFrameRateEntry?.[1] ?? null;
+        const storedTmdbKey = tmdbKeyEntry?.[1] ?? null;
+
         if (storedTheme === 'dark' || storedTheme === 'oled' || storedTheme === 'light') {
           setThemeModeState(storedTheme as ThemeMode);
         }
 
-        const storedBuffer = await AsyncStorage.getItem('app_buffer_size');
         if (storedBuffer) {
           setBufferSizeState(parseInt(storedBuffer, 10));
         }
 
-        const storedPlayerType = await AsyncStorage.getItem('app_player_type');
         if (storedPlayerType === 'native' || storedPlayerType === 'vlc' || storedPlayerType === 'avkit' || storedPlayerType === 'ksplayer') {
           setPlayerTypeState(normalizePlayerTypeForPlatform(storedPlayerType as PlayerType, Platform.OS, Platform.isTV));
         }
 
-        const storedVlcHwAccel = await AsyncStorage.getItem('app_vlc_hw_accel');
         if (storedVlcHwAccel) {
           setVlcHardwareAccelerationState(storedVlcHwAccel === 'true');
         }
 
-        const storedKSHwDecode = await AsyncStorage.getItem('app_ks_hw_decode');
         if (storedKSHwDecode) {
           setKsplayerHardwareDecodeState(storedKSHwDecode === 'true');
         }
 
-        const storedKSAsync = await AsyncStorage.getItem('app_ks_async_decomp');
         if (storedKSAsync) {
           setKsplayerAsynchronousDecompressionState(storedKSAsync === 'true');
         }
 
-        const storedKSFrameRate = await AsyncStorage.getItem('app_ks_display_frame_rate');
         if (storedKSFrameRate) {
           setKsplayerDisplayFrameRateState(storedKSFrameRate === 'true');
         }
 
-        const storedTmdbKey = await AsyncStorage.getItem('app_tmdb_api_key');
         if (storedTmdbKey) {
           setTmdbApiKeyState(storedTmdbKey);
         }
