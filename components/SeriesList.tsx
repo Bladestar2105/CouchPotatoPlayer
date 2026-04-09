@@ -5,11 +5,23 @@ import { useIPTV } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { proxyImageUrl } from '../utils/imageProxy';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/character_logo.png');
 const BASE_POSTER_WIDTH = Platform.isTV ? 150 : 130;
 const MAX_POSTER_COLUMNS = 10;
+const getSeriesPosterKey = (entry: Series): string => `${entry.group || 'Unknown'}::${entry.id}::${entry.name}`;
+const getPosterUri = (cover?: string): string | undefined => {
+  if (!cover) return undefined;
+  const normalized = cover.trim().replace(/\\\//g, '/');
+  if (!normalized) return undefined;
+  if (normalized.startsWith('//')) return proxyImageUrl(encodeURI(`https:${normalized}`));
+  if (/^https?:\/\//i.test(normalized)) return proxyImageUrl(encodeURI(normalized));
+  if (normalized.startsWith('www.')) return proxyImageUrl(encodeURI(`https://${normalized}`));
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(normalized)) return proxyImageUrl(encodeURI(`https://${normalized}`));
+  return undefined;
+};
 
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
@@ -55,10 +67,16 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   useEffect(() => {
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
-      navigation.setParams({ returnGroupId: undefined });
     }
-  }, [route.params?.returnGroupId]);
-  const [focusedSeriesId, setFocusedSeriesId] = useState<string | null>(null);
+    if (route.params?.returnContentKey) {
+      setSelectedSeriesKey(route.params.returnContentKey);
+    }
+    if (route.params?.returnGroupId || route.params?.returnContentKey) {
+      navigation.setParams({ returnGroupId: undefined, returnContentKey: undefined });
+    }
+  }, [navigation, route.params?.returnContentKey, route.params?.returnGroupId]);
+  const [focusedSeriesKey, setFocusedSeriesKey] = useState<string | null>(null);
+  const [selectedSeriesKey, setSelectedSeriesKey] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState<boolean>(true);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
@@ -136,6 +154,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
   const handleGroupSelect = (title: string) => {
     setSelectedGroup(title);
+    setFocusedSeriesKey(null);
     setShouldFocusFirstItem(true);
     if (isMobile) {
       setShowCategories(false);
@@ -160,6 +179,18 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   const selectedSeries = useMemo(() => {
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
+
+  useEffect(() => {
+    if (!focusedSeriesKey && !selectedSeriesKey) return;
+
+    const keysInGroup = new Set(selectedSeries.map(getSeriesPosterKey));
+    if (focusedSeriesKey && !keysInGroup.has(focusedSeriesKey)) {
+      setFocusedSeriesKey(null);
+    }
+    if (selectedSeriesKey && !keysInGroup.has(selectedSeriesKey)) {
+      setSelectedSeriesKey(null);
+    }
+  }, [focusedSeriesKey, selectedSeries, selectedSeriesKey]);
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
@@ -215,9 +246,10 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
         {selectedSeries.length > 0 ? (
           <FlatList
             data={selectedSeries}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => getSeriesPosterKey(item)}
             numColumns={numColumns}
             key={numColumns} // Force re-render if columns change
+            extraData={{ focusedSeriesKey, selectedSeriesKey, selectedGroup }}
             contentContainerStyle={styles.gridContainer}
             initialNumToRender={12}
             maxToRenderPerBatch={12}
@@ -230,11 +262,15 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                return { length: rowHeight, offset: rowHeight * rowIndex, index };
             }}
             renderItem={({ item, index }) => {
-                const isFocused = focusedSeriesId === item.id;
+                const seriesKey = getSeriesPosterKey(item);
+                const isFocused = focusedSeriesKey === seriesKey;
+                const isSelected = selectedSeriesKey === seriesKey;
+                const posterUri = getPosterUri(item.cover);
                 return (
                   <TouchableOpacity
                     accessible={true}
                     isTVSelectable={true}
+                    activeOpacity={1}
                     ref={index === 0 ? (el: any) => {
                       firstPosterRef.current = el;
                       setFirstPosterNode(findNodeHandle(el) ?? undefined);
@@ -246,36 +282,41 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
                           width: posterWidth,
                           marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
                         },
-                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
+                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {},
+                        !isFocused && isSelected ? { borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
                     ]}
                     // @ts-ignore - supported on TV platforms
                     nextFocusLeft={firstCategoryNode}
                     tvParallaxProperties={{ enabled: false }}
-                    onPress={() => navigation.navigate('MediaInfo', {
-                      id: item.id,
-                      type: 'series',
-                      title: item.name,
-                      cover: item.cover,
-                      returnGroupId: selectedGroup,
-                      returnScreen: 'Home',
-                      returnTab: 'series',
-                    })}
+                    onPress={() => {
+                      setSelectedSeriesKey(seriesKey);
+                      navigation.navigate('MediaInfo', {
+                        id: item.id,
+                        type: 'series',
+                        title: item.name,
+                        cover: item.cover,
+                        returnGroupId: selectedGroup,
+                        returnContentKey: seriesKey,
+                        returnScreen: 'Home',
+                        returnTab: 'series',
+                      });
+                    }}
                     onFocus={() => {
-                      setFocusedSeriesId(item.id);
+                      setFocusedSeriesKey(seriesKey);
                       setShouldFocusFirstItem(false);
                     }}
-                    onBlur={() => setFocusedSeriesId(null)}
+                    onBlur={() => setFocusedSeriesKey((current) => (current === seriesKey ? null : current))}
                   >
                     <Image
-                      source={item.cover && item.cover.startsWith('http') ? { uri: item.cover } : defaultLogo}
+                      source={posterUri ? { uri: posterUri } : defaultLogo}
                       style={[
                           styles.poster,
                           { width: posterWidth, height: posterWidth * 1.5 },
-                          { borderColor: isFocused ? colors.primary : colors.divider },
+                          { borderColor: isFocused || isSelected ? colors.primary : colors.divider },
                       ]}
                       resizeMode="cover"
                     />
-                    <Text style={[styles.title, { color: isFocused ? colors.text : colors.textSecondary }]} numberOfLines={2}>
+                    <Text style={[styles.title, { color: isFocused || isSelected ? colors.text : colors.textSecondary }]} numberOfLines={2}>
                       {item.name}
                     </Text>
                   </TouchableOpacity>

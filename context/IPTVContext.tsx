@@ -621,7 +621,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadXtream = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {
     if (profile.type !== 'xtream') return;
 
-    const cacheKey = `XTREAM_CACHE_${profile.id}`;
+    const cacheKey = `XTREAM_CACHE_V2_${profile.id}`;
 
     if (!forceUpdate) {
         // Try to load from cache first
@@ -766,13 +766,32 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }) : [];
       setChannels(parsedChannels);
 
+      const normalizeXtreamImageUrl = (raw: unknown): string | undefined => {
+        if (typeof raw !== 'string') return undefined;
+        const normalized = raw.trim().replace(/\\\//g, '/');
+        if (!normalized) return undefined;
+        if (normalized.startsWith('//')) return encodeURI(`https:${normalized}`);
+        if (/^https?:\/\//i.test(normalized)) return encodeURI(normalized);
+        if (normalized.startsWith('/')) return encodeURI(`${cleanServerUrl}${normalized}`);
+        if (normalized.startsWith('www.')) return encodeURI(`https://${normalized}`);
+        if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(normalized)) return encodeURI(`https://${normalized}`);
+        if (/^[^/][^:]*\/.+/.test(normalized)) return encodeURI(`${cleanServerUrl}/${normalized.replace(/^\/+/, '')}`);
+        return undefined;
+      };
+
       const parsedMovies: Movie[] = Array.isArray(vodData) ? vodData.map((movie: any): Movie => {
         const catInfo = categoryMap.get(String(movie.category_id)) || { name: 'VOD', isAdult: false };
+        const movieCover =
+          normalizeXtreamImageUrl(movie.stream_icon) ||
+          normalizeXtreamImageUrl(movie.cover) ||
+          normalizeXtreamImageUrl(movie.movie_image) ||
+          normalizeXtreamImageUrl(movie.poster) ||
+          normalizeXtreamImageUrl(movie.poster_path);
         return {
           id: String(movie.stream_id),
           name: movie.name,
           streamUrl: `${cleanServerUrl}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${movie.stream_id}.${movie.container_extension}`,
-          cover: movie.stream_icon,
+          cover: movieCover,
           group: catInfo.name,
           categoryId: String(movie.category_id),
           containerExtension: movie.container_extension,
@@ -783,10 +802,16 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const parsedSeries: Series[] = Array.isArray(seriesData) ? seriesData.map((series: any): Series => {
         const catInfo = categoryMap.get(String(series.category_id)) || { name: 'Series', isAdult: false };
+        const seriesCover =
+          normalizeXtreamImageUrl(series.cover) ||
+          normalizeXtreamImageUrl(series.cover_big) ||
+          normalizeXtreamImageUrl(series.stream_icon) ||
+          normalizeXtreamImageUrl(series.poster) ||
+          normalizeXtreamImageUrl(series.poster_path);
         return {
           id: String(series.series_id),
           name: series.name,
-          cover: series.cover,
+          cover: seriesCover,
           group: catInfo.name,
           categoryId: String(series.category_id),
           seasons: [],
