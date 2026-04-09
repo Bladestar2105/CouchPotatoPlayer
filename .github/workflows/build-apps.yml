@@ -163,7 +163,9 @@ jobs:
         shell: bash
         run: |
           raw_branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
-          echo "branch=${raw_branch//\//-}" >> $GITHUB_OUTPUT
+          # Remove non-ascii characters and other invalid docker tag characters to avoid 'invalid reference format'
+          clean_branch=$(echo "${raw_branch//\//-}" | sed -e 's/[^a-zA-Z0-9_.-]/-/g' -e 's/^[-]*//')
+          echo "branch=${clean_branch}" >> $GITHUB_OUTPUT
         id: extract_branch
 
       - name: Build and push Docker image
