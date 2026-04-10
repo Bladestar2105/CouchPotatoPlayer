@@ -134,6 +134,13 @@ type IPTVPlaybackContextType = {
   stopStream: () => void;
 };
 const IPTVPlaybackContext = createContext<IPTVPlaybackContextType | undefined>(undefined);
+type IPTVLibraryContextType = {
+  channels: Channel[];
+  movies: Movie[];
+  series: Series[];
+  epg: Record<string, EPGProgram[]>;
+};
+const IPTVLibraryContext = createContext<IPTVLibraryContextType | undefined>(undefined);
 
 export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -1182,12 +1189,20 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     playStream,
     stopStream,
   }), [currentStream, playStream, stopStream]);
+  const libraryValue = useMemo<IPTVLibraryContextType>(() => ({
+    channels,
+    movies,
+    series,
+    epg,
+  }), [channels, movies, series, epg]);
 
   return (
     <IPTVPlaybackContext.Provider value={playbackValue}>
-      <IPTVContext.Provider value={contextValue}>
-        {children}
-      </IPTVContext.Provider>
+      <IPTVLibraryContext.Provider value={libraryValue}>
+        <IPTVContext.Provider value={contextValue}>
+          {children}
+        </IPTVContext.Provider>
+      </IPTVLibraryContext.Provider>
     </IPTVPlaybackContext.Provider>
   );
 };
@@ -1204,6 +1219,14 @@ export const useIPTVPlayback = () => {
   const context = useContext(IPTVPlaybackContext);
   if (context === undefined) {
     throw new Error('useIPTVPlayback must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVLibrary = () => {
+  const context = useContext(IPTVLibraryContext);
+  if (context === undefined) {
+    throw new Error('useIPTVLibrary must be used within an IPTVProvider');
   }
   return context;
 };
