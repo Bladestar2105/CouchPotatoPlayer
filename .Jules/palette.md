@@ -7,3 +7,6 @@
 ## 2026-04-09 - Make complex interactive timelines accessible
 **Learning:** Highly interactive and complex timeline/grid views (like an EPG timeline) that use generic touchable containers without proper accessibility labels, roles, and hints are completely opaque to screen readers. Users relying on assistive technologies need descriptive context about state (e.g. "live now", "available for catchup", "favorite", "currently playing") to navigate these views.
 **Action:** Always add complete accessibility properties (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`, and `accessibilityHint`) to touchable elements within complex timeline or grid interfaces to ensure users can interpret their state and functionality.
+## 2026-04-10 - Define accessibility roles for UI selection buttons
+**Learning:** Interactive dropdown elements and selection UI components built with `TouchableOpacity` should clearly articulate their current selection state. Utilizing `accessibilityState={{ selected: boolean }}` combined with `accessibilityRole="button"` ensures that screen readers narrate the active selection accurately, especially for dynamic lists like profile switchers.
+**Action:** Use the `accessibilityState` prop to reflect dynamic user choices on interactive lists and selectors.
