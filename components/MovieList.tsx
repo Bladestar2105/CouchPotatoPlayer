@@ -37,8 +37,8 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
                 isSelected ? { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : { borderLeftWidth: 3, borderLeftColor: 'transparent' },
                 isFocused ? { backgroundColor: 'rgba(233, 105, 42, 0.3)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : {}
             ]}
-            onPress={() => onPress(item)}
-            onFocus={() => { setIsFocused(true); onFocus(); }}
+            onPress={() => onPress(title)}
+            onFocus={() => { setIsFocused(true); onFocus?.(title); }}
             onBlur={() => setIsFocused(false)}
             accessible={true}
             isTVSelectable={true}
