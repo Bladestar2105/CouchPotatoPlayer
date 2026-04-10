@@ -22,7 +22,7 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minu
 
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group.
-const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, colors, hasTVPreferredFocus }: { title: string, count?: number, isSelected: boolean, onPress: () => void, colors: any, hasTVPreferredFocus?: boolean }, ref: React.Ref<any>) => {
+const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus, nextFocusRight }: { title: string, count?: number, isSelected: boolean, onPress: (title: string) => void, onFocus?: (title: string) => void, colors: any, hasTVPreferredFocus?: boolean, nextFocusRight?: number }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -33,7 +33,7 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
                 isSelected && { backgroundColor: colors.primaryLight, borderLeftColor: colors.primary, borderLeftWidth: 3 },
                 isFocused && { backgroundColor: 'rgba(233,105,42,0.25)', borderLeftColor: colors.primary, borderLeftWidth: 3 }
             ]}
-            onPress={onPress}
+            onPress={() => onPress(channel)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             accessible={true}
@@ -71,9 +71,9 @@ const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlay
     currentProgram: any;
     progressPercent: number;
     hasCatchupSupport: boolean;
-    onPress: () => void;
-    onLongPress: () => void;
-    onFocus: () => void;
+    onPress: (channel: Channel) => void;
+    onLongPress: (channel: Channel) => void;
+    onFocus: (id: string) => void;
     colors: any;
 }, ref: React.Ref<any>) => {
     const [localFocused, setLocalFocused] = useState(false);
@@ -87,9 +87,9 @@ const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlay
                 isPlaying && { backgroundColor: 'rgba(233,105,42,0.12)', borderLeftColor: colors.primary, borderLeftWidth: 3 },
                 focused && { backgroundColor: 'rgba(233,105,42,0.18)' },
             ]}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            onFocus={() => { setLocalFocused(true); onFocus(); }}
+            onPress={() => onPress(channel)}
+            onLongPress={() => onLongPress(channel)}
+            onFocus={() => { setLocalFocused(true); onFocus(channel.id); }}
             onBlur={() => setLocalFocused(false)}
             accessible={true}
             isTVSelectable={true}
@@ -439,7 +439,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         title={item.title}
         count={item.data.length}
         isSelected={isSelected}
-        onPress={() => handleGroupSelect(item.title)}
+        onPress={handleGroupSelect}
         colors={colors}
         hasTVPreferredFocus={isFirstItem}
       />
@@ -464,9 +464,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         currentProgram={epgInfo.currentProgram}
         progressPercent={epgInfo.progressPercent}
         hasCatchupSupport={hasCatchupSupport}
-        onPress={() => handleChannelPress(channel)}
-        onLongPress={() => handleToggleFavorite(channel)}
-        onFocus={() => setFocusedChannelId(channel.id)}
+        onPress={handleChannelPress}
+        onLongPress={handleToggleFavorite}
+        onFocus={setFocusedChannelId}
         colors={colors}
       />
     );
