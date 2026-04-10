@@ -386,14 +386,12 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     }
   }, [isFavorite, removeFavorite, addFavorite]);
 
-  // Compute EPG data for the TiviMate-style list view
-  const now = useMemo(() => Date.now(), []);
-
   const getChannelEpgInfo = useCallback((channel: Channel) => {
     const key = getEpgKey(channel);
     const programs = epg[key] || [];
     if (programs.length === 0) return { currentProgram: null, progressPercent: 0 };
 
+    const now = Date.now();
     const idx = findCurrentProgramIndex(programs, now);
     if (idx === -1) return { currentProgram: null, progressPercent: 0 };
 
@@ -403,7 +401,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
 
     return { currentProgram: prog, progressPercent };
-  }, [epg, now]);
+  }, [epg]);
 
   // Global channel index for numbering
   const channelIndexOffset = useMemo(() => {
