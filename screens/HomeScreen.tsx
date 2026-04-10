@@ -3,7 +3,7 @@ import { View, StyleSheet, Text, Platform, ActivityIndicator, TouchableOpacity, 
 import TVFocusGuideView from '../components/TVFocusGuideView';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTV, useIPTVAppState, useIPTVLibrary, useIPTVParental, useIPTVProfiles } from '../context/IPTVContext';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
@@ -275,7 +275,8 @@ const mobileTabStyles = StyleSheet.create({
 const MainLayout = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
-  const { isLoading, profiles, currentProfile, loadProfile } = useIPTV();
+  const { isLoading } = useIPTVAppState();
+  const { profiles, currentProfile, loadProfile } = useIPTVProfiles();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -548,7 +549,10 @@ const tvStyles = StyleSheet.create({
 });
 
 const HomeScreen = () => {
-  const { isInitializing, currentProfile, pin, channels, movies, series, isLoading, isUpdating, loadProfile, hasCheckedOnStartup, setHasCheckedOnStartup } = useIPTV();
+  const { isInitializing, isLoading, isUpdating, hasCheckedOnStartup, setHasCheckedOnStartup } = useIPTVAppState();
+  const { currentProfile, loadProfile } = useIPTVProfiles();
+  const { pin } = useIPTVParental();
+  const { channels, movies, series } = useIPTVLibrary();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
   const { t } = useTranslation();

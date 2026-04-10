@@ -165,6 +165,23 @@ type IPTVParentalContextType = {
   isChannelLocked: (channelId: string) => boolean;
 };
 const IPTVParentalContext = createContext<IPTVParentalContextType | undefined>(undefined);
+type IPTVProfilesContextType = {
+  profiles: IPTVProfile[];
+  currentProfile: IPTVProfile | null;
+  addProfile: (profile: IPTVProfile) => Promise<void>;
+  removeProfile: (id: string) => Promise<void>;
+  loadProfile: (profile: IPTVProfile, forceUpdate?: boolean) => Promise<void>;
+  unloadProfile: () => Promise<void>;
+};
+const IPTVProfilesContext = createContext<IPTVProfilesContextType | undefined>(undefined);
+type IPTVAppStateContextType = {
+  isInitializing: boolean;
+  isLoading: boolean;
+  isUpdating: boolean;
+  hasCheckedOnStartup: boolean;
+  setHasCheckedOnStartup: (checked: boolean) => void;
+};
+const IPTVAppStateContext = createContext<IPTVAppStateContextType | undefined>(undefined);
 
 export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -1261,15 +1278,34 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     unlockChannel,
     isChannelLocked,
   ]);
+  const profilesValue = useMemo<IPTVProfilesContextType>(() => ({
+    profiles,
+    currentProfile,
+    addProfile,
+    removeProfile,
+    loadProfile,
+    unloadProfile,
+  }), [profiles, currentProfile, addProfile, removeProfile, loadProfile, unloadProfile]);
+  const appStateValue = useMemo<IPTVAppStateContextType>(() => ({
+    isInitializing,
+    isLoading,
+    isUpdating,
+    hasCheckedOnStartup,
+    setHasCheckedOnStartup,
+  }), [isInitializing, isLoading, isUpdating, hasCheckedOnStartup, setHasCheckedOnStartup]);
 
   return (
     <IPTVPlaybackContext.Provider value={playbackValue}>
       <IPTVLibraryContext.Provider value={libraryValue}>
         <IPTVCollectionsContext.Provider value={collectionsValue}>
           <IPTVParentalContext.Provider value={parentalValue}>
-            <IPTVContext.Provider value={contextValue}>
-              {children}
-            </IPTVContext.Provider>
+            <IPTVProfilesContext.Provider value={profilesValue}>
+              <IPTVAppStateContext.Provider value={appStateValue}>
+                <IPTVContext.Provider value={contextValue}>
+                  {children}
+                </IPTVContext.Provider>
+              </IPTVAppStateContext.Provider>
+            </IPTVProfilesContext.Provider>
           </IPTVParentalContext.Provider>
         </IPTVCollectionsContext.Provider>
       </IPTVLibraryContext.Provider>
@@ -1313,6 +1349,22 @@ export const useIPTVParental = () => {
   const context = useContext(IPTVParentalContext);
   if (context === undefined) {
     throw new Error('useIPTVParental must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVProfiles = () => {
+  const context = useContext(IPTVProfilesContext);
+  if (context === undefined) {
+    throw new Error('useIPTVProfiles must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVAppState = () => {
+  const context = useContext(IPTVAppStateContext);
+  if (context === undefined) {
+    throw new Error('useIPTVAppState must be used within an IPTVProvider');
   }
   return context;
 };

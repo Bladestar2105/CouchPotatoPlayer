@@ -10,7 +10,7 @@ if (Platform.OS === 'ios' && !Platform.isTV) {
     // Ignore
   }
 }
-import { useIPTV, useIPTVParental } from '../context/IPTVContext';
+import { useIPTVParental, useIPTVProfiles } from '../context/IPTVContext';
 import { useSettings, ThemeMode, PlayerType } from '../context/SettingsContext';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,7 +23,7 @@ type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
   const { t } = useTranslation();
-  const { currentProfile, profiles, removeProfile, loadProfile, unloadProfile } = useIPTV();
+  const { currentProfile, profiles, removeProfile, loadProfile, unloadProfile } = useIPTVProfiles();
   const { pin, isAdultUnlocked, unlockAdultContent, lockAdultContent } = useIPTVParental();
   const {
     colors, themeMode, setThemeMode, bufferSize, setBufferSize,

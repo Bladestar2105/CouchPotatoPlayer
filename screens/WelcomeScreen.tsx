@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, FlatList } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVProfiles } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 const WelcomeScreen = () => {
-  const { addProfile, loadProfile, profiles, currentProfile } = useIPTV();
+  const { addProfile, loadProfile, profiles, currentProfile } = useIPTVProfiles();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
