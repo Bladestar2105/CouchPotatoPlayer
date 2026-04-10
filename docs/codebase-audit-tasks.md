@@ -78,7 +78,7 @@ Stand dieser Liste: **10. April 2026**.
 ### 3) Context-Granularität erhöhen (Rerender-Last senken)
 
 **Status**
-- 🟡 In Arbeit (Playback-Slice extrahiert; weitere Splits offen).
+- 🟡 In Arbeit (Playback-Slice extrahiert; erste Consumer migriert: `VideoPlayer`, `EpisodeScreen`, `PlayerScreen`, `ChannelList`, `SearchScreen`, `MediaInfoScreen`, `FavoritesList`, `RecentlyWatchedList`).
 
 **Beobachtung**
 - `IPTVContext` bündelt viele Zustände/Funktionen in einem Provider.

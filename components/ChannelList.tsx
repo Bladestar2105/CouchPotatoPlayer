@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle, useWindowDimensions } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTV, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
@@ -156,7 +156,8 @@ type ViewMode = 'list' | 'epg';
 
 const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; initialViewMode?: ViewMode }>((props, ref) => {
   const { t } = useTranslation();
-  const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
+  const { channels, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, hasCatchup, getCatchupUrl } = useIPTV();
+  const { playStream, currentStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
