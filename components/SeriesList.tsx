@@ -56,6 +56,77 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
     );
 }));
 
+const SeriesPosterItem = React.memo(({
+  item,
+  index,
+  seriesKey,
+  isFocused,
+  isSelected,
+  posterWidth,
+  numColumns,
+  gridGap,
+  firstCategoryNode,
+  shouldFocusFirstItem,
+  colors,
+  onPress,
+  onFocus,
+  onBlur,
+  posterRef,
+}: any) => {
+  const posterUri = getPosterUri(item.cover);
+  return (
+    <TouchableOpacity
+      accessible={true}
+      isTVSelectable={true}
+      activeOpacity={1}
+      ref={posterRef}
+      hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
+      style={[
+        styles.posterContainer,
+        {
+          width: posterWidth,
+          marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
+        },
+        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {},
+        !isFocused && isSelected ? { borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
+      ]}
+      // @ts-ignore - supported on TV platforms
+      nextFocusLeft={firstCategoryNode}
+      tvParallaxProperties={{ enabled: false }}
+      onPress={onPress}
+      onFocus={onFocus}
+      onBlur={onBlur}
+    >
+      <Image
+        source={posterUri ? { uri: posterUri } : defaultLogo}
+        style={[
+          styles.poster,
+          { width: posterWidth, height: posterWidth * 1.5 },
+          { borderColor: isFocused || isSelected ? colors.primary : colors.divider },
+        ]}
+        resizeMode="cover"
+      />
+      <Text style={[styles.title, { color: isFocused || isSelected ? colors.text : colors.textSecondary }]} numberOfLines={2}>
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  );
+}, (prev, next) => (
+  prev.item.id === next.item.id &&
+  prev.item.cover === next.item.cover &&
+  prev.item.name === next.item.name &&
+  prev.seriesKey === next.seriesKey &&
+  prev.index === next.index &&
+  prev.isFocused === next.isFocused &&
+  prev.isSelected === next.isSelected &&
+  prev.posterWidth === next.posterWidth &&
+  prev.numColumns === next.numColumns &&
+  prev.gridGap === next.gridGap &&
+  prev.firstCategoryNode === next.firstCategoryNode &&
+  prev.shouldFocusFirstItem === next.shouldFocusFirstItem &&
+  prev.colors === next.colors
+));
+
 const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { isLoading } = useIPTVAppState();
   const { pin, isAdultUnlocked } = useIPTVParental();
@@ -187,6 +258,10 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   const selectedSeries = useMemo(() => {
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
+  const seriesListExtraData = useMemo(() => ({
+    focusedSeriesKey,
+    selectedSeriesKey,
+  }), [focusedSeriesKey, selectedSeriesKey]);
 
   useRenderDiagnostics('SeriesList', {
     selectedGroup,
@@ -233,29 +308,23 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     const seriesKey = getSeriesPosterKey(item);
     const isFocused = focusedSeriesKey === seriesKey;
     const isSelected = selectedSeriesKey === seriesKey;
-    const posterUri = getPosterUri(item.cover);
     return (
-      <TouchableOpacity
-        accessible={true}
-        isTVSelectable={true}
-        activeOpacity={1}
-        ref={index === 0 ? (el: any) => {
+      <SeriesPosterItem
+        item={item}
+        index={index}
+        seriesKey={seriesKey}
+        isFocused={isFocused}
+        isSelected={isSelected}
+        posterWidth={posterWidth}
+        numColumns={numColumns}
+        gridGap={gridGap}
+        firstCategoryNode={firstCategoryNode}
+        shouldFocusFirstItem={shouldFocusFirstItem}
+        colors={colors}
+        posterRef={index === 0 ? (el: any) => {
           firstPosterRef.current = el;
           setFirstPosterNode(findNodeHandle(el) ?? undefined);
         } : undefined}
-        hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
-        style={[
-            styles.posterContainer,
-            {
-              width: posterWidth,
-              marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
-            },
-            isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {},
-            !isFocused && isSelected ? { borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
-        ]}
-        // @ts-ignore - supported on TV platforms
-        nextFocusLeft={firstCategoryNode}
-        tvParallaxProperties={{ enabled: false }}
         onPress={() => {
           setSelectedSeriesKey(seriesKey);
           navigation.navigate('MediaInfo', {
@@ -274,20 +343,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
           setShouldFocusFirstItem(false);
         }}
         onBlur={() => setFocusedSeriesKey((current) => (current === seriesKey ? null : current))}
-      >
-        <Image
-          source={posterUri ? { uri: posterUri } : defaultLogo}
-          style={[
-              styles.poster,
-              { width: posterWidth, height: posterWidth * 1.5 },
-              { borderColor: isFocused || isSelected ? colors.primary : colors.divider },
-          ]}
-          resizeMode="cover"
-        />
-        <Text style={[styles.title, { color: isFocused || isSelected ? colors.text : colors.textSecondary }]} numberOfLines={2}>
-          {item.name}
-        </Text>
-      </TouchableOpacity>
+      />
     );
   }, [focusedSeriesKey, selectedSeriesKey, shouldFocusFirstItem, posterWidth, numColumns, gridGap, colors, firstCategoryNode, navigation, selectedGroup]);
 
@@ -331,7 +387,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
             keyExtractor={(item) => getSeriesPosterKey(item)}
             numColumns={numColumns}
             key={numColumns} // Force re-render if columns change
-            extraData={{ focusedSeriesKey, selectedSeriesKey, selectedGroup }}
+            extraData={seriesListExtraData}
             contentContainerStyle={styles.gridContainer}
             initialNumToRender={listPerfConfig.initialNumToRender}
             maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
