@@ -128,6 +128,12 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
 };
 
 const IPTVContext = createContext<IPTVContextType | undefined>(undefined);
+type IPTVPlaybackContextType = {
+  currentStream: { url: string; id: string; } | null;
+  playStream: (stream: { url: string; id: string; }) => void;
+  stopStream: () => void;
+};
+const IPTVPlaybackContext = createContext<IPTVPlaybackContextType | undefined>(undefined);
 
 export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -1171,10 +1177,18 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHasCheckedOnStartup,
   ]);
 
+  const playbackValue = useMemo<IPTVPlaybackContextType>(() => ({
+    currentStream,
+    playStream,
+    stopStream,
+  }), [currentStream, playStream, stopStream]);
+
   return (
-    <IPTVContext.Provider value={contextValue}>
-      {children}
-    </IPTVContext.Provider>
+    <IPTVPlaybackContext.Provider value={playbackValue}>
+      <IPTVContext.Provider value={contextValue}>
+        {children}
+      </IPTVContext.Provider>
+    </IPTVPlaybackContext.Provider>
   );
 };
 
@@ -1182,6 +1196,14 @@ export const useIPTV = () => {
   const context = useContext(IPTVContext);
   if (!context) {
     throw new Error('useIPTV() must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVPlayback = () => {
+  const context = useContext(IPTVPlaybackContext);
+  if (context === undefined) {
+    throw new Error('useIPTVPlayback must be used within an IPTVProvider');
   }
   return context;
 };

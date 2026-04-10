@@ -77,6 +77,9 @@ Stand dieser Liste: **10. April 2026**.
 
 ### 3) Context-Granularität erhöhen (Rerender-Last senken)
 
+**Status**
+- 🟡 In Arbeit (Playback-Slice extrahiert; weitere Splits offen).
+
 **Beobachtung**
 - `IPTVContext` bündelt viele Zustände/Funktionen in einem Provider.
 
