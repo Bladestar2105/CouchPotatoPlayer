@@ -158,7 +158,7 @@ type ViewMode = 'list' | 'epg';
 const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; initialViewMode?: ViewMode }>((props, ref) => {
   const { t } = useTranslation();
   const { isLoading } = useIPTVAppState();
-  const { loadEPG, hasCatchup, getCatchupUrl } = useIPTVGuide();
+  const { hasCatchup, getCatchupUrl } = useIPTVGuide();
   const { pin, isAdultUnlocked, lockChannel, unlockChannel, isChannelLocked } = useIPTVParental();
   const { addFavorite, removeFavorite, isFavorite, addRecentlyWatched } = useIPTVCollections();
   const { channels, epg } = useIPTVLibrary();
@@ -212,10 +212,6 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const firstCategoryRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const [unlockMode, setUnlockMode] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadEPG();
-  }, [loadEPG]);
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {

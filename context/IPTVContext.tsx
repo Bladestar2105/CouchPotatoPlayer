@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from 'bcryptjs';
@@ -34,6 +34,7 @@ const LOCKED_CHANNELS_KEY = 'IPTV_LOCKED_CHANNELS';
 const EPG_STORAGE_KEY_PREFIX = 'IPTV_EPG_';
 
 const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+const EPG_MIN_RELOAD_INTERVAL_MS = 5000;
 
 /**
  * Sanitizes a URL by removing sensitive query parameters (username, password)
@@ -104,13 +105,13 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
     return response;
   } catch (e: any) {
     if (Platform.OS === 'web' && e instanceof TypeError) {
-      console.warn(`CORS Error for: ${url}`);
+      console.warn(`CORS Error for: ${sanitizeUrl(url)}`);
       
       // Use nginx proxy configured in the Docker container
       // The nginx proxy is available at /proxy/ endpoint
       const proxyUrl = `/proxy/${url}`;
       try {
-        Logger.log(`Using nginx proxy for: ${url}`);
+        Logger.log(`Using nginx proxy for: ${sanitizeUrl(url)}`);
         const response = await fetch(proxyUrl, options);
         if (response.ok) {
           Logger.log(`Nginx proxy succeeded`);
@@ -216,6 +217,13 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [hasCheckedOnStartup, setHasCheckedOnStartup] = useState<boolean>(false);
+  const epgLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const lastEpgLoadAttemptRef = useRef(0);
+  const hasEpgDataRef = useRef(false);
+
+  useEffect(() => {
+    hasEpgDataRef.current = Object.keys(epg).length > 0;
+  }, [epg]);
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -401,9 +409,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await loadXtream(profile, forceUpdate);
       }
 
-      if (forceUpdate) {
-        await loadEPG(true);
-      }
+      await loadEPG(forceUpdate);
     } catch (e: any) {
       Logger.error("Failed to load profile:", sanitizeError(e));
       // Safely display specific, translated errors without leaking raw e.message
@@ -443,113 +449,134 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadEPG = useCallback(async (forceUpdate: boolean = false) => {
     if (!currentProfile) return;
-
-    Logger.log('[EPG] Starting EPG load...');
-    const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
-
-    try {
-      // 1. Try to load from cache
-      let cachedEpgStr: string | null = null;
-      if (!forceUpdate) {
-        if (Platform.OS === 'web') {
-          cachedEpgStr = await AsyncStorage.getItem(storageKey);
-        } else {
-          const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
-          const file = new File(cacheDir, `${storageKey}.json`);
-          try {
-            if (file.exists) {
-              cachedEpgStr = await file.text();
-            }
-          } catch (e) {
-            // File does not exist or cannot be read
-          }
-        }
-      }
-
-      if (cachedEpgStr) {
-
-        const cachedEpg = JSON.parse(cachedEpgStr);
-        if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS && !forceUpdate) {
-          Logger.log('[EPG] Using cached EPG data');
-          setEpg(cachedEpg.data);
-          return;
-        }
-      }
-
-      // 2. Fetch fresh EPG
-      let epgUrl = '';
-      if (currentProfile.type === 'm3u' && currentProfile.epgUrl) {
-         epgUrl = currentProfile.epgUrl;
-      } else if (currentProfile.type === 'xtream') {
-        const { url: serverUrlProp, username, password } = currentProfile;
-        const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
-        if (!serverUrl) throw new Error("Server URL is missing from profile");
-        const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
-        epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
-      }
-
-      if (epgUrl) {
-        // SSRF mitigation: validate URL starts with http:// or https://
-        if (!/^https?:\/\//i.test(epgUrl.trim())) {
-          Logger.error('[EPG] Invalid EPG URL scheme. Must start with http:// or https://');
-          return;
-        }
-
-        Logger.log('[EPG] Fetching EPG from:', epgUrl);
-
-        // Use CORS proxy for fetching EPG
-        const fetchOptions: RequestInit = forceUpdate ? {
-          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-        } : {};
-        const response = await fetchWithProxy(epgUrl, fetchOptions);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch EPG: ${response.status}`);
-        }
-
-        const xmlData = await response.text();
-        Logger.log('[EPG] Received XML data, length:', xmlData.length);
-
-        // Ensure that fast-xml-parser parses dates as string
-        // Parse the XML data
-        const epgData = parseXMLTVFromString(xmlData);
-        Logger.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
-
-        const newEpg: Record<string, EPGProgram[]> = {};
-        for (const channelId in epgData) {
-          newEpg[channelId] = epgData[channelId].map((p: any) => ({
-            id: `${p.channelId}_${p.start}`,
-            channelId: p.channelId,
-            title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
-            description: decodeBase64IfNeeded(p.description || ''),
-            start: typeof p.start === 'number' ? p.start : (p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime()),
-            end: typeof p.end === 'number' ? p.end : (p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime()),
-          }));
-        }
-        setEpg(newEpg);
-        Logger.log('[EPG] EPG loaded successfully');
-
-        const epgCacheData = JSON.stringify({
-          timestamp: Date.now(),
-          data: newEpg
-        });
-
-        if (Platform.OS === 'web') {
-          try {
-            await AsyncStorage.setItem(storageKey, epgCacheData);
-          } catch (storageError: any) {
-             console.warn('[EPG] Failed to save EPG to AsyncStorage (likely QuotaExceededError on web)', storageError);
-          }
-        } else {
-          const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
-          const file = new File(cacheDir, `${storageKey}.json`);
-          await file.write(epgCacheData);
-        }
-      } else {
-        Logger.log('[EPG] No EPG URL available');
-      }
-    } catch (e) {
-      Logger.error("[EPG] Failed to load EPG", sanitizeError(e));
+    const nowMs = Date.now();
+    if (!forceUpdate && hasEpgDataRef.current && nowMs - lastEpgLoadAttemptRef.current < EPG_MIN_RELOAD_INTERVAL_MS) {
+      Logger.log('[EPG] Skipping duplicate load trigger within cooldown window');
+      return;
     }
+    if (epgLoadPromiseRef.current) {
+      Logger.log('[EPG] EPG load already in progress, waiting for current request');
+      await epgLoadPromiseRef.current;
+      if (!forceUpdate) return;
+    }
+    lastEpgLoadAttemptRef.current = nowMs;
+
+    const runLoad = async () => {
+      Logger.log('[EPG] Starting EPG load...');
+      const storageKey = `${EPG_STORAGE_KEY_PREFIX}${currentProfile.id}`;
+
+      try {
+        // 1. Try to load from cache
+        let cachedEpgStr: string | null = null;
+        if (!forceUpdate) {
+          if (Platform.OS === 'web') {
+            cachedEpgStr = await AsyncStorage.getItem(storageKey);
+          } else {
+            const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+            const file = new File(cacheDir, `${storageKey}.json`);
+            try {
+              if (file.exists) {
+                cachedEpgStr = await file.text();
+              }
+            } catch (e) {
+              // File does not exist or cannot be read
+            }
+          }
+        }
+
+        if (cachedEpgStr) {
+
+          const cachedEpg = JSON.parse(cachedEpgStr);
+          if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS && !forceUpdate) {
+            Logger.log('[EPG] Using cached EPG data');
+            setEpg(cachedEpg.data);
+            return;
+          }
+        }
+
+        // 2. Fetch fresh EPG
+        let epgUrl = '';
+        if (currentProfile.type === 'm3u' && currentProfile.epgUrl) {
+          epgUrl = currentProfile.epgUrl;
+        } else if (currentProfile.type === 'xtream') {
+          const { url: serverUrlProp, username, password } = currentProfile;
+          const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
+          if (!serverUrl) throw new Error("Server URL is missing from profile");
+          const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
+          epgUrl = `${cleanServerUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password || '')}`;
+        }
+
+        if (epgUrl) {
+          // SSRF mitigation: validate URL starts with http:// or https://
+          if (!/^https?:\/\//i.test(epgUrl.trim())) {
+            Logger.error('[EPG] Invalid EPG URL scheme. Must start with http:// or https://');
+            return;
+          }
+
+          Logger.log('[EPG] Fetching EPG from:', sanitizeUrl(epgUrl));
+
+          // Use CORS proxy for fetching EPG
+          const fetchOptions: RequestInit = forceUpdate ? {
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+          } : {};
+          const response = await fetchWithProxy(epgUrl, fetchOptions);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch EPG: ${response.status}`);
+          }
+
+          const xmlData = await response.text();
+          Logger.log('[EPG] Received XML data, length:', xmlData.length);
+
+          // Ensure that fast-xml-parser parses dates as string
+          // Parse the XML data
+          const epgData = parseXMLTVFromString(xmlData);
+          Logger.log('[EPG] Parsed EPG data for', Object.keys(epgData).length, 'channels');
+
+          const newEpg: Record<string, EPGProgram[]> = {};
+          for (const channelId in epgData) {
+            newEpg[channelId] = epgData[channelId].map((p: any) => ({
+              id: `${p.channelId}_${p.start}`,
+              channelId: p.channelId,
+              title: decodeBase64IfNeeded(p.title), // Decode base64 if needed
+              description: decodeBase64IfNeeded(p.description || ''),
+              start: typeof p.start === 'number' ? p.start : (p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime()),
+              end: typeof p.end === 'number' ? p.end : (p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime()),
+            }));
+          }
+          setEpg(newEpg);
+          Logger.log('[EPG] EPG loaded successfully');
+
+          const epgCacheData = JSON.stringify({
+            timestamp: Date.now(),
+            data: newEpg
+          });
+
+          if (Platform.OS === 'web') {
+            try {
+              await AsyncStorage.setItem(storageKey, epgCacheData);
+            } catch (storageError: any) {
+              console.warn('[EPG] Failed to save EPG to AsyncStorage (likely QuotaExceededError on web)', storageError);
+            }
+          } else {
+            const cacheDir = Platform.isTV ? Paths.cache : Paths.document;
+            const file = new File(cacheDir, `${storageKey}.json`);
+            await file.write(epgCacheData);
+          }
+        } else {
+          Logger.log('[EPG] No EPG URL available');
+        }
+      } catch (e) {
+        Logger.error("[EPG] Failed to load EPG", sanitizeError(e));
+      }
+    };
+
+    const currentRun = runLoad().finally(() => {
+      if (epgLoadPromiseRef.current === currentRun) {
+        epgLoadPromiseRef.current = null;
+      }
+    });
+    epgLoadPromiseRef.current = currentRun;
+    await currentRun;
   }, [currentProfile]);
 
   const loadM3U = useCallback(async (profile: IPTVProfile, forceUpdate: boolean = false) => {

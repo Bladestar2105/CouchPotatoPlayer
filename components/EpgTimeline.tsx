@@ -1,5 +1,5 @@
-import React, { useRef, useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, Platform, Animated } from 'react-native';
+import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Platform, Animated } from 'react-native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useIPTVCollections, useIPTVGuide } from '../context/IPTVContext';
@@ -8,6 +8,7 @@ import { isProgramCatchupAvailable, getCatchupDays } from '../utils/catchupUtils
 
 const PIXELS_PER_MINUTE = Platform.isTV ? 8 : 4; // Stretch timeline for TV
 const HOUR_WIDTH = PIXELS_PER_MINUTE * 60;
+const SCROLL_SYNC_THRESHOLD = Platform.isTV ? 240 : 120;
 
 
 interface EpgTimelineProps {
@@ -55,12 +56,13 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
                     onChannelPress(channel);
                 }
             }}
-            accessible={true}
+            accessible={isClickable}
             accessibilityRole="button"
             accessibilityLabel={`${prog.title}, from ${formatTime(prog.start)} to ${formatTime(prog.end)}${isNow ? ', live now' : isCatchupAvailable ? ', available for catchup' : ''}`}
             accessibilityHint={isNow ? "Plays this channel" : isCatchupAvailable ? "Plays this program from catchup" : "Program information"}
-            isTVSelectable={true}
+            isTVSelectable={isClickable}
             activeOpacity={isClickable ? 0.7 : 1}
+            disabled={!isClickable}
         >
             <View style={styles.programTitleRow}>
                 {isCatchupAvailable && !isNow && (
@@ -240,9 +242,21 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const [visibleWidth, setVisibleWidth] = useState(1000);
   const mainScrollViewRef = useRef<any>(null);
   const channelListRef = useRef<FlatList>(null);
-  const syncVerticalScroll = (offsetY: number) => {
-    channelListRef.current?.scrollToOffset({ offset: offsetY, animated: false });
-  };
+  const pendingVerticalOffsetRef = useRef<number | null>(null);
+  const syncRafRef = useRef<number | null>(null);
+  const lastSyncedYOffsetRef = useRef(0);
+  const syncVerticalScroll = useCallback((offsetY: number) => {
+    pendingVerticalOffsetRef.current = offsetY;
+    if (syncRafRef.current !== null) return;
+    syncRafRef.current = requestAnimationFrame(() => {
+      const nextOffset = pendingVerticalOffsetRef.current;
+      syncRafRef.current = null;
+      if (nextOffset === null) return;
+      if (Math.abs(nextOffset - lastSyncedYOffsetRef.current) < 1) return;
+      lastSyncedYOffsetRef.current = nextOffset;
+      channelListRef.current?.scrollToOffset({ offset: nextOffset, animated: false });
+    });
+  }, []);
   const scrollXAnimated = useRef(new Animated.Value(0)).current;
   const scrollXRef = useRef(0);
 
@@ -264,7 +278,6 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const TIMELINE_DURATION_HOURS = TIMELINE_START_OFFSET_HOURS + 24;
 
   const { colors } = useSettings();
-  const scrollViewRef = useRef<ScrollView>(null);
 
   const [now, setNow] = useState(new Date());
 
@@ -282,6 +295,14 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
     return () => {
       clearTimeout(alignTimer);
       if (minuteInterval) clearInterval(minuteInterval);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (syncRafRef.current !== null) {
+        cancelAnimationFrame(syncRafRef.current);
+      }
     };
   }, []);
 
@@ -308,9 +329,8 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   // Scroll to current time on mount
   useEffect(() => {
     const targetX = Math.max(0, nowPosition - (visibleWidth * 0.35));
-    if (scrollViewRef.current && targetX > 0) {
+    if (targetX > 0) {
       setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ x: targetX, animated: false });
         mainScrollViewRef.current?.scrollTo({ x: targetX, animated: false });
         setScrollX(targetX);
       }, 100);
@@ -343,20 +363,83 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
     }
     return channel.tvgId || channel.id;
   };
+  const programsByChannelId = useMemo(() => {
+    const result: Record<string, any[]> = {};
+    for (let i = 0; i < channels.length; i++) {
+      const channel = channels[i];
+      result[channel.id] = epg[getEpgKey(channel)] || [];
+    }
+    return result;
+  }, [channels, epg]);
+  const timelineExtraData = useMemo(() => ({
+    focusedChannelId,
+    scrollBucket: Math.floor(scrollX / SCROLL_SYNC_THRESHOLD),
+    visibleWidth,
+  }), [focusedChannelId, scrollX, visibleWidth]);
+  const channelColumnExtraData = useMemo(() => ({
+    focusedChannelId,
+    currentStreamId,
+    shouldFocusFirstItem,
+  }), [focusedChannelId, currentStreamId, shouldFocusFirstItem]);
+  const favoriteByChannelId = useMemo(() => {
+    const result: Record<string, boolean> = {};
+    for (let i = 0; i < channels.length; i++) {
+      const channel = channels[i];
+      result[channel.id] = isFavorite(channel.id);
+    }
+    return result;
+  }, [channels, isFavorite]);
 
   const defaultLogo = require('../assets/character_logo.png'); // fallback
+  const renderTimelineRow = useCallback(({ item: channel }: { item: Channel }) => {
+    const programs = programsByChannelId[channel.id] || [];
+    const isFocused = focusedChannelId === channel.id;
+
+    return (
+      <EpgRow
+        channel={channel}
+        programs={programs}
+        isFocused={isFocused}
+        colors={colors}
+        onChannelPress={onChannelPress}
+        onProgramPress={onProgramPress}
+        timelineStart={timelineStart}
+        timelineEnd={timelineEnd}
+        now={now}
+        PIXELS_PER_MINUTE={PIXELS_PER_MINUTE}
+        hasCatchup={hasCatchup}
+        scrollX={scrollX}
+        visibleWidth={visibleWidth}
+      />
+    );
+  }, [programsByChannelId, focusedChannelId, colors, onChannelPress, onProgramPress, timelineStart, timelineEnd, now, hasCatchup, scrollX, visibleWidth]);
+
+  const renderChannelColumnItem = useCallback(({ item: channel, index }: { item: Channel; index: number }) => (
+    <ChannelColumnItem
+      channel={channel}
+      isFocused={focusedChannelId === channel.id}
+      isPlaying={currentStreamId === channel.id}
+      isFav={favoriteByChannelId[channel.id]}
+      hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
+      setFocusedChannelId={setFocusedChannelId}
+      onChannelPress={onChannelPress}
+      addFavorite={addFavorite}
+      removeFavorite={removeFavorite}
+      hasCatchup={hasCatchup}
+    />
+  ), [focusedChannelId, currentStreamId, favoriteByChannelId, shouldFocusFirstItem, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, hasCatchup]);
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View style={[styles.channelHeaderSpace, { width: Platform.isTV ? 160 : 120 }]}></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} ref={scrollViewRef} scrollEnabled={false} style={{flex: 1}}>
-            <View style={{ width: totalWidth, flexDirection: 'row' }}>
-                {timeHeaders}
-                {/* Current Time Line in Header */}
-                <View style={[styles.currentTimeIndicator, { left: nowPosition, height: 40 }]} />
-            </View>
-        </ScrollView>
+        <View style={{ flex: 1, overflow: 'hidden' }} focusable={false}>
+          <Animated.View style={{ width: totalWidth, flexDirection: 'row', transform: [{ translateX: Animated.multiply(scrollXAnimated, -1) }] }}>
+            {timeHeaders}
+            {/* Current Time Line in Header */}
+            <View style={[styles.currentTimeIndicator, { left: nowPosition, height: 40 }]} />
+          </Animated.View>
+        </View>
       </View>
 
       <View style={{ flex: 1 }} onLayout={(e) => setVisibleWidth(e.nativeEvent.layout.width)}>
@@ -365,17 +448,14 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
             showsHorizontalScrollIndicator={true}
             ref={mainScrollViewRef}
             style={{ marginLeft: Platform.isTV ? 160 : 120 }}
+            focusable={false}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { x: scrollXAnimated } } }],
               {
                 useNativeDriver: true,
                 listener: (e: any) => {
                   const newScrollX = e.nativeEvent.contentOffset.x;
-                  if (scrollViewRef.current) {
-                    scrollViewRef.current.scrollTo({ x: newScrollX, animated: false });
-                  }
-
-                  if (Math.abs(scrollXRef.current - newScrollX) > 120) {
+                  if (Math.abs(scrollXRef.current - newScrollX) > SCROLL_SYNC_THRESHOLD) {
                     scrollXRef.current = newScrollX;
                     setScrollX(newScrollX);
                   }
@@ -391,6 +471,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
               <FlatList
                  data={channels}
                  keyExtractor={item => item.id}
+                 extraData={timelineExtraData}
                  onScroll={(e) => syncVerticalScroll(e.nativeEvent.contentOffset.y)}
                  scrollEventThrottle={16}
                  initialNumToRender={10}
@@ -402,29 +483,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                     offset: (Platform.isTV ? 92 : 60) * index,
                     index,
                  })}
-                 renderItem={({ item: channel, index }) => {
-                    const epgKey = getEpgKey(channel);
-                    const programs = epg[epgKey] || [];
-                    const isFocused = focusedChannelId === channel.id;
-
-                    return (
-                        <EpgRow
-                            channel={channel}
-                            programs={programs}
-                            isFocused={isFocused}
-                            colors={colors}
-                            onChannelPress={onChannelPress}
-                            onProgramPress={onProgramPress}
-                            timelineStart={timelineStart}
-                            timelineEnd={timelineEnd}
-                            now={now}
-                            PIXELS_PER_MINUTE={PIXELS_PER_MINUTE}
-                            hasCatchup={hasCatchup}
-                            scrollX={scrollX}
-                            visibleWidth={visibleWidth}
-                        />
-                    );
-                 }}
+                 renderItem={renderTimelineRow}
               />
           </View>
         </Animated.ScrollView>
@@ -433,6 +492,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
             ref={channelListRef}
             data={channels}
             keyExtractor={(item) => item.id}
+            extraData={channelColumnExtraData}
             scrollEnabled={false}
             initialNumToRender={10}
             maxToRenderPerBatch={10}
@@ -443,20 +503,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
               offset: (Platform.isTV ? 92 : 60) * index,
               index,
             })}
-            renderItem={({ item: channel, index }) => (
-              <ChannelColumnItem
-                channel={channel}
-                isFocused={focusedChannelId === channel.id}
-                isPlaying={currentStreamId === channel.id}
-                isFav={isFavorite(channel.id)}
-                hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
-                setFocusedChannelId={setFocusedChannelId}
-                onChannelPress={onChannelPress}
-                addFavorite={addFavorite}
-                removeFavorite={removeFavorite}
-                hasCatchup={hasCatchup}
-              />
-            )}
+            renderItem={renderChannelColumnItem}
           />
         </View>
       </View>
