@@ -153,6 +153,18 @@ type IPTVCollectionsContextType = {
   clearRecentlyWatched: () => Promise<void>;
 };
 const IPTVCollectionsContext = createContext<IPTVCollectionsContextType | undefined>(undefined);
+type IPTVParentalContextType = {
+  pin: string | null;
+  isAdultUnlocked: boolean;
+  lockedChannels: string[];
+  setPinCode: (newPin: string | null) => Promise<void>;
+  unlockAdultContent: (enteredPin: string) => boolean;
+  lockAdultContent: () => void;
+  lockChannel: (channelId: string) => Promise<void>;
+  unlockChannel: (channelId: string) => Promise<void>;
+  isChannelLocked: (channelId: string) => boolean;
+};
+const IPTVParentalContext = createContext<IPTVParentalContextType | undefined>(undefined);
 
 export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -1228,14 +1240,37 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     removeRecentlyWatched,
     clearRecentlyWatched,
   ]);
+  const parentalValue = useMemo<IPTVParentalContextType>(() => ({
+    pin,
+    isAdultUnlocked,
+    lockedChannels,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+  }), [
+    pin,
+    isAdultUnlocked,
+    lockedChannels,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+  ]);
 
   return (
     <IPTVPlaybackContext.Provider value={playbackValue}>
       <IPTVLibraryContext.Provider value={libraryValue}>
         <IPTVCollectionsContext.Provider value={collectionsValue}>
-          <IPTVContext.Provider value={contextValue}>
-            {children}
-          </IPTVContext.Provider>
+          <IPTVParentalContext.Provider value={parentalValue}>
+            <IPTVContext.Provider value={contextValue}>
+              {children}
+            </IPTVContext.Provider>
+          </IPTVParentalContext.Provider>
         </IPTVCollectionsContext.Provider>
       </IPTVLibraryContext.Provider>
     </IPTVPlaybackContext.Provider>
@@ -1270,6 +1305,14 @@ export const useIPTVCollections = () => {
   const context = useContext(IPTVCollectionsContext);
   if (context === undefined) {
     throw new Error('useIPTVCollections must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVParental = () => {
+  const context = useContext(IPTVParentalContext);
+  if (context === undefined) {
+    throw new Error('useIPTVParental must be used within an IPTVProvider');
   }
   return context;
 };

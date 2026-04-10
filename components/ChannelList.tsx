@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle, useWindowDimensions } from 'react-native';
-import { useIPTV, useIPTVCollections, useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
+import { useIPTV, useIPTVCollections, useIPTVLibrary, useIPTVParental, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
@@ -156,7 +156,8 @@ type ViewMode = 'list' | 'epg';
 
 const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; initialViewMode?: ViewMode }>((props, ref) => {
   const { t } = useTranslation();
-  const { isLoading, pin, isAdultUnlocked, loadEPG, lockChannel, unlockChannel, isChannelLocked, hasCatchup, getCatchupUrl } = useIPTV();
+  const { isLoading, loadEPG, hasCatchup, getCatchupUrl } = useIPTV();
+  const { pin, isAdultUnlocked, lockChannel, unlockChannel, isChannelLocked } = useIPTVParental();
   const { addFavorite, removeFavorite, isFavorite, addRecentlyWatched } = useIPTVCollections();
   const { channels, epg } = useIPTVLibrary();
   const { playStream, currentStream } = useIPTVPlayback();
