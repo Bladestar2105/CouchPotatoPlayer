@@ -1,6 +1,6 @@
 import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions } from 'react-native';
-import { useIPTV, useIPTVPlayback } from '../context/IPTVContext';
+import { useIPTVCollections, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
@@ -14,7 +14,7 @@ type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Ho
 type SortOption = 'added' | 'name' | 'type' | 'recent';
 
 const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
-  const { favorites, removeFavorite, addRecentlyWatched } = useIPTV();
+  const { favorites, removeFavorite, addRecentlyWatched } = useIPTVCollections();
   const { playStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();

@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert, findNodeHandle } from 'react-native';
-import { useIPTV, useIPTVPlayback } from '../context/IPTVContext';
+import { useIPTVCollections, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
@@ -13,7 +13,7 @@ export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolea
 type RecentlyWatchedScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
-  const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, addRecentlyWatched } = useIPTV();
+  const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, addRecentlyWatched } = useIPTVCollections();
   const { playStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const { t } = useTranslation();

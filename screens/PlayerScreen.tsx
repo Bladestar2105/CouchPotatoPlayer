@@ -16,7 +16,7 @@ if (!Platform.isTV) {
     ScreenOrientation = require('expo-screen-orientation');
   } catch (e) {}
 }
-import { useIPTV, useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
+import { useIPTVCollections, useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
@@ -37,7 +37,7 @@ const PlayerScreen = () => {
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { addRecentlyWatched } = useIPTV();
+  const { addRecentlyWatched } = useIPTVCollections();
   const { channels, epg } = useIPTVLibrary();
   const { currentStream, stopStream, playStream } = useIPTVPlayback();
 
