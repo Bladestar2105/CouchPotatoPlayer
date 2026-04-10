@@ -151,7 +151,22 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const loadDataFromStorage = async () => {
       try {
-        const profilesJson = await AsyncStorage.getItem(PROFILES_STORAGE_KEY);
+        const storageEntries = await AsyncStorage.multiGet([
+          PROFILES_STORAGE_KEY,
+          CURRENT_PROFILE_STORAGE_KEY,
+          FAVORITES_STORAGE_KEY,
+          RECENTLY_WATCHED_KEY,
+          PIN_STORAGE_KEY,
+          LOCKED_CHANNELS_KEY,
+        ]);
+        const storageMap = new Map(storageEntries);
+        const profilesJson = storageMap.get(PROFILES_STORAGE_KEY) ?? null;
+        const currentProfileId = storageMap.get(CURRENT_PROFILE_STORAGE_KEY) ?? null;
+        const favoritesJson = storageMap.get(FAVORITES_STORAGE_KEY) ?? null;
+        const recentlyWatchedJson = storageMap.get(RECENTLY_WATCHED_KEY) ?? null;
+        const storedPin = storageMap.get(PIN_STORAGE_KEY) ?? null;
+        const lockedJson = storageMap.get(LOCKED_CHANNELS_KEY) ?? null;
+
         let loadedProfiles: IPTVProfile[] = [];
         if (profilesJson) {
           try {
@@ -164,7 +179,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const currentProfileId = await AsyncStorage.getItem(CURRENT_PROFILE_STORAGE_KEY);
         if (currentProfileId && loadedProfiles.length > 0) {
           const profileToLoad = loadedProfiles.find(p => p.id === currentProfileId);
           if (profileToLoad) {
@@ -172,7 +186,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const favoritesJson = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
         if (favoritesJson) {
           try {
             const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
@@ -184,7 +197,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const recentlyWatchedJson = await AsyncStorage.getItem(RECENTLY_WATCHED_KEY);
         if (recentlyWatchedJson) {
           try {
             const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
@@ -196,12 +208,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const storedPin = await AsyncStorage.getItem(PIN_STORAGE_KEY);
         if (storedPin) {
            setPin(storedPin);
         }
 
-        const lockedJson = await AsyncStorage.getItem(LOCKED_CHANNELS_KEY);
         if (lockedJson) {
           try {
             const storedLocked: string[] = JSON.parse(lockedJson);

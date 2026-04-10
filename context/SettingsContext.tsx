@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/logger';
@@ -92,6 +92,17 @@ export const getThemeColors = (mode: ThemeMode): ThemeColors => {
   }
 };
 
+const SETTINGS_KEYS = {
+  themeMode: 'app_theme_mode',
+  bufferSize: 'app_buffer_size',
+  playerType: 'app_player_type',
+  vlcHwAccel: 'app_vlc_hw_accel',
+  ksHwDecode: 'app_ks_hw_decode',
+  ksAsyncDecomp: 'app_ks_async_decomp',
+  ksDisplayFrameRate: 'app_ks_display_frame_rate',
+  tmdbApiKey: 'app_tmdb_api_key',
+} as const;
+
 interface SettingsContextProps {
 
 
@@ -132,42 +143,54 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const storedTheme = await AsyncStorage.getItem('app_theme_mode');
+        const storageEntries = await AsyncStorage.multiGet([
+          SETTINGS_KEYS.themeMode,
+          SETTINGS_KEYS.bufferSize,
+          SETTINGS_KEYS.playerType,
+          SETTINGS_KEYS.vlcHwAccel,
+          SETTINGS_KEYS.ksHwDecode,
+          SETTINGS_KEYS.ksAsyncDecomp,
+          SETTINGS_KEYS.ksDisplayFrameRate,
+          SETTINGS_KEYS.tmdbApiKey,
+        ]);
+        const storageMap = new Map(storageEntries);
+        const storedTheme = storageMap.get(SETTINGS_KEYS.themeMode) ?? null;
+        const storedBuffer = storageMap.get(SETTINGS_KEYS.bufferSize) ?? null;
+        const storedPlayerType = storageMap.get(SETTINGS_KEYS.playerType) ?? null;
+        const storedVlcHwAccel = storageMap.get(SETTINGS_KEYS.vlcHwAccel) ?? null;
+        const storedKSHwDecode = storageMap.get(SETTINGS_KEYS.ksHwDecode) ?? null;
+        const storedKSAsync = storageMap.get(SETTINGS_KEYS.ksAsyncDecomp) ?? null;
+        const storedKSFrameRate = storageMap.get(SETTINGS_KEYS.ksDisplayFrameRate) ?? null;
+        const storedTmdbKey = storageMap.get(SETTINGS_KEYS.tmdbApiKey) ?? null;
+
         if (storedTheme === 'dark' || storedTheme === 'oled' || storedTheme === 'light') {
           setThemeModeState(storedTheme as ThemeMode);
         }
 
-        const storedBuffer = await AsyncStorage.getItem('app_buffer_size');
         if (storedBuffer) {
           setBufferSizeState(parseInt(storedBuffer, 10));
         }
 
-        const storedPlayerType = await AsyncStorage.getItem('app_player_type');
         if (storedPlayerType === 'native' || storedPlayerType === 'vlc' || storedPlayerType === 'avkit' || storedPlayerType === 'ksplayer') {
           setPlayerTypeState(normalizePlayerTypeForPlatform(storedPlayerType as PlayerType, Platform.OS, Platform.isTV));
         }
 
-        const storedVlcHwAccel = await AsyncStorage.getItem('app_vlc_hw_accel');
         if (storedVlcHwAccel) {
           setVlcHardwareAccelerationState(storedVlcHwAccel === 'true');
         }
 
-        const storedKSHwDecode = await AsyncStorage.getItem('app_ks_hw_decode');
         if (storedKSHwDecode) {
           setKsplayerHardwareDecodeState(storedKSHwDecode === 'true');
         }
 
-        const storedKSAsync = await AsyncStorage.getItem('app_ks_async_decomp');
         if (storedKSAsync) {
           setKsplayerAsynchronousDecompressionState(storedKSAsync === 'true');
         }
 
-        const storedKSFrameRate = await AsyncStorage.getItem('app_ks_display_frame_rate');
         if (storedKSFrameRate) {
           setKsplayerDisplayFrameRateState(storedKSFrameRate === 'true');
         }
 
-        const storedTmdbKey = await AsyncStorage.getItem('app_tmdb_api_key');
         if (storedTmdbKey) {
           setTmdbApiKeyState(storedTmdbKey);
         }
@@ -180,80 +203,80 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadSettings();
   }, []);
 
-  const setThemeMode = async (mode: ThemeMode) => {
+  const setThemeMode = useCallback(async (mode: ThemeMode) => {
     setThemeModeState(mode);
     try {
-      await AsyncStorage.setItem('app_theme_mode', mode);
+      await AsyncStorage.setItem(SETTINGS_KEYS.themeMode, mode);
     } catch (e) {
       Logger.error('Failed to save theme mode', e);
     }
-  };
+  }, []);
 
-  const setBufferSize = async (size: number) => {
+  const setBufferSize = useCallback(async (size: number) => {
     setBufferSizeState(size);
     try {
-      await AsyncStorage.setItem('app_buffer_size', size.toString());
+      await AsyncStorage.setItem(SETTINGS_KEYS.bufferSize, size.toString());
     } catch (e) {
       Logger.error('Failed to save buffer size', e);
     }
-  };
+  }, []);
 
-  const setPlayerType = async (type: PlayerType) => {
+  const setPlayerType = useCallback(async (type: PlayerType) => {
     const normalizedType = normalizePlayerTypeForPlatform(type, Platform.OS, Platform.isTV);
     setPlayerTypeState(normalizedType);
     try {
-      await AsyncStorage.setItem('app_player_type', normalizedType);
+      await AsyncStorage.setItem(SETTINGS_KEYS.playerType, normalizedType);
     } catch (e) {
       Logger.error('Failed to save player type', e);
     }
-  };
+  }, []);
 
-  const setVlcHardwareAcceleration = async (enabled: boolean) => {
+  const setVlcHardwareAcceleration = useCallback(async (enabled: boolean) => {
     setVlcHardwareAccelerationState(enabled);
     try {
-      await AsyncStorage.setItem('app_vlc_hw_accel', enabled.toString());
+      await AsyncStorage.setItem(SETTINGS_KEYS.vlcHwAccel, enabled.toString());
     } catch (e) {
       Logger.error('Failed to save vlc hw accel', e);
     }
-  };
+  }, []);
 
-  const setKsplayerHardwareDecode = async (enabled: boolean) => {
+  const setKsplayerHardwareDecode = useCallback(async (enabled: boolean) => {
     setKsplayerHardwareDecodeState(enabled);
     try {
-      await AsyncStorage.setItem('app_ks_hw_decode', enabled.toString());
+      await AsyncStorage.setItem(SETTINGS_KEYS.ksHwDecode, enabled.toString());
     } catch (e) {
       Logger.error('Failed to save ksplayer hw decode', e);
     }
-  };
+  }, []);
 
-  const setKsplayerAsynchronousDecompression = async (enabled: boolean) => {
+  const setKsplayerAsynchronousDecompression = useCallback(async (enabled: boolean) => {
     setKsplayerAsynchronousDecompressionState(enabled);
     try {
-      await AsyncStorage.setItem('app_ks_async_decomp', enabled.toString());
+      await AsyncStorage.setItem(SETTINGS_KEYS.ksAsyncDecomp, enabled.toString());
     } catch (e) {
       Logger.error('Failed to save ksplayer async decomp', e);
     }
-  };
+  }, []);
 
-  const setKsplayerDisplayFrameRate = async (enabled: boolean) => {
+  const setKsplayerDisplayFrameRate = useCallback(async (enabled: boolean) => {
     setKsplayerDisplayFrameRateState(enabled);
     try {
-      await AsyncStorage.setItem('app_ks_display_frame_rate', enabled.toString());
+      await AsyncStorage.setItem(SETTINGS_KEYS.ksDisplayFrameRate, enabled.toString());
     } catch (e) {
       Logger.error('Failed to save ksplayer display frame rate', e);
     }
-  };
+  }, []);
 
-  const setTmdbApiKey = async (key: string) => {
+  const setTmdbApiKey = useCallback(async (key: string) => {
     setTmdbApiKeyState(key);
     try {
-      await AsyncStorage.setItem('app_tmdb_api_key', key);
+      await AsyncStorage.setItem(SETTINGS_KEYS.tmdbApiKey, key);
     } catch (e) {
       Logger.error('Failed to save TMDB API Key', e);
     }
-  };
+  }, []);
 
-  const colors = getThemeColors(themeMode);
+  const colors = useMemo(() => getThemeColors(themeMode), [themeMode]);
 
   // ⚡ Perf: Memoize the context value object to prevent unnecessary re-renders
   // of all consumer components when the provider re-renders.
