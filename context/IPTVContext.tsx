@@ -169,6 +169,7 @@ type IPTVProfilesContextType = {
   profiles: IPTVProfile[];
   currentProfile: IPTVProfile | null;
   addProfile: (profile: IPTVProfile) => Promise<void>;
+  editProfile: (updatedProfile: IPTVProfile) => Promise<void>;
   removeProfile: (id: string) => Promise<void>;
   loadProfile: (profile: IPTVProfile, forceUpdate?: boolean) => Promise<void>;
   unloadProfile: () => Promise<void>;
@@ -1296,10 +1297,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profiles,
     currentProfile,
     addProfile,
+    editProfile,
     removeProfile,
     loadProfile,
     unloadProfile,
-  }), [profiles, currentProfile, addProfile, removeProfile, loadProfile, unloadProfile]);
+  }), [profiles, currentProfile, addProfile, editProfile, removeProfile, loadProfile, unloadProfile]);
   const appStateValue = useMemo<IPTVAppStateContextType>(() => ({
     isInitializing,
     isLoading,
