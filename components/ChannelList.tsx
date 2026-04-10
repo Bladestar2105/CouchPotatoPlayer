@@ -11,6 +11,7 @@ import { ChannelLogo } from './ChannelLogo';
 import EpgTimeline from './EpgTimeline';
 import { isTV as isTVPlatform } from '../utils/platform';
 import { useTranslation } from 'react-i18next';
+import { useRenderDiagnostics } from '../hooks/useRenderDiagnostics';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/character_logo.png');
@@ -199,6 +200,11 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
   const isTV = isTVPlatform;
+  const listPerfConfig = useMemo(() => (
+    isTV
+      ? { initialNumToRender: 18, maxToRenderPerBatch: 14, windowSize: 9, updateCellsBatchingPeriod: 16, removeClippedSubviews: false }
+      : { initialNumToRender: 12, maxToRenderPerBatch: 10, windowSize: 6, updateCellsBatchingPeriod: 24, removeClippedSubviews: true }
+  ), [isTV]);
   const { width: windowWidth } = useWindowDimensions();
   const isCompactLayout = !isTV && windowWidth < 600;
   const [showCategories, setShowCategories] = useState<boolean>(true);
@@ -319,6 +325,15 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const selectedChannels = useMemo(() => {
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
+
+  useRenderDiagnostics('ChannelList', {
+    selectedGroup,
+    focusedChannelId,
+    groupsCount: groups.length,
+    selectedChannelsCount: selectedChannels.length,
+    viewMode,
+    isLoading,
+  });
 
   const getEpgKey = (channel: Channel): string => {
     if (channel.epgChannelId && channel.epgChannelId.length > 0) {
@@ -507,10 +522,11 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
             <FlatList
               data={groups}
               keyExtractor={(item) => item.title}
-              initialNumToRender={15}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
+              initialNumToRender={listPerfConfig.initialNumToRender}
+              maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+              windowSize={listPerfConfig.windowSize}
+              updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+              removeClippedSubviews={listPerfConfig.removeClippedSubviews}
               renderItem={renderCategoryItem}
             />
           </View>
@@ -535,10 +551,11 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                   ref={flatListRef}
                   data={selectedChannels}
                   keyExtractor={(item) => item.id}
-                  initialNumToRender={15}
-                  maxToRenderPerBatch={10}
-                  windowSize={7}
-                  removeClippedSubviews={true}
+                  initialNumToRender={listPerfConfig.initialNumToRender}
+                  maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+                  windowSize={Math.max(listPerfConfig.windowSize, 7)}
+                  updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+                  removeClippedSubviews={listPerfConfig.removeClippedSubviews}
                   getItemLayout={(data, index) => ({
                     length: Platform.isTV ? 84 : 64,
                     offset: (Platform.isTV ? 84 : 64) * index,

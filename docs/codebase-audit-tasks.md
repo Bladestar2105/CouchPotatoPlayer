@@ -78,7 +78,7 @@ Stand dieser Liste: **10. April 2026**.
 ### 3) Context-Granularität erhöhen (Rerender-Last senken)
 
 **Status**
-- 🟡 In Arbeit (Playback-, Library-, Collections-, Parental-, Profiles-, AppState-, Guide- und Metadata-Slices extrahiert; UI-Consumer vollständig migriert, `useIPTV` verbleibt als Kompatibilitäts-API. Nächster Fokus: Rerender-Messung/Profiling zur Verifikation der Akzeptanzkriterien).
+- 🟡 In Arbeit (Playback-, Library-, Collections-, Parental-, Profiles-, AppState-, Guide- und Metadata-Slices extrahiert; UI-Consumer vollständig migriert, `useIPTV` verbleibt als Kompatibilitäts-API. Dev-Render-Diagnostics (`useRenderDiagnostics`) ergänzt; nächster Fokus: Geräte-Profiling mit messbaren Vorher/Nachher-Werten).
 
 **Beobachtung**
 - `IPTVContext` bündelt viele Zustände/Funktionen in einem Provider.

@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { proxyImageUrl } from '../utils/imageProxy';
+import { useRenderDiagnostics } from '../hooks/useRenderDiagnostics';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/character_logo.png');
@@ -90,6 +91,11 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
+  const listPerfConfig = useMemo(() => (
+    Platform.isTV
+      ? { initialNumToRender: 16, maxToRenderPerBatch: 14, windowSize: 9, updateCellsBatchingPeriod: 16, removeClippedSubviews: false }
+      : { initialNumToRender: 12, maxToRenderPerBatch: 12, windowSize: 6, updateCellsBatchingPeriod: 24, removeClippedSubviews: true }
+  ), []);
 
   // Expose focusFirstItem and handleBack methods to parent
   useImperativeHandle(ref, () => ({
@@ -181,6 +187,14 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
   const selectedSeries = useMemo(() => {
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
+
+  useRenderDiagnostics('SeriesList', {
+    selectedGroup,
+    groupsCount: groups.length,
+    selectedSeriesCount: selectedSeries.length,
+    focusedSeriesKey,
+    isLoading,
+  });
 
   useEffect(() => {
     if (!focusedSeriesKey && !selectedSeriesKey) return;
@@ -290,9 +304,11 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
         <FlatList
           data={groups}
           keyExtractor={(item) => item.title}
-          initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          windowSize={5}
+          initialNumToRender={listPerfConfig.initialNumToRender}
+          maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+          windowSize={listPerfConfig.windowSize}
+          updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+          removeClippedSubviews={listPerfConfig.removeClippedSubviews}
           renderItem={renderCategoryItem}
         />
       </View>
@@ -317,10 +333,11 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
             key={numColumns} // Force re-render if columns change
             extraData={{ focusedSeriesKey, selectedSeriesKey, selectedGroup }}
             contentContainerStyle={styles.gridContainer}
-            initialNumToRender={12}
-            maxToRenderPerBatch={12}
-            windowSize={5}
-            removeClippedSubviews={true}
+            initialNumToRender={listPerfConfig.initialNumToRender}
+            maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+            windowSize={listPerfConfig.windowSize}
+            updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+            removeClippedSubviews={listPerfConfig.removeClippedSubviews}
             getItemLayout={(data, index) => {
                // Calculate row height based on poster + margins.
                const rowHeight = (posterWidth * 1.5) + 8 + 16 + 24; // poster height + margin + text + bottom margin
