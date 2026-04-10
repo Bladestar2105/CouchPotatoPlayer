@@ -10,6 +10,7 @@ import sys
 import re
 import socket
 import ipaddress
+import json
 
 ALLOWED_ORIGINS = [
     'http://localhost:8081', # Expo web development
@@ -66,7 +67,9 @@ class CORSProxyHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(f'{{"error": "DNS resolution failed or invalid hostname: {str(e)}" }}'.encode())
+                # Fail securely: do not expose internal DNS resolution errors or str(e) to the client
+                error_json = json.dumps({"error": "DNS resolution failed or invalid hostname"})
+                self.wfile.write(error_json.encode())
                 return
 
             try:
