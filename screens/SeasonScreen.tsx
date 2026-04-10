@@ -5,7 +5,7 @@ import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigat
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { Season, Episode } from '../types';
-import { useIPTV, useIPTVProfiles } from '../context/IPTVContext';
+import { useIPTVMetadata, useIPTVProfiles } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 
 type SeasonScreenRouteProp = RouteProp<RootStackParamList, 'Season'>;
@@ -15,7 +15,7 @@ const SeasonScreen = () => {
   const route = useRoute<SeasonScreenRouteProp>();
   const navigation = useNavigation<SeasonScreenNavigationProp>();
   const isFocused = useIsFocused();
-  const { getSeriesInfo } = useIPTV();
+  const { getSeriesInfo } = useIPTVMetadata();
   const { currentProfile } = useIPTVProfiles();
   const { colors } = useSettings();
 

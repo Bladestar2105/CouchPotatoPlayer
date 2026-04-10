@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { useIPTV, useIPTVLibrary, useIPTVParental } from '../context/IPTVContext';
+import { useIPTVAppState, useIPTVLibrary, useIPTVParental } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
@@ -56,7 +56,7 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
 }));
 
 const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
-  const { isLoading } = useIPTV();
+  const { isLoading } = useIPTVAppState();
   const { pin, isAdultUnlocked } = useIPTVParental();
   const { series } = useIPTVLibrary();
   const { colors } = useSettings();
