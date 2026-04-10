@@ -27,7 +27,7 @@ const getPosterUri = (cover?: string): string | undefined => {
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus, nextFocusRight }: { title: string, count: number, isSelected: boolean, onPress: () => void, onFocus: () => void, colors: any, hasTVPreferredFocus?: boolean, nextFocusRight?: number }, ref: React.Ref<any>) => {
+const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, colors, hasTVPreferredFocus, nextFocusRight }: { title: string, count?: number, isSelected: boolean, onPress: (title: string) => void, onFocus?: (title: string) => void, colors: any, hasTVPreferredFocus?: boolean, nextFocusRight?: number }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
@@ -37,8 +37,8 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
                 isSelected ? { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : { borderLeftWidth: 3, borderLeftColor: 'transparent' },
                 isFocused ? { backgroundColor: 'rgba(233, 105, 42, 0.3)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : {}
             ]}
-            onPress={onPress}
-            onFocus={() => { setIsFocused(true); onFocus(); }}
+            onPress={() => onPress(title)}
+            onFocus={() => { setIsFocused(true); onFocus?.(title); }}
             onBlur={() => setIsFocused(false)}
             accessible={true}
             isTVSelectable={true}
@@ -93,9 +93,9 @@ const SeriesPosterItem = React.memo(({
       // @ts-ignore - supported on TV platforms
       nextFocusLeft={firstCategoryNode}
       tvParallaxProperties={{ enabled: false }}
-      onPress={onPress}
-      onFocus={onFocus}
-      onBlur={onBlur}
+      onPress={() => onPress(item)}
+      onFocus={() => onFocus(seriesKey)}
+      onBlur={() => onBlur(seriesKey)}
     >
       <Image
         source={posterUri ? { uri: posterUri } : defaultLogo}
@@ -295,8 +295,8 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
         title={item.title}
         count={item.data.length}
         isSelected={isSelected}
-        onPress={() => handleGroupSelect(item.title)}
-        onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
+        onPress={handleGroupSelect}
+        onFocus={undefined} // Do not set selected group on focus to prevent Apple TV UI freezes
         colors={colors}
         // @ts-ignore - supported on TV platforms
         nextFocusRight={firstPosterNode}
