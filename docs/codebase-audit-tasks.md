@@ -1,6 +1,6 @@
 # Vorschläge aus Codebasis-Review (aktualisiert)
 
-Stand dieser Liste: **9. April 2026**.
+Stand dieser Liste: **10. April 2026**.
 
 ## Erledigt / bereits umgesetzt
 
@@ -36,7 +36,10 @@ Stand dieser Liste: **9. April 2026**.
 
 ## Offene, priorisierte Aufgaben
 
-## 1) i18n-Testisolation verbessern (verhindert suite-übergreifende Nebenwirkungen)
+### 1) i18n-Testisolation verbessern (verhindert suite-übergreifende Nebenwirkungen)
+
+**Status**
+- ✅ Erledigt.
 
 **Beobachtung**
 - In Tests werden i18n-Ressourcen dynamisch ergänzt; ohne Cleanup kann das andere Tests beeinflussen.
@@ -52,7 +55,10 @@ Stand dieser Liste: **9. April 2026**.
 
 ---
 
-## 2) Start-Performance: AsyncStorage-Reads parallelisieren
+### 2) Start-Performance: AsyncStorage-Reads parallelisieren
+
+**Status**
+- ✅ Erledigt.
 
 **Beobachtung**
 - In `context/IPTVContext.tsx` und `context/SettingsContext.tsx` werden viele Storage-Reads seriell ausgeführt.
@@ -69,7 +75,7 @@ Stand dieser Liste: **9. April 2026**.
 
 ---
 
-## 3) Context-Granularität erhöhen (Rerender-Last senken)
+### 3) Context-Granularität erhöhen (Rerender-Last senken)
 
 **Beobachtung**
 - `IPTVContext` bündelt viele Zustände/Funktionen in einem Provider.
@@ -83,3 +89,21 @@ Stand dieser Liste: **9. April 2026**.
 **Akzeptanzkriterien**
 - Messbar weniger Rerender bei häufigen Updates (z. B. Playback/EPG).
 - Keine API-Regression für bestehende Screens.
+
+---
+
+### 4) FlatList-Renderpfade konsolidieren (UI-Performance bei großen Katalogen)
+
+**Beobachtung**
+- In mehreren Listen (`ChannelList`, `MovieList`, `SeriesList`) gibt es weiterhin komplexe Renderpfade mit vielen Closures/State-Abhängigkeiten.
+
+**Warum wichtig**
+- Bei großen Provider-Listen können zusätzliche Re-Renders und Closure-Neuerzeugungen die Scroll-/Focus-Performance auf TV-Geräten beeinträchtigen.
+
+**Vorschlag (Task)**
+- `renderItem`/`keyExtractor`/Handler weiter stabilisieren (`useCallback`, ggf. dedizierte Row-Komponenten).
+- Profiling auf Zielgeräten (Android TV/tvOS) und Feintuning von `windowSize`, `maxToRenderPerBatch`, `removeClippedSubviews`.
+
+**Akzeptanzkriterien**
+- Kein Regression in Fokus-Navigation.
+- Spürbar flüssigeres Scrollen auf großen Listen (praktischer Geräte-Check).
