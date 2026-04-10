@@ -166,6 +166,10 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, curren
           style={[mobileTabStyles.brandContainer, { borderRightColor: colors.divider }]}
           onPress={() => profiles.length > 1 && setShowProfileMenu(!showProfileMenu)}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={profiles.length > 1 ? "Switch provider profile" : "App logo"}
+          accessibilityState={{ expanded: showProfileMenu }}
         >
           <Image source={require('../assets/brand-mark-small.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
           {profiles.length > 1 && (
@@ -201,6 +205,10 @@ const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles, curren
               style={[mobileTabStyles.profileItem, p.id === currentProfileId && { backgroundColor: colors.primaryLight }]}
               onPress={() => { onProfileSwitch(p); setShowProfileMenu(false); }}
               activeOpacity={0.7}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Profile ${p.name}`}
+              accessibilityState={{ selected: p.id === currentProfileId }}
             >
               <Icon name={(p.icon?.replace('_', '-') as any) || 'dns'} size={18} color={p.id === currentProfileId ? colors.primary : colors.textSecondary} />
               <Text style={{ color: p.id === currentProfileId ? colors.primary : colors.text, marginLeft: 10, fontWeight: p.id === currentProfileId ? '700' : '500', fontSize: 13 }} numberOfLines={1}>
