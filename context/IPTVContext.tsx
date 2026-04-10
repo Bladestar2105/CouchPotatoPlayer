@@ -128,6 +128,75 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
 };
 
 const IPTVContext = createContext<IPTVContextType | undefined>(undefined);
+type IPTVPlaybackContextType = {
+  currentStream: { url: string; id: string; } | null;
+  playStream: (stream: { url: string; id: string; }) => void;
+  stopStream: () => void;
+};
+const IPTVPlaybackContext = createContext<IPTVPlaybackContextType | undefined>(undefined);
+type IPTVLibraryContextType = {
+  channels: Channel[];
+  movies: Movie[];
+  series: Series[];
+  epg: Record<string, EPGProgram[]>;
+};
+const IPTVLibraryContext = createContext<IPTVLibraryContextType | undefined>(undefined);
+type IPTVCollectionsContextType = {
+  favorites: FavoriteItem[];
+  recentlyWatched: RecentlyWatchedItem[];
+  addFavorite: (item: FavoriteItem) => Promise<void>;
+  removeFavorite: (id: string) => Promise<void>;
+  isFavorite: (id: string) => boolean;
+  addRecentlyWatched: (item: RecentlyWatchedItem) => Promise<void>;
+  updatePlaybackPosition: (id: string, position: number, duration?: number) => Promise<void>;
+  removeRecentlyWatched: (id: string) => Promise<void>;
+  clearRecentlyWatched: () => Promise<void>;
+};
+const IPTVCollectionsContext = createContext<IPTVCollectionsContextType | undefined>(undefined);
+type IPTVParentalContextType = {
+  pin: string | null;
+  isAdultUnlocked: boolean;
+  lockedChannels: string[];
+  setPinCode: (newPin: string | null) => Promise<void>;
+  unlockAdultContent: (enteredPin: string) => boolean;
+  lockAdultContent: () => void;
+  lockChannel: (channelId: string) => Promise<void>;
+  unlockChannel: (channelId: string) => Promise<void>;
+  isChannelLocked: (channelId: string) => boolean;
+};
+const IPTVParentalContext = createContext<IPTVParentalContextType | undefined>(undefined);
+type IPTVProfilesContextType = {
+  profiles: IPTVProfile[];
+  currentProfile: IPTVProfile | null;
+  addProfile: (profile: IPTVProfile) => Promise<void>;
+  editProfile: (updatedProfile: IPTVProfile) => Promise<void>;
+  removeProfile: (id: string) => Promise<void>;
+  loadProfile: (profile: IPTVProfile, forceUpdate?: boolean) => Promise<void>;
+  unloadProfile: () => Promise<void>;
+};
+const IPTVProfilesContext = createContext<IPTVProfilesContextType | undefined>(undefined);
+type IPTVAppStateContextType = {
+  isInitializing: boolean;
+  isLoading: boolean;
+  isUpdating: boolean;
+  error: string | null;
+  hasCheckedOnStartup: boolean;
+  setHasCheckedOnStartup: (checked: boolean) => void;
+};
+const IPTVAppStateContext = createContext<IPTVAppStateContextType | undefined>(undefined);
+type IPTVGuideContextType = {
+  epg: Record<string, EPGProgram[]>;
+  loadEPG: (forceUpdate?: boolean) => Promise<void>;
+  hasCatchup: (channel: Channel) => boolean;
+  getCatchupUrl: (channel: Channel, startTime: Date, endTime: Date) => string | null;
+};
+const IPTVGuideContext = createContext<IPTVGuideContextType | undefined>(undefined);
+type IPTVMetadataContextType = {
+  series: Series[];
+  getSeriesInfo: (seriesId: string) => Promise<any>;
+  getVodInfo: (vodId: string) => Promise<any>;
+};
+const IPTVMetadataContext = createContext<IPTVMetadataContextType | undefined>(undefined);
 
 export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -151,7 +220,22 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const loadDataFromStorage = async () => {
       try {
-        const profilesJson = await AsyncStorage.getItem(PROFILES_STORAGE_KEY);
+        const storageEntries = await AsyncStorage.multiGet([
+          PROFILES_STORAGE_KEY,
+          CURRENT_PROFILE_STORAGE_KEY,
+          FAVORITES_STORAGE_KEY,
+          RECENTLY_WATCHED_KEY,
+          PIN_STORAGE_KEY,
+          LOCKED_CHANNELS_KEY,
+        ]);
+        const storageMap = new Map(storageEntries);
+        const profilesJson = storageMap.get(PROFILES_STORAGE_KEY) ?? null;
+        const currentProfileId = storageMap.get(CURRENT_PROFILE_STORAGE_KEY) ?? null;
+        const favoritesJson = storageMap.get(FAVORITES_STORAGE_KEY) ?? null;
+        const recentlyWatchedJson = storageMap.get(RECENTLY_WATCHED_KEY) ?? null;
+        const storedPin = storageMap.get(PIN_STORAGE_KEY) ?? null;
+        const lockedJson = storageMap.get(LOCKED_CHANNELS_KEY) ?? null;
+
         let loadedProfiles: IPTVProfile[] = [];
         if (profilesJson) {
           try {
@@ -164,7 +248,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const currentProfileId = await AsyncStorage.getItem(CURRENT_PROFILE_STORAGE_KEY);
         if (currentProfileId && loadedProfiles.length > 0) {
           const profileToLoad = loadedProfiles.find(p => p.id === currentProfileId);
           if (profileToLoad) {
@@ -172,7 +255,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const favoritesJson = await AsyncStorage.getItem(FAVORITES_STORAGE_KEY);
         if (favoritesJson) {
           try {
             const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
@@ -184,7 +266,6 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const recentlyWatchedJson = await AsyncStorage.getItem(RECENTLY_WATCHED_KEY);
         if (recentlyWatchedJson) {
           try {
             const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
@@ -196,12 +277,10 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        const storedPin = await AsyncStorage.getItem(PIN_STORAGE_KEY);
         if (storedPin) {
            setPin(storedPin);
         }
 
-        const lockedJson = await AsyncStorage.getItem(LOCKED_CHANNELS_KEY);
         if (lockedJson) {
           try {
             const storedLocked: string[] = JSON.parse(lockedJson);
@@ -1161,10 +1240,108 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setHasCheckedOnStartup,
   ]);
 
+  const playbackValue = useMemo<IPTVPlaybackContextType>(() => ({
+    currentStream,
+    playStream,
+    stopStream,
+  }), [currentStream, playStream, stopStream]);
+  const libraryValue = useMemo<IPTVLibraryContextType>(() => ({
+    channels,
+    movies,
+    series,
+    epg,
+  }), [channels, movies, series, epg]);
+  const collectionsValue = useMemo<IPTVCollectionsContextType>(() => ({
+    favorites,
+    recentlyWatched,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+    addRecentlyWatched,
+    updatePlaybackPosition,
+    removeRecentlyWatched,
+    clearRecentlyWatched,
+  }), [
+    favorites,
+    recentlyWatched,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+    addRecentlyWatched,
+    updatePlaybackPosition,
+    removeRecentlyWatched,
+    clearRecentlyWatched,
+  ]);
+  const parentalValue = useMemo<IPTVParentalContextType>(() => ({
+    pin,
+    isAdultUnlocked,
+    lockedChannels,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+  }), [
+    pin,
+    isAdultUnlocked,
+    lockedChannels,
+    setPinCode,
+    unlockAdultContent,
+    lockAdultContent,
+    lockChannel,
+    unlockChannel,
+    isChannelLocked,
+  ]);
+  const profilesValue = useMemo<IPTVProfilesContextType>(() => ({
+    profiles,
+    currentProfile,
+    addProfile,
+    editProfile,
+    removeProfile,
+    loadProfile,
+    unloadProfile,
+  }), [profiles, currentProfile, addProfile, editProfile, removeProfile, loadProfile, unloadProfile]);
+  const appStateValue = useMemo<IPTVAppStateContextType>(() => ({
+    isInitializing,
+    isLoading,
+    isUpdating,
+    error,
+    hasCheckedOnStartup,
+    setHasCheckedOnStartup,
+  }), [isInitializing, isLoading, isUpdating, error, hasCheckedOnStartup, setHasCheckedOnStartup]);
+  const guideValue = useMemo<IPTVGuideContextType>(() => ({
+    epg,
+    loadEPG,
+    hasCatchup,
+    getCatchupUrl,
+  }), [epg, loadEPG, hasCatchup, getCatchupUrl]);
+  const metadataValue = useMemo<IPTVMetadataContextType>(() => ({
+    series,
+    getSeriesInfo,
+    getVodInfo,
+  }), [series, getSeriesInfo, getVodInfo]);
+
   return (
-    <IPTVContext.Provider value={contextValue}>
-      {children}
-    </IPTVContext.Provider>
+    <IPTVPlaybackContext.Provider value={playbackValue}>
+      <IPTVLibraryContext.Provider value={libraryValue}>
+        <IPTVCollectionsContext.Provider value={collectionsValue}>
+          <IPTVParentalContext.Provider value={parentalValue}>
+            <IPTVProfilesContext.Provider value={profilesValue}>
+              <IPTVAppStateContext.Provider value={appStateValue}>
+                <IPTVGuideContext.Provider value={guideValue}>
+                  <IPTVMetadataContext.Provider value={metadataValue}>
+                    <IPTVContext.Provider value={contextValue}>
+                      {children}
+                    </IPTVContext.Provider>
+                  </IPTVMetadataContext.Provider>
+                </IPTVGuideContext.Provider>
+              </IPTVAppStateContext.Provider>
+            </IPTVProfilesContext.Provider>
+          </IPTVParentalContext.Provider>
+        </IPTVCollectionsContext.Provider>
+      </IPTVLibraryContext.Provider>
+    </IPTVPlaybackContext.Provider>
   );
 };
 
@@ -1172,6 +1349,70 @@ export const useIPTV = () => {
   const context = useContext(IPTVContext);
   if (!context) {
     throw new Error('useIPTV() must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVPlayback = () => {
+  const context = useContext(IPTVPlaybackContext);
+  if (context === undefined) {
+    throw new Error('useIPTVPlayback must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVLibrary = () => {
+  const context = useContext(IPTVLibraryContext);
+  if (context === undefined) {
+    throw new Error('useIPTVLibrary must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVCollections = () => {
+  const context = useContext(IPTVCollectionsContext);
+  if (context === undefined) {
+    throw new Error('useIPTVCollections must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVParental = () => {
+  const context = useContext(IPTVParentalContext);
+  if (context === undefined) {
+    throw new Error('useIPTVParental must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVProfiles = () => {
+  const context = useContext(IPTVProfilesContext);
+  if (context === undefined) {
+    throw new Error('useIPTVProfiles must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVAppState = () => {
+  const context = useContext(IPTVAppStateContext);
+  if (context === undefined) {
+    throw new Error('useIPTVAppState must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVGuide = () => {
+  const context = useContext(IPTVGuideContext);
+  if (context === undefined) {
+    throw new Error('useIPTVGuide must be used within an IPTVProvider');
+  }
+  return context;
+};
+
+export const useIPTVMetadata = () => {
+  const context = useContext(IPTVMetadataContext);
+  if (context === undefined) {
+    throw new Error('useIPTVMetadata must be used within an IPTVProvider');
   }
   return context;
 };

@@ -2,7 +2,7 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, Platform, Animated } from 'react-native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVCollections, useIPTVGuide } from '../context/IPTVContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { isProgramCatchupAvailable, getCatchupDays } from '../utils/catchupUtils';
 
@@ -233,7 +233,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, colors, onChannelPres
 });
 
 const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId, shouldFocusFirstItem }) => {
-  const { epg, hasCatchup, getCatchupUrl, isFavorite, addFavorite, removeFavorite } = useIPTV();
+  const { epg, hasCatchup, getCatchupUrl } = useIPTVGuide();
+  const { isFavorite, addFavorite, removeFavorite } = useIPTVCollections();
 
   const [scrollX, setScrollX] = useState(0);
   const [visibleWidth, setVisibleWidth] = useState(1000);

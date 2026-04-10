@@ -10,7 +10,7 @@ import {
   Alert,
   Platform
 } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVAppState, useIPTVProfiles } from '../context/IPTVContext';
 import { IPTVProfile, ProfileType } from '../types';
 import { Picker } from '@react-native-picker/picker';
 import { useTranslation } from 'react-i18next';
@@ -18,10 +18,8 @@ import Logger from '../utils/logger';
 
 const PlaylistManager = () => {
   const { t } = useTranslation();
-  const {
-    addProfile, removeProfile, editProfile, profiles,
-    loadProfile, isLoading, error, currentProfile
-  } = useIPTV();
+  const { addProfile, editProfile, removeProfile, profiles, loadProfile, currentProfile } = useIPTVProfiles();
+  const { isLoading, error } = useIPTVAppState();
 
   const [profileType, setProfileType] = useState<ProfileType>('m3u');
   const [name, setName] = useState('');

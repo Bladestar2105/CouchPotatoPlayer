@@ -1,6 +1,6 @@
-import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVCollections, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
@@ -14,7 +14,8 @@ type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Ho
 type SortOption = 'added' | 'name' | 'type' | 'recent';
 
 const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
-  const { favorites, removeFavorite, playStream, addRecentlyWatched } = useIPTV();
+  const { favorites, removeFavorite, addRecentlyWatched } = useIPTVCollections();
+  const { playStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
   const dimensions = useWindowDimensions();
@@ -28,7 +29,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
     }
   }));
 
-  const handlePress = (item: FavoriteItem) => {
+  const handlePress = useCallback((item: FavoriteItem) => {
     addRecentlyWatched({
       id: item.id,
       type: item.type,
@@ -56,25 +57,25 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
         cover: item.icon 
       });
     }
-  };
+  }, [addRecentlyWatched, playStream, navigation]);
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = useCallback((type: string) => {
     switch (type) {
       case 'live': return 'tv';
       case 'vod': return 'movie';
       case 'series': return 'list';
       default: return 'play-circle';
     }
-  };
+  }, []);
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = useCallback((type: string) => {
     switch (type) {
       case 'live': return 'Live TV';
       case 'vod': return 'Film';
       case 'series': return 'Serie';
       default: return '';
     }
-  };
+  }, []);
 
   const sortedFavorites = useMemo(() => {
     const sorted = [...favorites];
@@ -91,7 +92,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
     }
   }, [favorites, sortBy]);
 
-  const renderItem = ({ item }: { item: FavoriteItem }) => {
+  const renderItem = useCallback(({ item }: { item: FavoriteItem }) => {
      const isFocused = focusedItemId === `${item.id}-${item.type}`;
      return (
         <TouchableOpacity
@@ -141,7 +142,7 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
           </View>
         </TouchableOpacity>
       );
-  };
+  }, [focusedItemId, handlePress, getTypeLabel, getTypeIcon, colors.textSecondary, colors.primary, removeFavorite]);
 
   if (favorites.length === 0) {
     return (

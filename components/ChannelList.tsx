@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle, useWindowDimensions } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVAppState, useIPTVCollections, useIPTVGuide, useIPTVLibrary, useIPTVParental, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
@@ -11,6 +11,7 @@ import { ChannelLogo } from './ChannelLogo';
 import EpgTimeline from './EpgTimeline';
 import { isTV as isTVPlatform } from '../utils/platform';
 import { useTranslation } from 'react-i18next';
+import { useRenderDiagnostics } from '../hooks/useRenderDiagnostics';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/character_logo.png');
@@ -156,7 +157,12 @@ type ViewMode = 'list' | 'epg';
 
 const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; initialViewMode?: ViewMode }>((props, ref) => {
   const { t } = useTranslation();
-  const { channels, playStream, isLoading, pin, isAdultUnlocked, epg, loadEPG, lockChannel, unlockChannel, isChannelLocked, addFavorite, removeFavorite, isFavorite, addRecentlyWatched, currentStream, hasCatchup, getCatchupUrl } = useIPTV();
+  const { isLoading } = useIPTVAppState();
+  const { loadEPG, hasCatchup, getCatchupUrl } = useIPTVGuide();
+  const { pin, isAdultUnlocked, lockChannel, unlockChannel, isChannelLocked } = useIPTVParental();
+  const { addFavorite, removeFavorite, isFavorite, addRecentlyWatched } = useIPTVCollections();
+  const { channels, epg } = useIPTVLibrary();
+  const { playStream, currentStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -194,6 +200,11 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
 
   const isTV = isTVPlatform;
+  const listPerfConfig = useMemo(() => (
+    isTV
+      ? { initialNumToRender: 18, maxToRenderPerBatch: 14, windowSize: 9, updateCellsBatchingPeriod: 16, removeClippedSubviews: false }
+      : { initialNumToRender: 12, maxToRenderPerBatch: 10, windowSize: 6, updateCellsBatchingPeriod: 24, removeClippedSubviews: true }
+  ), [isTV]);
   const { width: windowWidth } = useWindowDimensions();
   const isCompactLayout = !isTV && windowWidth < 600;
   const [showCategories, setShowCategories] = useState<boolean>(true);
@@ -288,13 +299,13 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
      }
   }, [selectedGroup, groupMap, currentStream?.id]);
 
-  const handleGroupSelect = (title: string) => {
+  const handleGroupSelect = useCallback((title: string) => {
     setSelectedGroup(title);
     setShouldFocusFirstItem(true);
     if (isCompactLayout) {
       setShowCategories(false);
     }
-  };
+  }, [isCompactLayout]);
 
   useEffect(() => {
     if (shouldFocusFirstItem) {
@@ -315,6 +326,15 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
 
+  useRenderDiagnostics('ChannelList', {
+    selectedGroup,
+    focusedChannelId,
+    groupsCount: groups.length,
+    selectedChannelsCount: selectedChannels.length,
+    viewMode,
+    isLoading,
+  });
+
   const getEpgKey = (channel: Channel): string => {
     if (channel.epgChannelId && channel.epgChannelId.length > 0) {
       return channel.epgChannelId;
@@ -322,7 +342,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     return channel.tvgId || channel.id;
   };
 
-  const handleChannelPress = (channel: Channel) => {
+  const handleChannelPress = useCallback((channel: Channel) => {
     if (isChannelLocked(channel.id)) {
        setUnlockMode(channel.id);
        return;
@@ -345,9 +365,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       returnScreen: 'Home',
       returnTab: 'channels',
     });
-  };
+  }, [isChannelLocked, playStream, addRecentlyWatched, navigation, selectedGroup]);
 
-  const handleEpgPress = (channel: Channel, prog: any) => {
+  const handleEpgPress = useCallback((channel: Channel, prog: any) => {
     const now = new Date();
     const nowTime = now.getTime();
     const isNow = nowTime >= prog.start && nowTime < prog.end;
@@ -376,24 +396,22 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         }
       }
     }
-  };
+  }, [handleChannelPress, getCatchupUrl, playStream, addRecentlyWatched, navigation, selectedGroup]);
 
-  const handleToggleFavorite = (channel: Channel) => {
+  const handleToggleFavorite = useCallback((channel: Channel) => {
     if (isFavorite(channel.id)) {
       removeFavorite(channel.id);
     } else {
       addFavorite({ id: channel.id, type: 'live', name: channel.name, icon: channel.logo, categoryId: channel.categoryId, addedAt: Date.now() });
     }
-  };
+  }, [isFavorite, removeFavorite, addFavorite]);
 
-  // Compute EPG data for the TiviMate-style list view
-  const now = useMemo(() => Date.now(), []);
-
-  const getChannelEpgInfo = (channel: Channel) => {
+  const getChannelEpgInfo = useCallback((channel: Channel) => {
     const key = getEpgKey(channel);
     const programs = epg[key] || [];
     if (programs.length === 0) return { currentProgram: null, progressPercent: 0 };
 
+    const now = Date.now();
     const idx = findCurrentProgramIndex(programs, now);
     if (idx === -1) return { currentProgram: null, progressPercent: 0 };
 
@@ -403,7 +421,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
 
     return { currentProgram: prog, progressPercent };
-  };
+  }, [epg]);
 
   // Global channel index for numbering
   const channelIndexOffset = useMemo(() => {
@@ -415,6 +433,48 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     }
     return offset;
   }, [groups, selectedGroup]);
+
+  const renderCategoryItem = useCallback(({ item, index }: { item: { title: string; data: Channel[] }, index: number }) => {
+    const isSelected = selectedGroup === item.title;
+    const isFirstItem = index === 0;
+    return (
+      <CategoryItem
+        ref={isFirstItem ? firstCategoryRef : undefined}
+        title={item.title}
+        count={item.data.length}
+        isSelected={isSelected}
+        onPress={() => handleGroupSelect(item.title)}
+        colors={colors}
+        hasTVPreferredFocus={isFirstItem}
+      />
+    );
+  }, [selectedGroup, handleGroupSelect, colors]);
+
+  const renderChannelItem = useCallback(({ item: channel, index }: { item: Channel; index: number }) => {
+    const epgInfo = getChannelEpgInfo(channel);
+    const isPlaying = currentStream?.id === channel.id;
+    const isFocusedChannel = focusedChannelId === channel.id;
+    const isFav = isFavorite(channel.id);
+    const hasCatchupSupport = hasCatchup ? hasCatchup(channel) : false;
+
+    return (
+      <ChannelRow
+        ref={(el: any) => (channelRefs.current[channel.id] = el)}
+        channel={channel}
+        channelNumber={channelIndexOffset + index + 1}
+        isPlaying={isPlaying}
+        isFocused={isFocusedChannel}
+        isFav={isFav}
+        currentProgram={epgInfo.currentProgram}
+        progressPercent={epgInfo.progressPercent}
+        hasCatchupSupport={hasCatchupSupport}
+        onPress={() => handleChannelPress(channel)}
+        onLongPress={() => handleToggleFavorite(channel)}
+        onFocus={() => setFocusedChannelId(channel.id)}
+        colors={colors}
+      />
+    );
+  }, [getChannelEpgInfo, currentStream?.id, focusedChannelId, isFavorite, hasCatchup, channelIndexOffset, handleChannelPress, handleToggleFavorite, colors]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -462,25 +522,12 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
             <FlatList
               data={groups}
               keyExtractor={(item) => item.title}
-              initialNumToRender={15}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
-              renderItem={({ item, index }) => {
-                const isSelected = selectedGroup === item.title;
-                const isFirstItem = index === 0;
-                return (
-                    <CategoryItem
-                        ref={isFirstItem ? firstCategoryRef : undefined}
-                        title={item.title}
-                        count={item.data.length}
-                        isSelected={isSelected}
-                        onPress={() => handleGroupSelect(item.title)}
-                        colors={colors}
-                        hasTVPreferredFocus={isFirstItem}
-                    />
-                );
-              }}
+              initialNumToRender={listPerfConfig.initialNumToRender}
+              maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+              windowSize={listPerfConfig.windowSize}
+              updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+              removeClippedSubviews={listPerfConfig.removeClippedSubviews}
+              renderItem={renderCategoryItem}
             />
           </View>
         )}
@@ -504,38 +551,17 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                   ref={flatListRef}
                   data={selectedChannels}
                   keyExtractor={(item) => item.id}
-                  initialNumToRender={15}
-                  maxToRenderPerBatch={10}
-                  windowSize={7}
-                  removeClippedSubviews={true}
+                  initialNumToRender={listPerfConfig.initialNumToRender}
+                  maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+                  windowSize={Math.max(listPerfConfig.windowSize, 7)}
+                  updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+                  removeClippedSubviews={listPerfConfig.removeClippedSubviews}
                   getItemLayout={(data, index) => ({
                     length: Platform.isTV ? 84 : 64,
                     offset: (Platform.isTV ? 84 : 64) * index,
                     index,
                   })}
-                  renderItem={({ item: channel, index }) => {
-                    const epgInfo = getChannelEpgInfo(channel);
-                    const isPlaying = currentStream?.id === channel.id;
-                    const isFocusedChannel = focusedChannelId === channel.id;
-                    const isFav = isFavorite(channel.id);
-                    const hasCatchupSupport = hasCatchup ? hasCatchup(channel) : false;
-
-                    return (
-                      <ChannelRow ref={(el: any) => (channelRefs.current[channel.id] = el)} channel={channel}
-                        channelNumber={channelIndexOffset + index + 1}
-                        isPlaying={isPlaying}
-                        isFocused={isFocusedChannel}
-                        isFav={isFav}
-                        currentProgram={epgInfo.currentProgram}
-                        progressPercent={epgInfo.progressPercent}
-                        hasCatchupSupport={hasCatchupSupport}
-                        onPress={() => handleChannelPress(channel)}
-                        onLongPress={() => handleToggleFavorite(channel)}
-                        onFocus={() => setFocusedChannelId(channel.id)}
-                        colors={colors}
-                      />
-                    );
-                  }}
+                  renderItem={renderChannelItem}
                 />
               ) : (
                 <View style={styles.centeredContainer}>

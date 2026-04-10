@@ -1,11 +1,12 @@
-import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVAppState, useIPTVLibrary, useIPTVParental } from '../context/IPTVContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Series } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { proxyImageUrl } from '../utils/imageProxy';
+import { useRenderDiagnostics } from '../hooks/useRenderDiagnostics';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/character_logo.png');
@@ -56,7 +57,9 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
 }));
 
 const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
-  const { series, isLoading, pin, isAdultUnlocked } = useIPTV();
+  const { isLoading } = useIPTVAppState();
+  const { pin, isAdultUnlocked } = useIPTVParental();
+  const { series } = useIPTVLibrary();
   const { colors } = useSettings();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -88,6 +91,11 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
+  const listPerfConfig = useMemo(() => (
+    Platform.isTV
+      ? { initialNumToRender: 16, maxToRenderPerBatch: 14, windowSize: 9, updateCellsBatchingPeriod: 16, removeClippedSubviews: false }
+      : { initialNumToRender: 12, maxToRenderPerBatch: 12, windowSize: 6, updateCellsBatchingPeriod: 24, removeClippedSubviews: true }
+  ), []);
 
   // Expose focusFirstItem and handleBack methods to parent
   useImperativeHandle(ref, () => ({
@@ -152,14 +160,14 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     }
   }, [groups, selectedGroup]);
 
-  const handleGroupSelect = (title: string) => {
+  const handleGroupSelect = useCallback((title: string) => {
     setSelectedGroup(title);
     setFocusedSeriesKey(null);
     setShouldFocusFirstItem(true);
     if (isMobile) {
       setShowCategories(false);
     }
-  };
+  }, [isMobile]);
 
   useEffect(() => {
     if (shouldFocusFirstItem) {
@@ -180,6 +188,14 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
     return selectedGroup ? (groupMap[selectedGroup] || []) : [];
   }, [groupMap, selectedGroup]);
 
+  useRenderDiagnostics('SeriesList', {
+    selectedGroup,
+    groupsCount: groups.length,
+    selectedSeriesCount: selectedSeries.length,
+    focusedSeriesKey,
+    isLoading,
+  });
+
   useEffect(() => {
     if (!focusedSeriesKey && !selectedSeriesKey) return;
 
@@ -191,6 +207,89 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
       setSelectedSeriesKey(null);
     }
   }, [focusedSeriesKey, selectedSeries, selectedSeriesKey]);
+
+  const renderCategoryItem = useCallback(({ item, index }: { item: { title: string; data: Series[] }; index: number }) => {
+    const isSelected = selectedGroup === item.title;
+    const isFirstItem = index === 0;
+    return (
+      <CategoryItem
+        ref={isFirstItem ? (el: any) => {
+          firstCategoryRef.current = el;
+          setFirstCategoryNode(findNodeHandle(el) ?? undefined);
+        } : undefined}
+        title={item.title}
+        count={item.data.length}
+        isSelected={isSelected}
+        onPress={() => handleGroupSelect(item.title)}
+        onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
+        colors={colors}
+        // @ts-ignore - supported on TV platforms
+        nextFocusRight={firstPosterNode}
+      />
+    );
+  }, [selectedGroup, handleGroupSelect, colors, firstPosterNode]);
+
+  const renderSeriesItem = useCallback(({ item, index }: { item: Series; index: number }) => {
+    const seriesKey = getSeriesPosterKey(item);
+    const isFocused = focusedSeriesKey === seriesKey;
+    const isSelected = selectedSeriesKey === seriesKey;
+    const posterUri = getPosterUri(item.cover);
+    return (
+      <TouchableOpacity
+        accessible={true}
+        isTVSelectable={true}
+        activeOpacity={1}
+        ref={index === 0 ? (el: any) => {
+          firstPosterRef.current = el;
+          setFirstPosterNode(findNodeHandle(el) ?? undefined);
+        } : undefined}
+        hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
+        style={[
+            styles.posterContainer,
+            {
+              width: posterWidth,
+              marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
+            },
+            isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {},
+            !isFocused && isSelected ? { borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
+        ]}
+        // @ts-ignore - supported on TV platforms
+        nextFocusLeft={firstCategoryNode}
+        tvParallaxProperties={{ enabled: false }}
+        onPress={() => {
+          setSelectedSeriesKey(seriesKey);
+          navigation.navigate('MediaInfo', {
+            id: item.id,
+            type: 'series',
+            title: item.name,
+            cover: item.cover,
+            returnGroupId: selectedGroup,
+            returnContentKey: seriesKey,
+            returnScreen: 'Home',
+            returnTab: 'series',
+          });
+        }}
+        onFocus={() => {
+          setFocusedSeriesKey(seriesKey);
+          setShouldFocusFirstItem(false);
+        }}
+        onBlur={() => setFocusedSeriesKey((current) => (current === seriesKey ? null : current))}
+      >
+        <Image
+          source={posterUri ? { uri: posterUri } : defaultLogo}
+          style={[
+              styles.poster,
+              { width: posterWidth, height: posterWidth * 1.5 },
+              { borderColor: isFocused || isSelected ? colors.primary : colors.divider },
+          ]}
+          resizeMode="cover"
+        />
+        <Text style={[styles.title, { color: isFocused || isSelected ? colors.text : colors.textSecondary }]} numberOfLines={2}>
+          {item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  }, [focusedSeriesKey, selectedSeriesKey, shouldFocusFirstItem, posterWidth, numColumns, gridGap, colors, firstCategoryNode, navigation, selectedGroup]);
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
@@ -205,29 +304,12 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
         <FlatList
           data={groups}
           keyExtractor={(item) => item.title}
-          initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          renderItem={({ item, index }) => {
-              const isSelected = selectedGroup === item.title;
-              const isFirstItem = index === 0;
-              return (
-                <CategoryItem
-                  ref={isFirstItem ? (el: any) => {
-                    firstCategoryRef.current = el;
-                    setFirstCategoryNode(findNodeHandle(el) ?? undefined);
-                  } : undefined}
-                  title={item.title}
-                  count={item.data.length}
-                  isSelected={isSelected}
-                  onPress={() => handleGroupSelect(item.title)}
-                  onFocus={() => {}} // Do not set selected group on focus to prevent Apple TV UI freezes
-                  colors={colors}
-                  // @ts-ignore - supported on TV platforms
-                  nextFocusRight={firstPosterNode}
-                />
-              );
-          }}
+          initialNumToRender={listPerfConfig.initialNumToRender}
+          maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+          windowSize={listPerfConfig.windowSize}
+          updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+          removeClippedSubviews={listPerfConfig.removeClippedSubviews}
+          renderItem={renderCategoryItem}
         />
       </View>
       )}
@@ -251,77 +333,18 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((p
             key={numColumns} // Force re-render if columns change
             extraData={{ focusedSeriesKey, selectedSeriesKey, selectedGroup }}
             contentContainerStyle={styles.gridContainer}
-            initialNumToRender={12}
-            maxToRenderPerBatch={12}
-            windowSize={5}
-            removeClippedSubviews={true}
+            initialNumToRender={listPerfConfig.initialNumToRender}
+            maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
+            windowSize={listPerfConfig.windowSize}
+            updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
+            removeClippedSubviews={listPerfConfig.removeClippedSubviews}
             getItemLayout={(data, index) => {
                // Calculate row height based on poster + margins.
                const rowHeight = (posterWidth * 1.5) + 8 + 16 + 24; // poster height + margin + text + bottom margin
                const rowIndex = Math.floor(index / numColumns);
                return { length: rowHeight, offset: rowHeight * rowIndex, index };
             }}
-            renderItem={({ item, index }) => {
-                const seriesKey = getSeriesPosterKey(item);
-                const isFocused = focusedSeriesKey === seriesKey;
-                const isSelected = selectedSeriesKey === seriesKey;
-                const posterUri = getPosterUri(item.cover);
-                return (
-                  <TouchableOpacity
-                    accessible={true}
-                    isTVSelectable={true}
-                    activeOpacity={1}
-                    ref={index === 0 ? (el: any) => {
-                      firstPosterRef.current = el;
-                      setFirstPosterNode(findNodeHandle(el) ?? undefined);
-                    } : undefined}
-                    hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
-                    style={[
-                        styles.posterContainer,
-                        {
-                          width: posterWidth,
-                          marginRight: ((index + 1) % numColumns === 0) ? 0 : gridGap,
-                        },
-                        isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {},
-                        !isFocused && isSelected ? { borderColor: colors.primary, borderWidth: 3, borderRadius: 16 } : {}
-                    ]}
-                    // @ts-ignore - supported on TV platforms
-                    nextFocusLeft={firstCategoryNode}
-                    tvParallaxProperties={{ enabled: false }}
-                    onPress={() => {
-                      setSelectedSeriesKey(seriesKey);
-                      navigation.navigate('MediaInfo', {
-                        id: item.id,
-                        type: 'series',
-                        title: item.name,
-                        cover: item.cover,
-                        returnGroupId: selectedGroup,
-                        returnContentKey: seriesKey,
-                        returnScreen: 'Home',
-                        returnTab: 'series',
-                      });
-                    }}
-                    onFocus={() => {
-                      setFocusedSeriesKey(seriesKey);
-                      setShouldFocusFirstItem(false);
-                    }}
-                    onBlur={() => setFocusedSeriesKey((current) => (current === seriesKey ? null : current))}
-                  >
-                    <Image
-                      source={posterUri ? { uri: posterUri } : defaultLogo}
-                      style={[
-                          styles.poster,
-                          { width: posterWidth, height: posterWidth * 1.5 },
-                          { borderColor: isFocused || isSelected ? colors.primary : colors.divider },
-                      ]}
-                      resizeMode="cover"
-                    />
-                    <Text style={[styles.title, { color: isFocused || isSelected ? colors.text : colors.textSecondary }]} numberOfLines={2}>
-                      {item.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-            }}
+            renderItem={renderSeriesItem}
           />
         ) : (
           <View style={styles.centeredContainer}>

@@ -5,7 +5,7 @@ import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigat
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { Episode } from '../types';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVPlayback } from '../context/IPTVContext';
 import Logger from '../utils/logger';
 import { useSettings } from '../context/SettingsContext';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,7 @@ const EpisodeScreen = () => {
   const route = useRoute<EpisodeScreenRouteProp>();
   const navigation = useNavigation<EpisodeScreenNavigationProp>();
   const isFocused = useIsFocused();
-  const { playStream } = useIPTV();
+  const { playStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const { t } = useTranslation();
 

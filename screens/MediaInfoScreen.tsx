@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, TouchableOpacity, useWindowDimensions, Platform, BackHandler, TVEventControl } from 'react-native';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVCollections, useIPTVMetadata, useIPTVPlayback } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { TMDBService } from '../services/tmdb';
 import { isMobile } from '../utils/platform';
@@ -44,7 +44,9 @@ const MediaInfoScreen = () => {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const { id, type, title, cover, streamUrl, returnGroupId, returnTab } = route.params;
-  const { getVodInfo, getSeriesInfo, playStream, series, favorites, addFavorite, removeFavorite } = useIPTV();
+  const { getVodInfo, getSeriesInfo, series } = useIPTVMetadata();
+  const { favorites, addFavorite, removeFavorite } = useIPTVCollections();
+  const { playStream } = useIPTVPlayback();
   const { colors, tmdbApiKey } = useSettings();
   const dimensions = useWindowDimensions();
 

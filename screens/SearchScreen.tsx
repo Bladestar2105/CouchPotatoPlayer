@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -14,7 +14,8 @@ type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'
 type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const SearchScreen = forwardRef<ContentRef>((props, ref) => {
-  const { channels, movies, series, playStream } = useIPTV();
+  const { channels, movies, series } = useIPTVLibrary();
+  const { playStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const navigation = useNavigation<SearchScreenNavigationProp>();
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Platform, NativeModules, NativeSyntheticEvent } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVPlayback } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { KSPlayerView } from './KSPlayerView';
 import { detectStreamKind, needsAppleProxy, selectEffectivePlayer, type EffectivePlayer, type StreamKind } from './player/PlayerAdapter';
@@ -157,7 +157,7 @@ const VideoPlayer = React.forwardRef(
     }: VideoPlayerProps,
     ref,
   ) => {
-    const { currentStream } = useIPTV();
+    const { currentStream } = useIPTVPlayback();
   const { bufferSize, playerType, vlcHardwareAcceleration, ksplayerHardwareDecode, ksplayerAsynchronousDecompression, ksplayerDisplayFrameRate } = useSettings();
 
     const streamUrl = useMemo(() => {

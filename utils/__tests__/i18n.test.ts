@@ -1,4 +1,5 @@
 import { describe, test, expect, mock } from "bun:test";
+import i18next from 'i18next';
 
 let mockLanguageCode = 'en';
 
@@ -47,8 +48,16 @@ describe('i18n', () => {
      expect(i18n.t('profileUpdated', { lng: 'fr', name: 'MyProfile' })).toBe('Profil "MyProfile" mis à jour.');
   });
 
-  test('should handle fallback to fallbackLng (en) correctly from within i18next', () => {
-     i18n.addResourceBundle('en', 'translation', { 'fallbackTestKey': 'Fallback Value' }, true, true);
-     expect(i18n.t('fallbackTestKey', { lng: 'fr' })).toBe('Fallback Value');
+  test('should handle fallback to fallbackLng (en) correctly from within i18next', async () => {
+     const isolatedI18n = i18next.createInstance();
+     await isolatedI18n.init({
+       lng: 'fr',
+       fallbackLng: 'en',
+       resources: {
+         en: { translation: { fallbackTestKey: 'Fallback Value' } },
+         fr: { translation: {} },
+       },
+     });
+     expect(isolatedI18n.t('fallbackTestKey', { lng: 'fr' })).toBe('Fallback Value');
   });
 });

@@ -1,6 +1,6 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert, findNodeHandle } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVCollections, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
@@ -13,7 +13,8 @@ export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolea
 type RecentlyWatchedScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
-  const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, playStream, addRecentlyWatched } = useIPTV();
+  const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, addRecentlyWatched } = useIPTVCollections();
+  const { playStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const { t } = useTranslation();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
@@ -35,7 +36,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
     },
   }));
 
-  const handlePress = (item: RecentlyWatchedItem) => {
+  const handlePress = useCallback((item: RecentlyWatchedItem) => {
     // Update last watched time
     addRecentlyWatched({
       ...item,
@@ -60,27 +61,27 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
         cover: item.icon 
       });
     }
-  };
+  }, [addRecentlyWatched, playStream, navigation]);
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = useCallback((type: string) => {
     switch (type) {
       case 'live': return 'tv';
       case 'vod': return 'movie';
       case 'series': return 'list';
       default: return 'play-circle';
     }
-  };
+  }, []);
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = useCallback((type: string) => {
     switch (type) {
       case 'live': return 'Live TV';
       case 'vod': return 'Film';
       case 'series': return 'Serie';
       default: return '';
     }
-  };
+  }, []);
 
-  const formatTimeAgo = (timestamp: number) => {
+  const formatTimeAgo = useCallback((timestamp: number) => {
     const now = Date.now();
     const diff = now - timestamp;
     const minutes = Math.floor(diff / 60000);
@@ -90,9 +91,9 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
     if (minutes < 60) return `vor ${minutes} Min.`;
     if (hours < 24) return `vor ${hours} Std.`;
     return `vor ${days} Tag${days > 1 ? 'en' : ''}`;
-  };
+  }, []);
 
-  const renderItem = ({ item, index }: { item: RecentlyWatchedItem; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: RecentlyWatchedItem; index: number }) => {
     // Calculate progress percentage
     const progressPercent = (item.position && item.duration && item.duration > 0)
       ? (item.position / item.duration) * 100
@@ -174,7 +175,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
         </TouchableOpacity>
       </View>
     );
-  };
+  }, [colors.card, colors.surface, colors.text, colors.textSecondary, handlePress, getTypeLabel, getTypeIcon, formatTimeAgo, removeRecentlyWatched, t]);
 
   if (recentlyWatched.length === 0) {
     return (

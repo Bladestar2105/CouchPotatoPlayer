@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Text, TextInput, TouchableOpacity, Alert, Platform } from 'react-native';
-import { useIPTV } from '../context/IPTVContext';
+import { useIPTVParental } from '../context/IPTVContext';
 import bcrypt from 'bcryptjs';
 
 const PinSetupScreen = () => {
-  const { pin, setPinCode, unlockAdultContent, isAdultUnlocked, lockAdultContent } = useIPTV();
+  const { pin, setPinCode, unlockAdultContent, isAdultUnlocked, lockAdultContent } = useIPTVParental();
   const [inputValue, setInputValue] = useState('');
   const [confirmValue, setConfirmValue] = useState('');
   const [setupMode, setSetupMode] = useState(!pin);
