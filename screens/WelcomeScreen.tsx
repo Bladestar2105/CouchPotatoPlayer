@@ -180,6 +180,7 @@ const WelcomeScreen = () => {
               style={styles.backToList}
               onPress={() => setShowAddForm(false)}
               accessibilityRole="button"
+              accessibilityLabel="Back to Providers"
             >
               <Icon name="arrow-back" size={24} color={colors.textSecondary} />
               <Text style={[styles.backToListText, { color: '#2D4263' }]}>Back to Providers</Text>
