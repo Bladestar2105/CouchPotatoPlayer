@@ -13,6 +13,77 @@ type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Ho
 
 type SortOption = 'added' | 'name' | 'type' | 'recent';
 
+// ⚡ Bolt: Extract FavoriteCard to prevent unnecessary re-renders of list items when parent state changes.
+// Using React.memo allows us to only re-render the focused item, avoiding updates to the entire list.
+const FavoriteCard = React.memo(({
+  item,
+  isFocused,
+  handlePress,
+  setFocusedItemId,
+  getTypeLabel,
+  getTypeIcon,
+  colors,
+  removeFavorite
+}: {
+  item: FavoriteItem;
+  isFocused: boolean;
+  handlePress: (item: FavoriteItem) => void;
+  setFocusedItemId: (id: string | null) => void;
+  getTypeLabel: (type: string) => string;
+  getTypeIcon: (type: string) => any;
+  colors: any;
+  removeFavorite: (id: string) => void;
+}) => {
+  return (
+    <TouchableOpacity
+      style={[
+          styles.card,
+          { backgroundColor: 'rgba(30,30,46,0.9)' },
+          isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#E9692A', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
+      ]}
+      onPress={() => handlePress(item)}
+      onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
+      onBlur={() => setFocusedItemId(null)}
+      accessible={true}
+      isTVSelectable={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
+      accessibilityHint={`Plays the ${item.type}`}
+    >
+      <View style={[styles.imageContainer, { backgroundColor: '#1C1C1E' }]}>
+        {item.icon ? (
+          <Image
+            source={{ uri: item.icon }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.placeholderImage}>
+            <Icon name={getTypeIcon(item.type)} size={48} color={colors.textSecondary} />
+          </View>
+        )}
+        <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#69F0AE' : item.type === 'vod' ? '#E9692A' : '#FFD740' }]}>
+          <Icon name={getTypeIcon(item.type)} size={16} color="#FFF" />
+        </View>
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={() => removeFavorite(item.id)}
+          accessible={true}
+          isTVSelectable={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${item.name} from favorites`}
+        >
+          <Icon name="close" size={20} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.infoContainer}>
+         <Text style={[styles.name, { color: isFocused ? '#FAFAFA' : '#A1A1AA' }]} numberOfLines={2}>{item.name}</Text>
+         <Text style={[styles.typeLabel, { color: '#71717A' }]}>{getTypeLabel(item.type)}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { favorites, removeFavorite, addRecentlyWatched } = useIPTVCollections();
   const { playStream } = useIPTVPlayback();
@@ -95,54 +166,18 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
   const renderItem = useCallback(({ item }: { item: FavoriteItem }) => {
      const isFocused = focusedItemId === `${item.id}-${item.type}`;
      return (
-        <TouchableOpacity
-          style={[
-              styles.card,
-              { backgroundColor: 'rgba(30,30,46,0.9)' },
-              isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#E9692A', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
-          ]}
-          onPress={() => handlePress(item)}
-          onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
-          onBlur={() => setFocusedItemId(null)}
-          accessible={true}
-          isTVSelectable={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
-          accessibilityHint={`Plays the ${item.type}`}
-        >
-          <View style={[styles.imageContainer, { backgroundColor: '#1C1C1E' }]}>
-            {item.icon ? (
-              <Image
-                source={{ uri: item.icon }}
-                style={styles.image}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.placeholderImage}>
-                <Icon name={getTypeIcon(item.type)} size={48} color={colors.textSecondary} />
-              </View>
-            )}
-            <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#69F0AE' : item.type === 'vod' ? '#E9692A' : '#FFD740' }]}>
-              <Icon name={getTypeIcon(item.type)} size={16} color="#FFF" />
-            </View>
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => removeFavorite(item.id)}
-              accessible={true}
-              isTVSelectable={true}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${item.name} from favorites`}
-            >
-              <Icon name="close" size={20} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.infoContainer}>
-             <Text style={[styles.name, { color: isFocused ? '#FAFAFA' : '#A1A1AA' }]} numberOfLines={2}>{item.name}</Text>
-             <Text style={[styles.typeLabel, { color: '#71717A' }]}>{getTypeLabel(item.type)}</Text>
-          </View>
-        </TouchableOpacity>
-      );
-  }, [focusedItemId, handlePress, getTypeLabel, getTypeIcon, colors.textSecondary, colors.primary, removeFavorite]);
+       <FavoriteCard
+         item={item}
+         isFocused={isFocused}
+         handlePress={handlePress}
+         setFocusedItemId={setFocusedItemId}
+         getTypeLabel={getTypeLabel}
+         getTypeIcon={getTypeIcon}
+         colors={colors}
+         removeFavorite={removeFavorite}
+       />
+     );
+  }, [focusedItemId, handlePress, getTypeLabel, getTypeIcon, colors, removeFavorite]);
 
   if (favorites.length === 0) {
     return (
