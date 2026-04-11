@@ -12,6 +12,118 @@ export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolea
 
 type RecentlyWatchedScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
+// ⚡ Bolt: Extract RecentlyWatchedCard to prevent unnecessary re-renders of list items when parent state changes.
+// Using React.memo allows us to only re-render the items that have changed, avoiding updates to the entire list.
+const RecentlyWatchedCard = React.memo(({
+  item,
+  index,
+  cardWidth,
+  colors,
+  firstItemRef,
+  clearAllButtonRef,
+  handlePress,
+  getTypeLabel,
+  getTypeIcon,
+  formatTimeAgo,
+  removeRecentlyWatched,
+  t
+}: {
+  item: RecentlyWatchedItem;
+  index: number;
+  cardWidth: number;
+  colors: any;
+  firstItemRef: any;
+  clearAllButtonRef: any;
+  handlePress: (item: RecentlyWatchedItem) => void;
+  getTypeLabel: (type: string) => string;
+  getTypeIcon: (type: string) => any;
+  formatTimeAgo: (timestamp: number) => string;
+  removeRecentlyWatched: (id: string) => void;
+  t: any;
+}) => {
+  // Calculate progress percentage
+  const progressPercent = (item.position && item.duration && item.duration > 0)
+    ? (item.position / item.duration) * 100
+    : 0;
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, width: cardWidth, maxWidth: cardWidth }]}>
+      <TouchableOpacity
+        ref={firstItemRef}
+        style={styles.cardPressable}
+        onPress={() => handlePress(item)}
+        accessible={true}
+        isTVSelectable={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
+        accessibilityHint={`Plays the ${item.type}`}
+        nextFocusUp={index === 0 ? (findNodeHandle(clearAllButtonRef.current) ?? undefined) : undefined}
+      >
+      <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
+        {item.icon ? (
+          <Image
+            source={{ uri: item.icon }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.placeholderImage}>
+            <Icon name={getTypeIcon(item.type)} size={32} color={colors.textSecondary} />
+          </View>
+        )}
+
+        {/* Type Badge */}
+        <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#4CAF50' : item.type === 'vod' ? '#2196F3' : '#FF9800' }]}>
+          <Icon name={getTypeIcon(item.type)} size={12} color="#FFF" />
+        </View>
+
+        {/* Progress Bar (for VOD and Series) */}
+        {progressPercent > 0 && item.type !== 'live' && (
+          <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
+          </View>
+        )}
+
+        {/* Continue Watching Badge */}
+        {progressPercent > 5 && progressPercent < 95 && item.type !== 'live' && (
+          <View style={styles.continueBadge}>
+            <Icon name="play-arrow" size={14} color="#FFF" />
+          </View>
+        )}
+
+      </View>
+
+      <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
+
+      {/* Episode Info for Series */}
+      {item.type === 'series' && item.seasonNumber && item.episodeNumber && (
+        <Text style={[styles.episodeInfo, { color: colors.textSecondary }]}>
+          S{item.seasonNumber} E{item.episodeNumber}
+        </Text>
+      )}
+
+      <View style={styles.metaContainer}>
+        <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>{getTypeLabel(item.type)}</Text>
+        <Text style={[styles.timeAgo, { color: colors.textSecondary }]}>
+          {formatTimeAgo(item.lastWatchedAt)}
+        </Text>
+      </View>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.removeAction}
+        onPress={() => removeRecentlyWatched(item.id)}
+        accessible={true}
+        isTVSelectable={true}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${item.name} from recently watched`}
+      >
+        <Icon name="delete-outline" size={16} color="#FFF" />
+        <Text style={styles.removeActionText}>{t('remove', 'Entfernen')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((props, ref) => {
   const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, addRecentlyWatched } = useIPTVCollections();
   const { playStream } = useIPTVPlayback();
@@ -94,88 +206,23 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
   }, []);
 
   const renderItem = useCallback(({ item, index }: { item: RecentlyWatchedItem; index: number }) => {
-    // Calculate progress percentage
-    const progressPercent = (item.position && item.duration && item.duration > 0)
-      ? (item.position / item.duration) * 100
-      : 0;
-
     return (
-      <View style={[styles.card, { backgroundColor: colors.card, width: cardWidth, maxWidth: cardWidth }]}>
-        <TouchableOpacity
-          ref={index === 0 ? firstItemRef : undefined}
-          style={styles.cardPressable}
-          onPress={() => handlePress(item)}
-          accessible={true}
-          isTVSelectable={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${getTypeLabel(item.type)}: ${item.name}`}
-          accessibilityHint={`Plays the ${item.type}`}
-          nextFocusUp={index === 0 ? (findNodeHandle(clearAllButtonRef.current) ?? undefined) : undefined}
-        >
-        <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
-          {item.icon ? (
-            <Image
-              source={{ uri: item.icon }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Icon name={getTypeIcon(item.type)} size={32} color={colors.textSecondary} />
-            </View>
-          )}
-          
-          {/* Type Badge */}
-          <View style={[styles.typeBadge, { backgroundColor: item.type === 'live' ? '#4CAF50' : item.type === 'vod' ? '#2196F3' : '#FF9800' }]}>
-            <Icon name={getTypeIcon(item.type)} size={12} color="#FFF" />
-          </View>
-          
-          {/* Progress Bar (for VOD and Series) */}
-          {progressPercent > 0 && item.type !== 'live' && (
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
-            </View>
-          )}
-          
-          {/* Continue Watching Badge */}
-          {progressPercent > 5 && progressPercent < 95 && item.type !== 'live' && (
-            <View style={styles.continueBadge}>
-              <Icon name="play-arrow" size={14} color="#FFF" />
-            </View>
-          )}
-          
-        </View>
-        
-        <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
-        
-        {/* Episode Info for Series */}
-        {item.type === 'series' && item.seasonNumber && item.episodeNumber && (
-          <Text style={[styles.episodeInfo, { color: colors.textSecondary }]}>
-            S{item.seasonNumber} E{item.episodeNumber}
-          </Text>
-        )}
-        
-        <View style={styles.metaContainer}>
-          <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>{getTypeLabel(item.type)}</Text>
-          <Text style={[styles.timeAgo, { color: colors.textSecondary }]}>
-            {formatTimeAgo(item.lastWatchedAt)}
-          </Text>
-        </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.removeAction}
-          onPress={() => removeRecentlyWatched(item.id)}
-          accessible={true}
-          isTVSelectable={true}
-          accessibilityRole="button"
-          accessibilityLabel={`Remove ${item.name} from recently watched`}
-        >
-          <Icon name="delete-outline" size={16} color="#FFF" />
-          <Text style={styles.removeActionText}>{t('remove', 'Entfernen')}</Text>
-        </TouchableOpacity>
-      </View>
+      <RecentlyWatchedCard
+        item={item}
+        index={index}
+        cardWidth={cardWidth}
+        colors={colors}
+        firstItemRef={index === 0 ? firstItemRef : undefined}
+        clearAllButtonRef={clearAllButtonRef}
+        handlePress={handlePress}
+        getTypeLabel={getTypeLabel}
+        getTypeIcon={getTypeIcon}
+        formatTimeAgo={formatTimeAgo}
+        removeRecentlyWatched={removeRecentlyWatched}
+        t={t}
+      />
     );
-  }, [colors.card, colors.surface, colors.text, colors.textSecondary, handlePress, getTypeLabel, getTypeIcon, formatTimeAgo, removeRecentlyWatched, t]);
+  }, [cardWidth, colors, handlePress, getTypeLabel, getTypeIcon, formatTimeAgo, removeRecentlyWatched, t]);
 
   if (recentlyWatched.length === 0) {
     return (
