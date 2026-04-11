@@ -963,7 +963,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
     if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
-    const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_series_info&series_id=${seriesId}`;
+    const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_series_info&series_id=${encodeURIComponent(seriesId)}`;
     try {
       const response = await fetchWithProxy(url);
       if (response.ok) {
@@ -981,7 +981,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const serverUrl = serverUrlProp || (currentProfile as any).serverUrl;
     if (!serverUrl) throw new Error("Server URL is missing from profile");
     const cleanServerUrl = serverUrl.trim().replace(/\/+$/, '');
-    const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_vod_info&vod_id=${vodId}`;
+    const url = `${cleanServerUrl}/player_api.php?username=${encodeURIComponent(username || '')}&password=${encodeURIComponent(password || '')}&action=get_vod_info&vod_id=${encodeURIComponent(vodId)}`;
     try {
       const response = await fetchWithProxy(url);
       if (response.ok) {
