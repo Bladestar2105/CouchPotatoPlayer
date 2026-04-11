@@ -10,3 +10,6 @@
 ## 2026-04-10 - Define accessibility roles for UI selection buttons
 **Learning:** Interactive dropdown elements and selection UI components built with `TouchableOpacity` should clearly articulate their current selection state. Utilizing `accessibilityState={{ selected: boolean }}` combined with `accessibilityRole="button"` ensures that screen readers narrate the active selection accurately, especially for dynamic lists like profile switchers.
 **Action:** Use the `accessibilityState` prop to reflect dynamic user choices on interactive lists and selectors.
+## 2026-04-10 - Added accessibility labels and roles to back navigation buttons
+**Learning:** In React Native applications with multi-tier or complex nested navigation hierarchies, generic "back" buttons implemented as `TouchableOpacity` wrapping icon-only views can be ambiguous to screen reader users if they aren't explicitly labeled. Simply having an "arrow-back" icon does not translate to semantic navigation meaning without an explicit `accessibilityLabel`.
+**Action:** Always provide `accessibilityRole="button"` and context-aware `accessibilityLabel` attributes (e.g. "Go back to categories" or "Back to Providers") to custom back navigation `TouchableOpacity` components.
