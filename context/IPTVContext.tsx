@@ -856,7 +856,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           id: String(channel.stream_id),
           name: channel.name,
-          url: `${cleanServerUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${channel.stream_id}.${extension}`,
+          url: `${cleanServerUrl}/live/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${encodeURIComponent(channel.stream_id)}.${encodeURIComponent(extension || '')}`,
           logo: channel.stream_icon,
           group: catInfo.name,
           tvgId: channel.epg_channel_id,
@@ -896,7 +896,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           id: String(movie.stream_id),
           name: movie.name,
-          streamUrl: `${cleanServerUrl}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${movie.stream_id}.${movie.container_extension}`,
+          streamUrl: `${cleanServerUrl}/movie/${encodeURIComponent(username)}/${encodeURIComponent(password || '')}/${encodeURIComponent(movie.stream_id)}.${encodeURIComponent(movie.container_extension || '')}`,
           cover: movieCover,
           group: catInfo.name,
           categoryId: String(movie.category_id),

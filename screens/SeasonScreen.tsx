@@ -68,7 +68,7 @@ const SeasonScreen = () => {
           const parsedEpisodes: Episode[] = episodesArr.map((ep: any) => ({
             id: ep.id,
             name: ep.title || `Episode ${ep.episode_num}`,
-            streamUrl: `${currentProfile.url.trim().replace(/\/+$/, '')}/series/${encodeURIComponent(currentProfile.username || '')}/${encodeURIComponent(currentProfile.password || '')}/${ep.id}.${ep.container_extension || 'mp4'}`,
+            streamUrl: `${currentProfile.url.trim().replace(/\/+$/, '')}/series/${encodeURIComponent(currentProfile.username || '')}/${encodeURIComponent(currentProfile.password || '')}/${encodeURIComponent(ep.id)}.${encodeURIComponent(ep.container_extension || 'mp4')}`,
             episodeNumber: ep.episode_num
           }));
 
