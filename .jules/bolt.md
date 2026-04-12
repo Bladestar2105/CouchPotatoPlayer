@@ -47,3 +47,7 @@
 ## 2023-10-27 - [Stale Closures in React.memo Custom areEqual]
 **Learning:** When extracting inline `renderItem` components into memoized functional components (e.g., `FavoriteCard`) to prevent `FlatList` re-renders, providing an overly aggressive custom `areEqual` function that omits callback props (`handlePress`, `removeFavorite`, `t`) causes severe stale closure bugs. The component retains stale references to parent functions, leading to bugs like incorrect navigation or action execution against outdated state.
 **Action:** Always include function props in custom `areEqual` functions, or better yet, rely on React's default shallow equality unless profiling specifically mandates a custom comparator. Ensure parent components wrap these callbacks in `useCallback` to maintain reference equality.
+
+## 2025-05-23 - [Optimize XML date parsing with caching and unary operators]
+**Learning:** Parsing tens of thousands of XMLTV dates using `parseInt` is slow because it relies on base-10 string conversion algorithms. Furthermore, EPG feeds often repeat the same start/end timestamps across multiple channels. Processing identical dates repeatedly is a major bottleneck.
+**Action:** Replace `parseInt` with the much faster unary `+` operator for numerical coercion of substrings. Additionally, use a bounded `Map` as a FIFO cache (e.g., limit to 10,000 keys) to instantly return previously computed timestamps, bypassing parsing logic entirely for repetitive dates.
