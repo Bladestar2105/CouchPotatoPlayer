@@ -369,11 +369,11 @@ const SettingsScreen = forwardRef<ContentRef>((props, ref) => {
                       </View>
                       <View style={styles.tileRight}>
                         {!isCurrent && (
-                          <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton} accessible={true} accessibilityRole="button" isTVSelectable={true}>
+                          <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton} accessible={true} accessibilityRole="button" accessibilityLabel={`Load profile ${p.name}`} isTVSelectable={true}>
                             <Text style={{ color: colors.primary }}>Load</Text>
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton} accessible={true} accessibilityRole="button" isTVSelectable={true}>
+                        <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton} accessible={true} accessibilityRole="button" accessibilityLabel={`Delete profile ${p.name}`} isTVSelectable={true}>
                           <Text style={{ color: colors.error }}>Delete</Text>
                         </TouchableOpacity>
                       </View>
