@@ -94,29 +94,35 @@ export const parseXMLTV = async (url: string): Promise<Record<string, ParsedProg
   }
 };
 
+const parseXMLDateCache = new Map<string, number>();
+const MAX_CACHE_SIZE = 10000;
+
 const parseXMLDate = (inputDateString: string | number): number | null => {
   const dateString = String(inputDateString);
   if (dateString.length < 14) return null;
 
+  let timestamp = parseXMLDateCache.get(dateString);
+  if (timestamp !== undefined) return timestamp;
+
   try {
-    const year = parseInt(dateString.substring(0, 4), 10);
-    const monthIdx = parseInt(dateString.substring(4, 6), 10) - 1; // JS months are 0-indexed
-    const day = parseInt(dateString.substring(6, 8), 10);
-    const hour = parseInt(dateString.substring(8, 10), 10);
-    const min = parseInt(dateString.substring(10, 12), 10);
-    const sec = parseInt(dateString.substring(12, 14), 10);
+    const year = +dateString.substring(0, 4);
+    const monthIdx = +dateString.substring(4, 6) - 1; // JS months are 0-indexed
+    const day = +dateString.substring(6, 8);
+    const hour = +dateString.substring(8, 10);
+    const min = +dateString.substring(10, 12);
+    const sec = +dateString.substring(12, 14);
 
     // Basic range validation to prevent auto-rollover
     if (monthIdx < 0 || monthIdx > 11 || day < 1 || day > 31 || hour < 0 || hour > 23 || min < 0 || min > 59 || sec < 0 || sec > 59) {
       return null;
     }
 
-    let timestamp = Date.UTC(year, monthIdx, day, hour, min, sec);
+    timestamp = Date.UTC(year, monthIdx, day, hour, min, sec);
 
     if (dateString.length >= 19) {
       const offsetSign = dateString.substring(15, 16);
-      const offsetHour = parseInt(dateString.substring(16, 18), 10);
-      const offsetMin = parseInt(dateString.substring(18, 20), 10);
+      const offsetHour = +dateString.substring(16, 18);
+      const offsetMin = +dateString.substring(18, 20);
 
       const offsetTotalMs = ((offsetHour * 60) + offsetMin) * 60000;
 
@@ -130,6 +136,14 @@ const parseXMLDate = (inputDateString: string | number): number | null => {
     if (isNaN(timestamp)) {
       return null;
     }
+
+    if (parseXMLDateCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = parseXMLDateCache.keys().next().value;
+      if (firstKey !== undefined) {
+        parseXMLDateCache.delete(firstKey);
+      }
+    }
+    parseXMLDateCache.set(dateString, timestamp);
 
     return timestamp;
   } catch (e) {
