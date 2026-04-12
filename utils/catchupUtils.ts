@@ -69,7 +69,7 @@ export const generateCatchupUrl = (
     case 'default':
       // Xtream Codes standard: /timeshift/{user}/{pass}/{duration_minutes}/{YYYY-MM-DD:HH-MM}/{streamId}.ts
       if (!channel.streamId) return null;
-      return `${cleanServerUrl}/timeshift/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${durationMinutes}/${xtreamStart}/${channel.streamId}.ts`;
+      return `${cleanServerUrl}/timeshift/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${durationMinutes}/${xtreamStart}/${encodeURIComponent(channel.streamId)}.ts`;
 
     case 'flussonic':
     case 'flussonic-hls':
