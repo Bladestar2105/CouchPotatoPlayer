@@ -13,3 +13,6 @@
 ## 2026-04-10 - Added accessibility labels and roles to back navigation buttons
 **Learning:** In React Native applications with multi-tier or complex nested navigation hierarchies, generic "back" buttons implemented as `TouchableOpacity` wrapping icon-only views can be ambiguous to screen reader users if they aren't explicitly labeled. Simply having an "arrow-back" icon does not translate to semantic navigation meaning without an explicit `accessibilityLabel`.
 **Action:** Always provide `accessibilityRole="button"` and context-aware `accessibilityLabel` attributes (e.g. "Go back to categories" or "Back to Providers") to custom back navigation `TouchableOpacity` components.
+## 2026-04-12 - Added context to repeated action buttons
+**Learning:** In React Native, when rendering lists where each item has identical action buttons (e.g., "Load" or "Delete" text labels without further context), screen reader users will just hear "Load button" repeatedly as they navigate. This lacks crucial context about *what* they are loading or deleting.
+**Action:** Always provide dynamic `accessibilityLabel` properties to repeating action buttons inside mapped arrays or `FlatList` elements that incorporate the item's name or title (e.g. `accessibilityLabel={\`Delete profile ${p.name}\`}`).
