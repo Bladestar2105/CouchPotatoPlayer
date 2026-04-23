@@ -251,7 +251,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let loadedProfiles: IPTVProfile[] = [];
         if (profilesJson) {
           try {
-            loadedProfiles = JSON.parse(profilesJson);
+            const parsed = JSON.parse(profilesJson);
+            if (!Array.isArray(parsed)) {
+              throw new Error('profiles payload is not an array');
+            }
+            loadedProfiles = parsed;
             setProfiles(loadedProfiles);
           } catch (parseError) {
             Logger.error("Profile data corrupted, cleaning up...", parseError);
@@ -269,8 +273,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (favoritesJson) {
           try {
-            const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
-            setFavorites(storedFavorites);
+            const parsed = JSON.parse(favoritesJson);
+            if (!Array.isArray(parsed)) {
+              throw new Error('favorites payload is not an array');
+            }
+            setFavorites(parsed as FavoriteItem[]);
           } catch (parseError) {
              Logger.error("Favorites data corrupted, cleaning up...", parseError);
              await AsyncStorage.removeItem(FAVORITES_STORAGE_KEY);
@@ -280,8 +287,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (recentlyWatchedJson) {
           try {
-            const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
-            setRecentlyWatched(storedRecents);
+            const parsed = JSON.parse(recentlyWatchedJson);
+            if (!Array.isArray(parsed)) {
+              throw new Error('recently watched payload is not an array');
+            }
+            setRecentlyWatched(parsed as RecentlyWatchedItem[]);
           } catch (parseError) {
             Logger.error("Recently watched data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(RECENTLY_WATCHED_KEY);
@@ -295,8 +305,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (lockedJson) {
           try {
-            const storedLocked: string[] = JSON.parse(lockedJson);
-            setLockedChannels(storedLocked);
+            const parsed = JSON.parse(lockedJson);
+            if (!Array.isArray(parsed) || !parsed.every((id) => typeof id === 'string')) {
+              throw new Error('locked channels payload is not a string array');
+            }
+            setLockedChannels(parsed);
           } catch (parseError) {
             Logger.error("Locked channels data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(LOCKED_CHANNELS_KEY);

@@ -47,4 +47,28 @@ describe('native smoke guards', () => {
       ).toBe(true);
     }
   });
+
+  test('IPTVContext storage loader validates JSON.parse shape before consuming it', () => {
+    // Corrupted-but-syntactically-valid storage (e.g. `42`, `{}`, `null`) used to
+    // crash the app on startup because downstream code calls `.find` / `.map` /
+    // `new Set(...)` on the parsed value. Each storage payload that is read in
+    // `loadDataFromStorage` must therefore be guarded with `Array.isArray(...)`.
+    const source = readRepoFile('context/IPTVContext.tsx');
+    const guardedKeys = [
+      'profilesJson',
+      'favoritesJson',
+      'recentlyWatchedJson',
+      'lockedJson',
+    ];
+    for (const key of guardedKeys) {
+      const idx = source.indexOf(`if (${key})`);
+      expect(idx, `expected guarded block for ${key}`).toBeGreaterThan(-1);
+      // The shape guard must appear inside the same block (within the next ~600 chars).
+      const block = source.slice(idx, idx + 600);
+      expect(
+        block.includes('Array.isArray'),
+        `${key} block must validate JSON.parse result with Array.isArray`,
+      ).toBe(true);
+    }
+  });
 });
