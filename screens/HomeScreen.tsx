@@ -235,7 +235,7 @@ const HomeScreen = () => {
        {isUpdating && (
           <View style={[StyleSheet.absoluteFill, styles.centeredContainer, styles.updatingOverlay]}>
              <ActivityIndicator size="large" color={colors.primary} />
-             <Text style={[styles.updatingText, { color: colors.text }]}>{t('playlistUpdating', 'Aktualisiere Playlist...')}</Text>
+             <Text style={[styles.updatingText, { color: colors.text }]}>{t('playlistUpdating')}</Text>
           </View>
        )}
     </View>

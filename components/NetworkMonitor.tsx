@@ -20,7 +20,7 @@ export const NetworkMonitor = () => {
   return (
     <View style={styles.container}>
       <WifiOff color="#FFF" size={20} />
-      <Text style={styles.text}>{t('noInternetConnection', 'No Internet Connection')}</Text>
+      <Text style={styles.text}>{t('noInternetConnection')}</Text>
     </View>
   );
 };
