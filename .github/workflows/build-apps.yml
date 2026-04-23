@@ -10,8 +10,33 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
+  # ── JS-only checks (fast, blocks everything else) ────────────────────────────
+  # Run typecheck + unit tests on a lightweight ubuntu runner before the heavy
+  # native builds. If TypeScript or the unit suite regresses, the native jobs
+  # are skipped automatically via `needs`, saving macOS minutes.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install Dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test:unit
+
   # ── Android Build (React Native Expo) ────────────────────────────────────────
   build-android:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +80,7 @@ jobs:
   # ── iOS Build (React Native Expo) ────────────────────────────────────────────
   # Requires macos-26 for Xcode 26 / Swift 6 (expo-modules-core SDK 56+)
   build-ios:
+    needs: test
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -92,6 +118,7 @@ jobs:
   # during prebuild, ensuring native compilation against the Apple TV SDK.
   # Requires macos-26 for Xcode 26 / Swift 6 (expo-modules-core SDK 56+)
   build-tvos:
+    needs: test
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -138,6 +165,7 @@ jobs:
 
   # ── Docker Build & Push (Web) ─────────────────────────────────────────────────
   build-docker:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
