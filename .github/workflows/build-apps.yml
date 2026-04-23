@@ -1,0 +1,178 @@
+name: Build Apps
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  # ── Android Build (React Native Expo) ────────────────────────────────────────
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Install Dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Fix hermesc permissions (pnpm strips execute bit)
+        run: |
+          # Fix all hermesc binaries everywhere in node_modules (files and symlinks)
+          find node_modules -name "hermesc" 2>/dev/null | while read f; do
+            chmod +x "$f" 2>/dev/null || true
+            echo "Fixed permissions on $f"
+          done
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android
+      - name: Configure Gradle Memory
+        run: sed -i 's/org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g/' android/gradle.properties
+      - name: Build APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+  # ── iOS Build (React Native Expo) ────────────────────────────────────────────
+  # Requires macos-26 for Xcode 26 / Swift 6 (expo-modules-core SDK 56+)
+  build-ios:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install Dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Prebuild iOS
+        run: npx expo prebuild --platform ios
+      - name: Pod Install
+        run: |
+          cd ios
+          pod install
+      - name: Build iOS App (No Codesign)
+        run: |
+          cd ios
+          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -sdk iphonesimulator SYMROOT="${{ github.workspace }}/build/ios" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
+      - name: Package iOS App
+        run: tar -czf ios-build.tar.gz build/ios/Release-iphonesimulator/CouchPotatoPlayer.app
+      - name: Upload iOS Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build.tar.gz
+          path: ios-build.tar.gz
+
+  # ── tvOS Build (React Native Expo) ───────────────────────────────────────────
+  # We dynamically install react-native-tvos to generate the true tvOS targets
+  # during prebuild, ensuring native compilation against the Apple TV SDK.
+  # Requires macos-26 for Xcode 26 / Swift 6 (expo-modules-core SDK 56+)
+  build-tvos:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install Dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Install tvOS Fork
+        run: |
+          pnpm install -w react-native@npm:react-native-tvos@0.84.1-0
+      - name: Fix pnpm react-native symlink for podspecs
+        run: |
+          # Create a symlink in the isolated pnpm node_modules directory so that
+          # gesture handler and reanimated podspecs can find react-native/package.json
+          RN_DIR=$(node -e "console.log(require('path').dirname(require.resolve('react-native/package.json')))")
+          PARENT_DIR=$(dirname "$RN_DIR")
+          if [ ! -L "$PARENT_DIR/react-native" ] && [ ! -d "$PARENT_DIR/react-native" ]; then
+            ln -s react-native-tvos "$PARENT_DIR/react-native"
+          fi
+      - name: Prebuild iOS (Generates tvOS scheme)
+        run: EXPO_TV=1 npx expo prebuild --platform ios --clean
+      - name: Pod Install
+        run: |
+          cd ios
+          pod install
+      - name: Build tvOS App (No Codesign)
+        run: |
+          cd ios
+          xcodebuild -workspace CouchPotatoPlayer.xcworkspace -scheme CouchPotatoPlayer -configuration Release -sdk appletvsimulator SYMROOT="${{ github.workspace }}/build/tvos" CODE_SIGNING_ALLOWED="NO" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_IDENTITY=""
+      - name: Package tvOS App
+        run: tar -czf tvos-build.tar.gz build/tvos/Release-appletvsimulator/CouchPotatoPlayer.app
+      - name: Upload tvOS Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvos-build.tar.gz
+          path: tvos-build.tar.gz
+
+  # ── Docker Build & Push (Web) ─────────────────────────────────────────────────
+  build-docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Convert repository name to lowercase
+        id: repo_name
+        run: echo "REPO_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Extract branch name
+        shell: bash
+        run: |
+          raw_branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          # Remove non-ascii characters and other invalid docker tag characters to avoid 'invalid reference format'
+          clean_branch=$(echo "${raw_branch//\//-}" | sed -e 's/[^a-zA-Z0-9_.-]/-/g' -e 's/^[-]*//')
+          echo "branch=${clean_branch}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ env.REPO_NAME }}-web:${{ steps.extract_branch.outputs.branch }}
+            ghcr.io/${{ env.REPO_NAME }}-web:latest
