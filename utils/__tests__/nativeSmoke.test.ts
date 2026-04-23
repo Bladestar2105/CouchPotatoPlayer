@@ -66,6 +66,23 @@ describe('native smoke guards', () => {
     expect(appJson?.expo?.android?.usesCleartextTraffic).toBe(true);
   });
 
+  test('IPTVContext EPG cache load isolates JSON.parse failures from the outer catch', () => {
+    // A corrupted EPG cache file used to throw out of the shared `runLoad`
+    // try/catch, which aborted the whole load and left the user with an empty
+    // EPG until they cleared the cache manually. The parse must be wrapped in
+    // its own try/catch so the fresh-network-fetch branch can still run.
+    const source = readRepoFile('context/IPTVContext.tsx');
+    const anchor = source.indexOf('if (cachedEpgStr)');
+    expect(anchor, 'expected EPG cache load block').toBeGreaterThan(-1);
+    // Look inside the next ~900 chars (the block that reads + validates cache).
+    const block = source.slice(anchor, anchor + 900);
+    // The parse itself must be guarded.
+    expect(block).toMatch(/try\s*\{\s*[^}]*JSON\.parse\(cachedEpgStr\)/s);
+    // And the block must validate the parsed shape with Array.isArray before
+    // handing it to `setEpg`.
+    expect(block.includes('Array.isArray')).toBe(true);
+  });
+
   test('IPTVContext storage loader validates JSON.parse shape before consuming it', () => {
     // Corrupted-but-syntactically-valid storage (e.g. `42`, `{}`, `null`) used to
     // crash the app on startup because downstream code calls `.find` / `.map` /
