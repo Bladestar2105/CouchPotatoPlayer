@@ -417,12 +417,23 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
     jumpToTimestamp(target);
   }, [now, jumpToTimestamp]);
 
-  // Scroll to current time on mount
+  // Scroll to current time ONCE on mount.
+  // `jumpToNow` is intentionally read via a ref so that the minute-tick
+  // refresh of `now` does not re-run this effect and yank the user back to
+  // "now" every 60 seconds after they have scrolled to a different part of
+  // the timeline. The setTimeout is now also cleared on unmount so it cannot
+  // fire after teardown.
+  const jumpToNowRef = useRef(jumpToNow);
   useEffect(() => {
-    setTimeout(() => {
-      jumpToNow();
-    }, 100);
+    jumpToNowRef.current = jumpToNow;
   }, [jumpToNow]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      jumpToNowRef.current();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const timeHeaders = useMemo(() => {
     const headers = [];
