@@ -231,6 +231,21 @@ describe('catchupUtils', () => {
       expect(url).toBeNull();
     });
 
+    test('should replace every occurrence of a repeated placeholder in append source', () => {
+      // Real-world catchup-source templates often use the same placeholder
+      // more than once (e.g. token signing). String.prototype.replace(string)
+      // only swaps the first occurrence; the global regex form must replace
+      // every occurrence so the generated URL is not silently broken.
+      const durationMinutes = Math.ceil(duration / 60);
+      const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, {
+        type: 'append',
+        source: '?utc=${start}&token=${start}-${duration}&also=${duration}&end=${end}-${end}',
+      });
+      expect(url).toBe(
+        `http://test.com/stream?utc=${startUnix}&token=${startUnix}-${durationMinutes}&also=${durationMinutes}&end=${endUnix}-${endUnix}`,
+      );
+    });
+
     test('should return default format', () => {
       const durationMinutes = Math.ceil(duration / 60);
       const url = generateCatchupUrl(channelWithCatchup, startTime, endTime, serverUrl, username, password, { type: 'default' });

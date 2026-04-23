@@ -14,7 +14,10 @@ class SwiftTSPlayerProxy: NSObject {
 
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "com.couchpotatoplayer.proxy")
-    private let mapQueue = DispatchQueue(label: "com.couchpotatoplayer.proxy.mapQueue")
+    /// Serial queue that guards `streamMap` and `activeConnections` against
+    /// concurrent access from the network queue (`queue`), URLSession delegate
+    /// callbacks, and external callers invoking `stop()`.
+    private let stateQueue = DispatchQueue(label: "com.couchpotatoplayer.proxy.state")
 
     private var activeConnections: [ConnectionContext] = []
 
@@ -67,12 +70,18 @@ class SwiftTSPlayerProxy: NSObject {
     @objc func stop() {
         listener?.cancel()
         listener = nil
-        for context in activeConnections {
+        // Snapshot & clear both collections under the state lock, then cancel
+        // connections outside the critical section to keep it short.
+        let toCancel: [ConnectionContext] = stateQueue.sync {
+            let snapshot = activeConnections
+            activeConnections.removeAll()
+            streamMap.removeAll()
+            return snapshot
+        }
+        for context in toCancel {
             context.delegate?.task?.cancel()
             context.connection.cancel()
         }
-        activeConnections.removeAll()
-        mapQueue.sync { streamMap.removeAll() }
         isRunning = false
     }
 
@@ -83,14 +92,14 @@ class SwiftTSPlayerProxy: NSObject {
     /// supports raw TS / arbitrary HTTP streams.
     @objc func registerStream(targetUrl: String) -> String {
         let uuid = UUID().uuidString
-        mapQueue.sync {
+        stateQueue.sync {
             pruneStreamMap()
             streamMap[uuid] = targetUrl
         }
         return "http://127.0.0.1:\(port)/stream/\(uuid)"
     }
 
-    // Caller must be on mapQueue
+    // Caller must be on stateQueue
     private func pruneStreamMap() {
         if streamMap.count > 20 {
             streamMap.removeAll()
@@ -98,7 +107,7 @@ class SwiftTSPlayerProxy: NSObject {
     }
 
     private func getTargetUrl(for uuid: String) -> String? {
-        return mapQueue.sync {
+        return stateQueue.sync {
             return streamMap[uuid]
         }
     }
@@ -120,10 +129,13 @@ class SwiftTSPlayerProxy: NSObject {
     }
 
     private func cleanupConnection(_ connection: NWConnection) {
-        if let index = activeConnections.firstIndex(where: { $0.connection === connection }) {
-            activeConnections[index].delegate?.task?.cancel()
-            activeConnections.remove(at: index)
+        let removed: ConnectionContext? = stateQueue.sync {
+            guard let index = activeConnections.firstIndex(where: { $0.connection === connection }) else {
+                return nil
+            }
+            return activeConnections.remove(at: index)
         }
+        removed?.delegate?.task?.cancel()
     }
 
     private func receiveData(on connection: NWConnection) {
@@ -208,7 +220,9 @@ class SwiftTSPlayerProxy: NSObject {
         config.timeoutIntervalForResource = 86400 // Long-lived stream
         let delegate = ProxySessionDelegate(connection: connection)
         let context = ConnectionContext(connection: connection, delegate: delegate)
-        self.activeConnections.append(context)
+        stateQueue.sync {
+            activeConnections.append(context)
+        }
 
         let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
         let task = session.dataTask(with: request)

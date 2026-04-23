@@ -24,4 +24,16 @@ describe('i18n resources consistency', () => {
       }
     }
   });
+
+  test('TV startup refresh prompt is translated in every locale', () => {
+    // `useHomeStartupChecks` shows a platform-native Alert on TV at app launch
+    // and previously hard-coded the German strings, leaving English / French /
+    // Greek users with a German prompt. Guarantee every locale provides the
+    // required keys so the regression cannot silently return.
+    for (const locale of SUPPORTED_LOCALES) {
+      const t = resources[locale].translation as Record<string, string>;
+      expect(t.startupRefreshTitle, `${locale} must translate startupRefreshTitle`).toBeTruthy();
+      expect(t.startupRefreshMessage, `${locale} must translate startupRefreshMessage`).toBeTruthy();
+    }
+  });
 });

@@ -252,7 +252,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let loadedProfiles: IPTVProfile[] = [];
         if (profilesJson) {
           try {
-            loadedProfiles = JSON.parse(profilesJson);
+            const parsed = JSON.parse(profilesJson);
+            if (!Array.isArray(parsed)) {
+              throw new Error('profiles payload is not an array');
+            }
+            loadedProfiles = parsed;
             setProfiles(loadedProfiles);
           } catch (parseError) {
             Logger.error("Profile data corrupted, cleaning up...", parseError);
@@ -270,8 +274,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (favoritesJson) {
           try {
-            const storedFavorites: FavoriteItem[] = JSON.parse(favoritesJson);
-            setFavorites(storedFavorites);
+            const parsed = JSON.parse(favoritesJson);
+            if (!Array.isArray(parsed)) {
+              throw new Error('favorites payload is not an array');
+            }
+            setFavorites(parsed as FavoriteItem[]);
           } catch (parseError) {
              Logger.error("Favorites data corrupted, cleaning up...", parseError);
              await AsyncStorage.removeItem(FAVORITES_STORAGE_KEY);
@@ -281,8 +288,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (recentlyWatchedJson) {
           try {
-            const storedRecents: RecentlyWatchedItem[] = JSON.parse(recentlyWatchedJson);
-            setRecentlyWatched(storedRecents);
+            const parsed = JSON.parse(recentlyWatchedJson);
+            if (!Array.isArray(parsed)) {
+              throw new Error('recently watched payload is not an array');
+            }
+            setRecentlyWatched(parsed as RecentlyWatchedItem[]);
           } catch (parseError) {
             Logger.error("Recently watched data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(RECENTLY_WATCHED_KEY);
@@ -296,8 +306,11 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (lockedJson) {
           try {
-            const storedLocked: string[] = JSON.parse(lockedJson);
-            setLockedChannels(storedLocked);
+            const parsed = JSON.parse(lockedJson);
+            if (!Array.isArray(parsed) || !parsed.every((id) => typeof id === 'string')) {
+              throw new Error('locked channels payload is not a string array');
+            }
+            setLockedChannels(parsed);
           } catch (parseError) {
             Logger.error("Locked channels data corrupted, cleaning up...", parseError);
             await AsyncStorage.removeItem(LOCKED_CHANNELS_KEY);
@@ -561,11 +574,36 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logPerf('cache-read', cacheReadStartMs, forceUpdate ? 'forced-refresh' : 'normal');
 
         if (cachedEpgStr) {
+          // Parse in its own try/catch: a corrupted cache entry (valid JSON with
+          // the wrong shape, or outright malformed) previously propagated the
+          // throw up to the outer catch at the end of `runLoad`, which aborted
+          // the whole call and left the user without any EPG until they cleared
+          // the cache manually. Instead, log and fall through to the fresh
+          // network fetch below so the next successful load overwrites the bad
+          // file.
+          let parsedCache: any = null;
+          try {
+            parsedCache = JSON.parse(cachedEpgStr);
+          } catch (parseError) {
+            Logger.warn('[EPG] Cached EPG is corrupted, refetching', sanitizeError(parseError));
+          }
 
-          const cachedEpg = JSON.parse(cachedEpgStr);
-          if (Date.now() - cachedEpg.timestamp < CACHE_EXPIRATION_MS && !forceUpdate) {
+          const hasValidShape =
+            parsedCache &&
+            typeof parsedCache === 'object' &&
+            !Array.isArray(parsedCache) &&
+            typeof parsedCache.timestamp === 'number' &&
+            parsedCache.data &&
+            typeof parsedCache.data === 'object' &&
+            !Array.isArray(parsedCache.data);
+
+          if (
+            hasValidShape &&
+            Date.now() - parsedCache.timestamp < CACHE_EXPIRATION_MS &&
+            !forceUpdate
+          ) {
             Logger.log('[EPG] Using cached EPG data');
-            setEpg(cachedEpg.data);
+            setEpg(parsedCache.data);
             Logger.log(`[EPG PERF] epg-load-total ${Date.now() - totalStartMs}ms (cache-hit)`);
             return;
           }

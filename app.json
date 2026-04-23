@@ -41,7 +41,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#E4E4E7"
       },
-      "package": "de.teamei.couchpotatoplayer"
+      "package": "de.teamei.couchpotatoplayer",
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png",

@@ -96,13 +96,17 @@ export const generateCatchupUrl = (
       return `${channel.url}?timeshift=${startUnix}&timenow=${nowUnix}`;
 
     case 'append':
-      // Append format: custom source template with variable substitution
+      // Append format: custom source template with variable substitution.
+      // Use a global regex so placeholders that appear more than once in the
+      // template (e.g. `?utc=${start}&token=md5:${start}-${duration}`) are all
+      // replaced; `String.prototype.replace(string, ...)` only swaps the first
+      // occurrence, which silently produced broken catchup URLs.
       if (config?.source) {
         return channel.url + config.source
-          .replace('${start}', String(startUnix))
-          .replace('${end}', String(endUnix))
-          .replace('${duration}', String(durationMinutes))
-          .replace('${timestamp}', String(nowUnix));
+          .replace(/\$\{start\}/g, String(startUnix))
+          .replace(/\$\{end\}/g, String(endUnix))
+          .replace(/\$\{duration\}/g, String(durationMinutes))
+          .replace(/\$\{timestamp\}/g, String(nowUnix));
       }
       return null;
 
