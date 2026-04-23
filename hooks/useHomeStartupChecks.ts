@@ -13,6 +13,7 @@ interface UseHomeStartupChecksParams {
   loadProfile: (profile: IPTVProfile, forceUpdate?: boolean) => Promise<void>;
   loadEPG: (forceUpdate?: boolean, options?: { preferCache?: boolean }) => Promise<void>;
   navigateToPinSetup: () => void;
+  t: (key: string) => string;
 }
 
 export const useHomeStartupChecks = ({
@@ -26,6 +27,7 @@ export const useHomeStartupChecks = ({
   loadProfile,
   loadEPG,
   navigateToPinSetup,
+  t,
 }: UseHomeStartupChecksParams) => {
   useEffect(() => {
     if (!isInitializing && !isLoading && currentProfile && !pin && hasAdultContent) {
@@ -34,23 +36,27 @@ export const useHomeStartupChecks = ({
   }, [isInitializing, isLoading, currentProfile, hasAdultContent, pin, navigateToPinSetup]);
 
   useEffect(() => {
-    if (currentProfile && !isInitializing && !isLoading && !hasCheckedOnStartup) {
-      setHasCheckedOnStartup(true);
-      setTimeout(() => {
-        if (!Platform.isTV) {
-          void loadEPG(false, { preferCache: true });
-          return;
-        }
-        Alert.alert(
-          'Playlist aktualisieren?',
-          'Möchten Sie die Playlist und das EPG jetzt aktualisieren?',
-          [
-            { text: 'Nein', style: 'cancel', onPress: () => { void loadEPG(false, { preferCache: true }); } },
-            { text: 'Ja', onPress: () => loadProfile(currentProfile, true) },
-          ],
-          { cancelable: true },
-        );
-      }, 500);
-    }
-  }, [currentProfile, isInitializing, isLoading, hasCheckedOnStartup, setHasCheckedOnStartup, loadProfile, loadEPG]);
+    if (!(currentProfile && !isInitializing && !isLoading && !hasCheckedOnStartup)) return;
+
+    setHasCheckedOnStartup(true);
+    const timeoutId = setTimeout(() => {
+      if (!Platform.isTV) {
+        void loadEPG(false, { preferCache: true });
+        return;
+      }
+      Alert.alert(
+        t('startupRefreshTitle'),
+        t('startupRefreshMessage'),
+        [
+          { text: t('no'), style: 'cancel', onPress: () => { void loadEPG(false, { preferCache: true }); } },
+          { text: t('yes'), onPress: () => loadProfile(currentProfile, true) },
+        ],
+        { cancelable: true },
+      );
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [currentProfile, isInitializing, isLoading, hasCheckedOnStartup, setHasCheckedOnStartup, loadProfile, loadEPG, t]);
 };
