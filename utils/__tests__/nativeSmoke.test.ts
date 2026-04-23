@@ -26,7 +26,25 @@ describe('native smoke guards', () => {
   test('SwiftTSPlayerProxy retains dedicated queues for connection handling', () => {
     const source = readRepoFile('modules/react-native-swift-ts-player/ios/SwiftTSPlayerProxy.swift');
     expect(source).toContain('DispatchQueue(label: "com.couchpotatoplayer.proxy")');
-    expect(source).toContain('DispatchQueue(label: "com.couchpotatoplayer.proxy.mapQueue")');
+    expect(source).toContain('DispatchQueue(label: "com.couchpotatoplayer.proxy.state")');
     expect(source).toContain('activeConnections');
+  });
+
+  test('SwiftTSPlayerProxy serializes activeConnections access through stateQueue', () => {
+    const source = readRepoFile('modules/react-native-swift-ts-player/ios/SwiftTSPlayerProxy.swift');
+    // Every mutation of `activeConnections` must happen inside a `stateQueue.sync` block
+    // to avoid data races between the network queue, URLSession delegate callbacks,
+    // and external callers invoking `stop()`.
+    const mutationPattern = /activeConnections\.(append|remove|removeAll)/g;
+    const matches = source.match(mutationPattern) ?? [];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const match of matches) {
+      const idx = source.indexOf(match);
+      const preceding = source.slice(Math.max(0, idx - 400), idx);
+      expect(
+        preceding.includes('stateQueue.sync'),
+        `activeConnections mutation "${match}" must be inside stateQueue.sync`,
+      ).toBe(true);
+    }
   });
 });
