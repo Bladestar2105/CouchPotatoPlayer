@@ -34,12 +34,18 @@ export const getAvailablePlayerTypesForPlatform = (
 
 export const getDefaultPlayerTypeForPlatform = (
   platformOS: typeof Platform.OS = Platform.OS,
-  isTV: boolean = Platform.isTV,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _isTV: boolean = Platform.isTV,
 ): PlayerType => {
-  if (platformOS === 'ios') return 'ksplayer';
   if (platformOS === 'web') return 'native';
-  if (isTV) return 'ksplayer';
-  return 'vlc';
+  // KSPlayer is bridged through `react-native-ksplayer` which only ships an
+  // iOS / tvOS implementation, so it must NEVER be returned on Android (TV).
+  // The previous `if (isTV) return 'ksplayer'` branch wrongly chose ksplayer
+  // for Android TV — Android TV's allowed list is ['vlc', 'native'], and the
+  // mismatch left the Settings picker without a matching option.
+  if (platformOS === 'ios') return 'ksplayer';
+  if (platformOS === 'android') return 'vlc';
+  return 'native';
 };
 
 export const normalizePlayerTypeForPlatform = (
