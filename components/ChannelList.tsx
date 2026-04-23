@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Platform, InteractionManager, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Platform, InteractionManager, useWindowDimensions, RefreshControl } from 'react-native';
 import { useIPTVAppState, useIPTVCollections, useIPTVGuide, useIPTVLibrary, useIPTVParental, useIPTVPlayback } from '../context/IPTVContext';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
@@ -235,6 +236,14 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const prefetchInteractionRef = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
   const focusAfterCategorySelectionStartedAtRef = useRef<number | null>(null);
   const focusRestoreStartedAtRef = useRef<number | null>(null);
+  const { refreshing, onRefresh } = usePullToRefresh();
+  const refreshControl = useMemo(
+    () =>
+      isTV ? undefined : (
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      ),
+    [isTV, refreshing, onRefresh, colors.primary],
+  );
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -759,6 +768,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                       ref={flatListRef}
                       data={selectedChannels}
                       keyExtractor={(item) => item.id}
+                      refreshControl={refreshControl}
                       initialNumToRender={listPerfConfig.initialNumToRender}
                       maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
                       windowSize={Math.max(listPerfConfig.windowSize, 7)}
