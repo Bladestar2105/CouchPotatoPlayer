@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image, Platform, BackHandler, Animated, ScrollView } from 'react-native';
 import TVFocusGuideView from '../components/TVFocusGuideView';
 // @ts-ignore - TVEventControl is available in react-native-tvos but not in standard React Native types
 import { TVEventControl, useTVEventHandler as _useTVEventHandler } from 'react-native';
@@ -85,7 +85,7 @@ const PlayerScreen = () => {
   const [trackPanelMode, setTrackPanelMode] = useState<TrackPanelMode>(null);
   const [availableTracks, setAvailableTracks] = useState<PlaybackTrackGroups>(EMPTY_PLAYBACK_TRACKS);
   const [selectedAudioTrackId, setSelectedAudioTrackId] = useState<number | string | null | undefined>(undefined);
-  const [selectedTextTrackId, setSelectedTextTrackId] = useState<number | string | null | undefined>(undefined);
+  const [selectedTextTrackId, setSelectedTextTrackId] = useState<number | string | null>(null);
 
   // Channel switch animation
   const channelSwitchOpacity = useRef(new Animated.Value(0)).current;
@@ -104,6 +104,7 @@ const PlayerScreen = () => {
   const lastLiveChannelIdRef = useRef<string | null>(null);
   const previousLiveChannelIdRef = useRef<string | null>(null);
   const playbackDurationRef = useRef(0);
+  const seekBarWidthRef = useRef(0);
   const trackSelectionSignatureRef = useRef(serializePlaybackTrackGroups(EMPTY_PLAYBACK_TRACKS));
   const audioSelectionByStreamRef = useRef(new Map<string, number | string>());
   const textSelectionByStreamRef = useRef(new Map<string, number | string | null>());
@@ -198,7 +199,7 @@ const PlayerScreen = () => {
       streamUrl.endsWith('.mkv') ||
       streamUrl.endsWith('.avi');
 
-    if (isLikelyVod) return hasReliableDuration;
+    if (isLikelyVod) return true;
     if (
       streamUrl.includes('/movie/') ||
       streamUrl.includes('/series/') ||
@@ -227,9 +228,10 @@ const PlayerScreen = () => {
   }, []);
 
   const playbackPercent = useMemo(() => {
+    const activeTime = pendingSeekTime ?? playbackProgress.currentTime;
     if (!playbackProgress.duration || playbackProgress.duration <= 0) return 0;
-    return Math.min(100, Math.max(0, (playbackProgress.currentTime / playbackProgress.duration) * 100));
-  }, [playbackProgress]);
+    return Math.min(100, Math.max(0, (activeTime / playbackProgress.duration) * 100));
+  }, [playbackProgress, pendingSeekTime]);
 
   useEffect(() => {
     playbackDurationRef.current = playbackProgress.duration;
@@ -315,6 +317,7 @@ const PlayerScreen = () => {
   }, [availableTracks.audioTracks, selectedAudioTrackId]);
 
   const selectedTextTrack = useMemo(() => {
+    if (selectedTextTrackId === null) return null;
     // Bolt: Use a single pass to resolve user selection and native fallback
     let matchedIdTrack = null;
     let selectedTrack = null;
@@ -430,16 +433,18 @@ const PlayerScreen = () => {
 
     if (!streamId) {
       setSelectedAudioTrackId(undefined);
-      setSelectedTextTrackId(undefined);
+      setSelectedTextTrackId(null);
       return;
     }
 
     setSelectedAudioTrackId(audioSelectionByStreamRef.current.get(streamId));
-    setSelectedTextTrackId(
-      textSelectionByStreamRef.current.has(streamId)
-        ? textSelectionByStreamRef.current.get(streamId)
-        : undefined,
-    );
+    const persistedTextTrack = textSelectionByStreamRef.current.has(streamId)
+      ? textSelectionByStreamRef.current.get(streamId) ?? null
+      : null;
+    if (!textSelectionByStreamRef.current.has(streamId)) {
+      textSelectionByStreamRef.current.set(streamId, null);
+    }
+    setSelectedTextTrackId(persistedTextTrack);
   }, [currentStream?.id]);
 
   useEffect(() => {
@@ -590,6 +595,55 @@ const PlayerScreen = () => {
     return true;
   }, [pendingSeekTime]);
 
+  const queueSeekDelta = useCallback((deltaMs: number) => {
+    if (!canSeek) return;
+    const baseTime = pendingSeekTime ?? currentTimeRef.current;
+    const duration = playbackDurationRef.current;
+    const maxTime = Number.isFinite(duration) && duration > 0 ? duration : Number.POSITIVE_INFINITY;
+    const nextSeekTime = Math.min(maxTime, Math.max(0, baseTime + deltaMs));
+    setPendingSeekTime(nextSeekTime);
+    setPlaybackProgress((prev) => ({ ...prev, currentTime: nextSeekTime }));
+    setShowOverlay(true);
+  }, [canSeek, pendingSeekTime]);
+
+  const applySeekDelta = useCallback((deltaMs: number) => {
+    if (!canSeek) return;
+    const baseTime = pendingSeekTime ?? currentTimeRef.current;
+    const duration = playbackDurationRef.current;
+    const maxTime = Number.isFinite(duration) && duration > 0 ? duration : Number.POSITIVE_INFINITY;
+    const nextSeekTime = Math.min(maxTime, Math.max(0, baseTime + deltaMs));
+    currentTimeRef.current = nextSeekTime;
+    setSeekTime(nextSeekTime);
+    setPendingSeekTime(undefined);
+    setPlaybackProgress((prev) => ({ ...prev, currentTime: nextSeekTime }));
+    setShowOverlay(true);
+  }, [canSeek, pendingSeekTime]);
+
+  const seekToProgressRatio = useCallback((ratio: number, commit: boolean) => {
+    if (!canSeek) return;
+    const duration = playbackDurationRef.current;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+
+    const clampedRatio = Math.min(1, Math.max(0, ratio));
+    const nextSeekTime = duration * clampedRatio;
+    setPlaybackProgress((prev) => ({ ...prev, currentTime: nextSeekTime }));
+
+    if (commit) {
+      currentTimeRef.current = nextSeekTime;
+      setSeekTime(nextSeekTime);
+      setPendingSeekTime(undefined);
+    } else {
+      setPendingSeekTime(nextSeekTime);
+    }
+    setShowOverlay(true);
+  }, [canSeek]);
+
+  const handleSeekBarTouch = useCallback((locationX: number, commit: boolean) => {
+    const width = seekBarWidthRef.current;
+    if (!width || width <= 0) return;
+    seekToProgressRatio(locationX / width, commit);
+  }, [seekToProgressRatio]);
+
   useEffect(() => {
     if (pendingSeekTime === undefined) return;
     // tvOS Simulator can miss center-click/select events.
@@ -674,28 +728,31 @@ const PlayerScreen = () => {
     }
 
     const hasPersistedTextSelection = textSelectionByStreamRef.current.has(streamId);
-    const persistedText = hasPersistedTextSelection ? (textSelectionByStreamRef.current.get(streamId) ?? null) : undefined;
+    if (!hasPersistedTextSelection) {
+      textSelectionByStreamRef.current.set(streamId, null);
+      setSelectedTextTrackId(null);
+      return;
+    }
 
+    const persistedText = textSelectionByStreamRef.current.get(streamId) ?? null;
     if (persistedText === null) {
       setSelectedTextTrackId(null);
+      return;
+    }
+
+    let matchedPersistedText = false;
+    for (const track of tracks.textTracks) {
+      if (areTrackIdsEqual(track.id, persistedText)) {
+        matchedPersistedText = true;
+        break;
+      }
+    }
+
+    if (matchedPersistedText) {
+      setSelectedTextTrackId((prev) => (prev === persistedText ? prev : (persistedText as string | number)));
     } else {
-      let matchedPersistedText = false;
-      let nativeSelectedText: string | number | null = null;
-
-      // Bolt: Single-pass optimization for subtitle tracks
-      for (const track of tracks.textTracks) {
-        if (persistedText !== undefined && areTrackIdsEqual(track.id, persistedText)) matchedPersistedText = true;
-        if (track.selected) nativeSelectedText = track.id ?? null;
-        if ((persistedText === undefined || matchedPersistedText) && nativeSelectedText !== null) break;
-      }
-
-      if (matchedPersistedText) {
-        setSelectedTextTrackId((prev) => (prev === persistedText ? prev : (persistedText as string | number)));
-      } else {
-        if (hasPersistedTextSelection) textSelectionByStreamRef.current.delete(streamId);
-        setSelectedTextTrackId(nativeSelectedText);
-        textSelectionByStreamRef.current.set(streamId, nativeSelectedText);
-      }
+      textSelectionByStreamRef.current.set(streamId, null);
+      setSelectedTextTrackId(null);
     }
   }, [currentStream?.id]);
 
@@ -774,20 +831,9 @@ const PlayerScreen = () => {
       setIsPaused(prev => !prev);
       setShowOverlay(true);
     } else if (action === 'seekLeft') {
-      if (!canSeek) return;
-      const baseTime = pendingSeekTime ?? currentTimeRef.current;
-      const newSeekTime = Math.max(0, baseTime - 10000);
-      setPendingSeekTime(newSeekTime);
-      setPlaybackProgress(prev => ({ ...prev, currentTime: newSeekTime }));
-      setShowOverlay(true);
+      queueSeekDelta(-10000);
     } else if (action === 'seekRight') {
-      if (!canSeek) return;
-      const baseTime = pendingSeekTime ?? currentTimeRef.current;
-      const maxTime = playbackDurationRef.current || Infinity;
-      const newSeekTime = Math.min(maxTime, baseTime + 10000);
-      setPendingSeekTime(newSeekTime);
-      setPlaybackProgress(prev => ({ ...prev, currentTime: newSeekTime }));
-      setShowOverlay(true);
+      queueSeekDelta(10000);
     } else if (action === 'switchChannelUp') {
       switchChannel('up');
     } else if (action === 'switchChannelDown') {
@@ -797,7 +843,7 @@ const PlayerScreen = () => {
     } else if (action === 'switchToPreviousChannel') {
       switchToPreviousChannel();
     }
-  }, [isFocused, handleBack, showOverlay, switchChannel, switchToPreviousChannel, canSeek, pendingSeekTime, commitPendingSeek]);
+  }, [isFocused, handleBack, showOverlay, switchChannel, switchToPreviousChannel, commitPendingSeek, queueSeekDelta]);
 
   const handlePlayerProgress = useCallback((data: { currentTime: number; duration: number }) => {
     if (pendingSeekTime === undefined) {
@@ -949,6 +995,30 @@ const PlayerScreen = () => {
               </Text>
             </View>
             <View style={pStyles.topBarSpacer} />
+            {canSeek && (
+              <>
+                <TouchableOpacity
+                  style={pStyles.seekActionBtn}
+                  onPress={() => applySeekDelta(-10000)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('playerSeekBackward10')}
+                  isTVSelectable={true}
+                  tvParallaxProperties={{ enabled: false }}
+                >
+                  <Icon name="replay-10" size={20} color="#FFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={pStyles.seekActionBtn}
+                  onPress={() => applySeekDelta(10000)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('playerSeekForward10')}
+                  isTVSelectable={true}
+                  tvParallaxProperties={{ enabled: false }}
+                >
+                  <Icon name="forward-10" size={20} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
             {hasAudioTrackOptions && (
               <TouchableOpacity
                 ref={audioButtonRef}
@@ -1002,7 +1072,7 @@ const PlayerScreen = () => {
                     <Icon name="close" size={18} color="#FFF" />
                   </TouchableOpacity>
                 </View>
-                <View style={pStyles.trackOptionList}>
+                <ScrollView style={pStyles.trackOptionList} contentContainerStyle={pStyles.trackOptionListContent}>
                   {trackPanelOptions.map((option) => (
                     <TouchableOpacity
                       key={`${trackPanelMode}:${String(option.id ?? 'off')}`}
@@ -1030,7 +1100,7 @@ const PlayerScreen = () => {
                       {option.selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               </View>
             </View>
           )}
@@ -1060,13 +1130,33 @@ const PlayerScreen = () => {
 
                                 <View style={pStyles.progressRow}>
                                     <Text style={pStyles.programTimeText}>
-                                        {timeFormatter.format(currentProgram.start)}
+                                      {canSeek
+                                        ? formatDuration(pendingSeekTime ?? playbackProgress.currentTime)
+                                        : timeFormatter.format(currentProgram.start)}
                                     </Text>
-                                    <View style={pStyles.progressBarContainer}>
-                                        <View style={[pStyles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
+                                    <View
+                                      style={pStyles.progressBarContainer}
+                                      onLayout={(event) => {
+                                        seekBarWidthRef.current = event.nativeEvent.layout.width;
+                                      }}
+                                      onStartShouldSetResponder={() => !Platform.isTV && canSeek}
+                                      onMoveShouldSetResponder={() => !Platform.isTV && canSeek}
+                                      onResponderGrant={(event) => {
+                                        handleSeekBarTouch(event.nativeEvent.locationX, false);
+                                      }}
+                                      onResponderMove={(event) => {
+                                        handleSeekBarTouch(event.nativeEvent.locationX, false);
+                                      }}
+                                      onResponderRelease={(event) => {
+                                        handleSeekBarTouch(event.nativeEvent.locationX, true);
+                                      }}
+                                    >
+                                        <View style={[pStyles.progressBarFill, { width: `${canSeek ? playbackPercent : progressPercent}%`, backgroundColor: colors.primary }]} />
                                     </View>
                                     <Text style={pStyles.programTimeText}>
-                                        {timeFormatter.format(currentProgram.end)}
+                                      {canSeek
+                                        ? (playbackProgress.duration > 0 ? formatDuration(playbackProgress.duration) : '--:--')
+                                        : timeFormatter.format(currentProgram.end)}
                                     </Text>
                                 </View>
 
@@ -1101,8 +1191,24 @@ const PlayerScreen = () => {
                 </View>
 
                 <View style={pStyles.progressRow}>
-                  <Text style={pStyles.programTimeText}>{formatDuration(playbackProgress.currentTime)}</Text>
-                  <View style={pStyles.progressBarContainer}>
+                  <Text style={pStyles.programTimeText}>{formatDuration(pendingSeekTime ?? playbackProgress.currentTime)}</Text>
+                  <View
+                    style={pStyles.progressBarContainer}
+                    onLayout={(event) => {
+                      seekBarWidthRef.current = event.nativeEvent.layout.width;
+                    }}
+                    onStartShouldSetResponder={() => !Platform.isTV && canSeek}
+                    onMoveShouldSetResponder={() => !Platform.isTV && canSeek}
+                    onResponderGrant={(event) => {
+                      handleSeekBarTouch(event.nativeEvent.locationX, false);
+                    }}
+                    onResponderMove={(event) => {
+                      handleSeekBarTouch(event.nativeEvent.locationX, false);
+                    }}
+                    onResponderRelease={(event) => {
+                      handleSeekBarTouch(event.nativeEvent.locationX, true);
+                    }}
+                  >
                     <View style={[pStyles.progressBarFill, { width: `${playbackPercent}%`, backgroundColor: colors.primary }]} />
                   </View>
                   <Text style={pStyles.programTimeText}>
@@ -1177,6 +1283,17 @@ const pStyles = StyleSheet.create({
   quickActionBtnActive: {
     backgroundColor: 'rgba(30,30,46,0.96)',
   },
+  seekActionBtn: {
+    marginLeft: spacing.sm + 2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(30,30,46,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
   quickActionLabel: {
     color: '#FFF',
     fontSize: typography.caption.fontSize,
@@ -1225,7 +1342,11 @@ const pStyles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   trackOptionList: {
+    maxHeight: Platform.isTV ? 420 : 260,
+  },
+  trackOptionListContent: {
     gap: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   trackOptionBtn: {
     minHeight: 54,

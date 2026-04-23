@@ -255,8 +255,8 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
     return (
       <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
         <Icon name="history" size={64} color={colors.textSecondary} />
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('noHistory', 'Kein Verlauf vorhanden.')}</Text>
-        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>{t('historyHint', 'Schaue Kanäle, Filme oder Serien, um sie hier zu sehen.')}</Text>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('noHistory')}</Text>
+        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>{t('historyHint')}</Text>
       </View>
     );
   }
@@ -284,7 +284,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
           nextFocusDown={findNodeHandle(firstItemRef.current) ?? undefined}
         >
           <Icon name="delete-sweep" size={18} color="#FFF" />
-          <Text style={styles.clearAllText}>{t('clearList', 'Liste leeren')}</Text>
+          <Text style={styles.clearAllText}>{t('clearList')}</Text>
         </TouchableOpacity>
       </View>
         <FlatList

@@ -12,3 +12,11 @@ ios/Podfile.properties.json
 ios/CouchPotatoPlayer/AppDelegate.swift
 ios/CouchPotatoPlayer/CouchPotatoPlayer-Bridging-Header.h
 ios/CouchPotatoPlayer/CouchPotatoPlayer.entitlements
+.expo/web/cache/production/images/favicon/favicon-cadf83a8503667632139d79090b3b5aa15ce7be281ef809a6f6a4144d5c25920-contain-transparent/favicon-48.png
+dist/favicon.ico
+dist/index.html
+dist/metadata.json
+dist/_expo/static/js/web/index-ca461a734e33e32dc705470dd7113560.js
+dist/assets/assets/character_logo.be6b2aea3178d30abe8d464375de4d86.png
+test-results/.last-run.json
+dist/assets/assets/brand-mark-small.229bc7346ca9e4b03e11627961f417d4.png

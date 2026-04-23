@@ -111,10 +111,10 @@ const EpisodeScreen = () => {
             ListEmptyComponent={(
               <View style={styles.emptyState}>
                 <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  {t('noResults', 'No data available')}
+                  {t('noResults')}
                 </Text>
                 <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                  {t('focusPreviewNoEpg', 'No EPG data')}
+                  {t('focusPreviewNoEpg')}
                 </Text>
               </View>
             )}

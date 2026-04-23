@@ -352,6 +352,8 @@ const VideoPlayer = React.forwardRef(
 
     const renderNativePlayer = () => {
       if (!NativeVideoComponent || !streamUrl) return null;
+      const selectedAudioTrackIndex = toNumericTrackId(selectedAudioTrackId);
+      const selectedTextTrackIndex = toNumericTrackId(selectedTextTrackId);
 
       let sourceType: string | undefined;
       const lowerUrl = streamUrl.toLowerCase();
@@ -364,13 +366,15 @@ const VideoPlayer = React.forwardRef(
           ref={videoRef}
           key={currentStream?.id}
           source={{ uri: streamUrl, type: sourceType }}
-          selectedAudioTrack={selectedAudioTrackId == null ? undefined : { type: 'index', value: String(selectedAudioTrackId) }}
+          selectedAudioTrack={selectedAudioTrackIndex == null ? undefined : { type: 'index', value: selectedAudioTrackIndex }}
           selectedTextTrack={
             selectedTextTrackId === undefined
               ? undefined
               : selectedTextTrackId === null
                 ? { type: 'disabled' }
-                : { type: 'index', value: String(selectedTextTrackId) }
+                : selectedTextTrackIndex == null
+                  ? { type: 'disabled' }
+                  : { type: 'index', value: selectedTextTrackIndex }
           }
           paused={paused}
           style={styles.video}
