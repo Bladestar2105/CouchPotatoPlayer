@@ -48,6 +48,24 @@ describe('native smoke guards', () => {
     }
   });
 
+  test('Android release build permits cleartext (HTTP) IPTV traffic', () => {
+    // Most IPTV providers serve over plain HTTP. Android 9+ blocks cleartext
+    // traffic by default once `targetSdkVersion >= 28`, so the application
+    // element MUST opt in via `android:usesCleartextTraffic="true"`. The debug
+    // and debugOptimized flavors already set it; the main (release) manifest
+    // had been missing it, silently breaking HTTP playback in production.
+    const mainManifest = readRepoFile('android/app/src/main/AndroidManifest.xml');
+    expect(mainManifest).toMatch(/<application[^>]*android:usesCleartextTraffic="true"/);
+
+    const debugManifest = readRepoFile('android/app/src/debug/AndroidManifest.xml');
+    expect(debugManifest).toContain('android:usesCleartextTraffic="true"');
+
+    // Mirror the override in app.json so a future `expo prebuild` regenerates
+    // the main manifest with the same attribute.
+    const appJson = JSON.parse(readRepoFile('app.json'));
+    expect(appJson?.expo?.android?.usesCleartextTraffic).toBe(true);
+  });
+
   test('IPTVContext storage loader validates JSON.parse shape before consuming it', () => {
     // Corrupted-but-syntactically-valid storage (e.g. `42`, `{}`, `null`) used to
     // crash the app on startup because downstream code calls `.find` / `.map` /
