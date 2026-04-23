@@ -214,8 +214,16 @@ export const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles,
             showsHorizontalScrollIndicator={hasTabOverflow}
             contentContainerStyle={mobileTabStyles.tabsRow}
             bounces={false}
-            onLayout={(event) => setTabsViewportWidth(event.nativeEvent.layout.width)}
-            onContentSizeChange={(width) => setTabsContentWidth(width)}
+            scrollEventThrottle={16}
+            onLayout={(event) => {
+              setTabsViewportWidth(event.nativeEvent.layout.width);
+              updateScrollMetrics(tabsScrollXRef.current);
+            }}
+            onContentSizeChange={(width) => {
+              setTabsContentWidth(width);
+              updateScrollMetrics(tabsScrollXRef.current);
+            }}
+            onScroll={(event) => updateScrollMetrics(event.nativeEvent.contentOffset.x)}
             onScrollEndDrag={(event) => updateScrollMetrics(event.nativeEvent.contentOffset.x)}
             onMomentumScrollEnd={(event) => updateScrollMetrics(event.nativeEvent.contentOffset.x)}
           >
