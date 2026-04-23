@@ -1,1 +1,14 @@
 node_modules
+.expo/devices.json
+.expo/README.md
+.expo/xcodebuild-error.log
+.expo/xcodebuild.log
+.expo/prebuild/cached-packages.json
+.expo/web/cache/production/images/iconsuniversal-icon/iconsuniversal-icon-f2aa433a8c0918cbe70cda601a7ac2de56781d56cf8ed8f48f5991a40bb1c8fd-cover-#ffffff/App-Icon-1024x1024@1x.png
+.expo/web/cache/production/images/splash-ios/splash-ios-e0b0c2b0ca0a0c5ddcf28b62517560b60ff953d84b05baaebf23280d371878b6-contain/icon_undefined.png
+ios/Podfile
+ios/Podfile.lock
+ios/Podfile.properties.json
+ios/CouchPotatoPlayer/AppDelegate.swift
+ios/CouchPotatoPlayer/CouchPotatoPlayer-Bridging-Header.h
+ios/CouchPotatoPlayer/CouchPotatoPlayer.entitlements
