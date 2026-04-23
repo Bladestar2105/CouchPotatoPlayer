@@ -48,6 +48,21 @@ describe('native smoke guards', () => {
     }
   });
 
+  test('Android manifest declares Android TV compatibility', () => {
+    // Play Store infers `android.hardware.touchscreen` as required unless
+    // the app explicitly opts out, which silently excludes Android TV /
+    // Google TV devices from the listing. `android.software.leanback` is
+    // the standard companion flag for TV-capable apps. Both must be
+    // marked `required="false"` so phones/tablets still install normally.
+    const manifest = readRepoFile('android/app/src/main/AndroidManifest.xml');
+    expect(manifest).toMatch(
+      /<uses-feature[^>]*android:name="android\.hardware\.touchscreen"[^>]*android:required="false"/,
+    );
+    expect(manifest).toMatch(
+      /<uses-feature[^>]*android:name="android\.software\.leanback"[^>]*android:required="false"/,
+    );
+  });
+
   test('Android release build permits cleartext (HTTP) IPTV traffic', () => {
     // Most IPTV providers serve over plain HTTP. Android 9+ blocks cleartext
     // traffic by default once `targetSdkVersion >= 28`, so the application
