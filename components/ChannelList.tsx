@@ -22,6 +22,7 @@ import {
   getProgramProgressPercent,
   resolveChannelListBackAction,
   scheduleFocusRestore,
+  shouldCategoryHavePreferredFocus,
   shouldDeferPrefetch,
 } from '../utils/channelListBehavior';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
@@ -566,11 +567,15 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         isSelected={isSelected}
         onPress={handleGroupSelect}
         colors={colors}
-        hasTVPreferredFocus={isFirstItem}
+        hasTVPreferredFocus={shouldCategoryHavePreferredFocus({
+          restoreFocusOnSelectedChannel,
+          isSelected,
+          isFirstItem,
+        })}
         accessibilityLabel={t('a11y.selectCategory', { title: item.title })}
       />
     );
-  }, [selectedGroup, handleGroupSelect, colors]);
+  }, [selectedGroup, handleGroupSelect, colors, restoreFocusOnSelectedChannel, t]);
 
   const handleChannelFocus = useCallback((id: string) => {
     setFocusedChannelId(id);

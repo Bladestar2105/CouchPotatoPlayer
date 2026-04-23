@@ -13,6 +13,7 @@ CouchPotatoPlayer is structured around separation of concerns:
 - Isolate playback logic
 - Centralize API and persistence
 - Avoid duplication
+- Keep behavior consistent across iOS, tvOS, Android, and Android TV whenever possible; document unavoidable platform-specific differences explicitly
 
 ## Risk areas
 - playback lifecycle

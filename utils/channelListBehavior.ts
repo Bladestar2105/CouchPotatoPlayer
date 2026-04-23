@@ -69,3 +69,14 @@ export function scheduleFocusRestore(
 
   return () => clearTimeoutImpl(timeoutId);
 }
+
+export function shouldCategoryHavePreferredFocus(input: {
+  restoreFocusOnSelectedChannel: boolean;
+  isSelected: boolean;
+  isFirstItem: boolean;
+}): boolean {
+  if (input.restoreFocusOnSelectedChannel) {
+    return input.isSelected;
+  }
+  return input.isFirstItem;
+}

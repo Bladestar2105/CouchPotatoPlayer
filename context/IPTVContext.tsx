@@ -7,6 +7,7 @@ import { File, Paths } from 'expo-file-system';
 import i18n from '../utils/i18n';
 import Logger from '../utils/logger';
 import { sanitizeUrl } from '../utils/sanitizeUrl';
+import { resolveSeriesSeasonCount } from '../utils/seriesMetadata';
 export { sanitizeUrl };
 import {
   IPTVContextType,
@@ -1270,7 +1271,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
           group: catInfo.name,
           categoryId: String(series.category_id),
           seasons: [],
-          seasonCount: Number(series.seasons_count ?? series.season_count ?? series.seasons?.length ?? 0) || 0,
+          seasonCount: resolveSeriesSeasonCount(series),
           isAdult: catInfo.isAdult
         };
       }) : [];

@@ -6,6 +6,7 @@ import {
   getEpgTickIntervalMs,
   resolveChannelListBackAction,
   scheduleFocusRestore,
+  shouldCategoryHavePreferredFocus,
   shouldDeferPrefetch,
 } from '../channelListBehavior';
 
@@ -72,5 +73,25 @@ describe('channelListBehavior', () => {
 
   test('keeps EPG tick interval stable for predictable refresh cadence', () => {
     expect(getEpgTickIntervalMs()).toBe(30_000);
+  });
+
+  test('prefers selected category on player return (tvOS/Android TV) and first category otherwise', () => {
+    expect(shouldCategoryHavePreferredFocus({
+      restoreFocusOnSelectedChannel: true,
+      isSelected: true,
+      isFirstItem: false,
+    })).toBe(true);
+
+    expect(shouldCategoryHavePreferredFocus({
+      restoreFocusOnSelectedChannel: true,
+      isSelected: false,
+      isFirstItem: true,
+    })).toBe(false);
+
+    expect(shouldCategoryHavePreferredFocus({
+      restoreFocusOnSelectedChannel: false,
+      isSelected: false,
+      isFirstItem: true,
+    })).toBe(true);
   });
 });

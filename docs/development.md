@@ -18,6 +18,7 @@ pnpm run test:e2e
 - Keep diffs easy to review
 - Update docs when behavior or commands change
 - Add regression coverage for important bug fixes when practical
+- Keep feature behavior aligned across iOS, tvOS, Android, and Android TV by default; call out and justify any platform-specific divergence
 
 ## Before opening a PR
 Verify:

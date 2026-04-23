@@ -474,7 +474,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
                   {selectedGroup || t('tv.unknownCategory')}
                 </Text>
                 <Text style={[styles.previewMeta, { color: colors.textSecondary }]}>
-                  {t('tv.seasonsCount', { count: selectedSeriesForPreview?.seasonCount ?? selectedSeriesForPreview?.seasons?.length ?? 0 })}
+                  {t('tv.seasonsCount', { count: Math.max(selectedSeriesForPreview?.seasonCount ?? 0, selectedSeriesForPreview?.seasons?.length ?? 0) })}
                 </Text>
                 <Text style={[styles.previewDescription, { color: colors.textSecondary }]} numberOfLines={8}>
                   {selectedSeriesForPreview?.description?.trim() || '—'}
