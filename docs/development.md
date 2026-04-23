@@ -50,6 +50,38 @@ When debugging:
 ```ts
 (globalThis as any).__CP_TV_PERF__ = false;
 ```
+- To summarize captured logs:
+```bash
+npm run analyze:tv-perf -- /path/to/tv.log
+```
+
+## tvOS performance test protocol (baseline)
+1. Build and run a dev tvOS app with current profiling enabled.
+2. Capture console output to a log file (Xcode device logs or simulator logs).
+3. Execute the scenarios below with a warm app state and stable network.
+4. Run `npm run analyze:tv-perf -- /path/to/tv.log` and compare p50/p95 against targets.
+
+## tvOS scenarios
+1. Live TV category switching:
+Select 20 different categories in `ChannelList` using remote navigation.
+Targets:
+- `ChannelList.groupSelectToFocus` p50 <= `120ms`
+- `ChannelList.groupSelectToFocus` p95 <= `220ms`
+- `ChannelList.buildGroups` p95 <= `80ms`
+2. Player return flow:
+Open a live channel from 10 different categories, wait 3-5s playback, go back to list.
+Targets:
+- `ChannelList.playerReturnToFocus` p50 <= `180ms`
+- `ChannelList.playerReturnToFocus` p95 <= `320ms`
+3. Movies + Series browsing:
+Switch 15 categories in Movies and 15 in Series, focus first poster each time.
+Targets:
+- `MovieList.groupSelectToFocus` p50 <= `130ms`
+- `MovieList.groupSelectToFocus` p95 <= `260ms`
+- `SeriesList.groupSelectToFocus` p50 <= `130ms`
+- `SeriesList.groupSelectToFocus` p95 <= `260ms`
+- `MovieList.buildGroups` p95 <= `90ms`
+- `SeriesList.buildGroups` p95 <= `90ms`
 
 ## Dependency changes
 Avoid dependency upgrades unless required for the task.

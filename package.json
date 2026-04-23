@@ -14,6 +14,7 @@
     "test:android-smoke": "playwright test e2e/android.smoke.e2e.ts",
     "test:android-tv-smoke": "playwright test e2e/android-tv.smoke.e2e.ts",
     "test": "npm run test:unit && npm run test:e2e",
+    "analyze:tv-perf": "node scripts/analyze_tv_perf_logs.mjs",
     "build": "expo export --platform web",
     "build:ios-sim": "./scripts/build_ios_sim.sh",
     "build:tvos-sim": "./scripts/build_tvos_sim.sh",
