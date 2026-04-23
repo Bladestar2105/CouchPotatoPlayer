@@ -11,13 +11,13 @@ import {
 } from '../channelListBehavior';
 
 describe('channelListBehavior', () => {
-  test('uses larger list window for tvOS and conservative batch on Android TV', () => {
+  test('uses tuned TV list windows per platform profile', () => {
     const tvos = getChannelListPerfConfig({ isTV: true, platformOS: 'ios' });
     const androidTv = getChannelListPerfConfig({ isTV: true, platformOS: 'android' });
 
-    expect(tvos.windowSize).toBe(11);
+    expect(tvos.windowSize).toBe(7);
     expect(androidTv.windowSize).toBe(9);
-    expect(androidTv.maxToRenderPerBatch).toBeLessThanOrEqual(tvos.maxToRenderPerBatch);
+    expect(tvos.maxToRenderPerBatch).toBeLessThanOrEqual(androidTv.maxToRenderPerBatch);
   });
 
   test('enables clipping on non-TV platforms', () => {

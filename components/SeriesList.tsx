@@ -9,6 +9,7 @@ import { proxyImageUrl } from '../utils/imageProxy';
 import { useRenderDiagnostics } from '../hooks/useRenderDiagnostics';
 import { prefetchImages } from '../utils/imageCache';
 import { useTranslation } from 'react-i18next';
+import { isTvPerfLoggingEnabled, logTvPerfMetric, nowMs } from '../utils/tvPerformance';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const defaultLogo = require('../assets/character_logo.png');
@@ -161,6 +162,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
   const [selectedSeriesKey, setSelectedSeriesKey] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState<boolean>(true);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
+  const groupFocusStartedAtRef = useRef<number | null>(null);
 
   // Ref for the first category item to focus
   const firstCategoryRef = useRef<any>(null);
@@ -170,9 +172,10 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
 
   // Mobile responsiveness
   const isMobile = dimensions.width < 768;
+  const isTvPerfEnabled = isTvPerfLoggingEnabled(Platform.isTV);
   const listPerfConfig = useMemo(() => (
     Platform.isTV
-      ? { initialNumToRender: 16, maxToRenderPerBatch: 14, windowSize: 9, updateCellsBatchingPeriod: 16, removeClippedSubviews: false }
+      ? { initialNumToRender: 10, maxToRenderPerBatch: 8, windowSize: 7, updateCellsBatchingPeriod: 24, removeClippedSubviews: false }
       : { initialNumToRender: 12, maxToRenderPerBatch: 12, windowSize: 6, updateCellsBatchingPeriod: 24, removeClippedSubviews: true }
   ), []);
 
@@ -213,7 +216,13 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
   );
 
   const { groups, groupMap } = useMemo(() => {
-    if (series.length === 0) return { groups: [], groupMap: {} };
+    const startedAt = isTvPerfEnabled ? nowMs() : 0;
+    if (series.length === 0) {
+      if (isTvPerfEnabled) {
+        logTvPerfMetric('SeriesList.buildGroups', nowMs() - startedAt, { series: 0, groups: 0 });
+      }
+      return { groups: [], groupMap: {} };
+    }
 
     // ⚡ Bolt: Consolidated filter and reduce into a single pass to save CPU and memory allocations
     const map: Record<string, Series[]> = {};
@@ -233,9 +242,15 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
       const title = keys[i];
       result[i] = { title, data: map[title] };
     }
+    if (isTvPerfEnabled) {
+      logTvPerfMetric('SeriesList.buildGroups', nowMs() - startedAt, {
+        series: series.length,
+        groups: keys.length,
+      });
+    }
 
     return { groups: result, groupMap: map };
-  }, [series, isAdultUnlocked, pin]);
+  }, [series, isAdultUnlocked, pin, isTvPerfEnabled]);
 
   // Default select first group
   useEffect(() => {
@@ -245,13 +260,16 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
   }, [groups, selectedGroup]);
 
   const handleGroupSelect = useCallback((title: string) => {
+    if (isTvPerfEnabled) {
+      groupFocusStartedAtRef.current = nowMs();
+    }
     setSelectedGroup(title);
     setFocusedSeriesKey(null);
     setShouldFocusFirstItem(true);
     if (isMobile) {
       setShowCategories(false);
     }
-  }, [isMobile]);
+  }, [isMobile, isTvPerfEnabled]);
 
   useEffect(() => {
     if (shouldFocusFirstItem) {
@@ -309,7 +327,8 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
   }, [focusedSeriesKey, selectedSeries, selectedSeriesKey]);
 
   const prefetchSeriesBatch = useCallback((items: Series[]) => {
-    prefetchImages(items.map((item) => getPosterUri(item.cover)));
+    if (Platform.isTV) return;
+    prefetchImages(items.map((item) => getPosterUri(item.cover)).filter((url): url is string => !!url));
   }, []);
 
   useEffect(() => {
@@ -318,6 +337,7 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
   }, [selectedSeries, prefetchSeriesBatch]);
 
   const onSeriesViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item?: Series | null }> }) => {
+    if (Platform.isTV) return;
     const visibleItems = viewableItems
       .map((entry) => entry.item)
       .filter((item): item is Series => !!item)
@@ -388,13 +408,19 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
           });
         }}
         onFocus={() => {
+          if (isTvPerfEnabled && groupFocusStartedAtRef.current !== null) {
+            logTvPerfMetric('SeriesList.groupSelectToFocus', nowMs() - groupFocusStartedAtRef.current, {
+              selectedGroup,
+            });
+            groupFocusStartedAtRef.current = null;
+          }
           setFocusedSeriesKey(seriesKey);
           setShouldFocusFirstItem(false);
         }}
         onBlur={() => setFocusedSeriesKey((current) => (current === seriesKey ? null : current))}
       />
     );
-  }, [focusedSeriesKey, selectedSeriesKey, shouldFocusFirstItem, posterWidth, numColumns, gridGap, colors, navigation, selectedGroup]);
+  }, [focusedSeriesKey, selectedSeriesKey, shouldFocusFirstItem, posterWidth, numColumns, gridGap, colors, navigation, selectedGroup, isTvPerfEnabled]);
 
   return (
     <View

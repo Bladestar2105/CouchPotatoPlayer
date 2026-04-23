@@ -25,7 +25,9 @@ import {
   shouldCategoryHavePreferredFocus,
   shouldDeferPrefetch,
 } from '../utils/channelListBehavior';
+import { isTvPerfLoggingEnabled, logTvPerfMetric, nowMs } from '../utils/tvPerformance';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
+let lastSelectedLiveGroup: string | null = null;
 
 // Cache time formatter
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -182,7 +184,9 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(
+    route.params?.returnGroupId || lastSelectedLiveGroup || null,
+  );
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(props.initialViewMode || 'list');
   const [restoreFocusOnSelectedChannel, setRestoreFocusOnSelectedChannel] = useState(false);
@@ -196,6 +200,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
 
 
   useEffect(() => {
+    const shouldLogTvPerf = isTvPerfLoggingEnabled(isTVPlatform);
     if (route.params?.returnGroupId) {
       setSelectedGroup(route.params.returnGroupId);
     }
@@ -204,13 +209,17 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     }
     if (route.params?.returnGroupId || route.params?.focusChannelId) {
       setRestoreFocusOnSelectedChannel(true);
+      if (shouldLogTvPerf) {
+        focusRestoreStartedAtRef.current = nowMs();
+      }
       navigation.setParams({ returnGroupId: undefined, focusChannelId: undefined });
     }
-  }, [route.params?.returnGroupId, route.params?.focusChannelId]);
+  }, [route.params?.returnGroupId, route.params?.focusChannelId, navigation]);
   const [shouldFocusFirstItem, setShouldFocusFirstItem] = useState(false);
   const [epgNowTimestamp, setEpgNowTimestamp] = useState(() => Date.now());
 
   const isTV = isTVPlatform;
+  const isTvPerfEnabled = isTvPerfLoggingEnabled(isTV);
   const listPerfConfig = useMemo(
     () => getChannelListPerfConfig({ isTV, platformOS: Platform.OS }),
     [isTV],
@@ -224,6 +233,8 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const flatListRef = useRef<FlatList>(null);
   const [unlockMode, setUnlockMode] = useState<string | null>(null);
   const prefetchInteractionRef = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
+  const focusAfterCategorySelectionStartedAtRef = useRef<number | null>(null);
+  const focusRestoreStartedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -269,9 +280,20 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     return () => clearTimeout(timer);
   }, [restoreFocusOnSelectedChannel]);
 
+  useEffect(() => {
+    if (!selectedGroup) return;
+    lastSelectedLiveGroup = selectedGroup;
+  }, [selectedGroup]);
+
   const { groups, groupMap } = useMemo(() => {
+    const startedAt = isTvPerfEnabled ? nowMs() : 0;
     const len = channels.length;
-    if (len === 0) return { groups: [], groupMap: {}, channelMap: {} };
+    if (len === 0) {
+      if (isTvPerfEnabled) {
+        logTvPerfMetric('ChannelList.buildGroups', nowMs() - startedAt, { channels: 0, groups: 0 });
+      }
+      return { groups: [], groupMap: {}, channelMap: {} };
+    }
 
     const map: Record<string, Channel[]> = {};
     const cMap: Record<string, Channel> = {};
@@ -299,14 +321,24 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       const title = titles[i];
       result[i] = { title, data: map[title] };
     }
+    if (isTvPerfEnabled) {
+      logTvPerfMetric('ChannelList.buildGroups', nowMs() - startedAt, {
+        channels: len,
+        groups: titlesLen,
+      });
+    }
     return { groups: result, groupMap: map, channelMap: cMap };
-  }, [channels, isAdultUnlocked, pin]);
+  }, [channels, isAdultUnlocked, pin, isTvPerfEnabled]);
 
   useEffect(() => {
-    if (groups.length > 0 && !selectedGroup) {
-      setSelectedGroup(groups[0].title);
+    if (groups.length === 0) return;
+    if (selectedGroup && groupMap[selectedGroup]) return;
+    if (lastSelectedLiveGroup && groupMap[lastSelectedLiveGroup]) {
+      setSelectedGroup(lastSelectedLiveGroup);
+      return;
     }
-  }, [groups, selectedGroup]);
+    setSelectedGroup(groups[0].title);
+  }, [groups, groupMap, selectedGroup]);
 
   useEffect(() => {
      if (selectedGroup) {
@@ -323,12 +355,15 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   }, [selectedGroup, groupMap, currentStream?.id]);
 
   const handleGroupSelect = useCallback((title: string) => {
+    if (isTvPerfEnabled) {
+      focusAfterCategorySelectionStartedAtRef.current = nowMs();
+    }
     setSelectedGroup(title);
     setShouldFocusFirstItem(true);
     if (isCompactLayout) {
       setShowCategories(false);
     }
-  }, [isCompactLayout]);
+  }, [isCompactLayout, isTvPerfEnabled]);
 
   useEffect(() => {
     if (shouldFocusFirstItem) {
@@ -579,7 +614,22 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
 
   const handleChannelFocus = useCallback((id: string) => {
     setFocusedChannelId(id);
-    if (!Platform.isTV) return;
+
+    if (isTvPerfEnabled && focusAfterCategorySelectionStartedAtRef.current !== null) {
+      logTvPerfMetric('ChannelList.groupSelectToFocus', nowMs() - focusAfterCategorySelectionStartedAtRef.current, {
+        selectedGroup,
+      });
+      focusAfterCategorySelectionStartedAtRef.current = null;
+    }
+
+    if (isTvPerfEnabled && focusRestoreStartedAtRef.current !== null) {
+      logTvPerfMetric('ChannelList.playerReturnToFocus', nowMs() - focusRestoreStartedAtRef.current, {
+        selectedGroup,
+      });
+      focusRestoreStartedAtRef.current = null;
+    }
+
+    if (!Platform.isTV || Platform.OS !== 'android') return;
 
     const index = selectedChannelIndexMap[id];
     if (index === undefined) return;
@@ -589,7 +639,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       animated: false,
       viewPosition: 0.5,
     });
-  }, [selectedChannelIndexMap]);
+  }, [selectedChannelIndexMap, isTvPerfEnabled, selectedGroup]);
 
   const handleChannelListScrollToIndexFailed = useCallback(({ index }: { index: number }) => {
     flatListRef.current?.scrollToOffset({

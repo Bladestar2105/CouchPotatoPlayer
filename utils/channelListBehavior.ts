@@ -18,7 +18,7 @@ export function getChannelListPerfConfig({ isTV, platformOS }: ChannelListPerfIn
     const isAndroidTV = platformOS === 'android';
     return isAndroidTV
       ? { initialNumToRender: 16, maxToRenderPerBatch: 12, windowSize: 9, updateCellsBatchingPeriod: 20, removeClippedSubviews: false }
-      : { initialNumToRender: 18, maxToRenderPerBatch: 14, windowSize: 11, updateCellsBatchingPeriod: 16, removeClippedSubviews: false };
+      : { initialNumToRender: 12, maxToRenderPerBatch: 10, windowSize: 7, updateCellsBatchingPeriod: 24, removeClippedSubviews: false };
   }
   return { initialNumToRender: 12, maxToRenderPerBatch: 10, windowSize: 6, updateCellsBatchingPeriod: 24, removeClippedSubviews: true };
 }

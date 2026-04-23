@@ -205,6 +205,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
     if (type === 'vlc') return { label: t('settings.playerType.vlcAndroid'), value: 'vlc' as PlayerType };
     return { label: getNativePlayerName(), value: 'native' as PlayerType };
   });
+  const canConfigureKSPlayer = Platform.OS === 'ios';
 
   const handleToggleAdultContent = (value: boolean) => {
     if (!value) {
@@ -498,7 +499,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                   )
                 )}
 
-                {playerType === 'ksplayer' && (
+                {canConfigureKSPlayer && (
                   <>
                     {renderSettingRow(
                       t('hardwareAcceleration'),

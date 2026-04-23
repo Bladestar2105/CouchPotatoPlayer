@@ -36,6 +36,21 @@ When debugging:
 4. implement the smallest safe fix
 5. validate against regressions
 
+## TV performance profiling (dev builds)
+- TV list profiling logs are enabled by default in `__DEV__` when `Platform.isTV` is true.
+- Logs use the prefix `[TVPerf]` and currently cover:
+- `ChannelList.buildGroups`
+- `ChannelList.groupSelectToFocus`
+- `ChannelList.playerReturnToFocus`
+- `MovieList.buildGroups`
+- `MovieList.groupSelectToFocus`
+- `SeriesList.buildGroups`
+- `SeriesList.groupSelectToFocus`
+- To disable TV perf logs at runtime in development, set:
+```ts
+(globalThis as any).__CP_TV_PERF__ = false;
+```
+
 ## Dependency changes
 Avoid dependency upgrades unless required for the task.
 If upgrading a dependency:

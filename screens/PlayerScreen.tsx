@@ -136,15 +136,24 @@ const PlayerScreen = () => {
     }
     lastBackHandledAtRef.current = now;
 
+    const fallbackChannelId =
+      lastNavigationState.current.channelId ||
+      currentStream?.id ||
+      null;
+    let fallbackGroupId: string | null = null;
+    if (fallbackChannelId) {
+      fallbackGroupId = channels.find((channel) => channel.id === fallbackChannelId)?.group || null;
+    }
+
     stopStream();
     navigation.navigate('Home', {
       focusChannelId: lastNavigationState.current.channelId,
-      returnGroupId: lastNavigationState.current.groupId,
+      returnGroupId: lastNavigationState.current.groupId || fallbackGroupId,
       returnTab,
     });
 
     return true;
-  }, [navigation, stopStream, returnTab, trackPanelMode]);
+  }, [navigation, stopStream, returnTab, trackPanelMode, currentStream?.id, channels]);
 
   useEffect(() => {
     return () => {
