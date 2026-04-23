@@ -97,6 +97,63 @@ describe('Logger', () => {
     });
   });
 
+  describe('credential sanitization (warn + error)', () => {
+    beforeEach(() => {
+      (globalThis as any).__DEV__ = true;
+    });
+
+    test('scrubs username / password query parameters from string arguments to warn', () => {
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+      Logger.warn('fetch failed:', 'http://iptv.example/player_api.php?username=alice&password=secret');
+      expect(warnSpy).toHaveBeenCalledWith(
+        'fetch failed:',
+        expect.stringMatching(/username=\*\*\*/),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        'fetch failed:',
+        expect.stringMatching(/password=\*\*\*/),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        'fetch failed:',
+        expect.not.stringMatching(/alice|secret/),
+      );
+      warnSpy.mockRestore();
+    });
+
+    test('scrubs message + stack when an Error instance is passed to error', () => {
+      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const err = new Error(
+        'Request failed: http://iptv.example/live/alice/secret/123.ts',
+      );
+      err.stack = `Error\n  at GET http://iptv.example/live/alice/secret/123.ts`;
+      Logger.error('playback:', err);
+      const [, forwarded] = errorSpy.mock.calls[0];
+      expect(forwarded).toBeInstanceOf(Error);
+      expect((forwarded as Error).message).not.toMatch(/alice|secret/);
+      expect((forwarded as Error).stack ?? '').not.toMatch(/alice|secret/);
+      // Original error is untouched: the sanitizer returns a fresh Error instance.
+      expect(err.message).toMatch(/alice/);
+      errorSpy.mockRestore();
+    });
+
+    test('leaves non-URL strings and primitive values unchanged', () => {
+      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      Logger.error('simple message', 42, true);
+      expect(errorSpy).toHaveBeenCalledWith('simple message', 42, true);
+      errorSpy.mockRestore();
+    });
+
+    test('log / info / debug pass through WITHOUT sanitization', () => {
+      // Only warn and error sanitize. The non-sanitized channels are reserved
+      // for dev-only diagnostics where credential leakage is out of scope.
+      const logSpy = spyOn(console, 'log').mockImplementation(() => {});
+      const creds = 'http://iptv.example?username=alice&password=secret';
+      Logger.log('dev diag:', creds);
+      expect(logSpy).toHaveBeenCalledWith('dev diag:', creds);
+      logSpy.mockRestore();
+    });
+  });
+
   describe('when __DEV__ is undefined', () => {
     beforeEach(() => {
       (globalThis as any).__DEV__ = undefined;

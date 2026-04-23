@@ -2,7 +2,15 @@
  * Logger utility to manage console logs across the application.
  * In production builds, logs and info are silenced to improve performance and code hygiene.
  * Warnings and errors are always preserved.
+ *
+ * All `warn` / `error` arguments pass through `sanitizeError` by default, which
+ * scrubs provider credentials (username / password / token query params and
+ * `user:pass@` authority blocks) out of strings, `Error` instances, and plain
+ * objects with a `.message` field. Callers can still wrap arguments in
+ * `sanitizeError` manually — it is idempotent.
  */
+
+import { sanitizeError } from './sanitizeUrl';
 
 declare const __DEV__: boolean;
 
@@ -21,6 +29,8 @@ const initializeLogBox = () => {
 
 initializeLogBox();
 
+const sanitizeAll = (args: any[]): any[] => args.map((arg) => sanitizeError(arg));
+
 const Logger = {
   log: (...args: any[]) => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
@@ -33,10 +43,10 @@ const Logger = {
     }
   },
   warn: (...args: any[]) => {
-    console.warn(...args);
+    console.warn(...sanitizeAll(args));
   },
   error: (...args: any[]) => {
-    console.error(...args);
+    console.error(...sanitizeAll(args));
   },
   debug: (...args: any[]) => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {

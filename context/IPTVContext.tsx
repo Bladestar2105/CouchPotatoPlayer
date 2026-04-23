@@ -6,7 +6,7 @@ import { File, Paths } from 'expo-file-system';
 
 import i18n from '../utils/i18n';
 import Logger from '../utils/logger';
-import { sanitizeUrl } from '../utils/sanitizeUrl';
+import { sanitizeError, sanitizeUrl } from '../utils/sanitizeUrl';
 import { resolveSeriesSeasonCount } from '../utils/seriesMetadata';
 export { sanitizeUrl };
 import {
@@ -42,24 +42,6 @@ const XTREAM_EPG_BATCH_SIZE = 50;
 /**
  * Sanitizes a URL by removing sensitive query parameters (username, password)
  */
-
-/**
- * Sanitizes error objects to prevent leaking sensitive URLs in logs
- */
-const sanitizeError = (e: any): any => {
-  if (!e) return e;
-  if (typeof e === 'string') return sanitizeUrl(e);
-  if (e instanceof Error) {
-    const sanitized = new Error(sanitizeUrl(e.message));
-    sanitized.stack = e.stack ? sanitizeUrl(e.stack) : undefined;
-    sanitized.name = e.name;
-    return sanitized;
-  }
-  if (typeof e === 'object' && e.message) {
-    return { ...e, message: sanitizeUrl(e.message) };
-  }
-  return e;
-};
 
 /**
  * Decode Base64 string if needed
