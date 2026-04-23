@@ -206,6 +206,7 @@ const HomeScreen = () => {
     loadProfile,
     loadEPG,
     navigateToPinSetup: () => navigation.navigate('PinSetup'),
+    t,
   });
 
   if (isInitializing || (isLoading && !currentProfile)) {
