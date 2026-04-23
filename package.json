@@ -1,0 +1,113 @@
+{
+  "name": "couchpotatoplayer",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "typecheck": "node --stack_size=65500 ./node_modules/typescript/lib/tsc.js --noEmit",
+    "lint": "npm run typecheck",
+    "test:unit": "vitest run",
+    "test:native-smoke": "vitest run utils/__tests__/nativeSmoke.test.ts",
+    "test:android-smoke": "playwright test e2e/android.smoke.e2e.ts",
+    "test:android-tv-smoke": "playwright test e2e/android-tv.smoke.e2e.ts",
+    "test": "npm run test:unit && npm run test:e2e",
+    "build": "expo export --platform web",
+    "build:ios-sim": "./scripts/build_ios_sim.sh",
+    "build:tvos-sim": "./scripts/build_tvos_sim.sh",
+    "build:tvos-device": "./scripts/build_tvos_device.sh",
+    "build:android-sim": "./scripts/build_android_sim.sh",
+    "build:android-tv-sim": "./scripts/build_android_tv_sim.sh",
+    "build:web": "./scripts/build_web.sh",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "56.0.0-canary-20260305-5163746",
+    "@expo/vector-icons": "^15.1.1",
+    "@gorhom/bottom-sheet": "^5.2.6",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "^12.0.1",
+    "@react-native-picker/picker": "2.11.1",
+    "@react-native-tvos/config-tv": "^0.1.5",
+    "@react-navigation/drawer": "^7.9.4",
+    "@react-navigation/material-top-tabs": "^7.4.2",
+    "@react-navigation/native": "^7.1.19",
+    "@react-navigation/stack": "^7.6.2",
+    "bcryptjs": "^3.0.3",
+    "expo": "56.0.0-canary-20260305-5163746",
+    "expo-asset": "56.0.0-canary-20260305-5163746",
+    "expo-av": "~16.0.7",
+    "expo-build-properties": "56.0.0-canary-20260305-5163746",
+    "expo-crypto": "56.0.0-canary-20260305-5163746",
+    "expo-dev-client": "56.0.0-canary-20260305-5163746",
+    "expo-file-system": "56.0.0-canary-20260305-5163746",
+    "expo-localization": "^55.0.11",
+    "expo-screen-orientation": "56.0.0-canary-20260305-5163746",
+    "expo-sharing": "56.0.0-canary-20260305-5163746",
+    "expo-status-bar": "56.0.0-canary-20260305-5163746",
+    "expo-video": "56.0.0-canary-20260305-5163746",
+    "fast-xml-parser": "^5.5.10",
+    "i18next": "^26.0.3",
+    "lucide-react-native": "^1.7.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-i18next": "^17.0.2",
+    "react-native": "0.84.1",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-ksplayer": "file:modules/react-native-ksplayer",
+    "react-native-pager-view": "6.9.1",
+    "react-native-reanimated": "~4.3.0",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-svg": "^15.15.4",
+    "react-native-swift-ts-player": "file:modules/react-native-swift-ts-player",
+    "react-native-tab-view": "^4.2.0",
+    "react-native-video": "^6.17.0",
+    "react-native-vlc-media-player": "^1.0.96",
+    "react-native-web": "^0.21.2",
+    "react-native-worklets": "~0.8.1"
+  },
+  "devDependencies": {
+    "@expo/config-plugins": "56.0.0-canary-20260305-5163746",
+    "@playwright/test": "^1.59.1",
+    "@types/bun": "^1.3.11",
+    "@types/react": "~19.2.14",
+    "@types/react-native": "^0.72.8",
+    "babel-preset-expo": "56.0.0-canary-20260305-5163746",
+    "playwright": "^1.59.1",
+    "typescript": "5.9.2",
+    "vitest": "^2.1.8"
+  },
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "ios": {
+        "exclude": [
+          "expo-av"
+        ]
+      },
+      "tvos": {
+        "exclude": [
+          "expo-av",
+          "react-native-vlc-media-player"
+        ]
+      },
+      "android": {
+        "exclude": [
+          "expo-av"
+        ]
+      }
+    }
+  },
+  "pnpm": {
+    "overrides": {
+      "glob@7.2.3": "^13.0.0",
+      "rimraf@3.0.2": "^6.0.1"
+    },
+    "patchedDependencies": {
+      "@react-native-picker/picker@2.11.1": "patches/@react-native-picker__picker@2.11.1.patch"
+    }
+  }
+}

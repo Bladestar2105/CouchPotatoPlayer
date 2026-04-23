@@ -1,0 +1,43 @@
+diff --git a/android/src/main/jni/RNCAndroidDialogPickerMeasurementsManager.h b/android/src/main/jni/RNCAndroidDialogPickerMeasurementsManager.h
+index cc8708d9e510b28b28f0102ca72806342d00e3b2..fbc702ac591085028699f3a1e6e365ebc90500f5 100644
+--- a/android/src/main/jni/RNCAndroidDialogPickerMeasurementsManager.h
++++ b/android/src/main/jni/RNCAndroidDialogPickerMeasurementsManager.h
+@@ -12,7 +12,7 @@ namespace facebook::react {
+ class RNCAndroidDialogPickerMeasurementsManager {
+  public:
+   RNCAndroidDialogPickerMeasurementsManager(
+-      const ContextContainer::Shared& contextContainer)
++      const std::shared_ptr<const ContextContainer>& contextContainer)
+       : contextContainer_(contextContainer) {}
+ 
+   Size measure(
+@@ -22,6 +22,6 @@ class RNCAndroidDialogPickerMeasurementsManager {
+       RNCAndroidDialogPickerState state) const;
+ 
+  private:
+-  const ContextContainer::Shared contextContainer_;
++  const std::shared_ptr<const ContextContainer> contextContainer_;
+ };
+ } // namespace facebook::react
+diff --git a/android/src/main/jni/RNCAndroidDropdownPickerMeasurementsManager.h b/android/src/main/jni/RNCAndroidDropdownPickerMeasurementsManager.h
+index 07eb7fe702b83e8798c0694e0656d01416447fd3..2858b507a2b3bfa1f78c0e71afe9e1a8122ce9e2 100644
+--- a/android/src/main/jni/RNCAndroidDropdownPickerMeasurementsManager.h
++++ b/android/src/main/jni/RNCAndroidDropdownPickerMeasurementsManager.h
+@@ -12,7 +12,7 @@ namespace facebook::react {
+ class RNCAndroidDropdownPickerMeasurementsManager {
+  public:
+   RNCAndroidDropdownPickerMeasurementsManager(
+-      const ContextContainer::Shared& contextContainer)
++      const std::shared_ptr<const ContextContainer>& contextContainer)
+       : contextContainer_(contextContainer) {}
+ 
+   Size measure(
+@@ -22,7 +22,7 @@ class RNCAndroidDropdownPickerMeasurementsManager {
+       RNCAndroidDropdownPickerState state) const;
+ 
+  private:
+-  const ContextContainer::Shared contextContainer_;
++  const std::shared_ptr<const ContextContainer> contextContainer_;
+ };
+ 
+ } // namespace facebook::react

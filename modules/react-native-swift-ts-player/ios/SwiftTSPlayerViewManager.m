@@ -1,0 +1,16 @@
+#import <React/RCTViewManager.h>
+
+@interface RCT_EXTERN_MODULE(SwiftTSPlayerViewManager, RCTViewManager)
+
+RCT_EXPORT_VIEW_PROPERTY(streamUrl, NSString)
+RCT_EXPORT_VIEW_PROPERTY(paused, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(seekPosition, NSNumber)
+RCT_EXPORT_VIEW_PROPERTY(selectedAudioTrackId, NSNumber)
+RCT_EXPORT_VIEW_PROPERTY(selectedTextTrackId, NSNumber)
+
+RCT_EXPORT_VIEW_PROPERTY(onSwiftVideoLoad, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onSwiftVideoError, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onSwiftProgress, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onSwiftTracksChanged, RCTDirectEventBlock)
+
+@end

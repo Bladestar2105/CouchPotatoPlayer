@@ -1,0 +1,97 @@
+{
+  "expo": {
+    "name": "CouchPotatoPlayer",
+    "slug": "couchpotatoplayer",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E4E4E7"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "icon": "./assets/store/ios/app-store-icon-1024.png",
+      "supportsTablet": true,
+      "bundleIdentifier": "de.teamei.couchpotatoplayer",
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": [
+          "en",
+          "de",
+          "fr",
+          "el"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "appleTV": {
+      "icon": "./assets/store/tvos/app-icon-large-1280x768.png",
+      "topShelfImage": "./assets/store/tvos/top-shelf-1920x720.png",
+      "topShelfImageWide": "./assets/store/tvos/top-shelf-wide-2320x720.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#E4E4E7"
+      },
+      "package": "de.teamei.couchpotatoplayer"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "./plugins/withPatchThirdPartyFabricComponents",
+      "./plugins/withTVOSNativeEventEmitterPatch",
+      "./plugins/withFixHermescPath",
+      "./plugins/withFixSwiftImports",
+      "./plugins/withKSPlayer",
+      [
+        "@react-native-tvos/config-tv",
+        {
+          "appleTVImages": {
+            "icon": "./assets/store/tvos/app-icon-large-1280x768.png",
+            "iconSmall": "./assets/store/tvos/app-icon-small-400x240.png",
+            "iconSmall2x": "./assets/store/tvos/app-icon-small2x-800x480.png",
+            "topShelf": "./assets/store/tvos/top-shelf-1920x720.png",
+            "topShelf2x": "./assets/store/tvos/top-shelf2x-3840x1440.png",
+            "topShelfWide": "./assets/store/tvos/top-shelf-wide-2320x720.png",
+            "topShelfWide2x": "./assets/store/tvos/top-shelf-wide2x-4640x1440.png"
+          }
+        }
+      ],
+      "expo-asset",
+      "expo-video",
+      "react-native-vlc-media-player",
+      "react-native-video",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26,
+            "kotlinVersion": "2.1.20",
+            "packagingOptions": {
+              "pickFirst": [
+                "lib/x86/libc++_shared.so",
+                "lib/x86_64/libc++_shared.so",
+                "lib/armeabi-v7a/libc++_shared.so",
+                "lib/arm64-v8a/libc++_shared.so"
+              ]
+            }
+          },
+          "ios": {
+            "useFrameworks": "static",
+            "buildReactNativeFromSource": true
+          }
+        }
+      ]
+    ]
+  }
+}

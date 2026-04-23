@@ -1,0 +1,196 @@
+require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")
+require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
+
+require 'json'
+podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
+
+def ccache_enabled?(podfile_properties)
+  # Environment variable takes precedence
+  return ENV['USE_CCACHE'] == '1' if ENV['USE_CCACHE']
+
+  # Fall back to Podfile properties
+  podfile_properties['apple.ccacheEnabled'] == 'true'
+end
+
+ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] ||= podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
+ENV['RCT_USE_RN_DEP'] ||= '0' if podfile_properties['ios.buildReactNativeFromSource'] == 'true'
+ENV['RCT_USE_PREBUILT_RNCORE'] ||= '0' if podfile_properties['ios.buildReactNativeFromSource'] == 'true'
+ENV['RCT_HERMES_V1_ENABLED'] ||= '1' if podfile_properties['expo.useHermesV1'] == 'true'
+platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
+
+prepare_react_native_project!
+
+def patch_frameworks_script_for_apple_uploads(installer)
+  support_files_root = File.join(installer.sandbox.root.to_s, 'Target Support Files')
+  frameworks_scripts = Dir.glob(File.join(support_files_root, 'Pods-*', 'Pods-*-frameworks.sh'))
+  return if frameworks_scripts.empty?
+
+  frameworks_scripts.each do |script_path|
+    script = File.read(script_path)
+    anchor = "# Strip invalid architectures so \"fat\" simulator / device frameworks work on device\n"
+
+    unless script.include?('if [[ "$basename" == "TVVLCKit" ]]; then')
+      tvvlckit_strip = <<~'SH'
+      if [[ "$basename" == "TVVLCKit" ]]; then
+        # TVVLCKit 3.5.1 includes embedded bitcode, which fails App Store upload validation.
+        xcrun bitcode_strip "$binary" -r -o "$binary"
+      fi
+
+      SH
+      script.sub!(anchor, tvvlckit_strip + anchor) if script.include?(anchor)
+    end
+
+    unless script.include?('Final release safety net for TVVLCKit bitcode upload validation.')
+      tvvlckit_release_safety_net = <<~'SH'
+
+      # Final release safety net for TVVLCKit bitcode upload validation.
+      if [[ "$CONFIGURATION" == "Release" ]]; then
+        TVVLC_BINARY="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/TVVLCKit.framework/TVVLCKit"
+        if [[ -f "${TVVLC_BINARY}" ]]; then
+          xcrun bitcode_strip "${TVVLC_BINARY}" -r -o "${TVVLC_BINARY}"
+        fi
+      fi
+      SH
+      script += tvvlckit_release_safety_net
+    end
+
+    unless script.include?('Ensure archive contains hermesvm.framework dSYM expected by App Store upload validation.')
+      hermes_dsym = <<~'SH'
+
+      # Ensure archive contains hermesvm.framework dSYM expected by App Store upload validation.
+      if [[ "$CONFIGURATION" == "Release" ]]; then
+        HERMES_BINARY="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework/hermesvm"
+        if [[ -f "${HERMES_BINARY}" && -n "${DWARF_DSYM_FOLDER_PATH:-}" ]]; then
+          HERMES_DSYM="${DWARF_DSYM_FOLDER_PATH}/hermesvm.framework.dSYM"
+          rm -rf "${HERMES_DSYM}"
+          xcrun dsymutil "${HERMES_BINARY}" -o "${HERMES_DSYM}"
+        fi
+      fi
+      SH
+      script += hermes_dsym
+    end
+
+    File.write(script_path, script)
+  end
+end
+
+target 'CouchPotatoPlayer' do
+  use_expo_modules!
+
+  if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
+    config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
+  else
+    config_command = [
+      'node',
+      '--no-warnings',
+      '--eval',
+      'require(\'expo/bin/autolinking\')',
+      'expo-modules-autolinking',
+      'react-native-config',
+      '--json',
+      '--platform',
+      'ios'
+    ]
+  end
+
+  use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
+  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+
+  # ─── KSPlayer (FFmpeg-based player for full IPTV format support on iOS/tvOS) ───
+  # KSPlayer/MEPlayer uses FFmpegKit which supports raw MPEG-TS and all FFmpeg formats.
+  # This is required by the react-native-ksplayer native module.
+  #
+  # IMPORTANT: These pods MUST be declared BEFORE use_native_modules! because
+  # the react-native-ksplayer.podspec has s.dependency "KSPlayer/MEPlayer".
+  # CocoaPods needs to know about KSPlayer before evaluating the podspec.
+  #
+  # Dependency chain:
+  #   react-native-ksplayer → KSPlayer/MEPlayer → FFmpegKit → Libass
+  #
+  # These pods are not on CocoaPods trunk. All podspecs have version numbers that
+  # do not match real git tags (e.g. KSPlayer podspec says 1.1.0 but tags are 2.x.x).
+  # We use :git + :commit to pin to HEAD of each repo and bypass tag resolution.
+  #
+  # Pinned commits (update when upgrading):
+  #   FFmpegKit/Libass: d7048037 (HEAD/main as of 2026-03-29)
+  #   KSPlayer: 46f08efc (HEAD/main as of 2026-03-29)
+  pod 'Libass', :git => 'https://github.com/kingslay/FFmpegKit.git', :commit => 'd7048037a2eb94a3b08113fbf43aa92bdcb332d9'
+  pod 'FFmpegKit', :git => 'https://github.com/kingslay/FFmpegKit.git', :commit => 'd7048037a2eb94a3b08113fbf43aa92bdcb332d9'
+  pod 'DisplayCriteria', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/Core: contains Utility.swift with Array(tuple:), URL.download, Data.md5, CGImage.combine
+  # These extensions are used by MEPlayer and Subtitle sources but not declared as dependencies.
+  pod 'KSPlayer/Core', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/Video: contains KSOptions extensions used by AVPlayer code
+  pod 'KSPlayer/Video', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+  # KSPlayer/MEPlayer: the /MEPlayer subspec includes FFmpegKit (KSMEPlayer backend)
+  pod 'KSPlayer/MEPlayer', :git => 'https://github.com/kingslay/KSPlayer.git', :commit => '46f08efc4998367690090ae8a37f201f557fdd82'
+
+  config = use_native_modules!(config_command)
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
+  )
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      :ccache_enabled => ccache_enabled?(podfile_properties),
+    )
+
+    # Ensure react-native-ksplayer can find KSPlayer frameworks
+    # KSPlayer is built as a static framework, so we need to add its build products
+    # to the framework search paths of react-native-ksplayer
+
+    # Ensure release archives include dSYMs for symbol upload.
+    installer.pods_project.build_configurations.each do |build_config|
+      build_config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+      build_config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
+    end
+    patch_frameworks_script_for_apple_uploads(installer)
+
+    # App Store Connect rejects tvOS uploads when TVVLCKit still contains bitcode.
+    # Strip bitcode from all vendored TVVLCKit framework binaries after pods integration.
+    bitcode_strip = `xcrun --find bitcode_strip`.strip
+    if !bitcode_strip.empty?
+      tvvlc_frameworks = Dir.glob(File.join(Pod::Config.instance.installation_root.to_s, 'Pods', '**', 'TVVLCKit.framework', 'TVVLCKit'))
+      tvvlc_frameworks.each do |tvvlc_framework|
+        next unless File.exist?(tvvlc_framework)
+        Pod::UI.puts("Stripping bitcode from #{tvvlc_framework}")
+        system(bitcode_strip, tvvlc_framework, '-r', '-o', tvvlc_framework)
+      end
+    end
+    installer.pods_project.targets.each do |target|
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']
+          defs << 'FMT_USE_NONTYPE_TEMPLATE_ARGS=0' unless defs.include?('FMT_USE_NONTYPE_TEMPLATE_ARGS=0')
+          defs << 'FMT_USE_CONSTEVAL=0' unless defs.include?('FMT_USE_CONSTEVAL=0')
+          defs << 'FMT_USE_CONSTEXPR=0' unless defs.include?('FMT_USE_CONSTEXPR=0')
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
+
+          config.build_settings['WARNING_CFLAGS'] ||= ['$(inherited)']
+          warning_flags = config.build_settings['WARNING_CFLAGS']
+          warning_flags << '-Wno-invalid-constexpr' unless warning_flags.include?('-Wno-invalid-constexpr')
+          config.build_settings['WARNING_CFLAGS'] = warning_flags
+        end
+      end
+
+      if target.name == 'react-native-ksplayer'
+        target.build_configurations.each do |config|
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] ||= ['$(inherited)']
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_ROOT)/KSPlayer'
+          config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_CONFIGURATION_BUILD_DIR)/KSPlayer'
+        end
+      end
+    end
+  end
+end

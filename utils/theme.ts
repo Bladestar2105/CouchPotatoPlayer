@@ -1,0 +1,273 @@
+export type ThemeMode = 'dark' | 'oled' | 'light';
+
+export interface Theme {
+  mode: ThemeMode;
+  colors: {
+    background: string;
+    surface: string;
+    surfaceSecondary: string;
+    card: string;
+    textPrimary: string;
+    textSecondary: string;
+    textMuted: string;
+    primary: string;
+    primaryLight: string;
+    danger: string;
+    success: string;
+    warning: string;
+    info: string;
+    border: string;
+    divider: string;
+    overlay: string;
+    tabBar: string;
+    tabBarBorder: string;
+    playerBg: string;
+    playerOverlay: string;
+    liveDot: string;
+    badge: string;
+    // New design tokens for modern UI
+    accent: string;
+    accentMuted: string;
+    cardElevated: string;
+    shadowColor: string;
+    gradientStart: string;
+    gradientEnd: string;
+  };
+  // Design system constants
+  borderRadius: {
+    sm: number;
+    md: number;
+    lg: number;
+    xl: number;
+    full: number;
+  };
+  shadows: {
+    sm: {
+      shadowColor: string;
+      shadowOffset: { width: number; height: number };
+      shadowOpacity: number;
+      shadowRadius: number;
+      elevation: number;
+    };
+    md: {
+      shadowColor: string;
+      shadowOffset: { width: number; height: number };
+      shadowOpacity: number;
+      shadowRadius: number;
+      elevation: number;
+    };
+    lg: {
+      shadowColor: string;
+      shadowOffset: { width: number; height: number };
+      shadowOpacity: number;
+      shadowRadius: number;
+      elevation: number;
+    };
+  };
+}
+
+const darkTheme: Theme = {
+  mode: 'dark',
+  colors: {
+    background: '#0F0F13',
+    surface: '#16161F',
+    surfaceSecondary: '#1C1C28',
+    card: '#1A1A24',
+    textPrimary: '#F0F0F2',
+    textSecondary: '#A1A1AA',
+    textMuted: '#71717A',
+    primary: '#E9692A',
+    primaryLight: 'rgba(233,105,42,0.15)',
+    danger: '#EF4444',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    info: '#06B6D4',
+    border: '#2A2A3E',
+    divider: '#2A2A3E',
+    overlay: 'rgba(0,0,0,0.6)',
+    tabBar: '#1A1A24',
+    tabBarBorder: '#2A2A3E',
+    playerBg: '#000000',
+    playerOverlay: 'rgba(0,0,0,0.75)',
+    liveDot: '#EF4444',
+    badge: '#E9692A',
+    accent: '#2D4263',
+    accentMuted: 'rgba(45,66,99,0.15)',
+    cardElevated: '#1C1C28',
+    shadowColor: '#000000',
+    gradientStart: '#E9692A',
+    gradientEnd: '#2D4263',
+  },
+  borderRadius: {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    full: 9999,
+  },
+  shadows: {
+    sm: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    md: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    lg: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+  },
+};
+
+const oledTheme: Theme = {
+  mode: 'oled',
+  colors: {
+    background: '#000000',
+    surface: '#080812',
+    surfaceSecondary: '#101022',
+    card: '#0C0C16',
+    textPrimary: '#F0F0F2',
+    textSecondary: '#A1A1AA',
+    textMuted: '#52525B',
+    primary: '#E9692A',
+    primaryLight: 'rgba(233,105,42,0.12)',
+    danger: '#EF4444',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    info: '#06B6D4',
+    border: '#1A1A2E',
+    divider: '#1A1A2E',
+    overlay: 'rgba(0,0,0,0.75)',
+    tabBar: '#000000',
+    tabBarBorder: '#1A1A2E',
+    playerBg: '#000000',
+    playerOverlay: 'rgba(0,0,0,0.85)',
+    liveDot: '#EF4444',
+    badge: '#E9692A',
+    accent: '#2D4263',
+    accentMuted: 'rgba(45,66,99,0.12)',
+    cardElevated: '#101022',
+    shadowColor: '#000000',
+    gradientStart: '#E9692A',
+    gradientEnd: '#2D4263',
+  },
+  borderRadius: {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    full: 9999,
+  },
+  shadows: {
+    sm: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    md: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    lg: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+  },
+};
+
+const lightTheme: Theme = {
+  mode: 'light',
+  colors: {
+    background: '#F4F4F5',
+    surface: '#FFFFFF',
+    surfaceSecondary: '#F9FAFB',
+    card: '#FFFFFF',
+    textPrimary: '#18181B',
+    textSecondary: '#52525B',
+    textMuted: '#A1A1AA',
+    primary: '#2563EB',
+    primaryLight: 'rgba(37,99,235,0.1)',
+    danger: '#DC2626',
+    success: '#16A34A',
+    warning: '#D97706',
+    info: '#0891B2',
+    border: '#E4E4E7',
+    divider: '#E4E4E7',
+    overlay: 'rgba(0,0,0,0.4)',
+    tabBar: '#FFFFFF',
+    tabBarBorder: '#E4E4E7',
+    playerBg: '#18181B',
+    playerOverlay: 'rgba(0,0,0,0.65)',
+    liveDot: '#DC2626',
+    badge: '#2563EB',
+    accent: '#2D4263',
+    accentMuted: 'rgba(45,66,99,0.1)',
+    cardElevated: '#FFFFFF',
+    shadowColor: '#18181B',
+    gradientStart: '#2563EB',
+    gradientEnd: '#2D4263',
+  },
+  borderRadius: {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    full: 9999,
+  },
+  shadows: {
+    sm: {
+      shadowColor: '#18181B',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    md: {
+      shadowColor: '#18181B',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    lg: {
+      shadowColor: '#18181B',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+  },
+};
+
+const themes: Record<ThemeMode, Theme> = {
+  dark: darkTheme,
+  oled: oledTheme,
+  light: lightTheme,
+};
+
+export const getTheme = (mode: ThemeMode): Theme => themes[mode] || darkTheme;
+
+export const themeOptions: { label: string; value: ThemeMode; emoji: string; description: string }[] = [
+  { label: 'Dark', value: 'dark', emoji: '🌙', description: 'Default dark theme' },
+  { label: 'OLED Black', value: 'oled', emoji: '⚫', description: 'True black for AMOLED screens' },
+  { label: 'Light', value: 'light', emoji: '☀️', description: 'Light theme for daytime' },
+];
