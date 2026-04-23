@@ -89,6 +89,14 @@ const MediaInfoScreen = () => {
   useEffect(() => {
     navigation.setOptions({ headerShown: false }); // Hide header for modern look
 
+    // Guard every setState with `isCancelled` so that navigating away (or
+    // switching to a different media item while a fetch is in flight) does
+    // not overwrite the new screen's state with a stale response and does
+    // not produce "setState on unmounted component" warnings. The TMDB
+    // enrichment call can outlast the primary lookup by several seconds on
+    // slow networks, so it must be guarded independently.
+    let isCancelled = false;
+
     const fetchInfo = async () => {
       setLoading(true);
       let data = null;
@@ -97,6 +105,7 @@ const MediaInfoScreen = () => {
         else data = await getSeriesInfo(id as string);
       } catch (err) { }
 
+      if (isCancelled) return;
       setInfo(data);
 
       const providerInfo = data?.info || {};
@@ -115,13 +124,18 @@ const MediaInfoScreen = () => {
       const tmdb = new TMDBService({ apiKey: tmdbApiKey });
       if (tmdb.isAvailable() && !hasProviderMetadata) {
         const enhanced = await tmdb.enrichTitle(title, type === 'series' ? 'tv' : 'movie');
+        if (isCancelled) return;
         if (enhanced) setTmdbData(enhanced);
       }
+      if (isCancelled) return;
       setLoading(false);
     };
 
     fetchInfo();
-  }, [id, type, title, navigation]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [id, type, title, navigation, getVodInfo, getSeriesInfo, tmdbApiKey]);
 
   const toggleFavorite = () => {
     if (isFavorite) {
