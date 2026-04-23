@@ -37,7 +37,9 @@ const RECONNECT_BACKOFF_MS = [1200, 2500, 4500] as const;
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_BACKOFF_MS.length;
 const MAX_SEEKABLE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 type PlaybackStatus = 'playing' | 'buffering' | 'reconnecting' | 'failed';
-type TrackPanelMode = 'audio' | 'text' | null;
+type TrackPanelMode = 'audio' | 'text' | 'sleep' | null;
+// Sleep-timer presets. Order matters — rendered in this order inside the panel.
+const SLEEP_TIMER_OPTIONS_MIN = [15, 30, 45, 60, 90] as const;
 const areTrackIdsEqual = (left: number | string | null | undefined, right: number | string | null | undefined): boolean => {
   if (left == null || right == null) return left === right;
   return String(left) === String(right);
@@ -86,6 +88,12 @@ const PlayerScreen = () => {
   const [availableTracks, setAvailableTracks] = useState<PlaybackTrackGroups>(EMPTY_PLAYBACK_TRACKS);
   const [selectedAudioTrackId, setSelectedAudioTrackId] = useState<number | string | null | undefined>(undefined);
   const [selectedTextTrackId, setSelectedTextTrackId] = useState<number | string | null>(null);
+  // Sleep-timer: `sleepTimerEndAt` is the epoch ms at which playback auto-pauses.
+  // `sleepRemainingMs` is a display value ticked once per second while the timer
+  // is armed, so the minutes-remaining label stays fresh without causing the
+  // whole player to re-render each frame.
+  const [sleepTimerEndAt, setSleepTimerEndAt] = useState<number | null>(null);
+  const [sleepRemainingMs, setSleepRemainingMs] = useState<number>(0);
 
   // Channel switch animation
   const channelSwitchOpacity = useRef(new Animated.Value(0)).current;
@@ -109,6 +117,8 @@ const PlayerScreen = () => {
   const audioSelectionByStreamRef = useRef(new Map<string, number | string>());
   const textSelectionByStreamRef = useRef(new Map<string, number | string | null>());
   const lastBackHandledAtRef = useRef(0);
+  const sleepTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sleepTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const backButtonRef = React.useRef<any>(null);
   const audioButtonRef = React.useRef<any>(null);
@@ -123,6 +133,59 @@ const PlayerScreen = () => {
       reconnectTimerRef.current = null;
     }
   }, []);
+
+  const clearSleepTimers = useCallback(() => {
+    if (sleepTimeoutRef.current) {
+      clearTimeout(sleepTimeoutRef.current);
+      sleepTimeoutRef.current = null;
+    }
+    if (sleepTickRef.current) {
+      clearInterval(sleepTickRef.current);
+      sleepTickRef.current = null;
+    }
+  }, []);
+
+  // Public API: start (minutes > 0) or cancel (minutes = 0) the sleep timer.
+  // Guarded so the player never leaks a timeout across re-entrant calls: a new
+  // selection first clears any existing timer before arming the next one.
+  const setSleepTimerMinutes = useCallback((minutes: number) => {
+    clearSleepTimers();
+    if (minutes <= 0) {
+      setSleepTimerEndAt(null);
+      setSleepRemainingMs(0);
+      return;
+    }
+    const durationMs = minutes * 60 * 1000;
+    const endAt = Date.now() + durationMs;
+    setSleepTimerEndAt(endAt);
+    setSleepRemainingMs(durationMs);
+    sleepTimeoutRef.current = setTimeout(() => {
+      sleepTimeoutRef.current = null;
+      if (sleepTickRef.current) {
+        clearInterval(sleepTickRef.current);
+        sleepTickRef.current = null;
+      }
+      setSleepTimerEndAt(null);
+      setSleepRemainingMs(0);
+      setIsPaused(true);
+    }, durationMs);
+    sleepTickRef.current = setInterval(() => {
+      const remaining = Math.max(0, endAt - Date.now());
+      setSleepRemainingMs(remaining);
+      if (remaining <= 0 && sleepTickRef.current) {
+        clearInterval(sleepTickRef.current);
+        sleepTickRef.current = null;
+      }
+    }, 1000);
+  }, [clearSleepTimers]);
+
+  // Always drop any armed sleep timer when the player unmounts so a later
+  // pause cannot fire into a torn-down screen.
+  useEffect(() => {
+    return () => {
+      clearSleepTimers();
+    };
+  }, [clearSleepTimers]);
 
   const handleBack = useCallback(() => {
     if (trackPanelMode) {
@@ -372,14 +435,34 @@ const PlayerScreen = () => {
       ];
     }
 
+    if (trackPanelMode === 'sleep') {
+      const isActive = sleepTimerEndAt !== null;
+      return [
+        {
+          id: 0,
+          label: t('sleepTimerOff'),
+          secondaryLabel: undefined,
+          selected: !isActive,
+        },
+        ...SLEEP_TIMER_OPTIONS_MIN.map((minutes) => ({
+          id: minutes,
+          label: t('sleepTimerMinutes', { minutes }),
+          secondaryLabel: undefined,
+          selected: false,
+        })),
+      ];
+    }
+
     return [];
-  }, [availableTracks.audioTracks, availableTracks.textTracks, selectedAudioTrack?.id, selectedTextTrack, t, trackPanelMode]);
+  }, [availableTracks.audioTracks, availableTracks.textTracks, selectedAudioTrack?.id, selectedTextTrack, sleepTimerEndAt, t, trackPanelMode]);
 
   const trackPanelTitle = trackPanelMode === 'audio'
     ? t('playerAudioTracks')
     : trackPanelMode === 'text'
       ? t('playerSubtitleTracks')
-      : '';
+      : trackPanelMode === 'sleep'
+        ? t('sleepTimer')
+        : '';
 
   useEffect(() => {
     if (trackPanelMode === 'audio' && !hasAudioTrackOptions) {
@@ -773,7 +856,7 @@ const PlayerScreen = () => {
       if (streamId) {
         audioSelectionByStreamRef.current.set(streamId, track.id);
       }
-    } else {
+    } else if (mode === 'text') {
       const nextValue = track?.id ?? null;
       setSelectedTextTrackId(nextValue);
       if (streamId) {
@@ -783,6 +866,15 @@ const PlayerScreen = () => {
     setTrackPanelMode(null);
     setShowOverlay(true);
   }, [currentStream?.id]);
+
+  // Sleep-timer equivalent of `handleTrackSelection`: the panel hands us a
+  // numeric minutes value (0 = cancel). Close the panel afterwards so the
+  // user sees the new remaining-minutes label appear in the top bar.
+  const handleSleepOptionPress = useCallback((minutes: number) => {
+    setSleepTimerMinutes(minutes);
+    setTrackPanelMode(null);
+    setShowOverlay(true);
+  }, [setSleepTimerMinutes]);
 
   // Channel switching helper
   const switchChannel = useCallback((direction: 'up' | 'down') => {
@@ -1062,6 +1154,25 @@ const PlayerScreen = () => {
                 <Text style={pStyles.quickActionLabel} numberOfLines={1}>{subtitleQuickLabel}</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={[
+                pStyles.quickActionBtn,
+                trackPanelMode === 'sleep' && [pStyles.quickActionBtnActive, { borderColor: colors.primary }],
+                sleepTimerEndAt !== null && { borderColor: colors.primary },
+              ]}
+              onPress={() => toggleTrackPanel('sleep')}
+              accessibilityRole="button"
+              accessibilityLabel={t('sleepTimerA11yLabel')}
+              isTVSelectable={true}
+              tvParallaxProperties={{ enabled: false }}
+            >
+              <Icon name="bedtime" size={18} color="#FFF" />
+              <Text style={pStyles.quickActionLabel} numberOfLines={1}>
+                {sleepTimerEndAt !== null
+                  ? t('sleepTimerRemaining', { minutes: Math.max(1, Math.ceil(sleepRemainingMs / 60000)) })
+                  : t('sleepTimer')}
+              </Text>
+            </TouchableOpacity>
 
           </View>
 
@@ -1089,12 +1200,20 @@ const PlayerScreen = () => {
                         pStyles.trackOptionBtn,
                         option.selected && [pStyles.trackOptionBtnSelected, { borderColor: colors.primary, backgroundColor: 'rgba(255,255,255,0.14)' }],
                       ]}
-                      onPress={() => handleTrackSelection(
-                        option.id == null
-                          ? null
-                          : ({ id: option.id, label: option.label, language: option.secondaryLabel, kind: trackPanelMode } as PlaybackTrack),
-                        trackPanelMode,
-                      )}
+                      onPress={() => {
+                        if (trackPanelMode === 'sleep') {
+                          handleSleepOptionPress(typeof option.id === 'number' ? option.id : 0);
+                          return;
+                        }
+                        if (trackPanelMode) {
+                          handleTrackSelection(
+                            option.id == null
+                              ? null
+                              : ({ id: option.id, label: option.label, language: option.secondaryLabel, kind: trackPanelMode } as PlaybackTrack),
+                            trackPanelMode,
+                          );
+                        }
+                      }}
                       accessibilityRole="button"
                       accessibilityLabel={option.label}
                       isTVSelectable={true}
