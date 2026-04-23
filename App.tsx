@@ -22,6 +22,36 @@ import MediaInfoScreen from './screens/MediaInfoScreen';
 import SearchScreen from './screens/SearchScreen';
 import { Series, Season } from './types';
 
+// Wrap every screen component in its own ErrorBoundary so a render crash on
+// one screen cannot take down the whole app — the user can simply go back
+// to the previous screen or retry. The top-level ErrorBoundary in `App` is
+// still in place as a last-resort catch for errors that happen outside the
+// navigator (providers, NetworkMonitor, etc.).
+//
+// The wrapped components MUST be created once at module load, not inline in
+// the render, because React Navigation tracks component identity to manage
+// screen state. `React.memo` would not be enough; the wrapped reference has
+// to be stable across renders.
+const withScreenBoundary = <P extends object>(
+  Screen: React.ComponentType<P>,
+): React.ComponentType<P> => {
+  const Wrapped = (props: P) => (
+    <ErrorBoundary>
+      <Screen {...props} />
+    </ErrorBoundary>
+  );
+  Wrapped.displayName = `WithScreenBoundary(${Screen.displayName || Screen.name || 'Screen'})`;
+  return Wrapped;
+};
+
+const HomeScreenWithBoundary = withScreenBoundary(HomeScreen);
+const PlayerScreenWithBoundary = withScreenBoundary(PlayerScreen);
+const SeasonScreenWithBoundary = withScreenBoundary(SeasonScreen);
+const EpisodeScreenWithBoundary = withScreenBoundary(EpisodeScreen);
+const PinSetupScreenWithBoundary = withScreenBoundary(PinSetupScreen);
+const MediaInfoScreenWithBoundary = withScreenBoundary(MediaInfoScreen);
+const SearchScreenWithBoundary = withScreenBoundary(SearchScreen);
+
 // Navigation route map (without Splash route)
 export type RootStackParamList = {
   Home: {
@@ -85,37 +115,37 @@ const App = () => {
             {/* Splash route intentionally removed */}
             <Stack.Screen
               name="Home"
-              component={HomeScreen}
+              component={HomeScreenWithBoundary}
               options={{ title: t('appTitle'), headerShown: false }}
             />
             <Stack.Screen
               name="Player"
-              component={PlayerScreen}
+              component={PlayerScreenWithBoundary}
               options={{ headerShown: false }}
             />
             <Stack.Screen
               name="Season"
-              component={SeasonScreen}
+              component={SeasonScreenWithBoundary}
               options={({ route }) => ({ title: route.params.series.name })}
             />
             <Stack.Screen
               name="Episode"
-              component={EpisodeScreen}
+              component={EpisodeScreenWithBoundary}
               options={({ route }) => ({ title: route.params.season.name })}
             />
             <Stack.Screen
               name="PinSetup"
-              component={PinSetupScreen}
+              component={PinSetupScreenWithBoundary}
               options={{ title: t('parentalControl') }}
             />
             <Stack.Screen
               name="Search"
-              component={SearchScreen}
+              component={SearchScreenWithBoundary}
               options={{ title: t('search') }}
             />
             <Stack.Screen
               name="MediaInfo"
-              component={MediaInfoScreen}
+              component={MediaInfoScreenWithBoundary}
               options={{ title: '' }}
             />
             </Stack.Navigator>
