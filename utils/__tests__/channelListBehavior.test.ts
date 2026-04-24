@@ -72,6 +72,24 @@ describe('channelListBehavior', () => {
     expect(cleared).toBe(true);
   });
 
+  test('ignores focus restore when the target channel ref is unavailable', () => {
+    let executed = false;
+    let cleared = false;
+    const fakeSetTimeout = ((cb: () => void) => {
+      executed = true;
+      expect(() => cb()).not.toThrow();
+      return 456 as any;
+    }) as typeof setTimeout;
+    const fakeClearTimeout = ((id: any) => {
+      if (id === 456) cleared = true;
+    }) as typeof clearTimeout;
+
+    const cleanup = scheduleFocusRestore({}, 'missingChannel', fakeSetTimeout, fakeClearTimeout);
+    expect(executed).toBe(true);
+    cleanup();
+    expect(cleared).toBe(true);
+  });
+
   test('keeps EPG tick interval stable for predictable refresh cadence', () => {
     expect(getEpgTickIntervalMs()).toBe(30_000);
   });
@@ -117,5 +135,12 @@ describe('channelListBehavior', () => {
       shouldFocusFirstItem: true,
       isFirstItem: true,
     })).toBe(true);
+
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: undefined,
+      channelId: 'channelA',
+      shouldFocusFirstItem: false,
+      isFirstItem: true,
+    })).toBe(false);
   });
 });
