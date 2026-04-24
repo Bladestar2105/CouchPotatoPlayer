@@ -11,6 +11,8 @@ import { getAvailablePlayerTypesForPlatform } from '../components/player/PlayerA
 import { effects, radii, spacing, typography } from '../theme/tokens';
 import SectionHeader from '../components/ui/SectionHeader';
 import SurfaceCard from '../components/ui/SurfaceCard';
+import { OVERLAY_AUTO_HIDE_SECONDS_OPTIONS } from '../utils/playbackSettings';
+import { getTVBooleanSettingPressHandler } from '../utils/settingsControls';
 
 type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
@@ -24,6 +26,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
     ksplayerHardwareDecode, setKsplayerHardwareDecode,
     ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression,
     ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate,
+    overlayAutoHideSeconds, setOverlayAutoHideSeconds,
     tmdbApiKey, setTmdbApiKey
   } = useSettings();
 
@@ -301,6 +304,28 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
     setActiveSubMenu({ title, options, onSelect, selectedValue });
   };
 
+  const renderBooleanSettingValue = (
+    value: boolean,
+    onValueChange: (enabled: boolean) => void,
+  ) => {
+    if (Platform.isTV) {
+      return (
+        <Text style={{ color: value ? colors.primary : colors.textSecondary }}>
+          {value ? t('settings.enabled') : t('settings.disabled')}
+        </Text>
+      );
+    }
+
+    return (
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: colors.divider, true: colors.primary }}
+        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (value ? colors.primary : '#f4f3f4')}
+      />
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.sidebar, { backgroundColor: colors.card, borderColor: colors.divider }]}>
@@ -473,6 +498,21 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                 )}
 
                 {renderSettingRow(
+                  t('settings.overlayAutoHideSeconds'),
+                  t('settings.overlayAutoHideSecondsSubtitle', { seconds: overlayAutoHideSeconds }),
+                  <Text style={{ color: colors.primary }}>{t('settings.secondsValue', { value: overlayAutoHideSeconds })}</Text>,
+                  () => openSubMenu(
+                    t('settings.overlayAutoHideSeconds'),
+                    OVERLAY_AUTO_HIDE_SECONDS_OPTIONS.map((seconds) => ({
+                      label: t('settings.secondsValue', { value: seconds }),
+                      value: seconds,
+                    })),
+                    setOverlayAutoHideSeconds,
+                    overlayAutoHideSeconds,
+                  )
+                )}
+
+                {renderSettingRow(
                   t('settings.streamingBufferSize'),
                   t('settings.bufferSizeValue', { value: bufferSize }),
                   <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>,
@@ -489,13 +529,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                   renderSettingRow(
                     t('hardwareAcceleration'),
                     t('settings.useHardwareDecodingWhenAvailable'),
-                    <Switch
-                      value={vlcHardwareAcceleration}
-                      onValueChange={setVlcHardwareAcceleration}
-                      trackColor={{ false: colors.divider, true: colors.primary }}
-                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
-                    />,
-                    Platform.isTV ? () => setVlcHardwareAcceleration(!vlcHardwareAcceleration) : undefined
+                    renderBooleanSettingValue(vlcHardwareAcceleration, setVlcHardwareAcceleration),
+                    getTVBooleanSettingPressHandler(Platform.isTV, vlcHardwareAcceleration, setVlcHardwareAcceleration)
                   )
                 )}
 
@@ -504,35 +539,20 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                     {renderSettingRow(
                       t('hardwareAcceleration'),
                       t('settings.useHardwareDecoding'),
-                      <Switch
-                        value={ksplayerHardwareDecode}
-                        onValueChange={setKsplayerHardwareDecode}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerHardwareDecode(!ksplayerHardwareDecode) : undefined
+                      renderBooleanSettingValue(ksplayerHardwareDecode, setKsplayerHardwareDecode),
+                      getTVBooleanSettingPressHandler(Platform.isTV, ksplayerHardwareDecode, setKsplayerHardwareDecode)
                     )}
                     {renderSettingRow(
                       t('asyncDecompression'),
                       t('settings.processVideoFramesAsync'),
-                      <Switch
-                        value={ksplayerAsynchronousDecompression}
-                        onValueChange={setKsplayerAsynchronousDecompression}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerAsynchronousDecompression(!ksplayerAsynchronousDecompression) : undefined
+                      renderBooleanSettingValue(ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression),
+                      getTVBooleanSettingPressHandler(Platform.isTV, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression)
                     )}
                     {renderSettingRow(
                       t('adaptiveFrameRate'),
                       t('settings.autoAdjustDisplayFrameRate'),
-                      <Switch
-                        value={ksplayerDisplayFrameRate}
-                        onValueChange={setKsplayerDisplayFrameRate}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerDisplayFrameRate(!ksplayerDisplayFrameRate) : undefined
+                      renderBooleanSettingValue(ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate),
+                      getTVBooleanSettingPressHandler(Platform.isTV, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate)
                     )}
                   </>
                 )}
@@ -554,13 +574,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                   renderSettingRow(
                     t('settings.showAdultContent'),
                     isAdultUnlocked ? t('settings.unlocked') : t('settings.locked'),
-                    <Switch
-                      value={isAdultUnlocked}
-                      onValueChange={handleToggleAdultContent}
-                      trackColor={{ false: colors.divider, true: colors.primary }}
-                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (isAdultUnlocked ? colors.primary : '#f4f3f4')}
-                    />,
-                    Platform.isTV ? () => handleToggleAdultContent(!isAdultUnlocked) : undefined
+                    renderBooleanSettingValue(isAdultUnlocked, handleToggleAdultContent),
+                    getTVBooleanSettingPressHandler(Platform.isTV, isAdultUnlocked, handleToggleAdultContent)
                   )
                 )}
               </View>
