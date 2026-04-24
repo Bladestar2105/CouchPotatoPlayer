@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, BackHandler, TVEventControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform, BackHandler, TVEventControl } from 'react-native';
 import TVFocusGuideView from '../components/TVFocusGuideView';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { Season, Episode } from '../types';
 import { useIPTVMetadata, useIPTVProfiles } from '../context/IPTVContext';
-import { useSettings } from '../context/SettingsContext';
-import { spacing, typography } from '../theme/tokens';
+import { useTheme } from '../context/ThemeContext';
+import { FocusableCard } from '../components/Focusable';
+import { colors, radii, spacing, typography } from '../theme/tokens';
 import { useTranslation } from 'react-i18next';
+import { ChevronRight } from 'lucide-react-native';
 
 type SeasonScreenRouteProp = RouteProp<RootStackParamList, 'Season'>;
 type SeasonScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Season'>;
@@ -19,15 +21,13 @@ const SeasonScreen = () => {
   const isFocused = useIsFocused();
   const { getSeriesInfo } = useIPTVMetadata();
   const { currentProfile } = useIPTVProfiles();
-  const { colors } = useSettings();
+  const { accent } = useTheme();
   const { t } = useTranslation();
 
   const { series, returnGroupId, returnTab } = route.params;
   const [seasons, setSeasons] = useState<Season[]>(series.seasons || []);
   const [loading, setLoading] = useState<boolean>(false);
-  const [focusedSeasonId, setFocusedSeasonId] = useState<string | null>(null);
 
-  // Handle back button / Apple TV menu button to navigate properly instead of closing app
   useEffect(() => {
     if (!isFocused) return;
 
@@ -60,7 +60,7 @@ const SeasonScreen = () => {
 
     const fetchSeriesData = async () => {
       if (!currentProfile || currentProfile.type !== 'xtream') return;
-      if (seasons.length > 0) return; // Already have data
+      if (seasons.length > 0) return;
 
       setLoading(true);
       try {
@@ -69,7 +69,6 @@ const SeasonScreen = () => {
 
         const loadedSeasons: Record<string, Season> = {};
 
-        // Xtream episodes are grouped by season number: { "1": [...], "2": [...] }
         Object.keys(data.episodes).forEach((seasonNum) => {
           const episodesArr = data.episodes[seasonNum];
           const parsedEpisodes: Episode[] = episodesArr.map((ep: any) => ({
@@ -106,47 +105,40 @@ const SeasonScreen = () => {
     navigation.navigate('Episode', { season, returnGroupId, returnTab });
   }, [navigation, returnGroupId, returnTab]);
 
-  const renderItem = useCallback(({ item, index }: { item: Season; index: number }) => {
-    const isFocusedSeason = focusedSeasonId === item.id;
-    return (
-      <TouchableOpacity
-        style={[
-          styles.item,
-          {
-            borderColor: isFocusedSeason ? colors.primary : colors.divider,
-            backgroundColor: isFocusedSeason ? colors.primaryLight : colors.card,
-          },
-        ]}
-        onPress={() => handleSeasonPress(item)}
-        onFocus={() => setFocusedSeasonId(item.id)}
-        onBlur={() => setFocusedSeasonId((prev) => (prev === item.id ? null : prev))}
-        activeOpacity={0.9}
-        accessible={true}
-        isTVSelectable={true}
-        hasTVPreferredFocus={index === 0}
-        tvParallaxProperties={{ enabled: false }}
-        accessibilityRole="button"
-        accessibilityLabel={`Season: ${item.name}`}
-        accessibilityHint={`Shows episodes for ${item.name}`}
-      >
-        <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
-        <Text style={[styles.count, { color: colors.textSecondary }]}>
-          {item.episodes.length} {t('episode')}
-        </Text>
-      </TouchableOpacity>
-    );
-  }, [colors.card, colors.divider, colors.primary, colors.primaryLight, colors.text, colors.textSecondary, focusedSeasonId, handleSeasonPress, t]);
+  const renderItem = useCallback(({ item, index }: { item: Season; index: number }) => (
+    <FocusableCard
+      style={styles.item}
+      onSelect={() => handleSeasonPress(item)}
+      hasTVPreferredFocus={index === 0}
+      accessibilityRole="button"
+      accessibilityLabel={`Season: ${item.name}`}
+      accessibilityHint={`Shows episodes for ${item.name}`}
+    >
+      <View style={styles.itemRow}>
+        <View style={[styles.ordinal, { backgroundColor: `${accent}1F`, borderColor: accent }]}>
+          <Text style={[styles.ordinalText, { color: accent }]}>{item.seasonNumber}</Text>
+        </View>
+        <View style={styles.itemText}>
+          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.count}>
+            {item.episodes.length} {t('episode')}
+          </Text>
+        </View>
+        <ChevronRight size={20} color={colors.textDim} />
+      </View>
+    </FocusableCard>
+  ), [accent, handleSeasonPress, t]);
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={accent} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
       <TVFocusGuideView autoFocus style={styles.container}>
         <View style={styles.listShell}>
           <FlatList
@@ -156,22 +148,16 @@ const SeasonScreen = () => {
             contentContainerStyle={[styles.listContent, seasons.length === 0 && styles.listContentEmpty]}
             ListHeaderComponent={(
               <View style={styles.headerContainer}>
-                <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-                  {series.name}
-                </Text>
-                <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                <Text style={styles.headerTitle} numberOfLines={1}>{series.name}</Text>
+                <Text style={styles.headerSubtitle}>
                   {t('tv.seasonsCount', { count: seasons.length })}
                 </Text>
               </View>
             )}
             ListEmptyComponent={(
               <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                  {t('noResults')}
-                </Text>
-                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                  {t('focusPreviewNoEpg')}
-                </Text>
+                <Text style={styles.emptyStateTitle}>{t('noResults')}</Text>
+                <Text style={styles.emptyStateText}>{t('focusPreviewNoEpg')}</Text>
               </View>
             )}
           />
@@ -182,14 +168,21 @@ const SeasonScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   listShell: {
     flex: 1,
     width: '100%',
     maxWidth: Platform.isTV ? 1280 : undefined,
     alignSelf: 'center',
-    paddingHorizontal: Platform.isTV ? spacing.xxl : 0,
-    paddingTop: Platform.isTV ? spacing.md : 0,
+    paddingHorizontal: Platform.isTV ? spacing.xxl : spacing.lg,
+    paddingTop: Platform.isTV ? spacing.md : spacing.sm,
   },
   listContent: {
     paddingBottom: spacing.xxxl,
@@ -201,23 +194,55 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   headerTitle: {
-    ...typography.title,
-    fontSize: Platform.isTV ? 28 : typography.title.fontSize,
+    ...typography.headline,
+    color: colors.text,
+    fontSize: Platform.isTV ? 32 : 24,
   },
   headerSubtitle: {
     ...typography.caption,
+    color: colors.textDim,
     marginTop: spacing.xs,
-    fontSize: Platform.isTV ? 15 : typography.caption.fontSize,
   },
   item: {
-    paddingVertical: Platform.isTV ? spacing.xl : spacing.lg - 1,
-    paddingHorizontal: Platform.isTV ? spacing.xl : spacing.lg - 1,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderRadius: 12,
-    marginBottom: spacing.sm,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.lg,
+    marginBottom: spacing.sm + 2,
   },
-  name: { ...typography.body, fontWeight: '700' },
-  count: { ...typography.caption, fontSize: Platform.isTV ? 15 : 12, marginTop: spacing.xs },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Platform.isTV ? spacing.xl : spacing.lg,
+    paddingVertical: Platform.isTV ? spacing.lg : spacing.md + 2,
+    gap: spacing.md,
+  },
+  ordinal: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ordinalText: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  itemText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  name: {
+    ...typography.subtitle,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  count: {
+    ...typography.caption,
+    color: colors.textDim,
+    marginTop: spacing.xs,
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -227,10 +252,12 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     ...typography.title,
+    color: colors.text,
     marginBottom: spacing.sm,
   },
   emptyStateText: {
     ...typography.body,
+    color: colors.textDim,
     textAlign: 'center',
   },
 });

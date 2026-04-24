@@ -19,6 +19,7 @@ if (!Platform.isTV) {
 }
 import { useIPTVCollections, useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { Channel } from '../types';
@@ -49,6 +50,7 @@ const areTrackIdsEqual = (left: number | string | null | undefined, right: numbe
 const PlayerScreen = () => {
   const { t } = useTranslation();
   const { colors } = useSettings();
+  const { accent } = useTheme();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -920,8 +922,8 @@ const PlayerScreen = () => {
       {/* TiviMate-style channel switch mini-overlay (top-right) */}
       {showChannelSwitch && currentChannel && (
         <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
-          <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: colors.primary }]}>
-            <View style={[pStyles.channelNumberBadge, { backgroundColor: colors.primary }]}>
+          <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: accent }]}>
+            <View style={[pStyles.channelNumberBadge, { backgroundColor: accent }]}>
               <Text style={pStyles.channelNumberText}>{currentChannelNumber}</Text>
             </View>
             {currentChannel.logo && currentChannel.logo.startsWith('http') ? (
@@ -1033,7 +1035,7 @@ const PlayerScreen = () => {
                 ref={audioButtonRef}
                 style={[
                   pStyles.quickActionBtn,
-                  trackPanelMode === 'audio' && [pStyles.quickActionBtnActive, { borderColor: colors.primary }],
+                  trackPanelMode === 'audio' && [pStyles.quickActionBtnActive, { borderColor: accent }],
                 ]}
                 onPress={() => toggleTrackPanel('audio')}
                 accessibilityRole="button"
@@ -1050,7 +1052,7 @@ const PlayerScreen = () => {
                 ref={subtitleButtonRef}
                 style={[
                   pStyles.quickActionBtn,
-                  trackPanelMode === 'text' && [pStyles.quickActionBtnActive, { borderColor: colors.primary }],
+                  trackPanelMode === 'text' && [pStyles.quickActionBtnActive, { borderColor: accent }],
                 ]}
                 onPress={() => toggleTrackPanel('text')}
                 accessibilityRole="button"
@@ -1067,7 +1069,7 @@ const PlayerScreen = () => {
 
           {trackPanelMode && (
             <View style={pStyles.trackPanelShell} pointerEvents="box-none">
-              <View style={[pStyles.trackPanel, { borderColor: colors.primary }]}>
+              <View style={[pStyles.trackPanel, { borderColor: accent }]}>
                 <View style={pStyles.trackPanelHeader}>
                   <Text style={pStyles.trackPanelTitle}>{trackPanelTitle}</Text>
                   <TouchableOpacity
@@ -1087,7 +1089,7 @@ const PlayerScreen = () => {
                       key={`${trackPanelMode}:${String(option.id ?? 'off')}`}
                       style={[
                         pStyles.trackOptionBtn,
-                        option.selected && [pStyles.trackOptionBtnSelected, { borderColor: colors.primary, backgroundColor: 'rgba(255,255,255,0.14)' }],
+                        option.selected && [pStyles.trackOptionBtnSelected, { borderColor: accent, backgroundColor: 'rgba(255,255,255,0.14)' }],
                       ]}
                       onPress={() => handleTrackSelection(
                         option.id == null
@@ -1106,7 +1108,7 @@ const PlayerScreen = () => {
                           <Text style={pStyles.trackOptionMeta} numberOfLines={1}>{option.secondaryLabel}</Text>
                         ) : null}
                       </View>
-                      {option.selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
+                      {option.selected ? <Icon name="check" size={18} color={accent} /> : null}
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -1123,7 +1125,7 @@ const PlayerScreen = () => {
 
           {/* Bottom Bar - TiviMate-style EPG info */}
           {currentChannel && (
-              <View style={[pStyles.bottomBar, { borderTopColor: colors.primary }]}>
+              <View style={[pStyles.bottomBar, { borderTopColor: accent }]}>
                  <View style={pStyles.infoContainer}>
                      <Image source={currentChannel.logo && currentChannel.logo.startsWith('http') ? { uri: currentChannel.logo } : defaultLogo} style={pStyles.channelLogo} resizeMode="contain" />
 
@@ -1160,7 +1162,7 @@ const PlayerScreen = () => {
                                         handleSeekBarTouch(event.nativeEvent.locationX, true);
                                       }}
                                     >
-                                        <View style={[pStyles.progressBarFill, { width: `${canSeek ? playbackPercent : progressPercent}%`, backgroundColor: colors.primary }]} />
+                                        <View style={[pStyles.progressBarFill, { width: `${canSeek ? playbackPercent : progressPercent}%`, backgroundColor: accent }]} />
                                     </View>
                                     <Text style={pStyles.programTimeText}>
                                       {canSeek
@@ -1192,7 +1194,7 @@ const PlayerScreen = () => {
 
           {/* VOD/Series/Catchup info bar */}
           {!currentChannel && (
-            <View style={[pStyles.bottomBar, { borderTopColor: colors.primary }]}>
+            <View style={[pStyles.bottomBar, { borderTopColor: accent }]}>
               <View style={pStyles.vodInfoContainer}>
                 <View style={pStyles.vodHeaderRow}>
                   <Text style={pStyles.vodTitle} numberOfLines={1}>{playbackTitle}</Text>
@@ -1218,7 +1220,7 @@ const PlayerScreen = () => {
                       handleSeekBarTouch(event.nativeEvent.locationX, true);
                     }}
                   >
-                    <View style={[pStyles.progressBarFill, { width: `${playbackPercent}%`, backgroundColor: colors.primary }]} />
+                    <View style={[pStyles.progressBarFill, { width: `${playbackPercent}%`, backgroundColor: accent }]} />
                   </View>
                   <Text style={pStyles.programTimeText}>
                     {playbackProgress.duration > 0 ? formatDuration(playbackProgress.duration) : '--:--'}

@@ -6,12 +6,12 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
-import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle } from 'lucide-react-native';
+import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle, ChevronRight, Plus } from 'lucide-react-native';
 import { getAvailablePlayerTypesForPlatform } from '../components/player/PlayerAdapter';
-import { ACCENT_CHOICES, effects, radii, spacing, typography } from '../theme/tokens';
+import { ACCENT_CHOICES, colors as tokens, radii, spacing, typography } from '../theme/tokens';
 import SectionHeader from '../components/ui/SectionHeader';
-import SurfaceCard from '../components/ui/SurfaceCard';
 import { useTheme } from '../context/ThemeContext';
+import { FocusableButton } from '../components/Focusable';
 
 type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
@@ -20,7 +20,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
   const { currentProfile, profiles, removeProfile, loadProfile, unloadProfile } = useIPTVProfiles();
   const { pin, isAdultUnlocked, unlockAdultContent, lockAdultContent } = useIPTVParental();
   const {
-    colors, themeMode, setThemeMode, bufferSize, setBufferSize,
+    themeMode, setThemeMode, bufferSize, setBufferSize,
     playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration,
     ksplayerHardwareDecode, setKsplayerHardwareDecode,
     ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression,
@@ -251,15 +251,16 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
   const renderCategoryItem = (id: typeof activeCategory, icon: any, label: string, index: number) => {
     const isActive = activeCategory === id;
     const isFocused = focusedCategory === id;
+    const tinted = isFocused || isActive;
     return (
       <TouchableOpacity
         ref={index === 0 ? firstCategoryRef : undefined}
         style={[
           styles.categoryItem,
-          (isActive || isFocused) && (Platform.isTV
-            ? { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 }
-            : { backgroundColor: 'rgba(233, 105, 42, 0.16)', borderBottomColor: '#E9692A', borderBottomWidth: 2 }),
-          isFocused && Platform.isTV ? styles.categoryItemFocused : null,
+          tinted && (Platform.isTV
+            ? { backgroundColor: isFocused ? accent : `${accent}24`, borderLeftColor: accent, borderLeftWidth: 3 }
+            : { backgroundColor: `${accent}24`, borderBottomColor: accent, borderBottomWidth: 2 }),
+          isFocused && Platform.isTV ? { borderColor: accent, borderWidth: 1.5 } : null,
         ]}
         onPress={() => setActiveCategory(id)}
         onFocus={() => setFocusedCategory(id)}
@@ -271,7 +272,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
         hasTVPreferredFocus={isFocusedScreen && index === 0}
       >
         {icon}
-        <Text style={[styles.categoryText, { color: isActive || isFocused ? '#FAFAFA' : '#A1A1AA' }]}>{label}</Text>
+        <Text style={[styles.categoryText, { color: tinted ? tokens.text : tokens.textDim }]}>{label}</Text>
       </TouchableOpacity>
     );
   };
@@ -283,18 +284,18 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
         onPress={onPress}
         disabled={!onPress && Platform.isTV}
         accessible={true}
-        accessibilityRole={onPress ? "button" : "none"}
+        accessibilityRole={onPress ? 'button' : 'none'}
         isTVSelectable={!!onPress}
       >
-        <SurfaceCard backgroundColor={colors.card} borderColor={colors.divider} style={styles.settingRow}>
+        <View style={styles.settingRow}>
           <View style={styles.settingRowLeft}>
-            <Text style={[styles.settingTitle, { color: colors.text }]}>{title}</Text>
-            {subtitle ? <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text> : null}
+            <Text style={styles.settingTitle}>{title}</Text>
+            {subtitle ? <Text style={styles.settingSubtitle}>{subtitle}</Text> : null}
           </View>
           <View style={styles.settingRowRight} pointerEvents={Platform.isTV ? 'none' : 'auto'}>
             {rightContent}
           </View>
-        </SurfaceCard>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -304,61 +305,64 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.sidebar, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-          <Text style={[styles.sidebarTitle, { color: colors.text }]}>{t('settings')}</Text>
+    <View style={[styles.container, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.sidebar, { backgroundColor: tokens.surface, borderColor: tokens.borderSoft }]}>
+          <Text style={[styles.sidebarTitle, { color: tokens.text }]}>{t('settings')}</Text>
         <ScrollView
           style={Platform.isTV ? { flex: 1 } : undefined}
           horizontal={false}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={!Platform.isTV ? styles.mobileCategoryList : undefined}
         >
-          {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.playlists, 0)}
-          {renderCategoryItem('general', <Settings color={activeCategory === 'general' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.general, 1)}
-          {renderCategoryItem('appearance', <Palette color={activeCategory === 'appearance' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.appearance, 2)}
-          {renderCategoryItem('playback', <PlayCircle color={activeCategory === 'playback' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.playback, 3)}
-          {renderCategoryItem('parental', <Shield color={activeCategory === 'parental' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.parental, 4)}
-          {renderCategoryItem('advanced', <Database color={activeCategory === 'advanced' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.advanced, 5)}
+          {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? accent : tokens.textDim} size={20} style={{ marginRight: 12 }} />, categoryLabels.playlists, 0)}
+          {renderCategoryItem('general', <Settings color={activeCategory === 'general' ? accent : tokens.textDim} size={20} style={{ marginRight: 12 }} />, categoryLabels.general, 1)}
+          {renderCategoryItem('appearance', <Palette color={activeCategory === 'appearance' ? accent : tokens.textDim} size={20} style={{ marginRight: 12 }} />, categoryLabels.appearance, 2)}
+          {renderCategoryItem('playback', <PlayCircle color={activeCategory === 'playback' ? accent : tokens.textDim} size={20} style={{ marginRight: 12 }} />, categoryLabels.playback, 3)}
+          {renderCategoryItem('parental', <Shield color={activeCategory === 'parental' ? accent : tokens.textDim} size={20} style={{ marginRight: 12 }} />, categoryLabels.parental, 4)}
+          {renderCategoryItem('advanced', <Database color={activeCategory === 'advanced' ? accent : tokens.textDim} size={20} style={{ marginRight: 12 }} />, categoryLabels.advanced, 5)}
         </ScrollView>
       </View>
 
-      <View style={[styles.mainContent, { backgroundColor: colors.background }]}>
+      <View style={[styles.mainContent, { backgroundColor: tokens.bg }]}>
         {activeSubMenu ? (
           <View style={styles.subMenuContainer}>
              <TouchableOpacity
-               style={styles.subMenuBack}
+               style={[styles.subMenuBack, { backgroundColor: tokens.surface, borderColor: tokens.borderSoft }]}
                onPress={() => setActiveSubMenu(null)}
                accessible={true}
                accessibilityRole="button"
                accessibilityLabel={t('settings.backToCategory', { category: categoryLabels[activeCategory] })}
                isTVSelectable={true}
              >
-               <Text style={[styles.subMenuBackText, { color: colors.primary }]}>← {t('settings.backToCategory', { category: categoryLabels[activeCategory] })}</Text>
+               <Text style={[styles.subMenuBackText, { color: accent }]}>← {t('settings.backToCategory', { category: categoryLabels[activeCategory] })}</Text>
              </TouchableOpacity>
-             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{activeSubMenu.title}</Text>
+             <Text style={[styles.sectionTitle, { color: tokens.textDim }]}>{activeSubMenu.title}</Text>
              <ScrollView>
-               {activeSubMenu.options.map((opt, index) => (
-                 <TouchableOpacity
-                   key={index}
-                   style={[
-                     styles.subMenuItem,
-                     { backgroundColor: colors.card, borderColor: activeSubMenu.selectedValue === opt.value ? colors.primary : colors.divider },
-                     activeSubMenu.selectedValue === opt.value && { borderWidth: 2 }
-                   ]}
-                   onPress={() => {
-                     activeSubMenu.onSelect(opt.value);
-                     setActiveSubMenu(null);
-                   }}
-                   accessible={true}
-                   accessibilityRole="button"
-                   accessibilityState={{ selected: activeSubMenu.selectedValue === opt.value }}
-                   isTVSelectable={true}
-                 >
-                   <Text style={[styles.subMenuItemText, { color: activeSubMenu.selectedValue === opt.value ? colors.primary : colors.text }]}>
-                     {opt.label}
-                   </Text>
-                 </TouchableOpacity>
-               ))}
+               {activeSubMenu.options.map((opt, index) => {
+                 const selected = activeSubMenu.selectedValue === opt.value;
+                 return (
+                   <TouchableOpacity
+                     key={index}
+                     style={[
+                       styles.subMenuItem,
+                       { backgroundColor: tokens.surface, borderColor: selected ? accent : tokens.borderSoft },
+                       selected && { borderWidth: 2 },
+                     ]}
+                     onPress={() => {
+                       activeSubMenu.onSelect(opt.value);
+                       setActiveSubMenu(null);
+                     }}
+                     accessible={true}
+                     accessibilityRole="button"
+                     accessibilityState={{ selected }}
+                     isTVSelectable={true}
+                   >
+                     <Text style={[styles.subMenuItemText, { color: selected ? accent : tokens.text }]}>
+                       {opt.label}
+                     </Text>
+                   </TouchableOpacity>
+                 );
+               })}
              </ScrollView>
           </View>
         ) : (
@@ -366,24 +370,24 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
             {/* Playlists */}
             {activeCategory === 'playlists' && (
               <View>
-                <SectionHeader title={t('providers')} color={colors.textSecondary} />
+                <SectionHeader title={t('providers')} color={tokens.textDim} />
                 {profiles.map(p => {
                   const isCurrent = p.id === currentProfile?.id;
                   return (
-                    <View key={p.id} style={[styles.profileTile, { backgroundColor: colors.card, borderColor: isCurrent ? colors.primary : colors.divider, borderWidth: isCurrent ? 2 : 1 }]}>
+                    <View key={p.id} style={[styles.profileTile, { backgroundColor: tokens.surface, borderColor: isCurrent ? accent : tokens.borderSoft, borderWidth: isCurrent ? 2 : 1 }]}>
                       <View style={styles.tileLeft}>
-                        <Text style={[styles.tileTitle, { color: isCurrent ? colors.primary : colors.text, fontWeight: isCurrent ? 'bold' : 'normal' }]}>{p.name}</Text>
-                        <Text style={[styles.tileSubtitle, { color: colors.textSecondary }]}>{(p.type === 'm3u' || p.type === 'xtream') ? p.url : ''}</Text>
+                        <Text style={[styles.tileTitle, { color: isCurrent ? accent : tokens.text, fontWeight: isCurrent ? '700' : '500' }]}>{p.name}</Text>
+                        <Text style={[styles.tileSubtitle, { color: tokens.textDim }]}>{(p.type === 'm3u' || p.type === 'xtream') ? p.url : ''}</Text>
 
                         {p.providerInfo && (
                           <View style={{ marginTop: 8 }}>
-                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('channelsCount')}: {p.providerInfo.channelsCount ?? '-'}</Text>
-                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('moviesCount')}: {p.providerInfo.moviesCount ?? '-'}</Text>
-                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('seriesCount')}: {p.providerInfo.seriesCount ?? '-'}</Text>
+                            <Text style={{ color: tokens.textDim, fontSize: 12 }}>{t('channelsCount')}: {p.providerInfo.channelsCount ?? '-'}</Text>
+                            <Text style={{ color: tokens.textDim, fontSize: 12 }}>{t('moviesCount')}: {p.providerInfo.moviesCount ?? '-'}</Text>
+                            <Text style={{ color: tokens.textDim, fontSize: 12 }}>{t('seriesCount')}: {p.providerInfo.seriesCount ?? '-'}</Text>
                             {p.type === 'xtream' && (
                               <>
-                                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('connections')}: {p.providerInfo.activeConnections ?? '-'} / {p.providerInfo.maxConnections ?? '-'}</Text>
-                                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('expiryDate')}: {p.providerInfo.expiryDate ? new Date(Number(p.providerInfo.expiryDate) * 1000).toLocaleDateString() : '-'}</Text>
+                                <Text style={{ color: tokens.textDim, fontSize: 12 }}>{t('connections')}: {p.providerInfo.activeConnections ?? '-'} / {p.providerInfo.maxConnections ?? '-'}</Text>
+                                <Text style={{ color: tokens.textDim, fontSize: 12 }}>{t('expiryDate')}: {p.providerInfo.expiryDate ? new Date(Number(p.providerInfo.expiryDate) * 1000).toLocaleDateString() : '-'}</Text>
                               </>
                             )}
                           </View>
@@ -391,12 +395,12 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                       </View>
                       <View style={styles.tileRight}>
                         {!isCurrent && (
-                          <TouchableOpacity onPress={() => loadProfile(p)} style={styles.iconButton} accessible={true} accessibilityRole="button" accessibilityLabel={t('settings.loadProfileA11y', { name: p.name })} isTVSelectable={true}>
-                            <Text style={{ color: colors.primary }}>{t('load')}</Text>
+                          <TouchableOpacity onPress={() => loadProfile(p)} style={[styles.iconButton, { backgroundColor: tokens.elevated }]} accessible={true} accessibilityRole="button" accessibilityLabel={t('settings.loadProfileA11y', { name: p.name })} isTVSelectable={true}>
+                            <Text style={{ color: accent, fontWeight: '600' }}>{t('load')}</Text>
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={styles.iconButton} accessible={true} accessibilityRole="button" accessibilityLabel={t('settings.deleteProfileA11y', { name: p.name })} isTVSelectable={true}>
-                          <Text style={{ color: colors.error }}>{t('delete')}</Text>
+                        <TouchableOpacity onPress={() => handleDeleteProfile(p.id)} style={[styles.iconButton, { backgroundColor: tokens.elevated }]} accessible={true} accessibilityRole="button" accessibilityLabel={t('settings.deleteProfileA11y', { name: p.name })} isTVSelectable={true}>
+                          <Text style={{ color: tokens.danger, fontWeight: '600' }}>{t('delete')}</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -404,30 +408,26 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                 })}
 
                 {/* Add New Provider Button */}
-                <TouchableOpacity
-                  style={[styles.addProviderButton, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    unloadProfile();
-                  }}
-                  accessible={true}
-                  accessibilityRole="button"
+                <FocusableButton
+                  variant="primary"
+                  label={t('settings.addProvider')}
+                  onPress={() => unloadProfile()}
                   accessibilityLabel={t('settings.addProvider')}
-                  isTVSelectable={true}
-                >
-                  <Tv color="#FFF" size={20} style={{ marginRight: 10 }} />
-                  <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>{t('settings.addProvider')}</Text>
-                </TouchableOpacity>
+                  fullWidth
+                  leading={<Plus color="#FFF" size={18} />}
+                  style={{ marginTop: spacing.lg }}
+                />
               </View>
             )}
 
             {/* General */}
             {activeCategory === 'general' && (
               <View>
-                <SectionHeader title={categoryLabels.general} color={colors.textSecondary} />
+                <SectionHeader title={categoryLabels.general} color={tokens.textDim} />
                 {renderSettingRow(
                   t('settings.updateInterval'),
                   t('settings.updateIntervalSubtitle', { hours: updateInterval }),
-                  <Text style={{ color: colors.primary }}>{t('settings.hoursValue', { value: updateInterval })}</Text>,
+                  <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.hoursValue', { value: updateInterval })}</Text>,
                   () => openSubMenu(t('settings.updateInterval'), [
                     { label: t('settings.hoursValue', { value: 12 }), value: 12 },
                     { label: t('settings.hoursValue', { value: 24 }), value: 24 },
@@ -437,7 +437,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                 {renderSettingRow(
                   t('settings.updatePlaylist'),
                   t('settings.updatePlaylistSubtitle'),
-                  <Text style={{ color: colors.primary }}>{t('settings.updateNow')}</Text>,
+                  <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.updateNow')}</Text>,
                   handleManualUpdate
                 )}
               </View>
@@ -446,13 +446,13 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
             {/* Appearance */}
             {activeCategory === 'appearance' && (
               <View>
-                <SectionHeader title={categoryLabels.appearance} color={colors.textSecondary} />
+                <SectionHeader title={categoryLabels.appearance} color={tokens.textDim} />
                 {renderSettingRow(
                   t('settings.themeMode'),
                   t('settings.themeCurrent', { mode: t(`settings.theme.${themeMode}`) }),
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                     {themeMode === 'light' ? <Sun color={colors.text} size={16} /> : themeMode === 'dark' ? <Moon color={colors.text} size={16} /> : <Monitor color={colors.text} size={16} />}
-                     <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>
+                     {themeMode === 'light' ? <Sun color={tokens.text} size={16} /> : themeMode === 'dark' ? <Moon color={tokens.text} size={16} /> : <Monitor color={tokens.text} size={16} />}
+                     <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.change')}</Text>
                   </View>,
                   () => openSubMenu(t('settings.themeMode'), [
                     { label: t('settings.theme.dark'), value: 'dark' },
@@ -474,10 +474,10 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                         borderRadius: 9,
                         backgroundColor: accent,
                         borderWidth: 2,
-                        borderColor: colors.border,
+                        borderColor: tokens.border,
                       }}
                     />
-                    <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>
+                    <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.change')}</Text>
                   </View>,
                   () => openSubMenu(
                     t('settings.appearance.accent'),
@@ -494,7 +494,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                       ? t('settings.appearance.densityCompact')
                       : t('settings.appearance.densityCozy'),
                   }),
-                  <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>,
+                  <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.change')}</Text>,
                   () => openSubMenu(
                     t('settings.appearance.density'),
                     [
@@ -511,18 +511,18 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
             {/* Playback */}
             {activeCategory === 'playback' && (
               <View>
-                <SectionHeader title={categoryLabels.playback} color={colors.textSecondary} />
+                <SectionHeader title={categoryLabels.playback} color={tokens.textDim} />
                 {renderSettingRow(
                   t('playerSettings'),
                   getPlayerTypeName(playerType),
-                  <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>,
+                  <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.change')}</Text>,
                   () => openSubMenu(t('playerSettings'), playerTypeOptions, setPlayerType, playerType)
                 )}
 
                 {renderSettingRow(
                   t('settings.streamingBufferSize'),
                   t('settings.bufferSizeValue', { value: bufferSize }),
-                  <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>,
+                  <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.change')}</Text>,
                   () => openSubMenu(t('settings.bufferSize'), [
                     { label: '8 MB', value: 8 },
                     { label: '16 MB', value: 16 },
@@ -539,8 +539,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                     <Switch
                       value={vlcHardwareAcceleration}
                       onValueChange={setVlcHardwareAcceleration}
-                      trackColor={{ false: colors.divider, true: colors.primary }}
-                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? colors.primary : '#f4f3f4')}
+                      trackColor={{ false: tokens.border, true: accent }}
+                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? accent : '#f4f3f4')}
                     />,
                     Platform.isTV ? () => setVlcHardwareAcceleration(!vlcHardwareAcceleration) : undefined
                   )
@@ -554,8 +554,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                       <Switch
                         value={ksplayerHardwareDecode}
                         onValueChange={setKsplayerHardwareDecode}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? colors.primary : '#f4f3f4')}
+                        trackColor={{ false: tokens.border, true: accent }}
+                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? accent : '#f4f3f4')}
                       />,
                       Platform.isTV ? () => setKsplayerHardwareDecode(!ksplayerHardwareDecode) : undefined
                     )}
@@ -565,8 +565,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                       <Switch
                         value={ksplayerAsynchronousDecompression}
                         onValueChange={setKsplayerAsynchronousDecompression}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? colors.primary : '#f4f3f4')}
+                        trackColor={{ false: tokens.border, true: accent }}
+                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? accent : '#f4f3f4')}
                       />,
                       Platform.isTV ? () => setKsplayerAsynchronousDecompression(!ksplayerAsynchronousDecompression) : undefined
                     )}
@@ -576,8 +576,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                       <Switch
                         value={ksplayerDisplayFrameRate}
                         onValueChange={setKsplayerDisplayFrameRate}
-                        trackColor={{ false: colors.divider, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? colors.primary : '#f4f3f4')}
+                        trackColor={{ false: tokens.border, true: accent }}
+                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? accent : '#f4f3f4')}
                       />,
                       Platform.isTV ? () => setKsplayerDisplayFrameRate(!ksplayerDisplayFrameRate) : undefined
                     )}
@@ -589,11 +589,11 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
             {/* Parental Control */}
             {activeCategory === 'parental' && (
               <View>
-                <SectionHeader title={categoryLabels.parental} color={colors.textSecondary} />
+                <SectionHeader title={categoryLabels.parental} color={tokens.textDim} />
                 {renderSettingRow(
                   t('settings.parentalPin'),
                   pin ? t('settings.pinSet') : t('settings.pinNotSet'),
-                  <Text style={{ color: colors.primary }}>{t('settings.manage')}</Text>,
+                  <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.manage')}</Text>,
                   () => navigation.navigate('PinSetup')
                 )}
 
@@ -604,8 +604,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                     <Switch
                       value={isAdultUnlocked}
                       onValueChange={handleToggleAdultContent}
-                      trackColor={{ false: colors.divider, true: colors.primary }}
-                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (isAdultUnlocked ? colors.primary : '#f4f3f4')}
+                      trackColor={{ false: tokens.border, true: accent }}
+                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (isAdultUnlocked ? accent : '#f4f3f4')}
                     />,
                     Platform.isTV ? () => handleToggleAdultContent(!isAdultUnlocked) : undefined
                   )
@@ -616,23 +616,23 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
             {/* Advanced */}
             {activeCategory === 'advanced' && (
               <View>
-                <SectionHeader title={categoryLabels.advanced} color={colors.textSecondary} />
+                <SectionHeader title={categoryLabels.advanced} color={tokens.textDim} />
                 {renderSettingRow(
                   t('settings.tmdbTitle'),
                   tmdbApiKey ? t('settings.tmdbKeySetMasked', { prefix: tmdbApiKey.substring(0, 4) }) : t('settings.tmdbNoKeySet'),
-                  <Text style={{ color: colors.primary }}>{tmdbApiKey ? t('edit') : t('settings.tmdbSetKey')}</Text>,
+                  <Text style={{ color: accent, fontWeight: '600' }}>{tmdbApiKey ? t('edit') : t('settings.tmdbSetKey')}</Text>,
                   handleSetTmdbKey
                 )}
                 {renderSettingRow(
                   t('settings.clearEpgAndAppCache'),
                   t('settings.clearEpgAndAppCacheSubtitle'),
-                  <Text style={{ color: colors.error }}>{t('clear')}</Text>,
+                  <Text style={{ color: tokens.danger, fontWeight: '600' }}>{t('clear')}</Text>,
                   handleClearCache
                 )}
                 {renderSettingRow(
                   t('settings.logoutAndClearData'),
                   t('settings.logoutAndClearDataSubtitle'),
-                  <Text style={{ color: colors.error }}>{t('settings.logoutCta')}</Text>,
+                  <Text style={{ color: tokens.danger, fontWeight: '600' }}>{t('settings.logoutCta')}</Text>,
                   handleLogout
                 )}
               </View>
@@ -695,26 +695,30 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   settingRowTouchable: {
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: tokens.surface,
     borderRadius: radii.lg,
-    borderWidth: effects.subtleBorderWidth,
-    marginBottom: 0,
-    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: tokens.borderSoft,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    minHeight: 60,
   },
   settingRowLeft: {
     flex: 1,
   },
   settingTitle: {
-    ...typography.body,
+    ...typography.subtitle,
+    color: tokens.text,
   },
   settingSubtitle: {
     ...typography.caption,
+    color: tokens.textDim,
     marginTop: spacing.xs,
-    opacity: 0.8,
   },
   settingRowRight: {
     marginLeft: spacing.lg,
@@ -744,18 +748,10 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   iconButton: {
-    marginLeft: spacing.lg,
-    padding: spacing.sm + 2,
+    marginLeft: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radii.md,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  addProviderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.lg,
-    borderRadius: radii.lg,
-    marginTop: spacing.lg,
   },
   // SubMenu Styles
   subMenuContainer: {
@@ -763,11 +759,13 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   subMenuBack: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.05)',
     alignSelf: 'flex-start',
-    borderRadius: radii.sm,
+    borderRadius: radii.pill,
+    borderWidth: 1,
     marginBottom: spacing.xl,
   },
   subMenuBackText: {
@@ -775,13 +773,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   subMenuItem: {
-    padding: spacing.lg + 2,
-    borderRadius: radii.md,
-    borderWidth: effects.subtleBorderWidth,
-    marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg + 2,
+    paddingVertical: spacing.lg,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    marginBottom: spacing.sm + 2,
   },
   subMenuItemText: {
-    ...typography.body,
+    ...typography.subtitle,
   },
 });
 
