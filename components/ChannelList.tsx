@@ -503,14 +503,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     }
   }, [schedulePrefetchChannelBatch]);
 
-
-  const channelListExtraData = useMemo(() => ({
-    focusedChannelId,
-    currentStreamId: currentStream?.id,
-  }), [focusedChannelId, currentStream?.id]);
-
   const viewabilityConfig = useRef({
-
     itemVisiblePercentThreshold: 30,
     minimumViewTime: 120,
   }).current;
@@ -766,7 +759,6 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                       ref={flatListRef}
                       data={selectedChannels}
                       keyExtractor={(item) => item.id}
-                      extraData={channelListExtraData}
                       initialNumToRender={listPerfConfig.initialNumToRender}
                       maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
                       windowSize={Math.max(listPerfConfig.windowSize, 7)}

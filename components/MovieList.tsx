@@ -347,6 +347,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_p
       prefetchMovieBatch(visibleItems);
     }
   }).current;
+
   const moviesViewabilityConfig = useRef({
     itemVisiblePercentThreshold: 30,
     minimumViewTime: 120,
