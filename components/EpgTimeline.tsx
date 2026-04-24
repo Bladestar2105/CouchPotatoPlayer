@@ -7,6 +7,7 @@ import { getCatchupDays } from '../utils/catchupUtils';
 import { useTranslation } from 'react-i18next';
 import { findCurrentProgramIndex, findNextProgramIndex } from '../utils/epgUtils';
 import i18n from '../utils/i18n';
+import { shouldChannelHavePreferredFocus } from '../utils/channelListBehavior';
 
 const PIXELS_PER_MINUTE = Platform.isTV ? 8 : 4; // Stretch timeline for TV
 const HOUR_WIDTH = PIXELS_PER_MINUTE * 60;
@@ -23,6 +24,7 @@ interface EpgTimelineProps {
   setFocusedChannelId: (id: string) => void;
   currentStreamId: string | undefined;
   shouldFocusFirstItem?: boolean;
+  preferredFocusChannelId?: string | null;
   isEpgPending?: boolean;
 }
 
@@ -122,8 +124,9 @@ const EmptyProgramBlock = React.memo(({ channel, onChannelPress, setFocusedChann
   );
 });
 
-const ChannelColumnItem = React.memo(({ channel, isFocused, isPlaying, isFav, hasTVPreferredFocus, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, hasCatchup }: any) => (
+const ChannelColumnItem = React.memo(React.forwardRef(({ channel, isFocused, isPlaying, isFav, hasTVPreferredFocus, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, hasCatchup }: any, ref: React.Ref<any>) => (
     <TouchableOpacity
+        ref={ref}
         accessible={true}
         accessibilityRole="button"
         accessibilityLabel={`${i18n.t('a11y.channelPrefix')}: ${channel.name}${isFav ? `, ${i18n.t('a11y.favorite')}` : ''}${isPlaying ? `, ${i18n.t('a11y.currentlyPlaying')}` : ''}`}
@@ -158,7 +161,7 @@ const ChannelColumnItem = React.memo(({ channel, isFocused, isPlaying, isFav, ha
         <Text style={[styles.channelName, { fontSize: Platform.isTV ? 17 : 14 }]} numberOfLines={2}>{channel.name}</Text>
         {isFocused && <View style={styles.focusRightEdge} />}
     </TouchableOpacity>
-));
+)));
 
 const EpgRow = React.memo(({ channel, programs, isFocused, onChannelPress, onProgramPress, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasCatchup, setFocusedChannelId, emptyEpgLabel }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
@@ -278,7 +281,7 @@ const EpgRow = React.memo(({ channel, programs, isFocused, onChannelPress, onPro
            prevProps.channel === nextProps.channel;
 });
 
-const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId, shouldFocusFirstItem, isEpgPending = false }) => {
+const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onProgramPress, focusedChannelId, setFocusedChannelId, currentStreamId, shouldFocusFirstItem = false, preferredFocusChannelId, isEpgPending = false }) => {
   const { t } = useTranslation();
   const { epg, hasCatchup } = useIPTVGuide();
   const { isFavorite, addFavorite, removeFavorite } = useIPTVCollections();
@@ -290,6 +293,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const mainScrollViewRef = useRef<any>(null);
   const timelineListRef = useRef<FlatList>(null);
   const channelListRef = useRef<FlatList>(null);
+  const channelRefs = useRef<Record<string, any>>({});
   const pendingVerticalOffsetRef = useRef<number | null>(null);
   const syncRafRef = useRef<number | null>(null);
   const lastSyncedYOffsetRef = useRef(0);
@@ -514,6 +518,30 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
     });
   }, [displayedChannelIndexMap, setFocusedChannelId]);
 
+  useEffect(() => {
+    if (!Platform.isTV || !preferredFocusChannelId) return;
+
+    const index = displayedChannelIndexMap[preferredFocusChannelId];
+    if (index === undefined) return;
+
+    timelineListRef.current?.scrollToIndex({
+      index,
+      animated: false,
+      viewPosition: 0.45,
+    });
+    channelListRef.current?.scrollToIndex({
+      index,
+      animated: false,
+      viewPosition: 0.45,
+    });
+
+    const timer = setTimeout(() => {
+      channelRefs.current[preferredFocusChannelId]?.focus?.();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [displayedChannelIndexMap, preferredFocusChannelId]);
+
   const focusedPreview = useMemo(() => {
     if (!focusedChannelId) return null;
     // ⚡ Bolt: O(1) map lookup instead of O(N) array.find
@@ -548,8 +576,9 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
     focusedChannelId,
     currentStreamId,
     shouldFocusFirstItem,
+    preferredFocusChannelId,
     favoritesOnly,
-  }), [focusedChannelId, currentStreamId, shouldFocusFirstItem, favoritesOnly]);
+  }), [focusedChannelId, currentStreamId, shouldFocusFirstItem, preferredFocusChannelId, favoritesOnly]);
 
   useEffect(() => {
     if (displayedChannels.list.length === 0) return;
@@ -588,18 +617,26 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
 
   const renderChannelColumnItem = useCallback(({ item: channel, index }: { item: Channel; index: number }) => (
     <ChannelColumnItem
+      ref={(el: any) => {
+        channelRefs.current[channel.id] = el;
+      }}
       channel={channel}
       isFocused={focusedChannelId === channel.id}
       isPlaying={currentStreamId === channel.id}
       isFav={isFavorite(channel.id)}
-      hasTVPreferredFocus={shouldFocusFirstItem && index === 0}
+      hasTVPreferredFocus={shouldChannelHavePreferredFocus({
+        preferredFocusChannelId,
+        channelId: channel.id,
+        shouldFocusFirstItem,
+        isFirstItem: index === 0,
+      })}
       setFocusedChannelId={handleFocusedChannelChange}
       onChannelPress={onChannelPress}
       addFavorite={addFavorite}
       removeFavorite={removeFavorite}
       hasCatchup={hasCatchup}
     />
-  ), [focusedChannelId, currentStreamId, isFavorite, shouldFocusFirstItem, handleFocusedChannelChange, onChannelPress, addFavorite, removeFavorite, hasCatchup]);
+  ), [focusedChannelId, currentStreamId, isFavorite, preferredFocusChannelId, shouldFocusFirstItem, handleFocusedChannelChange, onChannelPress, addFavorite, removeFavorite, hasCatchup]);
 
   const skeletonRows = useMemo(() => {
     const rowCount = Math.min(displayedChannels.list.length || 6, Platform.isTV ? 6 : 5);

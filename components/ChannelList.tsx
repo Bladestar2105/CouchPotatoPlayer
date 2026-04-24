@@ -840,6 +840,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                   setFocusedChannelId={handleEpgFocusedChannelChange}
                   currentStreamId={currentStream?.id}
                   shouldFocusFirstItem={shouldFocusFirstItem}
+                  preferredFocusChannelId={restoreFocusOnSelectedChannel ? focusedChannelId : null}
                   isEpgPending={isEpgPendingForSelection}
                 />
               ) : (

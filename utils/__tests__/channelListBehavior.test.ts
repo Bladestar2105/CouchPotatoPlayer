@@ -7,6 +7,7 @@ import {
   resolveChannelListBackAction,
   scheduleFocusRestore,
   shouldCategoryHavePreferredFocus,
+  shouldChannelHavePreferredFocus,
   shouldDeferPrefetch,
 } from '../channelListBehavior';
 
@@ -75,12 +76,12 @@ describe('channelListBehavior', () => {
     expect(getEpgTickIntervalMs()).toBe(30_000);
   });
 
-  test('prefers selected category on player return (tvOS/Android TV) and first category otherwise', () => {
+  test('does not prefer category focus while restoring a player-return channel', () => {
     expect(shouldCategoryHavePreferredFocus({
       restoreFocusOnSelectedChannel: true,
       isSelected: true,
       isFirstItem: false,
-    })).toBe(true);
+    })).toBe(false);
 
     expect(shouldCategoryHavePreferredFocus({
       restoreFocusOnSelectedChannel: true,
@@ -91,6 +92,29 @@ describe('channelListBehavior', () => {
     expect(shouldCategoryHavePreferredFocus({
       restoreFocusOnSelectedChannel: false,
       isSelected: false,
+      isFirstItem: true,
+    })).toBe(true);
+  });
+
+  test('prefers returned channel over first item in the channel list', () => {
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: 'channelB',
+      channelId: 'channelA',
+      shouldFocusFirstItem: true,
+      isFirstItem: true,
+    })).toBe(false);
+
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: 'channelB',
+      channelId: 'channelB',
+      shouldFocusFirstItem: false,
+      isFirstItem: false,
+    })).toBe(true);
+
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: null,
+      channelId: 'channelA',
+      shouldFocusFirstItem: true,
       isFirstItem: true,
     })).toBe(true);
   });
