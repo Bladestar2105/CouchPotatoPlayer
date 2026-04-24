@@ -46,4 +46,5 @@ Wenn du das ZIP im Projekt-Root entpackst, stimmen Dateinamen und Pfade direkt m
 
 - Splash-Hintergrund wurde auf das helle Marken-Grau `#E4E4E7` angepasst.
 - tvOS-App-Icons nutzen die Couch-Kartoffel-Player-Marke ohne blaue Kachel auf weißem Hintergrund.
+- tvOS-Top-Shelf-Banner werden aus `assets/store/tvos/app-icon-large-1280x768.png` per `swift scripts/generate_tvos_top_shelf.swift` abgeleitet.
 - In-App-Branding nutzt `assets/brand-mark.png` und `assets/brand-wordmark.png`.
