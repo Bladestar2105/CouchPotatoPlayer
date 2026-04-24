@@ -7,6 +7,7 @@ import {
   resolveChannelListBackAction,
   scheduleFocusRestore,
   shouldCategoryHavePreferredFocus,
+  shouldChannelHavePreferredFocus,
   shouldDeferPrefetch,
 } from '../channelListBehavior';
 
@@ -71,27 +72,75 @@ describe('channelListBehavior', () => {
     expect(cleared).toBe(true);
   });
 
+  test('ignores focus restore when the target channel ref is unavailable', () => {
+    let executed = false;
+    let cleared = false;
+    const fakeSetTimeout = ((cb: () => void) => {
+      executed = true;
+      expect(() => cb()).not.toThrow();
+      return 456 as any;
+    }) as typeof setTimeout;
+    const fakeClearTimeout = ((id: any) => {
+      if (id === 456) cleared = true;
+    }) as typeof clearTimeout;
+
+    const cleanup = scheduleFocusRestore({}, 'missingChannel', fakeSetTimeout, fakeClearTimeout);
+    expect(executed).toBe(true);
+    cleanup();
+    expect(cleared).toBe(true);
+  });
+
   test('keeps EPG tick interval stable for predictable refresh cadence', () => {
     expect(getEpgTickIntervalMs()).toBe(30_000);
   });
 
-  test('prefers selected category on player return (tvOS/Android TV) and first category otherwise', () => {
+  test('prefers the selected category when returning from player', () => {
     expect(shouldCategoryHavePreferredFocus({
-      restoreFocusOnSelectedChannel: true,
+      restoreFocusOnSelectedCategory: true,
       isSelected: true,
       isFirstItem: false,
     })).toBe(true);
 
     expect(shouldCategoryHavePreferredFocus({
-      restoreFocusOnSelectedChannel: true,
+      restoreFocusOnSelectedCategory: true,
       isSelected: false,
       isFirstItem: true,
     })).toBe(false);
 
     expect(shouldCategoryHavePreferredFocus({
-      restoreFocusOnSelectedChannel: false,
+      restoreFocusOnSelectedCategory: false,
       isSelected: false,
       isFirstItem: true,
     })).toBe(true);
+  });
+
+  test('prefers returned channel over first item in the channel list', () => {
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: 'channelB',
+      channelId: 'channelA',
+      shouldFocusFirstItem: true,
+      isFirstItem: true,
+    })).toBe(false);
+
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: 'channelB',
+      channelId: 'channelB',
+      shouldFocusFirstItem: false,
+      isFirstItem: false,
+    })).toBe(true);
+
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: null,
+      channelId: 'channelA',
+      shouldFocusFirstItem: true,
+      isFirstItem: true,
+    })).toBe(true);
+
+    expect(shouldChannelHavePreferredFocus({
+      preferredFocusChannelId: undefined,
+      channelId: 'channelA',
+      shouldFocusFirstItem: false,
+      isFirstItem: true,
+    })).toBe(false);
   });
 });

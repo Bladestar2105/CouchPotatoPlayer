@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/logger';
 import { getDefaultPlayerTypeForPlatform, normalizePlayerTypeForPlatform } from '../components/player/PlayerAdapter';
+import { DEFAULT_OVERLAY_AUTO_HIDE_SECONDS, normalizeOverlayAutoHideSeconds } from '../utils/playbackSettings';
 
 export type ThemeMode = 'dark' | 'oled' | 'light';
 
@@ -100,6 +101,7 @@ const SETTINGS_KEYS = {
   ksHwDecode: 'app_ks_hw_decode',
   ksAsyncDecomp: 'app_ks_async_decomp',
   ksDisplayFrameRate: 'app_ks_display_frame_rate',
+  overlayAutoHideSeconds: 'app_overlay_auto_hide_seconds',
   tmdbApiKey: 'app_tmdb_api_key',
 } as const;
 
@@ -121,6 +123,8 @@ interface SettingsContextProps {
   setKsplayerAsynchronousDecompression: (enabled: boolean) => void;
   ksplayerDisplayFrameRate: boolean;
   setKsplayerDisplayFrameRate: (enabled: boolean) => void;
+  overlayAutoHideSeconds: number;
+  setOverlayAutoHideSeconds: (seconds: number) => void;
   tmdbApiKey: string;
   setTmdbApiKey: (key: string) => void;
 }
@@ -137,6 +141,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [ksplayerHardwareDecode, setKsplayerHardwareDecodeState] = useState<boolean>(true);
   const [ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompressionState] = useState<boolean>(false);
   const [ksplayerDisplayFrameRate, setKsplayerDisplayFrameRateState] = useState<boolean>(true);
+  const [overlayAutoHideSeconds, setOverlayAutoHideSecondsState] = useState<number>(DEFAULT_OVERLAY_AUTO_HIDE_SECONDS);
   const [tmdbApiKey, setTmdbApiKeyState] = useState<string>(process.env.EXPO_PUBLIC_TMDB_API_KEY || '');
   const [isReady, setIsReady] = useState(false);
 
@@ -151,6 +156,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           SETTINGS_KEYS.ksHwDecode,
           SETTINGS_KEYS.ksAsyncDecomp,
           SETTINGS_KEYS.ksDisplayFrameRate,
+          SETTINGS_KEYS.overlayAutoHideSeconds,
           SETTINGS_KEYS.tmdbApiKey,
         ]);
         const storageMap = new Map(storageEntries);
@@ -161,6 +167,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const storedKSHwDecode = storageMap.get(SETTINGS_KEYS.ksHwDecode) ?? null;
         const storedKSAsync = storageMap.get(SETTINGS_KEYS.ksAsyncDecomp) ?? null;
         const storedKSFrameRate = storageMap.get(SETTINGS_KEYS.ksDisplayFrameRate) ?? null;
+        const storedOverlayAutoHideSeconds = storageMap.get(SETTINGS_KEYS.overlayAutoHideSeconds) ?? null;
         const storedTmdbKey = storageMap.get(SETTINGS_KEYS.tmdbApiKey) ?? null;
 
         if (storedTheme === 'dark' || storedTheme === 'oled' || storedTheme === 'light') {
@@ -189,6 +196,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         if (storedKSFrameRate) {
           setKsplayerDisplayFrameRateState(storedKSFrameRate === 'true');
+        }
+
+        if (storedOverlayAutoHideSeconds) {
+          setOverlayAutoHideSecondsState(normalizeOverlayAutoHideSeconds(storedOverlayAutoHideSeconds));
         }
 
         if (storedTmdbKey) {
@@ -267,6 +278,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  const setOverlayAutoHideSeconds = useCallback(async (seconds: number) => {
+    const normalizedSeconds = normalizeOverlayAutoHideSeconds(seconds);
+    setOverlayAutoHideSecondsState(normalizedSeconds);
+    try {
+      await AsyncStorage.setItem(SETTINGS_KEYS.overlayAutoHideSeconds, normalizedSeconds.toString());
+    } catch (e) {
+      Logger.error('Failed to save overlay auto-hide seconds', e);
+    }
+  }, []);
+
   const setTmdbApiKey = useCallback(async (key: string) => {
     setTmdbApiKeyState(key);
     try {
@@ -296,9 +317,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setKsplayerAsynchronousDecompression,
     ksplayerDisplayFrameRate,
     setKsplayerDisplayFrameRate,
+    overlayAutoHideSeconds,
+    setOverlayAutoHideSeconds,
     tmdbApiKey,
     setTmdbApiKey,
-  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration, ksplayerHardwareDecode, setKsplayerHardwareDecode, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate, tmdbApiKey, setTmdbApiKey]);
+  }), [themeMode, setThemeMode, colors, bufferSize, setBufferSize, playerType, setPlayerType, vlcHardwareAcceleration, setVlcHardwareAcceleration, ksplayerHardwareDecode, setKsplayerHardwareDecode, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate, overlayAutoHideSeconds, setOverlayAutoHideSeconds, tmdbApiKey, setTmdbApiKey]);
 
   if (!isReady) {
     return null; // Or a splash screen / loader

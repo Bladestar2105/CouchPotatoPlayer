@@ -50,7 +50,7 @@ const areTrackIdsEqual = (left: number | string | null | undefined, right: numbe
  */
 const PlayerScreen = () => {
   const { t } = useTranslation();
-  const { colors } = useSettings();
+  const { colors, overlayAutoHideSeconds } = useSettings();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -76,6 +76,7 @@ const PlayerScreen = () => {
 
   // TiviMate-style overlay states
   const [showOverlay, setShowOverlay] = useState(false);
+  const [overlayActivityNonce, setOverlayActivityNonce] = useState(0);
   const [showChannelSwitch, setShowChannelSwitch] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
@@ -127,6 +128,11 @@ const PlayerScreen = () => {
   const overlayDestinationRefs = useMemo(() => [backButtonRef, audioButtonRef, subtitleButtonRef], []);
   const overlayFocusDestinations = useTVFocusGuideDestinations(overlayDestinationRefs, showOverlay);
   const preferredOverlayKey = useTVPreferredFocusKey(showOverlay ? 'overlay:back' : null);
+
+  const showOverlayWithActivity = useCallback(() => {
+    setShowOverlay(true);
+    setOverlayActivityNonce((prev) => prev + 1);
+  }, []);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -492,12 +498,12 @@ const PlayerScreen = () => {
     if (showOverlay && !isPaused && !trackPanelMode && pendingSeekTime === undefined) {
         timer = setTimeout(() => {
             setShowOverlay(false);
-        }, 6000);
+        }, overlayAutoHideSeconds * 1000);
     }
     return () => {
         if (timer) clearTimeout(timer);
     };
-  }, [showOverlay, isPaused, trackPanelMode, pendingSeekTime]);
+  }, [showOverlay, overlayActivityNonce, isPaused, trackPanelMode, pendingSeekTime, overlayAutoHideSeconds]);
 
   useEffect(() => {
     if (seekTime === undefined) return;
@@ -651,7 +657,7 @@ const PlayerScreen = () => {
       directSource,
       lastWatchedAt: Date.now(),
     });
-    setShowOverlay(true);
+    showOverlayWithActivity();
     setVideoMetadata(null);
     setSeekTime(undefined);
     setPendingSeekTime(undefined);
@@ -662,7 +668,7 @@ const PlayerScreen = () => {
       if (prev.currentTime === 0 && prev.duration === 0) return prev;
       return { currentTime: 0, duration: 0 };
     });
-  }, [isFocused, currentStream?.id, currentStream?.url, clearReconnectTimer, route.params?.returnTab, route.params?.title]);
+  }, [isFocused, currentStream?.id, currentStream?.url, clearReconnectTimer, route.params?.returnTab, route.params?.title, showOverlayWithActivity]);
 
   useEffect(() => {
     if (!isFocused || !currentStream?.id || isPaused) {
@@ -698,8 +704,8 @@ const PlayerScreen = () => {
     const nextSeekTime = Math.min(maxTime, Math.max(0, baseTime + deltaMs));
     setPendingSeekTime(nextSeekTime);
     setPlaybackProgress((prev) => ({ ...prev, currentTime: nextSeekTime }));
-    setShowOverlay(true);
-  }, [canSeek, pendingSeekTime]);
+    showOverlayWithActivity();
+  }, [canSeek, pendingSeekTime, showOverlayWithActivity]);
 
   const applySeekDelta = useCallback((deltaMs: number) => {
     if (!canSeek) return;
@@ -711,8 +717,8 @@ const PlayerScreen = () => {
     setSeekTime(nextSeekTime);
     setPendingSeekTime(undefined);
     setPlaybackProgress((prev) => ({ ...prev, currentTime: nextSeekTime }));
-    setShowOverlay(true);
-  }, [canSeek, pendingSeekTime]);
+    showOverlayWithActivity();
+  }, [canSeek, pendingSeekTime, showOverlayWithActivity]);
 
   const seekToProgressRatio = useCallback((ratio: number, commit: boolean) => {
     if (!canSeek) return;
@@ -730,8 +736,8 @@ const PlayerScreen = () => {
     } else {
       setPendingSeekTime(nextSeekTime);
     }
-    setShowOverlay(true);
-  }, [canSeek]);
+    showOverlayWithActivity();
+  }, [canSeek, showOverlayWithActivity]);
 
   const handleSeekBarTouch = useCallback((locationX: number, commit: boolean) => {
     const width = seekBarWidthRef.current;
@@ -745,10 +751,10 @@ const PlayerScreen = () => {
     // Auto-commit seek after short inactivity as fallback.
     const timer = setTimeout(() => {
       commitPendingSeek();
-      setShowOverlay(true);
+      showOverlayWithActivity();
     }, 1400);
     return () => clearTimeout(timer);
-  }, [pendingSeekTime, commitPendingSeek]);
+  }, [pendingSeekTime, commitPendingSeek, showOverlayWithActivity]);
 
   useEffect(() => {
     const setOrientation = async () => {
@@ -776,20 +782,25 @@ const PlayerScreen = () => {
 
   const handlePress = () => {
     if (commitPendingSeek()) {
-      setShowOverlay(true);
+      showOverlayWithActivity();
       return;
     }
-    setShowOverlay((prev) => {
-      const next = !prev;
-      if (!next) setTrackPanelMode(null);
-      return next;
-    });
+    if (Platform.isTV) {
+      showOverlayWithActivity();
+      return;
+    }
+    if (showOverlay) {
+      setTrackPanelMode(null);
+      setShowOverlay(false);
+      return;
+    }
+    showOverlayWithActivity();
   };
 
   const toggleTrackPanel = useCallback((mode: Exclude<TrackPanelMode, null>) => {
-    setShowOverlay(true);
+    showOverlayWithActivity();
     setTrackPanelMode((prev) => (prev === mode ? null : mode));
-  }, []);
+  }, [showOverlayWithActivity]);
 
   const handleTracksChange = useCallback((tracks: PlaybackTrackGroups) => {
     const signature = serializePlaybackTrackGroups(tracks);
@@ -867,8 +878,8 @@ const PlayerScreen = () => {
       }
     }
     setTrackPanelMode(null);
-    setShowOverlay(true);
-  }, [currentStream?.id]);
+    showOverlayWithActivity();
+  }, [currentStream?.id, showOverlayWithActivity]);
 
   // Sleep-timer equivalent of `handleTrackSelection`: the panel hands us a
   // numeric minutes value (0 = cancel). Close the panel afterwards so the
@@ -876,8 +887,8 @@ const PlayerScreen = () => {
   const handleSleepOptionPress = useCallback((minutes: number) => {
     setSleepTimerMinutes(minutes);
     setTrackPanelMode(null);
-    setShowOverlay(true);
-  }, [setSleepTimerMinutes]);
+    showOverlayWithActivity();
+  }, [setSleepTimerMinutes, showOverlayWithActivity]);
 
   // Channel switching helper
   const switchChannel = useCallback((direction: 'up' | 'down') => {
@@ -925,7 +936,7 @@ const PlayerScreen = () => {
 
     if (action === 'commitPendingSeek') {
       commitPendingSeek();
-      setShowOverlay(true);
+      showOverlayWithActivity();
       return;
     }
 
@@ -933,7 +944,7 @@ const PlayerScreen = () => {
       handleBack();
     } else if (action === 'togglePause') {
       setIsPaused(prev => !prev);
-      setShowOverlay(true);
+      showOverlayWithActivity();
     } else if (action === 'seekLeft') {
       queueSeekDelta(-10000);
     } else if (action === 'seekRight') {
@@ -943,11 +954,11 @@ const PlayerScreen = () => {
     } else if (action === 'switchChannelDown') {
       switchChannel('down');
     } else if (action === 'showOverlay') {
-      setShowOverlay(true);
+      showOverlayWithActivity();
     } else if (action === 'switchToPreviousChannel') {
       switchToPreviousChannel();
     }
-  }, [isFocused, handleBack, showOverlay, switchChannel, switchToPreviousChannel, commitPendingSeek, queueSeekDelta]);
+  }, [isFocused, handleBack, showOverlay, canSeek, pendingSeekTime, switchChannel, switchToPreviousChannel, commitPendingSeek, queueSeekDelta, showOverlayWithActivity]);
 
   const handlePlayerProgress = useCallback((data: { currentTime: number; duration: number }) => {
     if (pendingSeekTime === undefined) {

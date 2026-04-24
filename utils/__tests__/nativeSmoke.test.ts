@@ -85,6 +85,27 @@ describe('native smoke guards', () => {
     expect(source).toContain('selected: sleepTimerPresetMinutes === minutes');
   });
 
+  test('tvOS player surface press only shows the overlay instead of toggling it closed', () => {
+    const source = readRepoFile('screens/PlayerScreen.tsx');
+    const handlePressStart = source.indexOf('const handlePress = () =>');
+    expect(handlePressStart).toBeGreaterThan(-1);
+    const handlePressBlock = source.slice(handlePressStart, handlePressStart + 500);
+    expect(handlePressBlock).toContain('if (Platform.isTV)');
+    expect(handlePressBlock).toContain('showOverlayWithActivity()');
+    expect(handlePressBlock).toContain('return;');
+  });
+
+  test('tvOS KSPlayer settings are wired through TV row toggles', () => {
+    const source = readRepoFile('screens/SettingsScreen.tsx');
+    expect(source).toContain('getTVBooleanSettingPressHandler');
+    expect(source).toContain('renderBooleanSettingValue(ksplayerHardwareDecode, setKsplayerHardwareDecode)');
+    expect(source).toContain('getTVBooleanSettingPressHandler(Platform.isTV, ksplayerHardwareDecode, setKsplayerHardwareDecode)');
+    expect(source).toContain('renderBooleanSettingValue(ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression)');
+    expect(source).toContain('getTVBooleanSettingPressHandler(Platform.isTV, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression)');
+    expect(source).toContain('renderBooleanSettingValue(ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate)');
+    expect(source).toContain('getTVBooleanSettingPressHandler(Platform.isTV, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate)');
+  });
+
   test('Android release build permits cleartext (HTTP) IPTV traffic', () => {
     // Most IPTV providers serve over plain HTTP. Android 9+ blocks cleartext
     // traffic by default once `targetSdkVersion >= 28`, so the application

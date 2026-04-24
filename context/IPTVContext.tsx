@@ -1214,7 +1214,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const seriesData = await seriesRes.json();
 
       const parsedChannels: Channel[] = Array.isArray(liveData) ? liveData.map((channel: any): Channel => {
-        const catInfo = categoryMap.get(String(channel.category_id)) || { name: 'Live TV', isAdult: false };
+        const catInfo = categoryMap.get(String(channel.category_id)) || { name: 'Live-TV', isAdult: false };
 
         let extension = channel.stream_type;
         if (!extension || extension === 'live') {
