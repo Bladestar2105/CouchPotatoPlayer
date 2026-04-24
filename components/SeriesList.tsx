@@ -346,7 +346,6 @@ const SeriesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_
       prefetchSeriesBatch(visibleItems);
     }
   }).current;
-
   const seriesViewabilityConfig = useRef({
     itemVisiblePercentThreshold: 30,
     minimumViewTime: 120,
