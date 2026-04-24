@@ -54,6 +54,8 @@ describe('native smoke guards', () => {
     // Google TV devices from the listing. `android.software.leanback` is
     // the standard companion flag for TV-capable apps. Both must be
     // marked `required="false"` so phones/tablets still install normally.
+    // The Leanback launcher category and banner make the release visible from
+    // Android TV launchers instead of only being install-compatible.
     const manifest = readRepoFile('android/app/src/main/AndroidManifest.xml');
     expect(manifest).toMatch(
       /<uses-feature[^>]*android:name="android\.hardware\.touchscreen"[^>]*android:required="false"/,
@@ -61,6 +63,26 @@ describe('native smoke guards', () => {
     expect(manifest).toMatch(
       /<uses-feature[^>]*android:name="android\.software\.leanback"[^>]*android:required="false"/,
     );
+    expect(manifest).toContain('android:banner="@drawable/android_tv_banner"');
+    expect(manifest).toContain('android.intent.category.LEANBACK_LAUNCHER');
+    expect(
+      fs.existsSync(path.join(process.cwd(), 'android/app/src/main/res/drawable-nodpi/android_tv_banner.png')),
+    ).toBe(true);
+  });
+
+  test('ErrorBoundary fallback keeps TV navigation recoverable', () => {
+    const source = readRepoFile('components/ErrorBoundary.tsx');
+    expect(source).toContain('onFallbackBack');
+    expect(source).toContain('isTVSelectable={true}');
+    expect(source).toContain('hasTVPreferredFocus={Platform.isTV}');
+    expect(source).toContain('errorBoundary.goHome');
+  });
+
+  test('Player sleep timer marks the armed preset as selected', () => {
+    const source = readRepoFile('screens/PlayerScreen.tsx');
+    expect(source).toContain('sleepTimerPresetMinutes');
+    expect(source).toContain('setSleepTimerPresetMinutes(minutes)');
+    expect(source).toContain('selected: sleepTimerPresetMinutes === minutes');
   });
 
   test('Android release build permits cleartext (HTTP) IPTV traffic', () => {

@@ -22,9 +22,20 @@ import MediaInfoScreen from './screens/MediaInfoScreen';
 import SearchScreen from './screens/SearchScreen';
 import { Series, Season } from './types';
 
+type BoundaryNavigation = {
+  canGoBack?: () => boolean;
+  goBack?: () => void;
+  navigate?: (screenName: string) => void;
+  reset?: (state: { index: number; routes: Array<{ name: string }> }) => void;
+};
+
+type BoundaryNavigationProps = {
+  navigation?: BoundaryNavigation;
+};
+
 // Wrap every screen component in its own ErrorBoundary so a render crash on
-// one screen cannot take down the whole app — the user can simply go back
-// to the previous screen or retry. The top-level ErrorBoundary in `App` is
+// one screen cannot take down the whole app: the user can return to Home
+// or retry. The top-level ErrorBoundary in `App` is
 // still in place as a last-resort catch for errors that happen outside the
 // navigator (providers, NetworkMonitor, etc.).
 //
@@ -35,11 +46,26 @@ import { Series, Season } from './types';
 const withScreenBoundary = <P extends object>(
   Screen: React.ComponentType<P>,
 ): React.ComponentType<P> => {
-  const Wrapped = (props: P) => (
-    <ErrorBoundary>
-      <Screen {...props} />
-    </ErrorBoundary>
-  );
+  const Wrapped = (props: P) => {
+    const navigation = (props as BoundaryNavigationProps).navigation;
+    const handleFallbackBack = () => {
+      if (navigation?.reset) {
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        return;
+      }
+      if (navigation?.canGoBack?.()) {
+        navigation.goBack?.();
+        return;
+      }
+      navigation?.navigate?.('Home');
+    };
+
+    return (
+      <ErrorBoundary onFallbackBack={navigation ? handleFallbackBack : undefined}>
+        <Screen {...props} />
+      </ErrorBoundary>
+    );
+  };
   Wrapped.displayName = `WithScreenBoundary(${Screen.displayName || Screen.name || 'Screen'})`;
   return Wrapped;
 };

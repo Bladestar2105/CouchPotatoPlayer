@@ -94,6 +94,7 @@ const PlayerScreen = () => {
   // whole player to re-render each frame.
   const [sleepTimerEndAt, setSleepTimerEndAt] = useState<number | null>(null);
   const [sleepRemainingMs, setSleepRemainingMs] = useState<number>(0);
+  const [sleepTimerPresetMinutes, setSleepTimerPresetMinutes] = useState<number | null>(null);
 
   // Channel switch animation
   const channelSwitchOpacity = useRef(new Animated.Value(0)).current;
@@ -153,12 +154,14 @@ const PlayerScreen = () => {
     if (minutes <= 0) {
       setSleepTimerEndAt(null);
       setSleepRemainingMs(0);
+      setSleepTimerPresetMinutes(null);
       return;
     }
     const durationMs = minutes * 60 * 1000;
     const endAt = Date.now() + durationMs;
     setSleepTimerEndAt(endAt);
     setSleepRemainingMs(durationMs);
+    setSleepTimerPresetMinutes(minutes);
     sleepTimeoutRef.current = setTimeout(() => {
       sleepTimeoutRef.current = null;
       if (sleepTickRef.current) {
@@ -167,6 +170,7 @@ const PlayerScreen = () => {
       }
       setSleepTimerEndAt(null);
       setSleepRemainingMs(0);
+      setSleepTimerPresetMinutes(null);
       setIsPaused(true);
     }, durationMs);
     sleepTickRef.current = setInterval(() => {
@@ -436,25 +440,24 @@ const PlayerScreen = () => {
     }
 
     if (trackPanelMode === 'sleep') {
-      const isActive = sleepTimerEndAt !== null;
       return [
         {
           id: 0,
           label: t('sleepTimerOff'),
           secondaryLabel: undefined,
-          selected: !isActive,
+          selected: sleepTimerPresetMinutes === null,
         },
         ...SLEEP_TIMER_OPTIONS_MIN.map((minutes) => ({
           id: minutes,
           label: t('sleepTimerMinutes', { minutes }),
           secondaryLabel: undefined,
-          selected: false,
+          selected: sleepTimerPresetMinutes === minutes,
         })),
       ];
     }
 
     return [];
-  }, [availableTracks.audioTracks, availableTracks.textTracks, selectedAudioTrack?.id, selectedTextTrack, sleepTimerEndAt, t, trackPanelMode]);
+  }, [availableTracks.audioTracks, availableTracks.textTracks, selectedAudioTrack?.id, selectedTextTrack, sleepTimerPresetMinutes, t, trackPanelMode]);
 
   const trackPanelTitle = trackPanelMode === 'audio'
     ? t('playerAudioTracks')
