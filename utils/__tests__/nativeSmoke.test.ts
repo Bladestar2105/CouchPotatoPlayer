@@ -85,16 +85,6 @@ describe('native smoke guards', () => {
     expect(source).toContain('selected: sleepTimerPresetMinutes === minutes');
   });
 
-  test('npm install path preserves native dependency patches', () => {
-    const packageJson = JSON.parse(readRepoFile('package.json'));
-    const patchScript = readRepoFile('scripts/apply-node-module-patches.mjs');
-    expect(packageJson.scripts.postinstall).toBe('node scripts/apply-node-module-patches.mjs');
-    expect(patchScript).toContain('@react-native-picker/picker');
-    expect(patchScript).toContain('react-native-vlc-media-player');
-    expect(patchScript).toContain('std::shared_ptr<const ContextContainer>');
-    expect(patchScript).toContain('findNodeHandle');
-  });
-
   test('Android release build permits cleartext (HTTP) IPTV traffic', () => {
     // Most IPTV providers serve over plain HTTP. Android 9+ blocks cleartext
     // traffic by default once `targetSdkVersion >= 28`, so the application

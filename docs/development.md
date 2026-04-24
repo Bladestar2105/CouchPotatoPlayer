@@ -4,17 +4,8 @@
 
 ### Install
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
-
-For a clean npm-based validation install, use:
-```bash
-npm ci
-```
-
-The npm path is intentionally backed by `package-lock.json` plus the root
-`postinstall` script, which reapplies required native dependency patches after
-installation.
 
 ### Run common checks
 ```bash
@@ -61,14 +52,14 @@ When debugging:
 ```
 - To summarize captured logs:
 ```bash
-npm run analyze:tv-perf -- /path/to/tv.log
+pnpm run analyze:tv-perf -- /path/to/tv.log
 ```
 
 ## tvOS performance test protocol (baseline)
 1. Build and run a dev tvOS app with current profiling enabled.
 2. Capture console output to a log file (Xcode device logs or simulator logs).
 3. Execute the scenarios below with a warm app state and stable network.
-4. Run `npm run analyze:tv-perf -- /path/to/tv.log` and compare p50/p95 against targets.
+4. Run `pnpm run analyze:tv-perf -- /path/to/tv.log` and compare p50/p95 against targets.
 
 ## tvOS scenarios
 1. Live TV category switching:

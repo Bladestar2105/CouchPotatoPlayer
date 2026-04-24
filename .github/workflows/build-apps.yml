@@ -28,7 +28,7 @@ jobs:
           node-version: 24
           cache: 'pnpm'
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
       - name: Unit tests
@@ -55,7 +55,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Fix hermesc permissions (pnpm strips execute bit)
         run: |
           # Fix all hermesc binaries everywhere in node_modules (files and symlinks)
@@ -94,7 +94,7 @@ jobs:
           node-version: 24
           cache: 'pnpm'
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Prebuild iOS
         run: npx expo prebuild --platform ios
       - name: Pod Install
@@ -132,7 +132,7 @@ jobs:
           node-version: 24
           cache: 'pnpm'
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Install tvOS Fork
         run: |
           pnpm install -w react-native@npm:react-native-tvos@0.84.1-0

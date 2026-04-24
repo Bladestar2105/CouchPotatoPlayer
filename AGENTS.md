@@ -61,11 +61,11 @@ Before considering a task complete, run as many applicable checks as are availab
 Use the repository's real scripts. Do not invent commands silently.
 
 Preferred order:
-1. `npm ci`
-2. `npm run typecheck`
-3. `npm run lint`
-4. `npm test`
-5. `npm run build`
+1. `pnpm install --frozen-lockfile`
+2. `pnpm run typecheck`
+3. `pnpm run lint`
+4. `pnpm test`
+5. `pnpm run build`
 
 If Expo-specific or platform-specific scripts exist, use them when relevant.
 Examples may include commands for Expo, native prebuild, or TV-specific validation, but only if they already exist in the repository.
