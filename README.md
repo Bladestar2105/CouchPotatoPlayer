@@ -68,7 +68,8 @@ Use a custom dev client / native run workflow instead.
 ## Prerequisites
 
 - Node.js 20+
-- pnpm
+- pnpm (recommended for the existing native build workflows)
+- npm 10+ if you want to validate with `npm ci`
 - Git
 - Platform tooling as needed:
   - Xcode + CocoaPods + Watchman (iOS/tvOS)
@@ -79,6 +80,10 @@ Install dependencies:
 ```bash
 pnpm install
 ```
+
+`npm ci` is also supported for clean validation environments. It uses
+`package-lock.json`, `.npmrc`, and the repository `postinstall` script to apply
+the same native dependency patches that the pnpm workflow depends on.
 
 ---
 

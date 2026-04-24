@@ -7,6 +7,15 @@
 pnpm install
 ```
 
+For a clean npm-based validation install, use:
+```bash
+npm ci
+```
+
+The npm path is intentionally backed by `package-lock.json` plus the root
+`postinstall` script, which reapplies required native dependency patches after
+installation.
+
 ### Run common checks
 ```bash
 pnpm exec tsc --noEmit
