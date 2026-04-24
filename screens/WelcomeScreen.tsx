@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, FlatList } from 'react-native';
+import BrandMark from '../components/BrandMark';
 import { useIPTVProfiles } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
@@ -124,11 +125,7 @@ const WelcomeScreen = () => {
 
   const renderExistingProfiles = () => (
     <View style={styles.profilesContainer}>
-      <Image
-        source={require('../assets/character_logo.png')}
-        style={styles.appLogo}
-        resizeMode="contain"
-      />
+      <BrandMark size={136} variant="character" style={styles.appLogo} />
       <View style={styles.wordmark}>
         <Text
           style={styles.wordmarkText}
@@ -210,11 +207,7 @@ const WelcomeScreen = () => {
             </TouchableOpacity>
           )}
 
-          <Image
-            source={require('../assets/character_logo.png')}
-            style={styles.appLogo}
-            resizeMode="contain"
-          />
+          <BrandMark size={136} variant="character" style={styles.appLogo} />
           <View style={styles.wordmark}>
             <Text
               style={styles.wordmarkText}

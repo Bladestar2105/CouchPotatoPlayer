@@ -7,6 +7,7 @@ import { Platform, StatusBar } from 'react-native';
 import { tvTextSize } from './utils/tvAccessibility';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SettingsProvider } from './context/SettingsContext';
+import { ThemeProvider } from './context/ThemeContext';
 import './utils/i18n';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -58,6 +59,7 @@ const App = () => {
   const { t } = useTranslation();
   return (
     <SettingsProvider>
+      <ThemeProvider>
       <SafeAreaProvider>
         <ErrorBoundary>
         <IPTVProvider>
@@ -123,6 +125,7 @@ const App = () => {
         </IPTVProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
+      </ThemeProvider>
     </SettingsProvider>
   );
 };

@@ -8,9 +8,10 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle } from 'lucide-react-native';
 import { getAvailablePlayerTypesForPlatform } from '../components/player/PlayerAdapter';
-import { effects, radii, spacing, typography } from '../theme/tokens';
+import { ACCENT_CHOICES, effects, radii, spacing, typography } from '../theme/tokens';
 import SectionHeader from '../components/ui/SectionHeader';
 import SurfaceCard from '../components/ui/SurfaceCard';
+import { useTheme } from '../context/ThemeContext';
 
 type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
@@ -26,6 +27,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
     ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate,
     tmdbApiKey, setTmdbApiKey
   } = useSettings();
+  const { accent, setAccent, density, setDensity } = useTheme();
 
   const navigation = useNavigation<any>();
   const isFocusedScreen = useIsFocused();
@@ -457,6 +459,51 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                     { label: t('settings.theme.oled'), value: 'oled' },
                     { label: t('settings.theme.light'), value: 'light' }
                   ], setThemeMode, themeMode)
+                )}
+
+                {renderSettingRow(
+                  t('settings.appearance.accent'),
+                  t('settings.appearance.accentCurrent', {
+                    name: ACCENT_CHOICES.find(c => c.value === accent)?.name ?? 'Electric',
+                  }),
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        backgroundColor: accent,
+                        borderWidth: 2,
+                        borderColor: colors.border,
+                      }}
+                    />
+                    <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>
+                  </View>,
+                  () => openSubMenu(
+                    t('settings.appearance.accent'),
+                    ACCENT_CHOICES.map(c => ({ label: c.name, value: c.value })),
+                    setAccent,
+                    accent,
+                  )
+                )}
+
+                {renderSettingRow(
+                  t('settings.appearance.density'),
+                  t('settings.appearance.densityCurrent', {
+                    value: density === 'compact'
+                      ? t('settings.appearance.densityCompact')
+                      : t('settings.appearance.densityCozy'),
+                  }),
+                  <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>,
+                  () => openSubMenu(
+                    t('settings.appearance.density'),
+                    [
+                      { label: t('settings.appearance.densityCozy'), value: 'cozy' },
+                      { label: t('settings.appearance.densityCompact'), value: 'compact' },
+                    ],
+                    setDensity,
+                    density,
+                  )
                 )}
               </View>
             )}
