@@ -78,7 +78,7 @@ export const resources = {
       "noResults": "No data available",
       "noInternetConnection": "No Internet Connection",
       "search.selectResultA11y": "Select {{name}}",
-      "search.resultLiveTv": "Live TV",
+      "search.resultLiveTv": "Live-TV",
       "search.resultEpg": "On {{channel}} at {{time}}",
       "search.placeholderWithEpg": "Search channels, movies, series, EPG...",
       "hardwareAcceleration": "Hardware Acceleration",

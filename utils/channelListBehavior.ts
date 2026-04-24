@@ -71,12 +71,12 @@ export function scheduleFocusRestore(
 }
 
 export function shouldCategoryHavePreferredFocus(input: {
-  restoreFocusOnSelectedChannel: boolean;
+  restoreFocusOnSelectedCategory: boolean;
   isSelected: boolean;
   isFirstItem: boolean;
 }): boolean {
-  if (input.restoreFocusOnSelectedChannel) {
-    return false;
+  if (input.restoreFocusOnSelectedCategory) {
+    return input.isSelected;
   }
   return input.isFirstItem;
 }

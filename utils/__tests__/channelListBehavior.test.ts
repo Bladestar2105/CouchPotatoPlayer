@@ -94,21 +94,21 @@ describe('channelListBehavior', () => {
     expect(getEpgTickIntervalMs()).toBe(30_000);
   });
 
-  test('does not prefer category focus while restoring a player-return channel', () => {
+  test('prefers the selected category when returning from player', () => {
     expect(shouldCategoryHavePreferredFocus({
-      restoreFocusOnSelectedChannel: true,
+      restoreFocusOnSelectedCategory: true,
       isSelected: true,
       isFirstItem: false,
-    })).toBe(false);
+    })).toBe(true);
 
     expect(shouldCategoryHavePreferredFocus({
-      restoreFocusOnSelectedChannel: true,
+      restoreFocusOnSelectedCategory: true,
       isSelected: false,
       isFirstItem: true,
     })).toBe(false);
 
     expect(shouldCategoryHavePreferredFocus({
-      restoreFocusOnSelectedChannel: false,
+      restoreFocusOnSelectedCategory: false,
       isSelected: false,
       isFirstItem: true,
     })).toBe(true);
