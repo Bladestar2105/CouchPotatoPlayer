@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import TVFocusGuideView from '../TVFocusGuideView';
+import BrandMark from '../BrandMark';
 import { TVSidebarItem, tvStyles } from './TabNavigation';
 import type { TabDef, TabId } from './types';
 import type { ThemeColors } from '../../context/SettingsContext';
 import type { IPTVProfile } from '../../types';
-import { spacing } from '../../theme/tokens';
+import { colors as tokenColors, radii, spacing, typography } from '../../theme/tokens';
 import { useTVPreferredFocusKey } from '../../hooks/useTVPreferredFocusKey';
 
 interface HomeTVLayoutProps {
@@ -70,10 +71,31 @@ export const HomeTVLayout = ({
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TVFocusGuideView autoFocus={isSidebarExpanded} style={[tvStyles.sidebar, styles.sidebar, { width: sidebarWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+    <View style={[styles.container, { backgroundColor: tokenColors.bg }]}>
+      <TVFocusGuideView
+        autoFocus={isSidebarExpanded}
+        style={[
+          tvStyles.sidebar,
+          styles.sidebar,
+          {
+            width: sidebarWidth,
+            backgroundColor: tokenColors.surface,
+            borderRightColor: tokenColors.borderSoft,
+          },
+        ]}
+      >
         <View style={[styles.sidebarInner, { paddingTop: Math.max(insets.top, spacing.lg + 2), paddingBottom: Math.max(insets.bottom, spacing.sm + 2) }]}>
-          {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('menu')}</Text>}
+          <View style={[styles.brandHeader, !isSidebarExpanded && styles.brandHeaderCollapsed]}>
+            <BrandMark size={32} />
+            {isSidebarExpanded && (
+              <View style={styles.brandText}>
+                <Text style={styles.brandName} numberOfLines={1}>CouchPotato</Text>
+                <Text style={styles.brandSub} numberOfLines={1}>Player</Text>
+              </View>
+            )}
+          </View>
+
+          {isSidebarExpanded && <Text style={tvStyles.sidebarSectionTitle}>{t('menu')}</Text>}
 
           {tabs.map((tab) => {
             const itemKey = `tab:${tab.id}`;
@@ -100,8 +122,8 @@ export const HomeTVLayout = ({
             );
           })}
 
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-          {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('providers')}</Text>}
+          <View style={[styles.divider, { backgroundColor: tokenColors.borderSoft }]} />
+          {isSidebarExpanded && <Text style={tvStyles.sidebarSectionTitle}>{t('providers')}</Text>}
 
           {profiles.map((profile) => {
             const isCurrent = currentProfileId === profile.id;
@@ -136,26 +158,26 @@ export const HomeTVLayout = ({
       </TVFocusGuideView>
 
       <TVFocusGuideView autoFocus={!isSidebarExpanded} style={styles.contentGuide}>
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: tokenColors.bg }]}>
           <View
             style={[
               styles.contentHeader,
               {
-                borderBottomColor: colors.divider,
-                backgroundColor: colors.card,
+                borderBottomColor: tokenColors.borderSoft,
+                backgroundColor: tokenColors.bg,
                 paddingTop: Math.max(insets.top, spacing.sm),
               },
             ]}
           >
             <View>
-              <Text style={[styles.activeSectionLabel, { color: colors.text }]}>{activeTabLabel}</Text>
+              <Text style={styles.activeSectionLabel} numberOfLines={1}>{activeTabLabel}</Text>
               {!!currentProfileName && (
-                <Text style={[styles.profileLabel, { color: colors.textMuted }]} numberOfLines={1}>
+                <Text style={styles.profileLabel} numberOfLines={1}>
                   {currentProfileName}
                 </Text>
               )}
             </View>
-            <Text style={[styles.clockLabel, { color: colors.textSecondary }]}>{nowLabel}</Text>
+            <Text style={styles.clockLabel}>{nowLabel}</Text>
           </View>
           <View style={styles.contentBody}>{children}</View>
         </View>
@@ -175,10 +197,38 @@ const styles = StyleSheet.create({
   sidebarInner: {
     flex: 1,
   },
+  brandHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  brandHeaderCollapsed: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  brandText: {
+    flexShrink: 1,
+  },
+  brandName: {
+    color: tokenColors.text,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  brandSub: {
+    ...typography.eyebrow,
+    color: tokenColors.textMuted,
+    fontSize: 10,
+    marginTop: 2,
+  },
   divider: {
     height: 1,
     marginVertical: spacing.md + 2,
     marginHorizontal: spacing.md + 2,
+    borderRadius: radii.sm,
   },
   contentGuide: {
     flex: 1,
@@ -189,28 +239,28 @@ const styles = StyleSheet.create({
   contentHeader: {
     minHeight: 72,
     borderBottomWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.sm + 2,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
   activeSectionLabel: {
-    fontSize: 30,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    ...typography.headline,
+    color: tokenColors.text,
     textTransform: 'capitalize',
   },
   profileLabel: {
+    ...typography.caption,
+    color: tokenColors.textMuted,
     marginTop: 4,
-    fontSize: 14,
-    fontWeight: '500',
   },
   clockLabel: {
-    fontSize: 16,
+    ...typography.subtitle,
+    color: tokenColors.textDim,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.4,
-    textTransform: 'uppercase',
   },
   contentBody: {
     flex: 1,
