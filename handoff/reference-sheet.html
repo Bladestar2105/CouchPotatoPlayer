@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>CouchPotatoPlayer — Reference Screens (for handoff)</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: #0a0a0f; }
+  .ref-page { padding: 40px; display: flex; flex-direction: column; gap: 60px; max-width: 1400px; margin: 0 auto; }
+  .ref-item { display: flex; flex-direction: column; gap: 10px; }
+  .ref-label { font: 600 12px/1.3 ui-monospace, Menlo, monospace; color: #888; letter-spacing: 0.12em; text-transform: uppercase; }
+  .ref-frame { background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6); position: relative; }
+  :root {
+    --accent: #6B5BFF;
+    --accent-soft: rgba(107,91,255,0.14);
+    --accent-ring: rgba(107,91,255,0.55);
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="screens-tv.jsx"></script>
+<script type="text/babel" src="screens-mobile.jsx"></script>
+<script type="text/babel" src="screens-extra.jsx"></script>
+
+<script type="text/babel">
+const screens = [
+  { id: 'welcome-tv',        label: '01 · Welcome (TV, 1280×720)',        w: 1280, h: 720, C: WelcomeScreen },
+  { id: 'home-tv-sidebar',   label: '02 · Home · Sidebar + Hero (TV)',     w: 1280, h: 720, C: HomeTVScreen },
+  { id: 'home-tv-cinema',    label: '03 · Home · Full-Bleed Cinema (TV)',  w: 1280, h: 720, C: HomeTVCinematic },
+  { id: 'home-web',          label: '04 · Home · Web / Desktop',           w: 1280, h: 720, C: WebHome },
+  { id: 'home-mobile',       label: '05 · Home · Mobile (420×920)',        w: 420,  h: 920, C: HomeMobile },
+  { id: 'epg-grid',          label: '06 · Live TV · Grid EPG',             w: 1280, h: 720, C: EPGGridScreen },
+  { id: 'epg-cards',         label: '07 · Live TV · Now / Next Cards',     w: 1280, h: 720, C: EPGCardsScreen },
+  { id: 'player-live',       label: '08 · Player · Live + Channel Overlay',w: 1280, h: 720, C: PlayerLiveTV },
+  { id: 'movies-tv',         label: '09 · Movies · Browser (TV)',          w: 1280, h: 720, C: MoviesBrowserTV },
+  { id: 'series-tv',         label: '10 · Series · Detail (TV)',           w: 1280, h: 720, C: SeriesDetailTV },
+  { id: 'favorites-tv',      label: '11 · Favorites · Collection (TV)',    w: 1280, h: 720, C: FavoritesRecentTV },
+  { id: 'detail-mobile',     label: '12 · Media Detail · Mobile',          w: 420,  h: 920, C: MediaDetailMobile },
+  { id: 'player-vod-tv',     label: '13 · Player · VOD (TV)',              w: 1280, h: 720, C: PlayerVODScreen },
+  { id: 'player-mobile',     label: '14 · Player · Mobile (landscape)',    w: 820,  h: 380, C: PlayerMobile },
+  { id: 'search-mobile',     label: '15 · Search · Mobile',                w: 420,  h: 920, C: SearchMobile },
+  { id: 'settings-mobile',   label: '16 · Settings · Mobile',              w: 420,  h: 920, C: SettingsMobile },
+  { id: 'onboarding-mobile', label: '17 · Provider Setup · Mobile',        w: 420,  h: 920, C: OnboardingMobile },
+];
+
+function App() {
+  return (
+    <div className="ref-page">
+      {screens.map(({ id, label, w, h, C }) => (
+        <div key={id} className="ref-item" data-ref-id={id}>
+          <div className="ref-label">{label}</div>
+          <div className="ref-frame" style={{ width: w, height: h }} data-ref-frame>
+            <C />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

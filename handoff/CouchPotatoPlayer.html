@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CouchPotatoPlayer — Design System</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  body { background: #1a1a1f; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="screens-tv.jsx"></script>
+<script type="text/babel" src="screens-mobile.jsx"></script>
+<script type="text/babel" src="screens-extra.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#6B5BFF",
+  "density": "cozy",
+  "radius": "soft",
+  "letterform": "Inter"
+}/*EDITMODE-END*/;
+
+const ACCENTS = {
+  "Potato":   "#E85D1C",
+  "Sunset":   "#FF5E3A",
+  "Electric": "#6B5BFF",
+  "Mint":     "#00D4A0",
+  "Gold":     "#F5C518",
+  "Crimson":  "#E50914"
+};
+
+const RADIUS_MAP = {
+  sharp: { sm: 2, md: 4, lg: 6, xl: 8 },
+  soft:  { sm: 8, md: 12, lg: 16, xl: 20 },
+  pill:  { sm: 14, md: 18, lg: 24, xl: 32 },
+};
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const setAccent = (name) => setTweak('accent', ACCENTS[name]);
+
+  useEffect(() => {
+    const r = document.documentElement;
+    r.style.setProperty('--accent', tweaks.accent);
+    // shift accent-soft / ring from accent
+    r.style.setProperty('--accent-soft', tweaks.accent + '24');
+    r.style.setProperty('--accent-ring', tweaks.accent + '80');
+    const rad = RADIUS_MAP[tweaks.radius] || RADIUS_MAP.soft;
+    r.style.setProperty('--radius-sm', rad.sm + 'px');
+    r.style.setProperty('--radius-md', rad.md + 'px');
+    r.style.setProperty('--radius-lg', rad.lg + 'px');
+    r.style.setProperty('--radius-xl', rad.xl + 'px');
+    r.style.setProperty('--font-sans', `'${tweaks.letterform}', ui-sans-serif, system-ui, sans-serif`);
+  }, [tweaks.accent, tweaks.radius, tweaks.letterform]);
+
+  // Load font dynamically for Letterform choice
+  useEffect(() => {
+    const id = 'letterform-link';
+    let link = document.getElementById(id);
+    if (!link) { link = document.createElement('link'); link.id = id; link.rel = 'stylesheet'; document.head.appendChild(link); }
+    const fontQ = encodeURIComponent(tweaks.letterform).replace(/%20/g, '+');
+    link.href = `https://fonts.googleapis.com/css2?family=${fontQ}:wght@300;400;500;600;700;800;900&display=swap`;
+  }, [tweaks.letterform]);
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="foundation" title="00 · Foundation" subtitle="A cinematic-dark IPTV player that unifies iOS, iPadOS, tvOS, Android, Android TV and Web into one cohesive product.">
+          <DCArtboard id="brand" label="Brand · Type · Color" width={1280} height={720}>
+            <BrandSheet accent={tweaks.accent} />
+          </DCArtboard>
+          <DCArtboard id="welcome-tv" label="Welcome · First Run (TV)" width={1280} height={720}>
+            <WelcomeScreen />
+          </DCArtboard>
+          <DCArtboard id="onboarding-mobile" label="Provider Setup · Mobile" width={420} height={920}>
+            <OnboardingMobile />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="home" title="01 · Home" subtitle="Three explorations — from classic sidebar to full-bleed cinema. Tweaks toggle accent & shape.">
+          <DCArtboard id="home-tv-a" label="A · Sidebar + Hero (TV)" width={1280} height={720}>
+            <HomeTVScreen />
+          </DCArtboard>
+          <DCArtboard id="home-tv-b" label="B · Full-Bleed Cinema (TV)" width={1280} height={720}>
+            <HomeTVCinematic />
+          </DCArtboard>
+          <DCArtboard id="home-web" label="C · Web / Desktop" width={1280} height={720}>
+            <WebHome />
+          </DCArtboard>
+          <DCArtboard id="home-mobile" label="Mobile · Phone" width={420} height={920}>
+            <HomeMobile />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="live" title="02 · Live TV · EPG" subtitle="Two guide layouts users can switch between. Grid for power users, cards for discovery.">
+          <DCArtboard id="epg-grid" label="A · Classic Grid EPG (TV)" width={1280} height={720}>
+            <EPGGridScreen />
+          </DCArtboard>
+          <DCArtboard id="epg-cards" label="B · Now / Next Cards (TV)" width={1280} height={720}>
+            <EPGCardsScreen />
+          </DCArtboard>
+          <DCArtboard id="player-live" label="Live Player · Channel Overlay" width={1280} height={720}>
+            <PlayerLiveTV />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="browse" title="03 · Browse · Movies & Series" subtitle="Dense poster grids, editor hero, focus-first TV browse.">
+          <DCArtboard id="movies-tv" label="Movies · Browser (TV)" width={1280} height={720}>
+            <MoviesBrowserTV />
+          </DCArtboard>
+          <DCArtboard id="series-tv" label="Series · Detail (TV)" width={1280} height={720}>
+            <SeriesDetailTV />
+          </DCArtboard>
+          <DCArtboard id="favorites-tv" label="Favorites · Collection (TV)" width={1280} height={720}>
+            <FavoritesRecentTV />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="detail" title="04 · Media Detail & Player" subtitle="Mobile-first detail & player controls, designed for touch + remote parity.">
+          <DCArtboard id="detail-mobile" label="Media Detail · Mobile" width={420} height={920}>
+            <MediaDetailMobile />
+          </DCArtboard>
+          <DCArtboard id="player-vod-tv" label="VOD Player · TV" width={1280} height={720}>
+            <PlayerVODScreen />
+          </DCArtboard>
+          <DCArtboard id="player-mobile" label="VOD Player · Mobile (landscape)" width={820} height={380}>
+            <PlayerMobile />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="utility" title="05 · Search & Settings" subtitle="Utility surfaces — consistent language, dense info on mobile, accessible on all platforms.">
+          <DCArtboard id="search-mobile" label="Search · Mobile" width={420} height={920}>
+            <SearchMobile />
+          </DCArtboard>
+          <DCArtboard id="settings-mobile" label="Settings · Mobile" width={420} height={920}>
+            <SettingsMobile />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      {/* Tweaks panel */}
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Accent color" />
+        <TweakRadio
+          label="Accent"
+          value={Object.keys(ACCENTS).find(k => ACCENTS[k] === tweaks.accent) || 'Sunset'}
+          options={Object.keys(ACCENTS)}
+          onChange={setAccent}
+        />
+        <TweakSection label="Shape" />
+        <TweakRadio
+          label="Corner radius"
+          value={tweaks.radius}
+          options={['sharp','soft','pill']}
+          onChange={(v) => setTweak('radius', v)}
+        />
+        <TweakRadio
+          label="Density"
+          value={tweaks.density}
+          options={['compact','cozy']}
+          onChange={(v) => setTweak('density', v)}
+        />
+        <TweakSection label="Typeface" />
+        <TweakSelect
+          label="Font"
+          value={tweaks.letterform}
+          options={['Inter','Geist','Manrope','Space Grotesk','Urbanist','DM Sans']}
+          onChange={(v) => setTweak('letterform', v)}
+        />
+      </TweaksPanel>
+    </>
+  );
+}
+
+// Brand sheet artboard
+function BrandSheet({ accent }) {
+  const swatches = [
+    ['Background', '#07070a'],
+    ['Surface', '#13131a'],
+    ['Elevated', '#1c1c26'],
+    ['Border', '#262632'],
+    ['Text', '#f5f5f7'],
+    ['Dim', '#a0a0ad'],
+    ['Muted', '#6b6b78'],
+    ['Accent', accent],
+    ['Success', '#3ddc97'],
+    ['Live', '#ff3b30'],
+  ];
+  const sizes = [
+    ['Display · 900', 64, 900, '-0.04em'],
+    ['Headline · 800', 32, 800, '-0.02em'],
+    ['Title · 700', 22, 700, '-0.01em'],
+    ['Body · 500', 15, 500, '0'],
+    ['Caption · 600', 11, 600, '0.14em'],
+  ];
+  return (
+    <div style={{ width: '100%', height: '100%', background: 'var(--bg)', color: 'var(--text)', padding: '48px 56px', display: 'flex', gap: 40, overflow: 'hidden' }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 22 }}>
+          <div style={{ width: 88, height: 88, borderRadius: 20, background: '#22416B', display: 'grid', placeItems: 'center', overflow: 'hidden', boxShadow: `0 20px 40px -12px ${accent}55, inset 0 0 0 1px rgba(255,255,255,.08)` }}>
+            <img src="assets/icon.png" alt="CouchPotatoPlayer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 48, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>
+              <span style={{ color: 'var(--accent)' }}>CouchPotato</span><span style={{ color: '#5a7aa8' }}>Player</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, letterSpacing: '0.18em', textTransform: 'uppercase' }} className="mono">v1.8 · iOS · tvOS · Android · Web</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8, lineHeight: 1.6, maxWidth: 520 }}>
+          A cinematic-dark IPTV player for Xtream Codes &amp; M3U. One visual language across every screen — phone to living-room TV — tuned for focus, playback fidelity, and the remote in your hand.
+        </div>
+
+        <div style={{ marginTop: 36 }}>
+          <div className="eyebrow">Type scale · Inter</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+            {sizes.map(([lb, sz, w, ls], i) => (
+              <div key={lb} style={{ display: 'flex', alignItems: 'baseline', gap: 16, borderBottom: '1px solid var(--border-soft)', paddingBottom: 10 }}>
+                <div style={{ width: 130, fontSize: 10, color: 'var(--text-muted)' }} className="mono">{lb}</div>
+                <div style={{ fontSize: sz, fontWeight: w, letterSpacing: ls, textTransform: i === 4 ? 'uppercase' : 'none' }}>Cold Harbor</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ width: 380, display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div>
+          <div className="eyebrow">Palette</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginTop: 10 }}>
+            {swatches.map(([n, c]) => (
+              <div key={n} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 8, background: 'var(--surface)', borderRadius: 8, border: '1px solid var(--border-soft)' }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: c, border: '1px solid rgba(255,255,255,0.08)' }} />
+                <div style={{ fontSize: 10 }}>
+                  <div style={{ fontWeight: 700 }}>{n}</div>
+                  <div style={{ color: 'var(--text-muted)' }} className="mono">{c}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="eyebrow">Components</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            <button className="btn btn-primary"><I name="play" size={14}/> Play</button>
+            <button className="btn btn-ghost"><I name="plus" size={14}/> My List</button>
+            <span className="pill live">LIVE</span>
+            <span className="pill">TV‑MA</span>
+            <span className="pill">★ 8.7</span>
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+            <div style={{ width: 90, aspectRatio: '2/3', borderRadius: 8 }} className="poster g-thriller">
+              <div style={{ padding: 8, fontSize: 10, fontWeight: 700, color: '#fff', alignSelf: 'flex-end' }}>Cold Harbor</div>
+            </div>
+            <div style={{ width: 90, aspectRatio: '2/3', borderRadius: 8 }} className="poster g-scifi">
+              <div style={{ padding: 8, fontSize: 10, fontWeight: 700, color: '#fff', alignSelf: 'flex-end' }}>Mass: Vector</div>
+            </div>
+            <div style={{ width: 90, aspectRatio: '2/3', borderRadius: 8 }} className="poster g-drama">
+              <div style={{ padding: 8, fontSize: 10, fontWeight: 700, color: '#fff', alignSelf: 'flex-end' }}>The Orchardist</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="eyebrow">TV focus state</div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <div style={{ padding: '10px 14px', background: 'var(--surface)', borderRadius: 8, fontSize: 12, border: '1px solid var(--border-soft)' }}>Default</div>
+            <div className="tv-focus" style={{ padding: '10px 14px', background: 'var(--accent)', borderRadius: 8, fontSize: 12, color: '#fff', fontWeight: 700 }}>Focused</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
