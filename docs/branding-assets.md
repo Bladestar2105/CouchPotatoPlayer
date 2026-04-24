@@ -21,6 +21,7 @@ Wenn du das ZIP im Projekt-Root entpackst, stimmen Dateinamen und Pfade direkt m
 ### tvOS Store / Top Shelf
 
 - `build/asset-package/assets/store/tvos/app-icon-small-400x240.png`
+- `build/asset-package/assets/store/tvos/app-icon-small2x-800x480.png`
 - `build/asset-package/assets/store/tvos/app-icon-large-1280x768.png`
 - `build/asset-package/assets/store/tvos/top-shelf-1920x720.png`
 - `build/asset-package/assets/store/tvos/top-shelf-wide-2320x720.png`
@@ -35,6 +36,7 @@ Wenn du das ZIP im Projekt-Root entpackst, stimmen Dateinamen und Pfade direkt m
 - `assets/brand-wordmark.png`
 - `assets/store/ios/app-store-icon-1024.png`
 - `assets/store/tvos/app-icon-small-400x240.png`
+- `assets/store/tvos/app-icon-small2x-800x480.png`
 - `assets/store/tvos/app-icon-large-1280x768.png`
 - `assets/store/tvos/top-shelf-1920x720.png`
 - `assets/store/tvos/top-shelf-wide-2320x720.png`
@@ -43,4 +45,5 @@ Wenn du das ZIP im Projekt-Root entpackst, stimmen Dateinamen und Pfade direkt m
 ## Konfiguration
 
 - Splash-Hintergrund wurde auf das helle Marken-Grau `#E4E4E7` angepasst.
+- tvOS-App-Icons nutzen die Couch-Kartoffel-Marke ohne blaue Kachel auf weißem Hintergrund.
 - In-App-Branding nutzt `assets/brand-mark.png` und `assets/brand-wordmark.png`.

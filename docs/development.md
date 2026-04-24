@@ -92,6 +92,8 @@ If upgrading a dependency:
 
 ## tvOS App Store Connect upload checks
 Before creating a tvOS archive for TestFlight/App Store Connect, verify:
+- `assets/store/tvos/app-icon-small-400x240.png` is exactly `400x240`
+- `assets/store/tvos/app-icon-small2x-800x480.png` is exactly `800x480`
 - `assets/store/tvos/app-icon-large-1280x768.png` is exactly `1280x768`
 - `assets/store/tvos/top-shelf-wide-2320x720.png` is exactly `2320x720`
 - `assets/store/tvos/top-shelf-wide2x-4640x1440.png` is exactly `4640x1440`

@@ -16,6 +16,7 @@ ZIP_PATH = BUILD_ROOT / 'CouchPotatoPlayer-assets.zip'
 
 BG_HEX = '#E4E4E7'
 BG = tuple(int(BG_HEX[i : i + 2], 16) for i in (1, 3, 5))
+WHITE_BG = (255, 255, 255)
 
 
 def fit_and_paste(canvas: Image.Image, image: Image.Image, ratio: float = 0.78) -> Image.Image:
@@ -29,8 +30,30 @@ def fit_and_paste(canvas: Image.Image, image: Image.Image, ratio: float = 0.78) 
     return canvas
 
 
+def remove_solid_corner_background(image: Image.Image, tolerance: int = 4, remove_blue_tones: bool = False) -> Image.Image:
+    px = image.load()
+    corner = px[0, 0][:3]
+    width, height = image.size
+    data = []
+    for y in range(height):
+        for x in range(width):
+            r, g, b, a = px[x, y]
+            is_corner_bg = abs(r - corner[0]) <= tolerance and abs(g - corner[1]) <= tolerance and abs(b - corner[2]) <= tolerance
+            is_blue_tone = remove_blue_tones and ((b > r + 18 and b >= g - 10) or (g > r + 35 and b > r + 35))
+            if is_corner_bg or is_blue_tone:
+                data.append((r, g, b, 0))
+            else:
+                data.append((r, g, b, a))
+    image.putdata(data)
+    bbox = image.getbbox()
+    if not bbox:
+        raise RuntimeError('Could not detect tvOS icon mark after removing background.')
+    return image.crop(bbox)
+
+
 def create_store_assets(icon_src: Path):
     icon = Image.open(icon_src).convert('RGBA')
+    tvos_icon = remove_solid_corner_background(icon.copy(), remove_blue_tones=True)
 
     STORE_IOS.mkdir(parents=True, exist_ok=True)
     STORE_TVOS.mkdir(parents=True, exist_ok=True)
@@ -41,16 +64,18 @@ def create_store_assets(icon_src: Path):
 
     tv_targets = {
         'app-icon-small-400x240.png': (400, 240),
+        'app-icon-small2x-800x480.png': (800, 480),
         'app-icon-large-1280x768.png': (1280, 768),
         'top-shelf-1920x720.png': (1920, 720),
         'top-shelf-wide-2320x720.png': (2320, 720),
     }
 
     for name, size in tv_targets.items():
-        canvas = Image.new('RGB', size, BG)
+        is_app_icon = name.startswith('app-icon-')
+        canvas = Image.new('RGB', size, WHITE_BG if is_app_icon else BG)
         # keep icon compact for extra-wide banners
-        ratio = 0.38 if size[0] > 1800 else 0.56
-        fit_and_paste(canvas, icon, ratio=ratio)
+        ratio = 0.38 if size[0] > 1800 else (0.84 if is_app_icon else 0.56)
+        fit_and_paste(canvas, tvos_icon if is_app_icon else icon, ratio=ratio)
         canvas.save(STORE_TVOS / name)
 
 
