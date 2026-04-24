@@ -30,7 +30,7 @@ def fit_and_paste(canvas: Image.Image, image: Image.Image, ratio: float = 0.78) 
     return canvas
 
 
-def remove_solid_corner_background(image: Image.Image, tolerance: int = 4, remove_blue_tones: bool = False) -> Image.Image:
+def remove_solid_corner_background(image: Image.Image, tolerance: int = 4) -> Image.Image:
     px = image.load()
     corner = px[0, 0][:3]
     width, height = image.size
@@ -38,9 +38,7 @@ def remove_solid_corner_background(image: Image.Image, tolerance: int = 4, remov
     for y in range(height):
         for x in range(width):
             r, g, b, a = px[x, y]
-            is_corner_bg = abs(r - corner[0]) <= tolerance and abs(g - corner[1]) <= tolerance and abs(b - corner[2]) <= tolerance
-            is_blue_tone = remove_blue_tones and ((b > r + 18 and b >= g - 10) or (g > r + 35 and b > r + 35))
-            if is_corner_bg or is_blue_tone:
+            if abs(r - corner[0]) <= tolerance and abs(g - corner[1]) <= tolerance and abs(b - corner[2]) <= tolerance:
                 data.append((r, g, b, 0))
             else:
                 data.append((r, g, b, a))
@@ -53,7 +51,7 @@ def remove_solid_corner_background(image: Image.Image, tolerance: int = 4, remov
 
 def create_store_assets(icon_src: Path):
     icon = Image.open(icon_src).convert('RGBA')
-    tvos_icon = remove_solid_corner_background(icon.copy(), remove_blue_tones=True)
+    tvos_icon = remove_solid_corner_background(icon.copy())
 
     STORE_IOS.mkdir(parents=True, exist_ok=True)
     STORE_TVOS.mkdir(parents=True, exist_ok=True)

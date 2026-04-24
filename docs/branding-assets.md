@@ -45,5 +45,5 @@ Wenn du das ZIP im Projekt-Root entpackst, stimmen Dateinamen und Pfade direkt m
 ## Konfiguration
 
 - Splash-Hintergrund wurde auf das helle Marken-Grau `#E4E4E7` angepasst.
-- tvOS-App-Icons nutzen die Couch-Kartoffel-Marke ohne blaue Kachel auf weißem Hintergrund.
+- tvOS-App-Icons nutzen die Couch-Kartoffel-Player-Marke ohne blaue Kachel auf weißem Hintergrund.
 - In-App-Branding nutzt `assets/brand-mark.png` und `assets/brand-wordmark.png`.
