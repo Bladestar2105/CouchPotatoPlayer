@@ -277,6 +277,38 @@ const VideoPlayer = React.forwardRef(
           videoRef.current.seek(position / 1000);
         }
       },
+      // Picture-in-Picture is only available on the react-native-video backend
+      // (iOS phone/tablet + Android non-TV). On other backends or platforms the
+      // call is a graceful no-op so the UI button can still be wired up.
+      enterPictureInPicture: () => {
+        const native = videoRef.current;
+        if (!native) return false;
+        if (typeof native.enterPictureInPictureMode === 'function') {
+          try {
+            native.enterPictureInPictureMode();
+            return true;
+          } catch (e) {
+            console.warn('[VideoPlayer] enterPictureInPicture failed', e);
+          }
+        }
+        return false;
+      },
+      // Trigger the iOS native fullscreen player which exposes the system
+      // AirPlay / route picker. Android's react-native-video doesn't have
+      // a built-in route picker, so the call is a graceful no-op there.
+      presentExternalPlaybackPicker: () => {
+        const native = videoRef.current;
+        if (!native) return false;
+        if (typeof native.presentFullscreenPlayer === 'function') {
+          try {
+            native.presentFullscreenPlayer();
+            return true;
+          } catch (e) {
+            console.warn('[VideoPlayer] presentFullscreenPlayer failed', e);
+          }
+        }
+        return false;
+      },
     }));
 
     React.useEffect(() => {
@@ -366,6 +398,16 @@ const VideoPlayer = React.forwardRef(
           ref={videoRef}
           key={currentStream?.id}
           source={{ uri: streamUrl, type: sourceType }}
+          // Enable Picture-in-Picture: works on iOS (phone / tablet) and on
+          // Android API 26+. The system PiP transition is a no-op on devices
+          // that don't support it, so the prop is safe to leave on.
+          pictureInPicture={true}
+          // Allow iOS AirPlay receivers to play the stream via the OS-level
+          // route picker (Control Center / fullscreen native chrome).
+          allowsExternalPlayback={true}
+          ignoreSilentSwitch="ignore"
+          playInBackground={false}
+          playWhenInactive={true}
           selectedAudioTrack={selectedAudioTrackIndex == null ? undefined : { type: 'index', value: selectedAudioTrackIndex }}
           selectedTextTrack={
             selectedTextTrackId === undefined

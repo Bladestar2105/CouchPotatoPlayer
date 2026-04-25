@@ -31,7 +31,10 @@
         ],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "appleTV": {

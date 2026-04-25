@@ -129,6 +129,15 @@ const PlayerScreen = () => {
   const backButtonRef = React.useRef<any>(null);
   const audioButtonRef = React.useRef<any>(null);
   const subtitleButtonRef = React.useRef<any>(null);
+  // Imperative handle on the underlying VideoPlayer so we can trigger
+  // Picture-in-Picture and the iOS native route picker (AirPlay) on demand
+  // from the overlay buttons. The handle is a no-op on backends that don't
+  // support these capabilities (Apple TV's AVPlayer wrapper, KSPlayer, web).
+  const videoPlayerRef = React.useRef<{
+    seek?: (positionMs: number) => void;
+    enterPictureInPicture?: () => boolean;
+    presentExternalPlaybackPicker?: () => boolean;
+  } | null>(null);
   const overlayDestinationRefs = useMemo(() => [backButtonRef, audioButtonRef, subtitleButtonRef], []);
   const overlayFocusDestinations = useTVFocusGuideDestinations(overlayDestinationRefs, showOverlay);
   const preferredOverlayKey = useTVPreferredFocusKey(showOverlay ? 'overlay:back' : null);
@@ -824,6 +833,29 @@ const PlayerScreen = () => {
     setTrackPanelMode((prev) => (prev === mode ? null : mode));
   }, [showOverlayWithActivity]);
 
+  // Picture-in-Picture: only the react-native-video backend exposes a PiP API,
+  // which is wired up on iOS phone / tablet and Android (non-TV). Apple TV's
+  // AVPlayer wrapper, KSPlayer, VLC and the web backend are gracefully
+  // skipped: the button never appears on those platforms.
+  const isPipSupported = !Platform.isTV && (Platform.OS === 'ios' || Platform.OS === 'android');
+  const handlePictureInPicture = useCallback(() => {
+    if (!isPipSupported) return;
+    const ok = videoPlayerRef.current?.enterPictureInPicture?.();
+    if (ok === false) {
+      console.warn('[PlayerScreen] PiP request was a no-op on the current backend');
+    }
+  }, [isPipSupported]);
+
+  // AirPlay / external playback: opens the iOS native fullscreen player which
+  // ships with the standard AirPlay route picker. Android route discovery
+  // (Cast) is not available without an extra native dep, so the button only
+  // ships on iOS phone / tablet.
+  const isAirPlaySupported = Platform.OS === 'ios' && !Platform.isTV;
+  const handleAirPlay = useCallback(() => {
+    if (!isAirPlaySupported) return;
+    videoPlayerRef.current?.presentExternalPlaybackPicker?.();
+  }, [isAirPlaySupported]);
+
   const handleTracksChange = useCallback((tracks: PlaybackTrackGroups) => {
     const signature = serializePlaybackTrackGroups(tracks);
     if (signature !== trackSelectionSignatureRef.current) {
@@ -1080,6 +1112,7 @@ const PlayerScreen = () => {
         onPress={handlePress}
       >
         <VideoPlayer
+          ref={videoPlayerRef}
           key={`${currentStream?.id ?? 'none'}:${reconnectNonce}`}
           paused={isPaused}
           seekPosition={seekTime}
@@ -1206,6 +1239,32 @@ const PlayerScreen = () => {
               >
                 <Icon name="subtitles" size={18} color="#FFF" />
                 <Text style={pStyles.quickActionLabel} numberOfLines={1}>{subtitleQuickLabel}</Text>
+              </TouchableOpacity>
+            )}
+            {isPipSupported && (
+              <TouchableOpacity
+                style={pStyles.quickActionBtn}
+                onPress={handlePictureInPicture}
+                accessibilityRole="button"
+                accessibilityLabel={t('player.pip')}
+                isTVSelectable={false}
+                tvParallaxProperties={{ enabled: false }}
+              >
+                <Icon name="picture-in-picture-alt" size={18} color="#FFF" />
+                <Text style={pStyles.quickActionLabel} numberOfLines={1}>{t('player.pip')}</Text>
+              </TouchableOpacity>
+            )}
+            {isAirPlaySupported && (
+              <TouchableOpacity
+                style={pStyles.quickActionBtn}
+                onPress={handleAirPlay}
+                accessibilityRole="button"
+                accessibilityLabel={t('player.airplay')}
+                isTVSelectable={false}
+                tvParallaxProperties={{ enabled: false }}
+              >
+                <Icon name="airplay" size={18} color="#FFF" />
+                <Text style={pStyles.quickActionLabel} numberOfLines={1}>{t('player.airplay')}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
