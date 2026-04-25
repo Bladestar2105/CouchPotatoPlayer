@@ -1,0 +1,3 @@
+## 2024-05-20 - React Native FlatList renderItem Memoization
+**Learning:** Debouncing a state variable that drives a `FlatList`'s data does not fully prevent re-renders if the `renderItem` function is recreated on every component render (e.g., when the raw, non-debounced input state changes). The `FlatList` sees a new `renderItem` reference and re-renders all visible items anyway, causing heavy UI blocking on keystrokes.
+**Action:** Always memoize `renderItem` and any inner callbacks (like `onPress` handlers) with `React.useCallback` when used in a component that has frequent state updates, especially `TextInput` + `FlatList` search combinations.

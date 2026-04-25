@@ -10,15 +10,40 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  # ── Android Build (React Native Expo) ────────────────────────────────────────
-  build-android:
+  # ── JS-only checks (fast, blocks everything else) ────────────────────────────
+  # Run typecheck + unit tests on a lightweight ubuntu runner before the heavy
+  # native builds. If TypeScript or the unit suite regresses, the native jobs
+  # are skipped automatically via `needs`, saving macOS minutes.
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.29.1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test:unit
+
+  # ── Android Build (React Native Expo) ────────────────────────────────────────
+  build-android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.1
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -30,7 +55,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Fix hermesc permissions (pnpm strips execute bit)
         run: |
           # Fix all hermesc binaries everywhere in node_modules (files and symlinks)
@@ -55,20 +80,21 @@ jobs:
   # ── iOS Build (React Native Expo) ────────────────────────────────────────────
   # Requires macos-26 for Xcode 26 / Swift 6 (expo-modules-core SDK 56+)
   build-ios:
+    needs: test
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.29.1
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: 'pnpm'
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Prebuild iOS
         run: npx expo prebuild --platform ios
       - name: Pod Install
@@ -92,20 +118,21 @@ jobs:
   # during prebuild, ensuring native compilation against the Apple TV SDK.
   # Requires macos-26 for Xcode 26 / Swift 6 (expo-modules-core SDK 56+)
   build-tvos:
+    needs: test
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.29.1
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: 'pnpm'
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Install tvOS Fork
         run: |
           pnpm install -w react-native@npm:react-native-tvos@0.84.1-0
@@ -138,6 +165,7 @@ jobs:
 
   # ── Docker Build & Push (Web) ─────────────────────────────────────────────────
   build-docker:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

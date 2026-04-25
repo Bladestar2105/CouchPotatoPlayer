@@ -151,7 +151,7 @@ const MainLayout = () => {
     return (
       <HomeTVLayout
         colors={colors}
-        insets={{ top: insets.top, bottom: insets.bottom }}
+        insets={{ top: insets.top, right: insets.right, bottom: insets.bottom, left: insets.left }}
         isSidebarExpanded={isSidebarExpanded}
         expandedWidth={expandedWidth}
         collapsedWidth={collapsedWidth}

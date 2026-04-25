@@ -5,6 +5,7 @@ import { MobileTopTabBar } from './TabNavigation';
 import type { TabDef, TabId } from './types';
 import type { ThemeColors } from '../../context/SettingsContext';
 import type { IPTVProfile } from '../../types';
+import { colors as tokenColors } from '../../theme/tokens';
 
 interface HomeMobileLayoutProps {
   colors: ThemeColors;
@@ -28,8 +29,8 @@ export const HomeMobileLayout = ({
   children,
 }: HomeMobileLayoutProps) => {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card, zIndex: 10, elevation: 10 }}>
+    <View style={{ flex: 1, backgroundColor: tokenColors.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: tokenColors.surface, zIndex: 10, elevation: 10 }}>
         <MobileTopTabBar
           tabs={tabs}
           activeTab={activeTab}
@@ -41,7 +42,7 @@ export const HomeMobileLayout = ({
         />
       </SafeAreaView>
 
-      <View style={{ flex: 1, zIndex: 1 }}>{children}</View>
+      <View style={{ flex: 1, zIndex: 1, backgroundColor: colors.background }}>{children}</View>
     </View>
   );
 };

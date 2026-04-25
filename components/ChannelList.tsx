@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Platform, InteractionManager, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Platform, InteractionManager, useWindowDimensions, RefreshControl } from 'react-native';
 import { useIPTVAppState, useIPTVCollections, useIPTVGuide, useIPTVLibrary, useIPTVParental, useIPTVPlayback } from '../context/IPTVContext';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
@@ -189,15 +190,13 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   );
   const [focusedChannelId, setFocusedChannelId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(props.initialViewMode || 'list');
-  const [restoreFocusOnSelectedChannel, setRestoreFocusOnSelectedChannel] = useState(false);
+  const [restoreFocusOnSelectedCategory, setRestoreFocusOnSelectedCategory] = useState(false);
 
-  const channelRefs = useRef<{[key: string]: any}>({});
-
-  useEffect(() => {
-    if (!restoreFocusOnSelectedChannel || !focusedChannelId) return;
-    return scheduleFocusRestore(channelRefs.current, focusedChannelId, setTimeout, clearTimeout);
-  }, [restoreFocusOnSelectedChannel, focusedChannelId]);
-
+  const firstCategoryRef = useRef<any>(null);
+  const categoryRefs = useRef<Record<string, any>>({});
+  const categoryListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList>(null);
+  const pendingCategoryFocusIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const shouldLogTvPerf = isTvPerfLoggingEnabled(isTVPlatform);
@@ -208,7 +207,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       setFocusedChannelId(route.params.focusChannelId);
     }
     if (route.params?.returnGroupId || route.params?.focusChannelId) {
-      setRestoreFocusOnSelectedChannel(true);
+      setRestoreFocusOnSelectedCategory(!!route.params?.returnGroupId);
       if (shouldLogTvPerf) {
         focusRestoreStartedAtRef.current = nowMs();
       }
@@ -228,13 +227,18 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const isCompactLayout = !isTV && windowWidth < 600;
   const [showCategories, setShowCategories] = useState<boolean>(true);
 
-  const firstCategoryRef = useRef<any>(null);
-  const categoryRefs = useRef<Record<string, any>>({});
-  const flatListRef = useRef<FlatList>(null);
   const [unlockMode, setUnlockMode] = useState<string | null>(null);
   const prefetchInteractionRef = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
   const focusAfterCategorySelectionStartedAtRef = useRef<number | null>(null);
   const focusRestoreStartedAtRef = useRef<number | null>(null);
+  const { refreshing, onRefresh } = usePullToRefresh();
+  const refreshControl = useMemo(
+    () =>
+      isTV ? undefined : (
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      ),
+    [isTV, refreshing, onRefresh, colors.primary],
+  );
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -246,7 +250,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
-      if (viewMode === 'epg' || restoreFocusOnSelectedChannel) return;
+      if (viewMode === 'epg' || restoreFocusOnSelectedCategory) return;
       if (selectedGroup) {
         const selectedCategoryRef = categoryRefs.current[selectedGroup];
         if (selectedCategoryRef) {
@@ -272,13 +276,16 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
       }
       return false;
     },
-  }), [viewMode, restoreFocusOnSelectedChannel, selectedGroup]);
+  }), [viewMode, restoreFocusOnSelectedCategory, selectedGroup]);
 
   useEffect(() => {
-    if (!restoreFocusOnSelectedChannel) return;
-    const timer = setTimeout(() => setRestoreFocusOnSelectedChannel(false), 450);
+    if (!restoreFocusOnSelectedCategory) return;
+    const timer = setTimeout(() => {
+      pendingCategoryFocusIdRef.current = null;
+      setRestoreFocusOnSelectedCategory(false);
+    }, 450);
     return () => clearTimeout(timer);
-  }, [restoreFocusOnSelectedChannel]);
+  }, [restoreFocusOnSelectedCategory]);
 
   useEffect(() => {
     if (!selectedGroup) return;
@@ -329,6 +336,20 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     }
     return { groups: result, groupMap: map, channelMap: cMap };
   }, [channels, isAdultUnlocked, pin, isTvPerfEnabled]);
+
+  useEffect(() => {
+    if (!restoreFocusOnSelectedCategory || !selectedGroup) return;
+    const categoryIndex = groups.findIndex((group) => group.title === selectedGroup);
+    if (categoryIndex >= 0) {
+      categoryListRef.current?.scrollToIndex({
+        index: categoryIndex,
+        animated: false,
+        viewPosition: 0.5,
+      });
+    }
+    pendingCategoryFocusIdRef.current = selectedGroup;
+    return scheduleFocusRestore(categoryRefs.current, selectedGroup, setTimeout, clearTimeout);
+  }, [groups, restoreFocusOnSelectedCategory, selectedGroup]);
 
   useEffect(() => {
     if (groups.length === 0) return;
@@ -586,6 +607,32 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     return offset;
   }, [groups, selectedGroup]);
 
+  const handleCategoryFocus = useCallback((title: string) => {
+    if (
+      isTvPerfEnabled &&
+      focusRestoreStartedAtRef.current !== null &&
+      pendingCategoryFocusIdRef.current === title
+    ) {
+      logTvPerfMetric('ChannelList.playerReturnToFocus', nowMs() - focusRestoreStartedAtRef.current, {
+        selectedGroup: title,
+        target: 'category',
+      });
+      focusRestoreStartedAtRef.current = null;
+    }
+
+    if (pendingCategoryFocusIdRef.current === title) {
+      pendingCategoryFocusIdRef.current = null;
+      setRestoreFocusOnSelectedCategory(false);
+    }
+  }, [isTvPerfEnabled]);
+
+  const handleCategoryScrollToIndexFailed = useCallback(({ index }: { index: number }) => {
+    categoryListRef.current?.scrollToOffset({
+      offset: Math.max(0, index * (Platform.isTV ? 72 : 56)),
+      animated: false,
+    });
+  }, []);
+
   const renderCategoryItem = useCallback(({ item, index }: { item: { title: string; data: Channel[] }, index: number }) => {
     const isSelected = selectedGroup === item.title;
     const isFirstItem = index === 0;
@@ -601,16 +648,17 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
         count={item.data.length}
         isSelected={isSelected}
         onPress={handleGroupSelect}
+        onFocus={handleCategoryFocus}
         colors={colors}
         hasTVPreferredFocus={shouldCategoryHavePreferredFocus({
-          restoreFocusOnSelectedChannel,
+          restoreFocusOnSelectedCategory,
           isSelected,
           isFirstItem,
         })}
         accessibilityLabel={t('a11y.selectCategory', { title: item.title })}
       />
     );
-  }, [selectedGroup, handleGroupSelect, colors, restoreFocusOnSelectedChannel, t]);
+  }, [selectedGroup, handleGroupSelect, handleCategoryFocus, colors, restoreFocusOnSelectedCategory, t]);
 
   const handleChannelFocus = useCallback((id: string) => {
     setFocusedChannelId(id);
@@ -625,6 +673,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
     if (isTvPerfEnabled && focusRestoreStartedAtRef.current !== null) {
       logTvPerfMetric('ChannelList.playerReturnToFocus', nowMs() - focusRestoreStartedAtRef.current, {
         selectedGroup,
+        target: pendingCategoryFocusIdRef.current ? 'category' : 'channel',
       });
       focusRestoreStartedAtRef.current = null;
     }
@@ -657,7 +706,6 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
 
     return (
       <ChannelRow
-        ref={(el: any) => (channelRefs.current[channel.id] = el)}
         channel={channel}
         channelNumber={channelIndexOffset + index + 1}
         isPlaying={isPlaying}
@@ -726,6 +774,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
               </View>
             )}
             <FlatList
+              ref={categoryListRef}
               data={groups}
               keyExtractor={(item) => item.title}
               initialNumToRender={listPerfConfig.initialNumToRender}
@@ -733,6 +782,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
               windowSize={listPerfConfig.windowSize}
               updateCellsBatchingPeriod={listPerfConfig.updateCellsBatchingPeriod}
               removeClippedSubviews={listPerfConfig.removeClippedSubviews}
+              onScrollToIndexFailed={handleCategoryScrollToIndexFailed}
               renderItem={renderCategoryItem}
             />
           </View>
@@ -759,6 +809,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                       ref={flatListRef}
                       data={selectedChannels}
                       keyExtractor={(item) => item.id}
+                      refreshControl={refreshControl}
                       initialNumToRender={listPerfConfig.initialNumToRender}
                       maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
                       windowSize={Math.max(listPerfConfig.windowSize, 7)}
@@ -830,6 +881,7 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
                   setFocusedChannelId={handleEpgFocusedChannelChange}
                   currentStreamId={currentStream?.id}
                   shouldFocusFirstItem={shouldFocusFirstItem}
+                  preferredFocusChannelId={null}
                   isEpgPending={isEpgPendingForSelection}
                 />
               ) : (

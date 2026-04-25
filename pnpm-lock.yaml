@@ -12,6 +12,9 @@ patchedDependencies:
   '@react-native-picker/picker@2.11.1':
     hash: e465962d13cb791f6570ec0488adfd04c685ab3919e58d684657e3268a47aee8
     path: patches/@react-native-picker__picker@2.11.1.patch
+  react-native-vlc-media-player@1.0.98:
+    hash: c259fddbe04dd08fa6e1ec6b4bb646a29d3057ee0a1596cc4411849886bce2a1
+    path: patches/react-native-vlc-media-player.patch
 
 importers:
 
@@ -142,7 +145,7 @@ importers:
         version: 6.19.1(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       react-native-vlc-media-player:
         specifier: ^1.0.96
-        version: 1.0.98
+        version: 1.0.98(patch_hash=c259fddbe04dd08fa6e1ec6b4bb646a29d3057ee0a1596cc4411849886bce2a1)
       react-native-web:
         specifier: ^0.21.2
         version: 0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -4810,9 +4813,7 @@ snapshots:
       metro-runtime: 0.83.5
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.74.89': {}
 
@@ -6953,7 +6954,7 @@ snapshots:
       react: 19.2.3
       react-native: 0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)
 
-  react-native-vlc-media-player@1.0.98:
+  react-native-vlc-media-player@1.0.98(patch_hash=c259fddbe04dd08fa6e1ec6b4bb646a29d3057ee0a1596cc4411849886bce2a1):
     dependencies:
       react-native-slider: 0.11.0
       react-native-vector-icons: 9.2.0

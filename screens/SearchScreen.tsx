@@ -8,15 +8,22 @@ import { RootStackParamList } from '../App';
 import { isTV as isTVPlatform } from '../utils/platform';
 import { radii, spacing, typography } from '../theme/tokens';
 import { useTranslation } from 'react-i18next';
+import { getEpgKeyForChannel } from '../utils/channelListBehavior';
 
 const defaultLogo = require('../assets/character_logo.png');
+// Format a scheduled EPG start time in the user's locale for the result row.
+const EPG_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 type SearchScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
 const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
-  const { channels, movies, series } = useIPTVLibrary();
+  const { channels, movies, series, epg } = useIPTVLibrary();
   const { playStream } = useIPTVPlayback();
   const { colors } = useSettings();
   const { t } = useTranslation();
@@ -98,10 +105,49 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
       }
     }
 
-    return results;
-  }, [debouncedQuery, channels, movies, series]);
+    // EPG programs: only look at the upcoming 24 h window so the search stays
+    // fast on large catalogues. Past programs are deliberately excluded to
+    // avoid cluttering the list with unplayable items (catchup playback from
+    // search would need a separate navigation path); users who want to catch
+    // up can still use the EPG grid directly. Title match only (not
+    // description) keeps each comparison to one `.includes` call.
+    if (results.length < MAX_RESULTS) {
+      const nowMs = Date.now();
+      const horizonMs = nowMs + 24 * 60 * 60 * 1000;
+      for (let i = 0; i < channels.length; i++) {
+        if (results.length >= MAX_RESULTS) break;
+        const channel = channels[i];
+        const key = getEpgKeyForChannel(channel);
+        const programs = epg[key];
+        if (!programs || programs.length === 0) continue;
+        for (let j = 0; j < programs.length; j++) {
+          if (results.length >= MAX_RESULTS) break;
+          const prog = programs[j];
+          if (prog.end <= nowMs) continue; // already finished
+          if (prog.start > horizonMs) break; // list is sorted: everything after is out of window
+          if (prog.title.toLowerCase().includes(lowerQuery)) {
+            results.push({
+              id: `${channel.id}:${prog.start}`,
+              mediaType: 'epg',
+              channelId: channel.id,
+              channelUrl: channel.url,
+              channelName: channel.name,
+              channelLogo: channel.logo,
+              programTitle: prog.title,
+              programStart: prog.start,
+              // Fields below are populated for rendering parity with other result types.
+              name: prog.title,
+              logo: channel.logo,
+            });
+          }
+        }
+      }
+    }
 
-  const handleItemPress = (item: any) => {
+    return results;
+  }, [debouncedQuery, channels, movies, series, epg]);
+
+  const handleItemPress = React.useCallback((item: any) => {
     if (item.mediaType === 'live') {
       playStream({ url: item.url, id: item.id });
       navigation.navigate('Player');
@@ -111,11 +157,29 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
     } else if (item.mediaType === 'movie') {
       // @ts-ignore
       navigation.navigate('MediaInfo', { id: item.id, type: 'vod', title: item.name, cover: item.cover, streamUrl: item.streamUrl });
+    } else if (item.mediaType === 'epg') {
+      // Tapping an upcoming EPG program jumps to the channel's live stream.
+      // Going to the exact program start is only meaningful once it airs,
+      // so "open the channel" is the most predictable behaviour today.
+      playStream({ url: item.channelUrl, id: item.channelId });
+      navigation.navigate('Player');
     }
-  };
+  }, [navigation, playStream]);
 
-  const renderItem = ({ item }: { item: any }) => {
+  // ⚡ Bolt: Memoize renderItem to prevent recreating it on every keystroke,
+  // which was forcing the FlatList to re-render all visible items.
+  const renderItem = React.useCallback(({ item }: { item: any }) => {
     const cover = item.logo || item.cover || item.stream_icon;
+    const typeLabel = item.mediaType === 'live'
+      ? t('search.resultLiveTv')
+      : item.mediaType === 'series'
+        ? t('series')
+        : item.mediaType === 'epg'
+          ? t('search.resultEpg', {
+              channel: item.channelName,
+              time: EPG_TIME_FORMATTER.format(item.programStart),
+            })
+          : t('movies');
 
     return (
       <TouchableOpacity
@@ -136,13 +200,13 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
           <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
             {item.name}
           </Text>
-          <Text style={[styles.type, { color: colors.textSecondary }]}>
-            {item.mediaType === 'live' ? t('search.resultLiveTv') : item.mediaType === 'series' ? t('series') : t('movies')}
+          <Text style={[styles.type, { color: colors.textSecondary }]} numberOfLines={1}>
+            {typeLabel}
           </Text>
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [colors.divider, colors.card, colors.text, colors.textSecondary, handleItemPress, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -172,7 +236,7 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
         <TextInput
           ref={inputRef}
           style={[styles.input, { color: colors.text }, isTV && styles.tvHiddenInput]}
-          placeholder={t('search.placeholder')}
+          placeholder={t('search.placeholderWithEpg')}
           placeholderTextColor={colors.textSecondary}
           accessibilityLabel={t('search.searchQueryA11y')}
           value={query}

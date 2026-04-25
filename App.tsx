@@ -7,6 +7,7 @@ import { Platform, StatusBar } from 'react-native';
 import { tvTextSize } from './utils/tvAccessibility';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SettingsProvider } from './context/SettingsContext';
+import { ThemeProvider } from './context/ThemeContext';
 import './utils/i18n';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -21,6 +22,62 @@ import PinSetupScreen from './screens/PinSetupScreen';
 import MediaInfoScreen from './screens/MediaInfoScreen';
 import SearchScreen from './screens/SearchScreen';
 import { Series, Season } from './types';
+
+type BoundaryNavigation = {
+  canGoBack?: () => boolean;
+  goBack?: () => void;
+  navigate?: (screenName: string) => void;
+  reset?: (state: { index: number; routes: Array<{ name: string }> }) => void;
+};
+
+type BoundaryNavigationProps = {
+  navigation?: BoundaryNavigation;
+};
+
+// Wrap every screen component in its own ErrorBoundary so a render crash on
+// one screen cannot take down the whole app: the user can return to Home
+// or retry. The top-level ErrorBoundary in `App` is
+// still in place as a last-resort catch for errors that happen outside the
+// navigator (providers, NetworkMonitor, etc.).
+//
+// The wrapped components MUST be created once at module load, not inline in
+// the render, because React Navigation tracks component identity to manage
+// screen state. `React.memo` would not be enough; the wrapped reference has
+// to be stable across renders.
+const withScreenBoundary = <P extends object>(
+  Screen: React.ComponentType<P>,
+): React.ComponentType<P> => {
+  const Wrapped = (props: P) => {
+    const navigation = (props as BoundaryNavigationProps).navigation;
+    const handleFallbackBack = () => {
+      if (navigation?.reset) {
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        return;
+      }
+      if (navigation?.canGoBack?.()) {
+        navigation.goBack?.();
+        return;
+      }
+      navigation?.navigate?.('Home');
+    };
+
+    return (
+      <ErrorBoundary onFallbackBack={navigation ? handleFallbackBack : undefined}>
+        <Screen {...props} />
+      </ErrorBoundary>
+    );
+  };
+  Wrapped.displayName = `WithScreenBoundary(${Screen.displayName || Screen.name || 'Screen'})`;
+  return Wrapped;
+};
+
+const HomeScreenWithBoundary = withScreenBoundary(HomeScreen);
+const PlayerScreenWithBoundary = withScreenBoundary(PlayerScreen);
+const SeasonScreenWithBoundary = withScreenBoundary(SeasonScreen);
+const EpisodeScreenWithBoundary = withScreenBoundary(EpisodeScreen);
+const PinSetupScreenWithBoundary = withScreenBoundary(PinSetupScreen);
+const MediaInfoScreenWithBoundary = withScreenBoundary(MediaInfoScreen);
+const SearchScreenWithBoundary = withScreenBoundary(SearchScreen);
 
 // Navigation route map (without Splash route)
 export type RootStackParamList = {
@@ -37,7 +94,7 @@ export type RootStackParamList = {
     title?: string;
   } | undefined;
   Season: { series: Series; returnGroupId?: string | null; returnTab?: 'series' };
-  Episode: { season: Season; returnGroupId?: string | null; returnTab?: 'series' };
+  Episode: { season: Season; series?: Series; returnGroupId?: string | null; returnTab?: 'series' };
   PinSetup: undefined;
   Search: undefined;
   MediaInfo: {
@@ -58,6 +115,7 @@ const App = () => {
   const { t } = useTranslation();
   return (
     <SettingsProvider>
+      <ThemeProvider>
       <SafeAreaProvider>
         <ErrorBoundary>
         <IPTVProvider>
@@ -85,37 +143,37 @@ const App = () => {
             {/* Splash route intentionally removed */}
             <Stack.Screen
               name="Home"
-              component={HomeScreen}
+              component={HomeScreenWithBoundary}
               options={{ title: t('appTitle'), headerShown: false }}
             />
             <Stack.Screen
               name="Player"
-              component={PlayerScreen}
+              component={PlayerScreenWithBoundary}
               options={{ headerShown: false }}
             />
             <Stack.Screen
               name="Season"
-              component={SeasonScreen}
+              component={SeasonScreenWithBoundary}
               options={({ route }) => ({ title: route.params.series.name })}
             />
             <Stack.Screen
               name="Episode"
-              component={EpisodeScreen}
+              component={EpisodeScreenWithBoundary}
               options={({ route }) => ({ title: route.params.season.name })}
             />
             <Stack.Screen
               name="PinSetup"
-              component={PinSetupScreen}
+              component={PinSetupScreenWithBoundary}
               options={{ title: t('parentalControl') }}
             />
             <Stack.Screen
               name="Search"
-              component={SearchScreen}
+              component={SearchScreenWithBoundary}
               options={{ title: t('search') }}
             />
             <Stack.Screen
               name="MediaInfo"
-              component={MediaInfoScreen}
+              component={MediaInfoScreenWithBoundary}
               options={{ title: '' }}
             />
             </Stack.Navigator>
@@ -123,6 +181,7 @@ const App = () => {
         </IPTVProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
+      </ThemeProvider>
     </SettingsProvider>
   );
 };

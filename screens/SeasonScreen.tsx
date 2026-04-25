@@ -103,8 +103,8 @@ const SeasonScreen = () => {
   }, [currentProfile, getSeriesInfo, seasons.length, series.id]);
 
   const handleSeasonPress = useCallback((season: Season) => {
-    navigation.navigate('Episode', { season, returnGroupId, returnTab });
-  }, [navigation, returnGroupId, returnTab]);
+    navigation.navigate('Episode', { season, series, returnGroupId, returnTab });
+  }, [navigation, returnGroupId, returnTab, series]);
 
   const renderItem = useCallback(({ item, index }: { item: Season; index: number }) => {
     const isFocusedSeason = focusedSeasonId === item.id;

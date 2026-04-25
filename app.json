@@ -18,6 +18,9 @@
       "icon": "./assets/store/ios/app-store-icon-1024.png",
       "supportsTablet": true,
       "bundleIdentifier": "de.teamei.couchpotatoplayer",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "CFBundleDevelopmentRegion": "en",
         "CFBundleLocalizations": [

@@ -1,5 +1,5 @@
-import React, { forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert, findNodeHandle } from 'react-native';
+import React, { forwardRef, useImperativeHandle, useRef, useCallback, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert, findNodeHandle, Platform } from 'react-native';
 import { useIPTVCollections, useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -132,11 +132,13 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
   const dimensions = useWindowDimensions();
+  const [containerWidth, setContainerWidth] = useState(dimensions.width);
   const isTvMode = dimensions.width >= 1200;
-  const numColumns = isTvMode ? 6 : Math.max(3, Math.floor(dimensions.width / 160));
+  const listWidth = Math.max(320, containerWidth);
+  const numColumns = isTvMode ? 6 : Math.max(2, Math.floor(listWidth / 160));
   const horizontalPadding = 32; // list container left+right padding
   const cardGap = 16; // combined left+right margin from styles.card
-  const cardWidth = Math.min(190, Math.max(140, Math.floor((dimensions.width - horizontalPadding - (cardGap * numColumns)) / numColumns)));
+  const cardWidth = Math.min(190, Math.max(115, Math.floor((listWidth - horizontalPadding - (cardGap * numColumns)) / numColumns)));
 
   const firstItemRef = useRef<any>(null);
   const clearAllButtonRef = useRef<any>(null);
@@ -262,7 +264,10 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.background }]}
+      onLayout={(event) => setContainerWidth(event.nativeEvent.layout.width)}
+    >
       <View style={styles.actionsBar}>
         <TouchableOpacity
           ref={clearAllButtonRef}
@@ -297,7 +302,7 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
         initialNumToRender={12}
         maxToRenderPerBatch={12}
         windowSize={5}
-        removeClippedSubviews={true}
+        removeClippedSubviews={!Platform.isTV}
       />
     </View>
   );
@@ -351,7 +356,7 @@ const styles = StyleSheet.create({
   card: {
     margin: 8,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: 'visible',
     alignItems: 'center',
     padding: 12,
     // Shadow for depth

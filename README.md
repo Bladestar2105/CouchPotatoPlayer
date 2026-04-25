@@ -77,7 +77,7 @@ Use a custom dev client / native run workflow instead.
 Install dependencies:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ---
@@ -130,7 +130,7 @@ npx expo export -p web
 
 This project keeps standard `react-native` for normal iOS/Android development and **switches to tvOS only during tvOS builds**:
 
-1. `pnpm install` ensures the base dependency graph is clean.
+1. `pnpm install --frozen-lockfile` ensures the base dependency graph matches the lockfile.
 2. Script temporarily aliases:
    `react-native@npm:react-native-tvos@0.84.1-0`
 3. A pnpm virtual-store symlink fix is applied so native iOS module resolution keeps working.
