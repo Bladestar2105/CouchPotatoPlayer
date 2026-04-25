@@ -6,6 +6,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Movie } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { proxyImageUrl } from '../utils/imageProxy';
 import { useRenderDiagnostics } from '../hooks/useRenderDiagnostics';
 import { prefetchImages } from '../utils/imageCache';
@@ -34,15 +35,15 @@ const getPosterUri = (cover?: string): string | undefined => {
 // ⚡ Bolt: Wrap CategoryItem in React.memo to prevent unnecessary re-renders of the entire category list
 // when selecting a new group. The custom comparison function ensures that inline functions like onPress
 // do not trigger re-renders.
-const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, hasTVPreferredFocus, nextFocusRight, accessibilityLabel }: { title: string, count?: number, isSelected: boolean, onPress: (title: string) => void, onFocus?: (title: string) => void, hasTVPreferredFocus?: boolean, nextFocusRight?: number, accessibilityLabel: string }, ref: React.Ref<any>) => {
+const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, onPress, onFocus, hasTVPreferredFocus, nextFocusRight, accessibilityLabel, accent, accentSoft }: { title: string, count?: number, isSelected: boolean, onPress: (title: string) => void, onFocus?: (title: string) => void, hasTVPreferredFocus?: boolean, nextFocusRight?: number, accessibilityLabel: string, accent: string, accentSoft: string }, ref: React.Ref<any>) => {
     const [isFocused, setIsFocused] = useState(false);
     return (
         <TouchableOpacity
             ref={ref}
             style={[
                 styles.categoryItem,
-                isSelected ? { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : { borderLeftWidth: 3, borderLeftColor: 'transparent' },
-                isFocused ? { backgroundColor: 'rgba(233, 105, 42, 0.3)', borderLeftColor: '#E9692A', borderLeftWidth: 3 } : {}
+                isSelected ? { backgroundColor: accentSoft, borderLeftColor: accent, borderLeftWidth: 3 } : { borderLeftWidth: 3, borderLeftColor: 'transparent' },
+                isFocused ? { backgroundColor: accentSoft, borderLeftColor: accent, borderLeftWidth: 3 } : {}
             ]}
             onPress={() => onPress(title)}
             onFocus={() => { setIsFocused(true); onFocus?.(title); }}
@@ -139,7 +140,15 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_p
   const { isLoading } = useIPTVAppState();
   const { pin, isAdultUnlocked } = useIPTVParental();
   const { movies } = useIPTVLibrary();
-  const { colors } = useSettings();
+  const { colors: legacyColors } = useSettings();
+  const { accent, accentSoft } = useTheme();
+  // Override legacy primary with the live accent so poster focus borders,
+  // pull-to-refresh tint and category-bar selection follow the user's choice
+  // from Settings → Appearance.
+  const colors = useMemo(
+    () => ({ ...legacyColors, primary: accent, primaryLight: accentSoft }),
+    [legacyColors, accent, accentSoft],
+  );
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -379,9 +388,11 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_p
         accessibilityLabel={t('a11y.selectCategory', { title: item.title })}
         // @ts-ignore - supported on TV platforms
         nextFocusRight={firstPosterNodeRef.current}
+        accent={accent}
+        accentSoft={accentSoft}
       />
     );
-  }, [selectedGroup, handleGroupSelect, t]);
+  }, [selectedGroup, handleGroupSelect, t, accent, accentSoft]);
 
   const renderMovieItem = useCallback(({ item, index }: { item: Movie; index: number }) => {
     const movieKey = getMoviePosterKey(item);
