@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef, useCallback, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useCallback, useState, useMemo } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, Image, useWindowDimensions, Alert, findNodeHandle, Platform } from 'react-native';
 import { useIPTVCollections, useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
 import { useNavigation } from '@react-navigation/native';
@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { RecentlyWatchedItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
@@ -80,7 +81,7 @@ const RecentlyWatchedCard = React.memo(({
         {/* Progress Bar (for VOD and Series) */}
         {progressPercent > 0 && item.type !== 'live' && (
           <View style={styles.progressContainer}>
-            <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
+            <View style={[styles.progressBar, { width: `${progressPercent}%`, backgroundColor: colors.primary }]} />
           </View>
         )}
 
@@ -128,7 +129,12 @@ const RecentlyWatchedList = forwardRef<ContentRef, { onReturnToSidebar?: () => v
   const { recentlyWatched, removeRecentlyWatched, clearRecentlyWatched, addRecentlyWatched } = useIPTVCollections();
   const { channels } = useIPTVLibrary();
   const { playStream } = useIPTVPlayback();
-  const { colors } = useSettings();
+  const { colors: legacyColors } = useSettings();
+  const { accent, accentSoft } = useTheme();
+  const colors = useMemo(
+    () => ({ ...legacyColors, primary: accent, primaryLight: accentSoft }),
+    [legacyColors, accent, accentSoft],
+  );
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<RecentlyWatchedScreenNavigationProp>();
   const dimensions = useWindowDimensions();

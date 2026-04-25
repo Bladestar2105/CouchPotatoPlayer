@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { FavoriteItem } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 export type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
@@ -42,7 +43,7 @@ const FavoriteCard = React.memo(({
       style={[
           styles.card,
           { backgroundColor: 'rgba(30,30,46,0.9)' },
-          isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: '#E9692A', borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
+          isFocused ? { transform: [{ scale: 1.05 }], zIndex: 1, borderColor: colors.primary, borderWidth: 2 } : { borderColor: 'transparent', borderWidth: 2 }
       ]}
       onPress={() => handlePress(item)}
       onFocus={() => setFocusedItemId(`${item.id}-${item.type}`)}
@@ -91,7 +92,12 @@ const FavoritesList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>
   const { favorites, removeFavorite, addRecentlyWatched } = useIPTVCollections();
   const { channels } = useIPTVLibrary();
   const { playStream } = useIPTVPlayback();
-  const { colors } = useSettings();
+  const { colors: legacyColors } = useSettings();
+  const { accent, accentSoft } = useTheme();
+  const colors = useMemo(
+    () => ({ ...legacyColors, primary: accent, primaryLight: accentSoft }),
+    [legacyColors, accent, accentSoft],
+  );
   const { t } = useTranslation();
   const navigation = useNavigation<FavoritesScreenNavigationProp>();
   const dimensions = useWindowDimensions();
