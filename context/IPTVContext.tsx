@@ -20,10 +20,12 @@ import {
   Season,
   EPGProgram,
   FavoriteItem,
-  RecentlyWatchedItem
+  RecentlyWatchedItem,
+  PlaybackStream
 } from '../types';
 import { generateCatchupUrl, hasCatchupSupport, CatchupType, CatchupConfig } from '../utils/catchupUtils';
 import { parseXMLTVFromString } from '../utils/epgParser';
+import { filterNonAdultRecentlyWatched, isAdultRecentlyWatchedItem } from '../utils/adultContent';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
 const PROFILES_STORAGE_KEY = 'IPTV_PROFILES';
@@ -111,8 +113,8 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
 
 const IPTVContext = createContext<IPTVContextType | undefined>(undefined);
 type IPTVPlaybackContextType = {
-  currentStream: { url: string; id: string; } | null;
-  playStream: (stream: { url: string; id: string; }) => void;
+  currentStream: PlaybackStream | null;
+  playStream: (stream: PlaybackStream) => void;
   stopStream: () => void;
 };
 const IPTVPlaybackContext = createContext<IPTVPlaybackContextType | undefined>(undefined);
@@ -192,7 +194,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [movies, setMovies] = useState<Movie[]>([]);
   const [series, setSeries] = useState<Series[]>([]);
   const [hasAdultContent, setHasAdultContent] = useState<boolean>(false);
-  const [currentStream, setCurrentStream] = useState<{ url: string; id: string; } | null>(null);
+  const [currentStream, setCurrentStream] = useState<PlaybackStream | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [recentlyWatched, setRecentlyWatched] = useState<RecentlyWatchedItem[]>([]);
   const [epg, setEpg] = useState<Record<string, EPGProgram[]>>({});
@@ -1377,7 +1379,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   }, [currentProfile]);
 
-  const playStream = useCallback((stream: { url: string; id: string; }) => {
+  const playStream = useCallback((stream: PlaybackStream) => {
     setCurrentStream(stream);
   }, []);
 
@@ -1433,9 +1435,40 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return favoritesSet.has(id);
   }, [favoritesSet]);
 
+  const adultContentLookup = useMemo(() => ({ channels, movies, series }), [channels, movies, series]);
+  const visibleRecentlyWatched = useMemo(
+    () => filterNonAdultRecentlyWatched(recentlyWatched, adultContentLookup),
+    [recentlyWatched, adultContentLookup],
+  );
+
+  useEffect(() => {
+    setRecentlyWatched(prev => {
+      const filtered = filterNonAdultRecentlyWatched(prev, adultContentLookup);
+      if (filtered.length === prev.length) return prev;
+
+      AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(filtered)).catch(e => {
+        Logger.error("Error pruning adult recently watched items", e);
+      });
+      return filtered;
+    });
+  }, [adultContentLookup]);
+
   // --- Recently Watched with progress ---
   const addRecentlyWatched = useCallback(async (item: RecentlyWatchedItem) => {
     try {
+      if (isAdultRecentlyWatchedItem(item, adultContentLookup)) {
+        setRecentlyWatched(prev => {
+          const filtered = prev.filter(r => !(r.id === item.id && r.type === item.type));
+          if (filtered.length === prev.length) return prev;
+
+          AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(filtered)).catch(e => {
+            Logger.error("Error removing adult item from recently watched", e);
+          });
+          return filtered;
+        });
+        return;
+      }
+
       setRecentlyWatched(prev => {
         const filtered = prev.filter(r => !(r.id === item.id && r.type === item.type));
         const newRecents = [item, ...filtered].slice(0, 50); // Keep last 50
@@ -1447,7 +1480,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error adding to recently watched", e);
     }
-  }, []);
+  }, [adultContentLookup]);
 
   const updatePlaybackPosition = useCallback(async (id: string, position: number, duration?: number) => {
     try {
@@ -1601,7 +1634,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     series,
     currentStream,
     favorites,
-    recentlyWatched,
+    recentlyWatched: visibleRecentlyWatched,
     pin,
     isAdultUnlocked,
     isLoading,
@@ -1647,7 +1680,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     series,
     currentStream,
     favorites,
-    recentlyWatched,
+    visibleRecentlyWatched,
     pin,
     isAdultUnlocked,
     isLoading,
@@ -1700,7 +1733,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }), [channels, movies, series, epg, hasAdultContent]);
   const collectionsValue = useMemo<IPTVCollectionsContextType>(() => ({
     favorites,
-    recentlyWatched,
+    recentlyWatched: visibleRecentlyWatched,
     addFavorite,
     removeFavorite,
     isFavorite,
@@ -1710,7 +1743,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearRecentlyWatched,
   }), [
     favorites,
-    recentlyWatched,
+    visibleRecentlyWatched,
     addFavorite,
     removeFavorite,
     isFavorite,

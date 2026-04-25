@@ -10,6 +10,7 @@ const useTVEventHandler: (handler: (event: any) => void) => void =
 import VideoPlayer, { VideoMetadata, type PlaybackTrack, type PlaybackTrackGroups } from '../components/VideoPlayer';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import type * as ScreenOrientationModule from 'expo-screen-orientation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 let ScreenOrientation: typeof ScreenOrientationModule | undefined;
 if (!Platform.isTV) {
@@ -21,7 +22,7 @@ import { useIPTVCollections, useIPTVLibrary, useIPTVPlayback } from '../context/
 import { useSettings } from '../context/SettingsContext';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { Channel } from '../types';
+import { Channel, PlaybackStream } from '../types';
 import { findCurrentProgramIndex, findNextProgramIndex } from '../utils/epgUtils';
 import { resolvePlayerRemoteAction } from '../utils/playerRemoteEvents';
 import { EMPTY_PLAYBACK_TRACKS, serializePlaybackTrackGroups } from '../components/player/PlaybackTracks';
@@ -55,8 +56,9 @@ const PlayerScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { addRecentlyWatched } = useIPTVCollections();
-  const { channels, epg } = useIPTVLibrary();
+  const { channels, movies, series, epg } = useIPTVLibrary();
   const { currentStream, stopStream, playStream } = useIPTVPlayback();
+  const insets = useSafeAreaInsets();
 
   const returnGroupId = route.params?.returnGroupId;
   const returnTab = route.params?.returnTab || 'channels';
@@ -104,7 +106,7 @@ const PlayerScreen = () => {
   const lastProgressAtRef = useRef<number>(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
-  const currentStreamRef = useRef<{ id: string; url: string } | null>(null);
+  const currentStreamRef = useRef<PlaybackStream | null>(null);
   const currentChannelRef = useRef<Channel | null>(null);
   const isFocusedRef = useRef(false);
   const initializedStreamIdRef = useRef<string | null>(null);
@@ -128,6 +130,10 @@ const PlayerScreen = () => {
   const overlayDestinationRefs = useMemo(() => [backButtonRef, audioButtonRef, subtitleButtonRef], []);
   const overlayFocusDestinations = useTVFocusGuideDestinations(overlayDestinationRefs, showOverlay);
   const preferredOverlayKey = useTVPreferredFocusKey(showOverlay ? 'overlay:back' : null);
+  const topOverlayOffset = Math.max(spacing.xl, insets.top + spacing.sm);
+  const leftOverlayOffset = Math.max(spacing.xl, insets.left + spacing.xl);
+  const rightOverlayOffset = Math.max(spacing.xl, insets.right + spacing.xl);
+  const bottomBarHeight = (Platform.isTV ? 188 : 160) + insets.bottom;
 
   const showOverlayWithActivity = useCallback(() => {
     setShowOverlay(true);
@@ -522,8 +528,8 @@ const PlayerScreen = () => {
       currentStreamRef.current = null;
       return;
     }
-    currentStreamRef.current = { id: currentStream.id, url: currentStream.url };
-  }, [currentStream?.id, currentStream?.url]);
+    currentStreamRef.current = currentStream;
+  }, [currentStream]);
 
   useEffect(() => {
     const streamId = currentStream?.id;
@@ -624,7 +630,7 @@ const PlayerScreen = () => {
     reconnectAttemptRef.current = 0;
     setReconnectNonce((prev) => (prev === 0 ? prev : 0));
 
-    const stream = currentStream as any;
+    const stream = currentStream as PlaybackStream;
     const explicitType = typeof stream?.type === 'string' ? stream.type.toLowerCase() : '';
     const inferredType: 'live' | 'vod' | 'series' =
       explicitType === 'series'
@@ -647,15 +653,29 @@ const PlayerScreen = () => {
       : typeof stream?.direct_source === 'string' && stream.direct_source.length > 0
         ? stream.direct_source
         : currentStream.url;
+    const seriesId = typeof stream?.seriesId === 'string' ? stream.seriesId : undefined;
+    const movieSnapshot = movies.find((movie) => String(movie.id) === String(currentStream.id));
+    const seriesSnapshot = series.find((entry) => String(entry.id) === String(seriesId || currentStream.id));
+    const isAdultStream =
+      stream?.isAdult === true ||
+      channelSnapshot?.isAdult === true ||
+      movieSnapshot?.isAdult === true ||
+      seriesSnapshot?.isAdult === true;
 
     addRecentlyWatchedRef.current({
       id: currentStream.id,
       type: inferredType,
       name: streamName,
-      icon: channelSnapshot?.logo,
+      icon: stream?.icon || channelSnapshot?.logo || movieSnapshot?.cover || seriesSnapshot?.cover,
       extension: typeof stream?.extension === 'string' ? stream.extension : undefined,
       directSource,
       lastWatchedAt: Date.now(),
+      isAdult: isAdultStream,
+      seriesId,
+      episodeId: stream?.episodeId,
+      episodeName: stream?.episodeName,
+      seasonNumber: stream?.seasonNumber,
+      episodeNumber: stream?.episodeNumber,
     });
     showOverlayWithActivity();
     setVideoMetadata(null);
@@ -668,7 +688,7 @@ const PlayerScreen = () => {
       if (prev.currentTime === 0 && prev.duration === 0) return prev;
       return { currentTime: 0, duration: 0 };
     });
-  }, [isFocused, currentStream?.id, currentStream?.url, clearReconnectTimer, route.params?.returnTab, route.params?.title, showOverlayWithActivity]);
+  }, [isFocused, currentStream?.id, currentStream?.url, clearReconnectTimer, route.params?.returnTab, route.params?.title, showOverlayWithActivity, movies, series]);
 
   useEffect(() => {
     if (!isFocused || !currentStream?.id || isPaused) {
@@ -1025,7 +1045,16 @@ const PlayerScreen = () => {
     <View style={pStyles.container}>
       {/* TiviMate-style channel switch mini-overlay (top-right) */}
       {showChannelSwitch && currentChannel && (
-        <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
+        <Animated.View
+          style={[
+            pStyles.channelSwitchOverlay,
+            {
+              opacity: channelSwitchOpacity,
+              top: topOverlayOffset,
+              right: rightOverlayOffset,
+            },
+          ]}
+        >
           <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: colors.primary }]}>
             <View style={[pStyles.channelNumberBadge, { backgroundColor: colors.primary }]}>
               <Text style={pStyles.channelNumberText}>{currentChannelNumber}</Text>
@@ -1064,7 +1093,16 @@ const PlayerScreen = () => {
       {showOverlay && (
         <TVFocusGuideView style={pStyles.overlay} destinations={overlayFocusDestinations} pointerEvents="box-none">
           {/* Top Bar - Back + Channel Number Badge */}
-          <View style={pStyles.topBar}>
+          <View
+            style={[
+              pStyles.topBar,
+              {
+                paddingTop: topOverlayOffset,
+                paddingLeft: leftOverlayOffset,
+                paddingRight: rightOverlayOffset,
+              },
+            ]}
+          >
             <TouchableOpacity
               ref={backButtonRef}
               style={[pStyles.iconBtn, { backgroundColor: 'rgba(30,30,46,0.75)' }]}
@@ -1191,7 +1229,17 @@ const PlayerScreen = () => {
           </View>
 
           {trackPanelMode && (
-            <View style={pStyles.trackPanelShell} pointerEvents="box-none">
+            <View
+              style={[
+                pStyles.trackPanelShell,
+                {
+                  top: topOverlayOffset + 54,
+                  left: Platform.isTV ? undefined : leftOverlayOffset,
+                  right: rightOverlayOffset,
+                },
+              ]}
+              pointerEvents="box-none"
+            >
               <View style={[pStyles.trackPanel, { borderColor: colors.primary }]}>
                 <View style={pStyles.trackPanelHeader}>
                   <Text style={pStyles.trackPanelTitle}>{trackPanelTitle}</Text>
@@ -1256,7 +1304,7 @@ const PlayerScreen = () => {
 
           {/* Bottom Bar - TiviMate-style EPG info */}
           {currentChannel && (
-              <View style={[pStyles.bottomBar, { borderTopColor: colors.primary }]}>
+              <View style={[pStyles.bottomBar, { borderTopColor: colors.primary, height: bottomBarHeight, paddingBottom: insets.bottom }]}>
                  <View style={pStyles.infoContainer}>
                      <Image source={currentChannel.logo && currentChannel.logo.startsWith('http') ? { uri: currentChannel.logo } : defaultLogo} style={pStyles.channelLogo} resizeMode="contain" />
 
@@ -1325,7 +1373,7 @@ const PlayerScreen = () => {
 
           {/* VOD/Series/Catchup info bar */}
           {!currentChannel && (
-            <View style={[pStyles.bottomBar, { borderTopColor: colors.primary }]}>
+            <View style={[pStyles.bottomBar, { borderTopColor: colors.primary, height: bottomBarHeight, paddingBottom: insets.bottom }]}>
               <View style={pStyles.vodInfoContainer}>
                 <View style={pStyles.vodHeaderRow}>
                   <Text style={pStyles.vodTitle} numberOfLines={1}>{playbackTitle}</Text>

@@ -138,7 +138,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
   };
 
   const handleSetTmdbKey = () => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === 'ios' && !Platform.isTV) {
       Alert.prompt(
         t('settings.tmdbTitle'),
         t('settings.tmdbPrompt'),
@@ -238,7 +238,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
             }
           }
         ],
-        'plain-text',
+        'secure-text',
         '',
         'number-pad'
       );

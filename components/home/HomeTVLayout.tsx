@@ -10,7 +10,7 @@ import { useTVPreferredFocusKey } from '../../hooks/useTVPreferredFocusKey';
 
 interface HomeTVLayoutProps {
   colors: ThemeColors;
-  insets: { top: number; bottom: number };
+  insets: { top: number; right: number; bottom: number; left: number };
   isSidebarExpanded: boolean;
   expandedWidth: number;
   collapsedWidth: number;
@@ -71,8 +71,17 @@ export const HomeTVLayout = ({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TVFocusGuideView autoFocus={isSidebarExpanded} style={[tvStyles.sidebar, styles.sidebar, { width: sidebarWidth, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
-        <View style={[styles.sidebarInner, { paddingTop: Math.max(insets.top, spacing.lg + 2), paddingBottom: Math.max(insets.bottom, spacing.sm + 2) }]}>
+      <TVFocusGuideView autoFocus={isSidebarExpanded} style={[tvStyles.sidebar, styles.sidebar, { width: sidebarWidth + insets.left, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+        <View
+          style={[
+            styles.sidebarInner,
+            {
+              paddingTop: Math.max(insets.top, spacing.lg + 2),
+              paddingBottom: Math.max(insets.bottom, spacing.sm + 2),
+              paddingLeft: insets.left,
+            },
+          ]}
+        >
           {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('menu')}</Text>}
 
           {tabs.map((tab) => {
@@ -144,6 +153,7 @@ export const HomeTVLayout = ({
                 borderBottomColor: colors.divider,
                 backgroundColor: colors.card,
                 paddingTop: Math.max(insets.top, spacing.sm),
+                paddingRight: Math.max(insets.right, spacing.lg),
               },
             ]}
           >

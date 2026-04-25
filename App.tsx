@@ -93,7 +93,7 @@ export type RootStackParamList = {
     title?: string;
   } | undefined;
   Season: { series: Series; returnGroupId?: string | null; returnTab?: 'series' };
-  Episode: { season: Season; returnGroupId?: string | null; returnTab?: 'series' };
+  Episode: { season: Season; series?: Series; returnGroupId?: string | null; returnTab?: 'series' };
   PinSetup: undefined;
   Search: undefined;
   MediaInfo: {
