@@ -9,9 +9,16 @@ import { isTV as isTVPlatform } from '../utils/platform';
 import { colors, radii, spacing, typography } from '../theme/tokens';
 import { FocusableCard } from '../components/Focusable';
 import { useTranslation } from 'react-i18next';
-import { Search as SearchIcon, X as XIcon, Globe } from 'lucide-react-native';
+import { Search as SearchIcon, X as XIcon, Globe, Mic } from 'lucide-react-native';
 import { getEpgKeyForChannel } from '../utils/channelListBehavior';
 import { loadAllSearchSnapshots, type ProfileSearchSnapshot } from '../utils/searchSnapshot';
+import {
+  isVoiceSearchAvailable,
+  startVoiceSearch,
+  stopVoiceSearch,
+  abortVoiceSearch,
+  addVoiceListener,
+} from '../utils/voiceSearch';
 
 const defaultLogo = require('../assets/character_logo.png');
 // Format a scheduled EPG start time in the user's locale for the result row.
@@ -69,6 +76,70 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
   // Default ON when more than one provider is configured. Single-provider
   // setups don't need the chip — the universal search is just the local one.
   const [includeAllProviders, setIncludeAllProviders] = useState(false);
+
+  // ─── Feature 15: voice search state ─────────────────────────────────
+  // Mic button only renders on platforms where the underlying speech
+  // recognizer can actually run (iOS phone / iPad / Android phone). TV
+  // and web fall through to text-only.
+  const voiceAvailable = React.useMemo(() => isVoiceSearchAvailable(), []);
+  const [isListening, setIsListening] = useState(false);
+  const isListeningRef = useRef(false);
+
+  React.useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  // Wire native recognition events to live-update the search query while
+  // the user is talking. We unconditionally subscribe — the wrapper returns
+  // no-op subscriptions on platforms without the module so the cleanup is
+  // always safe.
+  React.useEffect(() => {
+    if (!voiceAvailable) return undefined;
+
+    const subResult = addVoiceListener('result', (event: any) => {
+      const segments = event?.results;
+      if (!Array.isArray(segments) || segments.length === 0) return;
+      const transcript = segments[0]?.transcript;
+      if (typeof transcript === 'string' && transcript.length > 0) {
+        setQuery(transcript);
+        // The native recognizer fires `result` with isFinal=true once it has
+        // settled. Use that as our cue to stop listening so the mic icon
+        // stops pulsing without requiring an extra OS round-trip.
+        if (event?.isFinal) {
+          setIsListening(false);
+        }
+      }
+    });
+    const subEnd = addVoiceListener('end', () => setIsListening(false));
+    const subError = addVoiceListener('error', () => setIsListening(false));
+
+    return () => {
+      subResult.remove();
+      subEnd.remove();
+      subError.remove();
+    };
+  }, [voiceAvailable]);
+
+  // Make sure we never leave the recognizer running when the user navigates
+  // away from search.
+  React.useEffect(() => () => {
+    if (isListeningRef.current) {
+      abortVoiceSearch();
+    }
+  }, []);
+
+  const handleMicPress = React.useCallback(async () => {
+    if (!voiceAvailable) return;
+    if (isListening) {
+      stopVoiceSearch();
+      setIsListening(false);
+      return;
+    }
+    setIsListening(true);
+    setQuery('');
+    const ok = await startVoiceSearch({ lang: 'en-US' });
+    if (!ok) setIsListening(false);
+  }, [isListening, voiceAvailable]);
 
   useImperativeHandle(ref, () => ({
     focusFirstItem: () => {
@@ -516,9 +587,26 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
               <XIcon size={16} color={colors.textDim} />
             </Pressable>
           )}
+          {voiceAvailable && (
+            <Pressable
+              onPress={handleMicPress}
+              style={[
+                styles.micBtn,
+                isListening && { backgroundColor: accent, borderColor: accent },
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ busy: isListening }}
+              accessibilityLabel={t(isListening ? 'search.voiceStop' : 'search.voiceStart')}
+            >
+              <Mic size={16} color={isListening ? '#FFFFFF' : accent} />
+            </Pressable>
+          )}
         </View>
         {universalChip ? (
           <View style={styles.chipRow}>{universalChip}</View>
+        ) : null}
+        {isListening ? (
+          <Text style={[styles.listeningHint, { color: accent }]}>{t('search.voiceListening')}</Text>
         ) : null}
       </View>
 
@@ -574,6 +662,23 @@ const styles = StyleSheet.create({
   clearBtn: {
     padding: spacing.sm,
     borderRadius: radii.sm,
+  },
+  micBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.xs,
+  },
+  listeningHint: {
+    ...typography.caption,
+    fontWeight: '600',
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
   tvSearchActivator: {
     flex: 1,

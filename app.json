@@ -34,7 +34,9 @@
         },
         "UIBackgroundModes": [
           "audio"
-        ]
+        ],
+        "NSMicrophoneUsageDescription": "CouchPotato Player uses the microphone to let you search by voice.",
+        "NSSpeechRecognitionUsageDescription": "CouchPotato Player uses speech recognition to turn what you say into a search query."
       }
     },
     "appleTV": {
@@ -78,6 +80,13 @@
       "expo-video",
       "react-native-vlc-media-player",
       "react-native-video",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "CouchPotato Player uses the microphone to let you search by voice.",
+          "speechRecognitionPermission": "CouchPotato Player uses speech recognition to turn what you say into a search query."
+        }
+      ],
       [
         "expo-build-properties",
         {

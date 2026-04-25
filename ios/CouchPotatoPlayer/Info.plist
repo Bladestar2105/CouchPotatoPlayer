@@ -57,6 +57,10 @@
       <key>NSAllowsArbitraryLoads</key>
       <true/>
     </dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>CouchPotato Player uses the microphone to let you search by voice.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>CouchPotato Player uses speech recognition to turn what you say into a search query.</string>
     <key>NSBonjourServices</key>
     <array>
       <string>_expo._tcp</string>
