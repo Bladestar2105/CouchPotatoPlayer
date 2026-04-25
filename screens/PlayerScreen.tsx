@@ -958,6 +958,114 @@ const PlayerScreen = () => {
     showChannelSwitchBriefly();
   }, [channels, currentStream, channelIndexMap, playStream, showChannelSwitchBriefly]);
 
+  // ─── Feature 2: Live-Preview Channel Zapping ───────────────────────────
+  // While playing a live channel, pressing up/down on the remote opens a
+  // peek panel listing surrounding channels with their current EPG instead
+  // of switching immediately. The currently focused index auto-commits
+  // (= switches the stream) after 2s of no input or on Enter; Menu/Back
+  // cancels without switching.
+  const ZAP_AUTO_COMMIT_MS = 2000;
+  const [zapPeekIndex, setZapPeekIndex] = useState<number | null>(null);
+  const zapAutoCommitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const zapPeekIndexRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    zapPeekIndexRef.current = zapPeekIndex;
+  }, [zapPeekIndex]);
+
+  const clearZapAutoCommit = useCallback(() => {
+    if (zapAutoCommitRef.current) {
+      clearTimeout(zapAutoCommitRef.current);
+      zapAutoCommitRef.current = null;
+    }
+  }, []);
+
+  const closeZapPeek = useCallback(() => {
+    clearZapAutoCommit();
+    setZapPeekIndex(null);
+  }, [clearZapAutoCommit]);
+
+  const commitZapAt = useCallback((index: number | null) => {
+    clearZapAutoCommit();
+    if (index === null) {
+      setZapPeekIndex(null);
+      return;
+    }
+    const target = channels[index];
+    if (!target) {
+      setZapPeekIndex(null);
+      return;
+    }
+    if (currentStream?.id !== target.id) {
+      playStream({ url: target.url, id: target.id });
+      showChannelSwitchBriefly();
+    }
+    setZapPeekIndex(null);
+  }, [channels, currentStream?.id, playStream, showChannelSwitchBriefly, clearZapAutoCommit]);
+
+  const movePeek = useCallback((direction: 'up' | 'down') => {
+    if (channels.length === 0) return;
+    const currentLiveIndex = currentStream ? channelIndexMap.get(currentStream.id) : undefined;
+    setZapPeekIndex((current) => {
+      const baseIndex = current ?? currentLiveIndex ?? 0;
+      const next = direction === 'up'
+        ? (baseIndex + 1) % channels.length
+        : (baseIndex - 1 + channels.length) % channels.length;
+      return next;
+    });
+    clearZapAutoCommit();
+    zapAutoCommitRef.current = setTimeout(() => {
+      commitZapAt(zapPeekIndexRef.current);
+    }, ZAP_AUTO_COMMIT_MS);
+  }, [channels, channelIndexMap, currentStream, clearZapAutoCommit, commitZapAt]);
+
+  // Cleanup zap timer on unmount.
+  useEffect(() => () => clearZapAutoCommit(), [clearZapAutoCommit]);
+
+  // Build the visible peek window: 2 channels above + focused + 2 below
+  // (5 rows total) so the user can scan ahead without reorienting. Wrap-
+  // around is intentional: pressing up at the top of the list cycles to
+  // the bottom, mirroring the existing switchChannel behaviour.
+  const ZAP_PEEK_WINDOW = 5;
+  const zapPeekItems = useMemo(() => {
+    if (zapPeekIndex === null || channels.length === 0) return [];
+    const half = Math.floor(ZAP_PEEK_WINDOW / 2);
+    const items: { channel: Channel; index: number; isFocused: boolean; isCurrent: boolean }[] = [];
+    for (let offset = -half; offset <= half; offset += 1) {
+      const idx = (zapPeekIndex + offset + channels.length) % channels.length;
+      items.push({
+        channel: channels[idx],
+        index: idx,
+        isFocused: offset === 0,
+        isCurrent: currentStream?.id === channels[idx].id,
+      });
+    }
+    return items;
+  }, [zapPeekIndex, channels, currentStream?.id]);
+
+  const formatZapEpgWindow = useCallback((channel: Channel): { title: string | null; window: string | null } => {
+    const programs = epg[getEpgKey(channel)];
+    if (!programs || programs.length === 0) return { title: null, window: null };
+    const nowMs = Date.now();
+    const current = programs.find((p) => p.start <= nowMs && p.end > nowMs);
+    if (!current) return { title: null, window: null };
+    return {
+      title: current.title,
+      window: `${timeFormatter.format(current.start)} – ${timeFormatter.format(current.end)}`,
+    };
+  }, [epg]);
+
+  // If the live channel changes externally (back-handler, deep link, prev-ch
+  // toggle, brief-switch overlay), close any open peek so the highlight
+  // doesn't desynchronise from the actually-playing stream.
+  useEffect(() => {
+    if (zapPeekIndex !== null) {
+      closeZapPeek();
+    }
+    // We intentionally only react to the currentStream id changing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStream?.id]);
+
   const switchToPreviousChannel = useCallback(() => {
     if (!currentStream) return;
     const previousChannelId = previousLiveChannelIdRef.current;
@@ -980,9 +1088,38 @@ const PlayerScreen = () => {
   }, [currentStream?.id, channelIndexMap]);
 
   const handleTVRemoteEvent = useCallback((evt: any) => {
+    const eventType = evt?.eventType;
+
+    // While the live-preview zap panel is open, intercept up/down/select/menu
+    // BEFORE delegating to the standard remote-action resolver. This way the
+    // panel handles its own navigation and committing without fighting the
+    // overlay focus model.
+    if (zapPeekIndexRef.current !== null) {
+      if (eventType === 'up' || eventType === 'pageUp' || eventType === 'channelUp') {
+        movePeek('up');
+        return;
+      }
+      if (eventType === 'down' || eventType === 'pageDown' || eventType === 'channelDown') {
+        movePeek('down');
+        return;
+      }
+      if (eventType === 'menu') {
+        closeZapPeek();
+        return;
+      }
+      if (
+        eventType === 'select' || eventType === 'enter' ||
+        eventType === 'selectDown' || eventType === 'selectUp' ||
+        eventType === 'click' || eventType === 'tap'
+      ) {
+        commitZapAt(zapPeekIndexRef.current);
+        return;
+      }
+    }
+
     const action = resolvePlayerRemoteAction({
       isFocused,
-      eventType: evt?.eventType,
+      eventType,
       showOverlay,
       canSeek,
       hasPendingSeek: pendingSeekTime !== undefined,
@@ -1004,15 +1141,25 @@ const PlayerScreen = () => {
     } else if (action === 'seekRight') {
       queueSeekDelta(10000);
     } else if (action === 'switchChannelUp') {
-      switchChannel('up');
+      // Open the peek panel instead of switching directly when we're on a
+      // live channel; otherwise fall through to the legacy direct switch.
+      if (currentStream && channelIndexMap.has(currentStream.id)) {
+        movePeek('up');
+      } else {
+        switchChannel('up');
+      }
     } else if (action === 'switchChannelDown') {
-      switchChannel('down');
+      if (currentStream && channelIndexMap.has(currentStream.id)) {
+        movePeek('down');
+      } else {
+        switchChannel('down');
+      }
     } else if (action === 'showOverlay') {
       showOverlayWithActivity();
     } else if (action === 'switchToPreviousChannel') {
       switchToPreviousChannel();
     }
-  }, [isFocused, handleBack, showOverlay, canSeek, pendingSeekTime, switchChannel, switchToPreviousChannel, commitPendingSeek, queueSeekDelta, showOverlayWithActivity]);
+  }, [isFocused, handleBack, showOverlay, canSeek, pendingSeekTime, switchChannel, switchToPreviousChannel, commitPendingSeek, queueSeekDelta, showOverlayWithActivity, currentStream, channelIndexMap, movePeek, closeZapPeek, commitZapAt]);
 
   const handlePlayerProgress = useCallback((data: { currentTime: number; duration: number }) => {
     if (pendingSeekTime === undefined) {
@@ -1104,6 +1251,77 @@ const PlayerScreen = () => {
             </View>
           </View>
         </Animated.View>
+      )}
+
+      {/* Feature 2: Live-Preview Channel-Zapping panel.
+          Sticks to the right edge while the underlying live stream keeps
+          playing. Auto-commits after ZAP_AUTO_COMMIT_MS or on Enter, can be
+          dismissed with Menu / Back. */}
+      {zapPeekItems.length > 0 && (
+        <View
+          pointerEvents="box-none"
+          style={[
+            pStyles.zapPeekShell,
+            {
+              top: topOverlayOffset + 16,
+              right: rightOverlayOffset,
+              bottom: Math.max(insets.bottom + spacing.xxl, spacing.huge),
+            },
+          ]}
+        >
+          <View style={[pStyles.zapPeekPanel, { borderColor: accent }]}>
+            <Text style={pStyles.zapPeekHeader}>{t('zapPeek.title')}</Text>
+            {zapPeekItems.map(({ channel, index, isFocused: isZapFocused, isCurrent }) => {
+              const { title, window } = formatZapEpgWindow(channel);
+              return (
+                <TouchableOpacity
+                  key={`${channel.id}:${index}`}
+                  activeOpacity={0.8}
+                  onPress={() => commitZapAt(index)}
+                  style={[
+                    pStyles.zapPeekRow,
+                    isZapFocused && {
+                      backgroundColor: `${accent}24`,
+                      borderColor: accent,
+                    },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={channel.name}
+                  accessibilityState={{ selected: isZapFocused }}
+                >
+                  <View style={pStyles.zapPeekLogoWrap}>
+                    <Image
+                      source={channel.logo && channel.logo.startsWith('http')
+                        ? { uri: channel.logo }
+                        : defaultLogo}
+                      style={pStyles.zapPeekLogo}
+                      resizeMode="contain"
+                      defaultSource={defaultLogo}
+                    />
+                  </View>
+                  <View style={pStyles.zapPeekText}>
+                    <Text
+                      style={[pStyles.zapPeekChannelName, isZapFocused && { color: accent }]}
+                      numberOfLines={1}
+                    >
+                      {channel.name}
+                    </Text>
+                    {title ? (
+                      <Text style={pStyles.zapPeekProgramTitle} numberOfLines={1}>{title}</Text>
+                    ) : null}
+                    {window ? (
+                      <Text style={pStyles.zapPeekProgramTime} numberOfLines={1}>{window}</Text>
+                    ) : null}
+                  </View>
+                  {isCurrent ? (
+                    <View style={[pStyles.zapPeekLiveDot, { backgroundColor: accent }]} />
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+            <Text style={pStyles.zapPeekHint}>{t('zapPeek.hint')}</Text>
+          </View>
+        </View>
       )}
 
       <TouchableOpacity
@@ -1794,6 +2012,83 @@ const pStyles = StyleSheet.create({
     color: '#9E9EB8',
     fontSize: typography.caption.fontSize,
     fontWeight: '500',
+  },
+  // Feature 2: Live-Preview Channel-Zapping styles
+  zapPeekShell: {
+    position: 'absolute',
+    width: Platform.isTV ? 360 : 280,
+    maxHeight: '85%',
+    zIndex: 12,
+  },
+  zapPeekPanel: {
+    backgroundColor: 'rgba(7,7,10,0.86)',
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  zapPeekHeader: {
+    ...typography.eyebrow,
+    color: '#FFFFFF',
+    fontSize: 11,
+    marginBottom: spacing.sm + 2,
+    paddingHorizontal: spacing.xs,
+  },
+  zapPeekRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 4,
+  },
+  zapPeekLogoWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  zapPeekLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  zapPeekText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  zapPeekChannelName: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  zapPeekProgramTitle: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  zapPeekProgramTime: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  zapPeekLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  zapPeekHint: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
 });
 
