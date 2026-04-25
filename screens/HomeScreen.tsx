@@ -44,7 +44,7 @@ const MainLayout = () => {
   const route = useRoute<any>();
   const isFocused = useIsFocused();
 
-  const [activeTab, setActiveTab] = useState<TabId>('channels');
+  const [activeTab, setActiveTab] = useState<TabId>('home');
 
   // Handle return parameters from Player
   useEffect(() => {
@@ -65,6 +65,7 @@ const MainLayout = () => {
     }
   }, [route.params?.returnTab, navigation]);
 
+  const homeRef = useRef<HomeContentRef>(null);
   const channelsRef = useRef<HomeContentRef>(null);
   const moviesRef = useRef<HomeContentRef>(null);
   const seriesRef = useRef<HomeContentRef>(null);
@@ -74,6 +75,7 @@ const MainLayout = () => {
   const settingsRef = useRef<HomeContentRef>(null);
 
   const getActiveContentRef = useCallback(() => {
+    if (activeTab === 'home') return homeRef;
     if (activeTab === 'channels') return channelsRef;
     if (activeTab === 'movies') return moviesRef;
     if (activeTab === 'series') return seriesRef;
@@ -81,7 +83,7 @@ const MainLayout = () => {
     if (activeTab === 'recent') return recentRef;
     if (activeTab === 'settings') return settingsRef;
     if (activeTab === 'search') return searchRef;
-    return channelsRef;
+    return homeRef;
   }, [activeTab]);
 
   // TV sidebar state (TiviMate-style collapsible)
@@ -90,6 +92,7 @@ const MainLayout = () => {
   const collapsedWidth = 86;
 
   const tabs: TabDef[] = useMemo(() => [
+    { id: 'home', icon: 'home', label: t('home') },
     { id: 'channels', icon: 'live-tv', label: t('channels') },
     { id: 'movies', icon: 'movie', label: t('movies') },
     { id: 'series', icon: 'tv', label: t('series') },
@@ -137,6 +140,7 @@ const MainLayout = () => {
   const contentNode = (
     <HomeContentRouter
       activeTab={activeTab}
+      homeRef={homeRef}
       channelsRef={channelsRef}
       moviesRef={moviesRef}
       seriesRef={seriesRef}
@@ -145,6 +149,7 @@ const MainLayout = () => {
       searchRef={searchRef}
       settingsRef={settingsRef}
       onReturnToSidebar={handleSidebarReturn}
+      onTabSwitch={handleTabPress}
     />
   );
 

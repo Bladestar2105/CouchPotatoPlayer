@@ -33,8 +33,8 @@ export const useHomeBackHandler = ({
         return true;
       }
 
-      if (activeTab !== 'channels') {
-        setActiveTab('channels');
+      if (activeTab !== 'home') {
+        setActiveTab('home');
         return true;
       }
 

@@ -1,4 +1,4 @@
-export type TabId = 'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search';
+export type TabId = 'home' | 'channels' | 'movies' | 'series' | 'favorites' | 'recent' | 'settings' | 'search';
 
 export interface TabDef {
   id: TabId;

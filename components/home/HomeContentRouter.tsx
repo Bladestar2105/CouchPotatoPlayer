@@ -7,10 +7,12 @@ import FavoritesList from '../FavoritesList';
 import RecentlyWatchedList from '../RecentlyWatchedList';
 import SettingsScreen from '../../screens/SettingsScreen';
 import SearchScreen from '../../screens/SearchScreen';
+import HomeDashboard from './HomeDashboard';
 import type { TabId, HomeContentRef } from './types';
 
 interface HomeContentRouterProps {
   activeTab: TabId;
+  homeRef: React.RefObject<HomeContentRef | null>;
   channelsRef: React.RefObject<HomeContentRef | null>;
   moviesRef: React.RefObject<HomeContentRef | null>;
   seriesRef: React.RefObject<HomeContentRef | null>;
@@ -19,10 +21,12 @@ interface HomeContentRouterProps {
   searchRef: React.RefObject<HomeContentRef | null>;
   settingsRef: React.RefObject<HomeContentRef | null>;
   onReturnToSidebar: () => void;
+  onTabSwitch?: (tab: 'channels' | 'movies' | 'series' | 'recent' | 'favorites') => void;
 }
 
 export const HomeContentRouter = ({
   activeTab,
+  homeRef,
   channelsRef,
   moviesRef,
   seriesRef,
@@ -31,9 +35,13 @@ export const HomeContentRouter = ({
   searchRef,
   settingsRef,
   onReturnToSidebar,
+  onTabSwitch,
 }: HomeContentRouterProps) => {
   return (
     <View style={{ flex: 1 }}>
+      <View style={[styles.tabContainer, activeTab === 'home' ? styles.visibleTab : styles.hiddenTab]}>
+        <HomeDashboard ref={homeRef} onTabSwitch={onTabSwitch} />
+      </View>
       <View style={[styles.tabContainer, activeTab === 'channels' ? styles.visibleTab : styles.hiddenTab]}>
         <ChannelList ref={channelsRef} onReturnToSidebar={onReturnToSidebar} initialViewMode="epg" />
       </View>

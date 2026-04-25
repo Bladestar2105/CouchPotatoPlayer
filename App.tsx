@@ -84,12 +84,12 @@ export type RootStackParamList = {
   Home: {
     focusChannelId?: string;
     returnGroupId?: string | null;
-    returnTab?: 'channels' | 'movies' | 'series' | 'favorites' | 'recent';
+    returnTab?: 'home' | 'channels' | 'movies' | 'series' | 'favorites' | 'recent';
   } | undefined;
   Player: {
     focusChannelId?: string;
     returnGroupId?: string | null;
-    returnTab?: 'channels' | 'movies' | 'series' | 'favorites' | 'recent';
+    returnTab?: 'home' | 'channels' | 'movies' | 'series' | 'favorites' | 'recent';
     returnScreen?: 'Home';
     title?: string;
   } | undefined;
