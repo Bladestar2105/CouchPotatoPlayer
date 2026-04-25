@@ -147,7 +147,7 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
     return results;
   }, [debouncedQuery, channels, movies, series, epg]);
 
-  const handleItemPress = (item: any) => {
+  const handleItemPress = React.useCallback((item: any) => {
     if (item.mediaType === 'live') {
       playStream({ url: item.url, id: item.id });
       navigation.navigate('Player');
@@ -164,9 +164,11 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
       playStream({ url: item.channelUrl, id: item.channelId });
       navigation.navigate('Player');
     }
-  };
+  }, [navigation, playStream]);
 
-  const renderItem = ({ item }: { item: any }) => {
+  // ⚡ Bolt: Memoize renderItem to prevent recreating it on every keystroke,
+  // which was forcing the FlatList to re-render all visible items.
+  const renderItem = React.useCallback(({ item }: { item: any }) => {
     const cover = item.logo || item.cover || item.stream_icon;
     const typeLabel = item.mediaType === 'live'
       ? t('search.resultLiveTv')
@@ -204,7 +206,7 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [colors.divider, colors.card, colors.text, colors.textSecondary, handleItemPress, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
