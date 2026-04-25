@@ -106,6 +106,30 @@ describe('native smoke guards', () => {
     expect(source).toContain('getTVBooleanSettingPressHandler(Platform.isTV, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate)');
   });
 
+  test('WelcomeScreen profile selector keeps VirtualizedList outside ScrollView', () => {
+    const source = readRepoFile('screens/WelcomeScreen.tsx');
+    const withProfilesStart = source.indexOf('const renderHeroWithProfiles');
+    const withoutProfilesStart = source.indexOf('const renderHeroWithoutProfiles');
+    expect(withProfilesStart).toBeGreaterThan(-1);
+    expect(withoutProfilesStart).toBeGreaterThan(withProfilesStart);
+
+    const withProfilesBlock = source.slice(withProfilesStart, withoutProfilesStart);
+    expect(withProfilesBlock).toContain('<FlatList');
+    expect(withProfilesBlock).toContain('ListHeaderComponent={renderHeroHeader}');
+    expect(withProfilesBlock).toContain('ListFooterComponent={renderHeroFooter}');
+    expect(withProfilesBlock).not.toContain('<ScrollView');
+  });
+
+  test('Settings appearance exposes user design customization controls', () => {
+    const source = readRepoFile('screens/SettingsScreen.tsx');
+    expect(source).toContain('useTheme()');
+    expect(source).toContain('ACCENT_CHOICES');
+    expect(source).toContain("t('settings.appearance.accent')");
+    expect(source).toContain('setAccent');
+    expect(source).toContain("t('settings.appearance.density')");
+    expect(source).toContain('setDensity');
+  });
+
   test('Android release build permits cleartext (HTTP) IPTV traffic', () => {
     // Most IPTV providers serve over plain HTTP. Android 9+ blocks cleartext
     // traffic by default once `targetSdkVersion >= 28`, so the application

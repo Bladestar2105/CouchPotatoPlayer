@@ -141,6 +141,133 @@ const WelcomeScreen = () => {
     { id: 'quickshare', label: 'Quickshare' },
   ]), []);
 
+  const renderHeroIntro = () => (
+    <>
+      <BrandMark
+        size={isTV ? 220 : 164}
+        variant="character"
+        style={[styles.heroLogo, shadows.modal]}
+      />
+
+      <Text
+        style={styles.wordmark}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.55}
+      >
+        <Text style={styles.wordmarkPrimary}>CouchPotato</Text>
+        <Text style={styles.wordmarkSecondary}>Player</Text>
+      </Text>
+
+      <Text style={styles.tagline}>{t('welcome.tagline')}</Text>
+      <Text style={styles.description}>{t('welcome.description')}</Text>
+    </>
+  );
+
+  const renderPlatformPills = () => (
+    <View style={styles.platformPills}>
+      {PLATFORM_PILLS.map((label) => (
+        <View key={label} style={styles.platformPill}>
+          <Text style={styles.platformPillText}>{label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderProfileItem = ({ item }: { item: any }) => {
+    const iconName = (item.icon?.replace('_', '-') as any) || 'dns';
+    return (
+      <View style={styles.profileListItem}>
+        <FocusableCard
+          style={styles.profileCard}
+          onSelect={() => handleLoadProfile(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`Load ${item.name}`}
+        >
+          <View style={[styles.profileIconPlate, { backgroundColor: accentSoft }]}>
+            <Icon name={iconName} size={26} color={accent} />
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.profileSubtitle} numberOfLines={1}>
+              {item.type === 'xtream'
+                ? 'Xtream Codes'
+                : item.type === 'quickshare'
+                  ? 'Quickshare'
+                  : 'M3U Playlist'}
+              {item.providerInfo?.channelsCount
+                ? ` · ${t('welcome.channelsSuffix', { count: item.providerInfo.channelsCount })}`
+                : ''}
+            </Text>
+          </View>
+          <ChevronRight size={22} color={colors.textDim} />
+        </FocusableCard>
+      </View>
+    );
+  };
+
+  const renderHeroHeader = () => (
+    <>
+      {renderHeroIntro()}
+      <View style={styles.profilesBlock}>
+        <Text style={[styles.sectionEyebrow, { color: accent }]}>
+          {t('welcome.selectProfile')}
+        </Text>
+        {currentProfile?.name ? (
+          <Text style={styles.currentProviderText} numberOfLines={1}>
+            {t('welcome.currentProvider', { name: currentProfile.name })}
+          </Text>
+        ) : null}
+      </View>
+    </>
+  );
+
+  const renderHeroFooter = () => (
+    <>
+      <View style={styles.profileActionsBlock}>
+        <FocusableButton
+          variant="primary"
+          label={t('welcome.addProvider')}
+          onPress={() => setShowAddForm(true)}
+          fullWidth
+          style={styles.heroCta}
+          trailing={<ArrowRight size={16} color="#FFF" />}
+        />
+      </View>
+      {renderPlatformPills()}
+    </>
+  );
+
+  const renderHeroWithProfiles = () => (
+    <FlatList
+      data={profiles}
+      keyExtractor={(item) => item.id}
+      renderItem={renderProfileItem}
+      ListHeaderComponent={renderHeroHeader}
+      ListFooterComponent={renderHeroFooter}
+      contentContainerStyle={[styles.heroScroll, styles.profileVirtualListContent]}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+
+  const renderHeroWithoutProfiles = () => (
+    <ScrollView
+      contentContainerStyle={styles.heroScroll}
+      showsVerticalScrollIndicator={false}
+    >
+      {renderHeroIntro()}
+      <View style={styles.ctaRow}>
+        <FocusableButton
+          variant="primary"
+          label={t('welcome.getStarted')}
+          onPress={() => setShowAddForm(true)}
+          trailing={<ArrowRight size={16} color="#FFF" />}
+        />
+      </View>
+      {renderPlatformPills()}
+    </ScrollView>
+  );
+
   const renderHero = () => (
     <View style={[styles.heroRoot, { paddingTop: insets.top + spacing.xxxl, paddingBottom: insets.bottom + spacing.xxl }]}>
       {/* Radial glow layers — approximates the spec's radial gradient on pure RN */}
@@ -149,104 +276,7 @@ const WelcomeScreen = () => {
         <View style={[styles.glowOrb, styles.glowOrbBottomRight, { backgroundColor: `${accent}33` }]} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.heroScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <BrandMark
-          size={isTV ? 220 : 164}
-          variant="character"
-          style={[styles.heroLogo, shadows.modal]}
-        />
-
-        <Text
-          style={styles.wordmark}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.55}
-        >
-          <Text style={styles.wordmarkPrimary}>CouchPotato</Text>
-          <Text style={styles.wordmarkSecondary}>Player</Text>
-        </Text>
-
-        <Text style={styles.tagline}>{t('welcome.tagline')}</Text>
-        <Text style={styles.description}>{t('welcome.description')}</Text>
-
-        {profiles.length > 0 ? (
-          <View style={styles.profilesBlock}>
-            <Text style={[styles.sectionEyebrow, { color: accent }]}>
-              {t('welcome.selectProfile')}
-            </Text>
-            {currentProfile?.name ? (
-              <Text style={styles.currentProviderText} numberOfLines={1}>
-                {t('welcome.currentProvider', { name: currentProfile.name })}
-              </Text>
-            ) : null}
-
-            <FlatList
-              data={profiles}
-              keyExtractor={(item) => item.id}
-              style={styles.profileList}
-              contentContainerStyle={styles.profileListContent}
-              renderItem={({ item }) => {
-                const iconName = (item.icon?.replace('_', '-') as any) || 'dns';
-                return (
-                  <FocusableCard
-                    style={styles.profileCard}
-                    onSelect={() => handleLoadProfile(item)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Load ${item.name}`}
-                  >
-                    <View style={[styles.profileIconPlate, { backgroundColor: accentSoft }]}>
-                      <Icon name={iconName} size={26} color={accent} />
-                    </View>
-                    <View style={styles.profileInfo}>
-                      <Text style={styles.profileName} numberOfLines={1}>{item.name}</Text>
-                      <Text style={styles.profileSubtitle} numberOfLines={1}>
-                        {item.type === 'xtream'
-                          ? 'Xtream Codes'
-                          : item.type === 'quickshare'
-                            ? 'Quickshare'
-                            : 'M3U Playlist'}
-                        {item.providerInfo?.channelsCount
-                          ? ` · ${t('welcome.channelsSuffix', { count: item.providerInfo.channelsCount })}`
-                          : ''}
-                      </Text>
-                    </View>
-                    <ChevronRight size={22} color={colors.textDim} />
-                  </FocusableCard>
-                );
-              }}
-            />
-
-            <FocusableButton
-              variant="primary"
-              label={t('welcome.addProvider')}
-              onPress={() => setShowAddForm(true)}
-              fullWidth
-              style={styles.heroCta}
-              trailing={<ArrowRight size={16} color="#FFF" />}
-            />
-          </View>
-        ) : (
-          <View style={styles.ctaRow}>
-            <FocusableButton
-              variant="primary"
-              label={t('welcome.getStarted')}
-              onPress={() => setShowAddForm(true)}
-              trailing={<ArrowRight size={16} color="#FFF" />}
-            />
-          </View>
-        )}
-
-        <View style={styles.platformPills}>
-          {PLATFORM_PILLS.map((label) => (
-            <View key={label} style={styles.platformPill}>
-              <Text style={styles.platformPillText}>{label}</Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+      {profiles.length > 0 ? renderHeroWithProfiles() : renderHeroWithoutProfiles()}
     </View>
   );
 
@@ -595,12 +625,16 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     alignItems: 'stretch',
   },
-  profileList: {
-    alignSelf: 'stretch',
-    maxHeight: 320,
+  profileVirtualListContent: {
+    width: '100%',
   },
-  profileListContent: {
-    paddingVertical: spacing.sm,
+  profileListItem: {
+    width: '100%',
+    maxWidth: 520,
+  },
+  profileActionsBlock: {
+    width: '100%',
+    maxWidth: 520,
   },
   profileCard: {
     flexDirection: 'row',

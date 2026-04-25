@@ -8,11 +8,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle } from 'lucide-react-native';
 import { getAvailablePlayerTypesForPlatform } from '../components/player/PlayerAdapter';
-import { effects, radii, spacing, typography } from '../theme/tokens';
+import { ACCENT_CHOICES, effects, radii, spacing, typography } from '../theme/tokens';
 import SectionHeader from '../components/ui/SectionHeader';
 import SurfaceCard from '../components/ui/SurfaceCard';
 import { OVERLAY_AUTO_HIDE_SECONDS_OPTIONS } from '../utils/playbackSettings';
 import { getTVBooleanSettingPressHandler } from '../utils/settingsControls';
+import { useTheme } from '../context/ThemeContext';
 
 type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 
@@ -29,6 +30,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
     overlayAutoHideSeconds, setOverlayAutoHideSeconds,
     tmdbApiKey, setTmdbApiKey
   } = useSettings();
+  const { accent, accentSoft, density, setAccent, setDensity } = useTheme();
 
   const navigation = useNavigation<any>();
   const isFocusedScreen = useIsFocused();
@@ -258,9 +260,9 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
         style={[
           styles.categoryItem,
           (isActive || isFocused) && (Platform.isTV
-            ? { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderLeftColor: '#E9692A', borderLeftWidth: 3 }
-            : { backgroundColor: 'rgba(233, 105, 42, 0.16)', borderBottomColor: '#E9692A', borderBottomWidth: 2 }),
-          isFocused && Platform.isTV ? styles.categoryItemFocused : null,
+            ? { backgroundColor: accentSoft, borderLeftColor: accent, borderLeftWidth: 3 }
+            : { backgroundColor: accentSoft, borderBottomColor: accent, borderBottomWidth: 2 }),
+          isFocused && Platform.isTV ? [styles.categoryItemFocused, { borderColor: accent }] : null,
         ]}
         onPress={() => setActiveCategory(id)}
         onFocus={() => setFocusedCategory(id)}
@@ -336,12 +338,12 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={!Platform.isTV ? styles.mobileCategoryList : undefined}
         >
-          {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.playlists, 0)}
-          {renderCategoryItem('general', <Settings color={activeCategory === 'general' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.general, 1)}
-          {renderCategoryItem('appearance', <Palette color={activeCategory === 'appearance' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.appearance, 2)}
-          {renderCategoryItem('playback', <PlayCircle color={activeCategory === 'playback' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.playback, 3)}
-          {renderCategoryItem('parental', <Shield color={activeCategory === 'parental' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.parental, 4)}
-          {renderCategoryItem('advanced', <Database color={activeCategory === 'advanced' ? '#FAFAFA' : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.advanced, 5)}
+          {renderCategoryItem('playlists', <Tv color={activeCategory === 'playlists' ? accent : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.playlists, 0)}
+          {renderCategoryItem('general', <Settings color={activeCategory === 'general' ? accent : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.general, 1)}
+          {renderCategoryItem('appearance', <Palette color={activeCategory === 'appearance' ? accent : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.appearance, 2)}
+          {renderCategoryItem('playback', <PlayCircle color={activeCategory === 'playback' ? accent : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.playback, 3)}
+          {renderCategoryItem('parental', <Shield color={activeCategory === 'parental' ? accent : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.parental, 4)}
+          {renderCategoryItem('advanced', <Database color={activeCategory === 'advanced' ? accent : '#A1A1AA'} size={20} style={{ marginRight: 12 }} />, categoryLabels.advanced, 5)}
         </ScrollView>
       </View>
 
@@ -475,13 +477,47 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                   t('settings.themeCurrent', { mode: t(`settings.theme.${themeMode}`) }),
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                      {themeMode === 'light' ? <Sun color={colors.text} size={16} /> : themeMode === 'dark' ? <Moon color={colors.text} size={16} /> : <Monitor color={colors.text} size={16} />}
-                     <Text style={{ color: colors.primary }}>{t('settings.change')}</Text>
+                     <Text style={{ color: accent }}>{t('settings.change')}</Text>
                   </View>,
                   () => openSubMenu(t('settings.themeMode'), [
                     { label: t('settings.theme.dark'), value: 'dark' },
                     { label: t('settings.theme.oled'), value: 'oled' },
                     { label: t('settings.theme.light'), value: 'light' }
                   ], setThemeMode, themeMode)
+                )}
+                {renderSettingRow(
+                  t('settings.appearance.accent'),
+                  t('settings.appearance.accentCurrent', {
+                    name: ACCENT_CHOICES.find((choice) => choice.value === accent)?.name ?? ACCENT_CHOICES[0].name,
+                  }),
+                  <View style={styles.appearanceValue}>
+                    <View style={[styles.accentSwatch, { backgroundColor: accent }]} />
+                    <Text style={{ color: accent }}>{t('settings.change')}</Text>
+                  </View>,
+                  () => openSubMenu(
+                    t('settings.appearance.accent'),
+                    ACCENT_CHOICES.map((choice) => ({ label: choice.name, value: choice.value })),
+                    setAccent,
+                    accent,
+                  )
+                )}
+                {renderSettingRow(
+                  t('settings.appearance.density'),
+                  t('settings.appearance.densityCurrent', {
+                    value: density === 'compact'
+                      ? t('settings.appearance.densityCompact')
+                      : t('settings.appearance.densityCozy'),
+                  }),
+                  <Text style={{ color: accent }}>{t('settings.change')}</Text>,
+                  () => openSubMenu(
+                    t('settings.appearance.density'),
+                    [
+                      { label: t('settings.appearance.densityCozy'), value: 'cozy' },
+                      { label: t('settings.appearance.densityCompact'), value: 'compact' },
+                    ],
+                    setDensity,
+                    density,
+                  )
                 )}
               </View>
             )}
@@ -687,6 +723,18 @@ const styles = StyleSheet.create({
   settingRowRight: {
     marginLeft: spacing.lg,
     justifyContent: 'center',
+  },
+  appearanceValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  accentSwatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   profileTile: {
     flexDirection: 'row',
