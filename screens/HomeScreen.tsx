@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Text, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
+import BrandMark from '../components/BrandMark';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused, useRoute } from '@react-navigation/native';
 import { useIPTVAppState, useIPTVGuide, useIPTVLibrary, useIPTVParental, useIPTVProfiles } from '../context/IPTVContext';
@@ -212,7 +213,7 @@ const HomeScreen = () => {
   if (isInitializing || (isLoading && !currentProfile)) {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
-         <Image source={require('../assets/character_logo.png')} style={styles.loadingLogo} resizeMode="contain" />
+         <BrandMark size={150} variant="character" style={styles.loadingLogo} />
          <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );

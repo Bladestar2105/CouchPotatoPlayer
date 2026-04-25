@@ -1,13 +1,15 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Pressable } from 'react-native';
 import { useIPTVLibrary, useIPTVPlayback } from '../context/IPTVContext';
-import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 import { isTV as isTVPlatform } from '../utils/platform';
-import { radii, spacing, typography } from '../theme/tokens';
+import { colors, radii, spacing, typography } from '../theme/tokens';
+import { FocusableCard } from '../components/Focusable';
 import { useTranslation } from 'react-i18next';
+import { Search as SearchIcon, X as XIcon } from 'lucide-react-native';
 import { getEpgKeyForChannel } from '../utils/channelListBehavior';
 
 const defaultLogo = require('../assets/character_logo.png');
@@ -25,7 +27,7 @@ type ContentRef = { focusFirstItem: () => void; handleBack?: () => boolean };
 const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
   const { channels, movies, series, epg } = useIPTVLibrary();
   const { playStream } = useIPTVPlayback();
-  const { colors } = useSettings();
+  const { accent } = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<SearchScreenNavigationProp>();
 
@@ -59,7 +61,6 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
     return () => clearTimeout(timer);
   }, [shouldFocusSearchField]);
 
-  // ⚡ Bolt: Debounce search input to prevent heavy UI blocking on every keystroke
   React.useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
@@ -73,11 +74,8 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
 
     const lowerQuery = debouncedQuery.toLowerCase();
     const results: any[] = [];
-    // ⚡ Bolt: Capping max results at 100 to avoid excessive memory and render costs on broad queries (e.g., "a")
     const MAX_RESULTS = 100;
 
-    // ⚡ Bolt: Unified single-pass iterations instead of sequential .filter().map()
-    // Live Channels
     for (let i = 0; i < channels.length; i++) {
       if (results.length >= MAX_RESULTS) break;
       if (channels[i].name.toLowerCase().includes(lowerQuery)) {
@@ -85,7 +83,6 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
       }
     }
 
-    // Movies
     if (results.length < MAX_RESULTS) {
       for (let i = 0; i < movies.length; i++) {
         if (results.length >= MAX_RESULTS) break;
@@ -95,7 +92,6 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
       }
     }
 
-    // Series
     if (results.length < MAX_RESULTS) {
       for (let i = 0; i < series.length; i++) {
         if (results.length >= MAX_RESULTS) break;
@@ -182,13 +178,13 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
           : t('movies');
 
     return (
-      <TouchableOpacity
-        style={[styles.item, { borderBottomColor: colors.divider }]}
-        onPress={() => handleItemPress(item)}
+      <FocusableCard
+        style={styles.item}
+        onSelect={() => handleItemPress(item)}
         accessibilityRole="button"
         accessibilityLabel={t('search.selectResultA11y', { name: item.name })}
       >
-        <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
+        <View style={styles.logoContainer}>
           <Image
             style={styles.logo}
             source={cover ? { uri: cover } : defaultLogo}
@@ -197,71 +193,71 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
           />
         </View>
         <View style={styles.info}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
-            {item.name}
-          </Text>
-          <Text style={[styles.type, { color: colors.textSecondary }]} numberOfLines={1}>
-            {typeLabel}
-          </Text>
+          <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.type} numberOfLines={1}>{typeLabel}</Text>
         </View>
-      </TouchableOpacity>
+      </FocusableCard>
     );
-  }, [colors.divider, colors.card, colors.text, colors.textSecondary, handleItemPress, t]);
+  }, [handleItemPress, t]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.searchBarContainer, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
-        {isTV && (
-          <TouchableOpacity
-            ref={searchFieldFocusRef}
-            style={[
-              styles.tvSearchActivator,
-              { borderColor: isActivatorFocused ? colors.primary : colors.divider, backgroundColor: colors.background },
-            ]}
+    <View style={styles.container}>
+      <View style={styles.searchBarContainer}>
+        <View style={[styles.searchField, isActivatorFocused && { borderColor: accent }]}>
+          <SearchIcon size={18} color={colors.textDim} />
+          {isTV ? (
+            <TouchableOpacity
+              ref={searchFieldFocusRef}
+              style={styles.tvSearchActivator}
+              isTVSelectable={true}
+              hasTVPreferredFocus={shouldFocusSearchField}
+              accessibilityRole="button"
+              accessibilityLabel={t('search.searchInputA11y')}
+              onFocus={() => setIsActivatorFocused(true)}
+              onBlur={() => setIsActivatorFocused(false)}
+              onPress={() => inputRef.current?.focus()}
+            >
+              <Text style={{ color: query ? colors.text : colors.textMuted, fontSize: 16 }} numberOfLines={1}>
+                {query || t('search.placeholderWithEpg')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          <TextInput
+            ref={inputRef}
+            style={[styles.input, isTV && styles.tvHiddenInput]}
+            placeholder={t('search.placeholderWithEpg')}
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel={t('search.searchQueryA11y')}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+            selectionColor={accent}
+            tvFocusable={true}
             isTVSelectable={true}
-            hasTVPreferredFocus={shouldFocusSearchField}
-            accessibilityRole="button"
-            accessibilityLabel={t('search.searchInputA11y')}
-            onFocus={() => {
-              setIsActivatorFocused(true);
-            }}
-            onBlur={() => setIsActivatorFocused(false)}
-            onPress={() => inputRef.current?.focus()}
-          >
-            <Text style={{ color: query ? colors.text : colors.textSecondary }} numberOfLines={1}>
-              {query || t('search.placeholder')}
-            </Text>
-          </TouchableOpacity>
-        )}
-        <TextInput
-          ref={inputRef}
-          style={[styles.input, { color: colors.text }, isTV && styles.tvHiddenInput]}
-          placeholder={t('search.placeholderWithEpg')}
-          placeholderTextColor={colors.textSecondary}
-          accessibilityLabel={t('search.searchQueryA11y')}
-          value={query}
-          onChangeText={setQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-          tvFocusable={true}
-          isTVSelectable={true}
-          hasTVPreferredFocus={!isTV && shouldFocusSearchField}
-          autoFocus={!isTV}
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn} accessibilityRole="button" accessibilityLabel={t('search.clearQueryA11y')}>
-            <Text style={{ color: colors.textSecondary }}>{t('clear')}</Text>
-          </TouchableOpacity>
-        )}
+            hasTVPreferredFocus={!isTV && shouldFocusSearchField}
+            autoFocus={!isTV}
+          />
+          {query.length > 0 && (
+            <Pressable
+              onPress={() => setQuery('')}
+              style={styles.clearBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('search.clearQueryA11y')}
+            >
+              <XIcon size={16} color={colors.textDim} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {query.length === 0 ? (
         <View style={styles.center}>
-          <Text style={{ color: colors.textSecondary }}>{t('search.typeToSearch')}</Text>
+          <Text style={styles.emptyText}>{t('search.typeToSearch')}</Text>
         </View>
       ) : searchResults.length === 0 ? (
         <View style={styles.center}>
-          <Text style={{ color: colors.textSecondary }}>{t('search.noResults')}</Text>
+          <Text style={styles.emptyText}>{t('search.noResults')}</Text>
         </View>
       ) : (
         <FlatList
@@ -269,6 +265,7 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
           renderItem={renderItem}
           keyExtractor={(item) => `${item.mediaType}:${String(item.id)}`}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.listContent}
         />
       )}
     </View>
@@ -276,35 +273,41 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
   searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: spacing.lg,
     borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+  },
+  searchField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.sunken,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    height: 52,
+    position: 'relative',
   },
   input: {
     flex: 1,
-    height: 48,
-    fontSize: typography.body.fontSize,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: radii.lg - 2,
-    marginRight: spacing.sm + 2,
+    fontSize: 16,
+    color: colors.text,
+    paddingVertical: 0,
   },
   clearBtn: {
-    padding: spacing.md,
-    borderRadius: radii.md - 2,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: spacing.sm,
+    borderRadius: radii.sm,
   },
   tvSearchActivator: {
     flex: 1,
-    height: 48,
-    borderRadius: radii.lg - 2,
-    borderWidth: 1.5,
+    height: '100%',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    marginRight: spacing.sm + 2,
   },
   tvHiddenInput: {
     position: 'absolute',
@@ -317,21 +320,33 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textDim,
+  },
+  listContent: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   item: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md + 2,
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderRadius: radii.md,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm - 2,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    marginBottom: spacing.sm + 2,
+    gap: spacing.md,
   },
   logoContainer: {
     width: 52,
     height: 52,
     borderRadius: radii.md,
+    backgroundColor: colors.sunken,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -339,21 +354,19 @@ const styles = StyleSheet.create({
   logo: {
     width: '100%',
     height: '100%',
-    borderRadius: radii.md - 2,
   },
   info: {
     flex: 1,
-    marginLeft: spacing.md + 2,
+    minWidth: 0,
   },
   name: {
-    fontWeight: '600',
-    fontSize: typography.body.fontSize,
-    letterSpacing: 0.2,
+    ...typography.subtitle,
+    color: colors.text,
   },
   type: {
-    fontSize: 12,
-    marginTop: spacing.xs + 1,
-    fontWeight: '500',
+    ...typography.caption,
+    color: colors.textDim,
+    marginTop: 2,
   },
 });
 

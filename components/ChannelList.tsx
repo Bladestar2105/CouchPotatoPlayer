@@ -5,6 +5,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Channel } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { isProgramCatchupAvailable } from '../utils/catchupUtils';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { findCurrentProgramIndex, findNextProgramIndex } from '../utils/epgUtils';
@@ -44,7 +45,7 @@ const CategoryItem = React.memo(React.forwardRef(({ title, count, isSelected, on
                 tiviStyles.categoryItem,
                 { borderBottomColor: colors.divider },
                 isSelected && { backgroundColor: colors.primaryLight, borderLeftColor: colors.primary, borderLeftWidth: 3 },
-                isFocused && { backgroundColor: 'rgba(233,105,42,0.25)', borderLeftColor: colors.primary, borderLeftWidth: 3 }
+                isFocused && { backgroundColor: colors.primaryLight, borderLeftColor: colors.primary, borderLeftWidth: 3 }
             ]}
             onPress={() => onPress(title)}
             onFocus={() => { setIsFocused(true); onFocus?.(title); }}
@@ -98,8 +99,8 @@ const ChannelRow = React.memo(React.forwardRef(({ channel, channelNumber, isPlay
             style={[
                 tiviStyles.channelRow,
                 { borderBottomColor: colors.divider },
-                isPlaying && { backgroundColor: 'rgba(233,105,42,0.12)', borderLeftColor: colors.primary, borderLeftWidth: 3 },
-                focused && { backgroundColor: 'rgba(233,105,42,0.18)' },
+                isPlaying && { backgroundColor: colors.primaryLight, borderLeftColor: colors.primary, borderLeftWidth: 3 },
+                focused && { backgroundColor: colors.primaryLight },
             ]}
             onPress={() => onPress(channel)}
             onLongPress={() => onLongPress(channel)}
@@ -181,7 +182,16 @@ const LiveTVFlow = forwardRef<ContentRef, { onReturnToSidebar?: () => void; init
   const { addFavorite, removeFavorite, isFavorite } = useIPTVCollections();
   const { channels, epg } = useIPTVLibrary();
   const { playStream, currentStream } = useIPTVPlayback();
-  const { colors } = useSettings();
+  const { colors: legacyColors } = useSettings();
+  const { accent, accentSoft } = useTheme();
+  // Override the legacy orange "primary" with the live accent from ThemeContext so
+  // the entire channel list (focus rings, badges, progress, catchup dot, play
+  // marker, view-mode toggle) re-tints when the user picks a different accent
+  // in Settings → Appearance.
+  const colors = useMemo(
+    () => ({ ...legacyColors, primary: accent, primaryLight: accentSoft }),
+    [legacyColors, accent, accentSoft],
+  );
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 

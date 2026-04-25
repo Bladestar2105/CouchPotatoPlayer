@@ -627,6 +627,7 @@ const styles = StyleSheet.create({
   },
   profileVirtualListContent: {
     width: '100%',
+    alignItems: 'center',
   },
   profileListItem: {
     width: '100%',

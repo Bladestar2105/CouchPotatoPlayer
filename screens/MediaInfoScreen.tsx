@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, TouchableOpacity, Platform, BackHandler, TVEventControl } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, Platform, BackHandler, TVEventControl } from 'react-native';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
 import { useIPTVCollections, useIPTVMetadata, useIPTVPlayback } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { TMDBService } from '../services/tmdb';
 import { isMobile } from '../utils/platform';
 import { ChannelLogo } from '../components/ChannelLogo';
-import { Play, Star, Calendar, ArrowLeft, Heart } from 'lucide-react-native';
-import { radii, spacing } from '../theme/tokens';
+import { Play, Star, Calendar, ArrowLeft, Heart, Clapperboard } from 'lucide-react-native';
+import { FocusableButton, FocusableCard } from '../components/Focusable';
+import { colors, radii, shadows, spacing, typography } from '../theme/tokens';
 
 type MediaInfoRouteProp = RouteProp<RootStackParamList, 'MediaInfo'>;
 
@@ -48,7 +50,8 @@ const MediaInfoScreen = () => {
   const { getVodInfo, getSeriesInfo, series } = useIPTVMetadata();
   const { favorites, addFavorite, removeFavorite } = useIPTVCollections();
   const { playStream } = useIPTVPlayback();
-  const { colors, tmdbApiKey } = useSettings();
+  const { tmdbApiKey } = useSettings();
+  const { accent } = useTheme();
 
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -56,12 +59,9 @@ const MediaInfoScreen = () => {
 
   const isFavorite = favorites.some(f => f.id === id && f.type === type);
 
-  // Handle back button / Apple TV menu button to navigate properly instead of closing app
   useEffect(() => {
     if (!isFocused) return;
 
-    // Enable menu key interception on tvOS so the remote's menu button
-    // triggers hardwareBackPress instead of exiting the app
     if (Platform.isTV && TVEventControl?.enableTVMenuKey) {
       TVEventControl.enableTVMenuKey();
     }
@@ -87,14 +87,8 @@ const MediaInfoScreen = () => {
   }, [isFocused, navigation]);
 
   useEffect(() => {
-    navigation.setOptions({ headerShown: false }); // Hide header for modern look
+    navigation.setOptions({ headerShown: false });
 
-    // Guard every setState with `isCancelled` so that navigating away (or
-    // switching to a different media item while a fetch is in flight) does
-    // not overwrite the new screen's state with a stale response and does
-    // not produce "setState on unmounted component" warnings. The TMDB
-    // enrichment call can outlast the primary lookup by several seconds on
-    // slow networks, so it must be guarded independently.
     let isCancelled = false;
 
     const fetchInfo = async () => {
@@ -103,7 +97,7 @@ const MediaInfoScreen = () => {
       try {
         if (type === 'vod') data = await getVodInfo(id as string);
         else data = await getSeriesInfo(id as string);
-      } catch (err) { }
+      } catch { /* ignore */ }
 
       if (isCancelled) return;
       setInfo(data);
@@ -153,7 +147,7 @@ const MediaInfoScreen = () => {
         name: title,
         type: 'vod',
         extension: info?.info?.container_extension,
-        direct_source: streamUrl
+        direct_source: streamUrl,
       } as any);
       navigation.navigate('Player', {
         returnGroupId,
@@ -169,23 +163,22 @@ const MediaInfoScreen = () => {
   const providerInfo = info?.info || {};
   const providerBackdrop = firstNonEmptyString(
     providerInfo.backdrop_path,
-    ...(Array.isArray(providerInfo.backdrop_paths) ? providerInfo.backdrop_paths : [])
+    ...(Array.isArray(providerInfo.backdrop_paths) ? providerInfo.backdrop_paths : []),
   );
   const providerPoster = firstNonEmptyString(
     providerInfo.cover_big,
     providerInfo.movie_image,
-    providerInfo.cover
+    providerInfo.cover,
   );
   const providerDescription = firstNonEmptyString(providerInfo.plot, providerInfo.description);
   const providerRating = firstNonEmptyString(providerInfo.rating, providerInfo.vote_average);
   const providerYear = firstNonEmptyString(
     providerInfo.year,
     typeof providerInfo.releasedate === 'string' ? providerInfo.releasedate.split('-')[0] : null,
-    typeof providerInfo.release_date === 'string' ? providerInfo.release_date.split('-')[0] : null
+    typeof providerInfo.release_date === 'string' ? providerInfo.release_date.split('-')[0] : null,
   );
   const providerGenres = parseGenres(providerInfo.genre);
 
-  // Provider data is primary. TMDB only enriches when provider data is missing.
   const backdrop = providerBackdrop || tmdbData?.backdropUrl || cover;
   const poster = providerPoster || tmdbData?.posterUrl || cover;
   const desc = providerDescription || tmdbData?.overview || 'No description available.';
@@ -194,97 +187,107 @@ const MediaInfoScreen = () => {
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={accent} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} bounces={false}>
-
-        {/* Modern Hero Backdrop */}
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={{ paddingBottom: spacing.huge }} bounces={false}>
         <ImageBackground source={{ uri: backdrop }} style={styles.heroBackdrop}>
-          <View style={[styles.heroOverlay, { backgroundColor: 'rgba(13,13,15,0.85)' }]}>
-<TouchableOpacity style={styles.backBtn} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate('Home'); }} accessible={true} isTVSelectable={true} accessibilityRole="button" accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
-              <ArrowLeft color="#FFF" size={24} />
-            </TouchableOpacity>
+          <View style={styles.scrim} />
+          <View style={styles.heroOverlay}>
+            <FocusableCard
+              style={styles.backBtn}
+              onSelect={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate('Home'); }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              accessibilityHint="Returns to the previous screen"
+            >
+              <ArrowLeft color={colors.text} size={20} />
+            </FocusableCard>
 
-            <View style={[styles.heroContentRow, isMobile && { flexDirection: 'column', alignItems: 'center', paddingTop: 60 }]}>
-              <View style={[styles.posterWrap, isMobile && { marginBottom: 20 }]}>
-                <ChannelLogo url={poster} name={title} size={isMobile ? 180 : 220} borderRadius={16} />
+            <View style={[styles.heroContentRow, isMobile && styles.heroContentRowMobile]}>
+              <View style={[styles.posterWrap, isMobile && styles.posterWrapMobile, shadows.modal]}>
+                <ChannelLogo url={poster} name={title} size={isMobile ? 180 : 220} borderRadius={radii.lg} />
               </View>
 
               <View style={styles.heroTextContent}>
+                <View style={styles.eyebrowRow}>
+                  <Clapperboard size={14} color={accent} />
+                  <Text style={[styles.eyebrow, { color: accent }]}>
+                    {type === 'vod' ? 'MOVIE' : 'SERIES'}
+                  </Text>
+                </View>
+
                 <Text style={styles.title} numberOfLines={2}>{title}</Text>
 
                 <View style={styles.metaRow}>
-                  <View style={styles.badge}><Text style={styles.badgeText}>{type === 'vod' ? 'MOVIE' : 'SERIES'}</Text></View>
-                  {rating && rating !== "0/10" && (
+                  {rating && rating !== '0/10' && (
                     <View style={styles.metaItem}>
-                      <Star color="#FFD700" size={16} fill="#FFD700" />
+                      <Star color={colors.warning} size={14} fill={colors.warning} />
                       <Text style={styles.metaText}>{rating}</Text>
                     </View>
                   )}
                   {year && (
                     <View style={styles.metaItem}>
-                      <Calendar color="#CCC" size={16} />
+                      <Calendar color={colors.textDim} size={14} />
                       <Text style={styles.metaText}>{year}</Text>
                     </View>
                   )}
                 </View>
 
-                {providerGenres.length > 0 ? (
+                {(providerGenres.length > 0 || tmdbData?.genres?.length) && (
                   <View style={styles.genresRow}>
-                    {providerGenres.map((g, i) => (
-                      <View key={i} style={styles.genrePill}><Text style={styles.genreText}>{g}</Text></View>
+                    {(providerGenres.length > 0 ? providerGenres : tmdbData.genres).map((g: string, i: number) => (
+                      <View key={`${g}-${i}`} style={styles.genrePill}>
+                        <Text style={styles.genreText}>{g}</Text>
+                      </View>
                     ))}
                   </View>
-                ) : tmdbData?.genres?.length ? (
-                  <View style={styles.genresRow}>
-                    {tmdbData.genres.map((g: string, i: number) => (
-                      <View key={i} style={styles.genrePill}><Text style={styles.genreText}>{g}</Text></View>
-                    ))}
-                  </View>
-                ) : null}
+                )}
 
-                <Text style={[styles.desc, isMobile && { textAlign: 'center' }]} numberOfLines={isMobile ? 4 : 6}>{desc}</Text>
+                <Text style={[styles.desc, isMobile && styles.descMobile]} numberOfLines={isMobile ? 4 : 6}>{desc}</Text>
 
-                <View style={[styles.actionRow, isMobile && { justifyContent: 'center' }]}>
-                  <TouchableOpacity
-                    style={[styles.playBtn, { backgroundColor: colors.primary }]}
+                <View style={[styles.actionRow, isMobile && styles.actionRowMobile]}>
+                  <FocusableButton
+                    variant="primary"
+                    label={type === 'series' ? 'Episodes' : 'Play'}
+                    leading={<Play color="#FFF" size={16} fill="#FFF" />}
                     onPress={handlePlay}
-                    accessible={true}
-                    isTVSelectable={true}
-                    hasTVPreferredFocus={true}
-                    accessibilityRole="button"
+                    hasTVPreferredFocus
                     accessibilityLabel={type === 'series' ? 'Episodes' : 'Play'}
                     accessibilityHint={type === 'series' ? 'Shows episodes for this series' : 'Plays this media'}
-                  >
-                    <Play color="#FFF" size={20} fill="#FFF" />
-                    <Text style={styles.playText}>{type === 'series' ? 'Episodes' : 'Play'}</Text>
-                  </TouchableOpacity>
+                  />
 
-                  <TouchableOpacity style={styles.favBtn} onPress={toggleFavorite} accessible={true} isTVSelectable={true} accessibilityRole="button" accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'} accessibilityHint={isFavorite ? 'Removes this media from your favorites list' : 'Adds this media to your favorites list'}>
-                    {isFavorite ? <Heart color="#EF4444" size={24} fill="#EF4444" /> : <Heart color="#FAFAFA" size={24} />}
-                  </TouchableOpacity>
+                  <FocusableCard
+                    style={styles.favBtn}
+                    onSelect={toggleFavorite}
+                    accessibilityRole="button"
+                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    accessibilityHint={isFavorite ? 'Removes this media from your favorites list' : 'Adds this media to your favorites list'}
+                  >
+                    {isFavorite
+                      ? <Heart color={colors.danger} size={22} fill={colors.danger} />
+                      : <Heart color={colors.text} size={22} />}
+                  </FocusableCard>
                 </View>
 
                 {info?.info?.cast && (
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.label, { color: colors.text }]}>Cast: </Text>
-                    <Text style={[styles.value, { color: colors.textSecondary }]} numberOfLines={2}>{info.info.cast}</Text>
+                  <View style={styles.metaBlock}>
+                    <Text style={styles.metaLabel}>Cast</Text>
+                    <Text style={styles.metaValue} numberOfLines={2}>{info.info.cast}</Text>
                   </View>
                 )}
 
                 {info?.info?.director && (
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.label, { color: colors.text }]}>Director: </Text>
-                    <Text style={[styles.value, { color: colors.textSecondary }]}>{info.info.director}</Text>
+                  <View style={styles.metaBlock}>
+                    <Text style={styles.metaLabel}>Director</Text>
+                    <Text style={styles.metaValue}>{info.info.director}</Text>
                   </View>
                 )}
-
               </View>
             </View>
           </View>
@@ -295,77 +298,155 @@ const MediaInfoScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { flex: 1 },
-  heroBackdrop: { width: '100%', minHeight: 480 },
-  heroOverlay: { flex: 1, paddingHorizontal: spacing.xxl, paddingBottom: spacing.xxxl + 16 },
-  backBtn: { 
-    position: 'absolute', 
-    top: spacing.xxxl + 16, 
-    left: spacing.xxl, 
-    zIndex: 10, 
-    padding: spacing.sm + 2, 
-    backgroundColor: 'rgba(24,24,27,0.8)', 
-    borderRadius: radii.lg - 2,
-    // Shadow for depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
   },
-  heroContentRow: { flexDirection: 'row', marginTop: 110, gap: spacing.xxl + 4, alignItems: 'flex-end' },
-  posterWrap: { 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 12 }, 
-    shadowOpacity: 0.5, 
-    shadowRadius: 20,
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroBackdrop: {
+    width: '100%',
+    minHeight: 520,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(7,7,10,0.78)',
+  },
+  heroOverlay: {
+    flex: 1,
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.xxxl + spacing.lg,
+    paddingBottom: spacing.xxxl + spacing.lg,
+  },
+  backBtn: {
+    position: 'absolute',
+    top: spacing.xxxl,
+    left: spacing.xxl,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(7,7,10,0.6)',
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroContentRow: {
+    flexDirection: 'row',
+    marginTop: spacing.xxxl + spacing.xl,
+    gap: spacing.xxl + 4,
+    alignItems: 'flex-end',
+  },
+  heroContentRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingTop: spacing.xxxl,
+    gap: spacing.lg,
+  },
+  posterWrap: {
     borderRadius: radii.lg,
   },
-  heroTextContent: { flex: 1 },
-  title: { color: '#FAFAFA', fontSize: 34, fontWeight: '800', marginBottom: 14, letterSpacing: -0.5 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg + 2, marginBottom: spacing.lg + 2 },
-  badge: { backgroundColor: 'rgba(233,105,42,0.3)', paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs + 1, borderRadius: radii.sm },
-  badgeText: { color: '#E9692A', fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm - 2 },
-  metaText: { color: '#A1A1AA', fontSize: 14, fontWeight: '600' },
-  genresRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm + 2, marginBottom: spacing.lg + 2 },
-  genrePill: { 
-    borderWidth: 1.5, 
-    borderColor: 'rgba(255,255,255,0.15)', 
-    paddingHorizontal: spacing.md, 
-    paddingVertical: spacing.sm - 2, 
-    borderRadius: spacing.xl,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  posterWrapMobile: {
+    marginBottom: spacing.lg,
   },
-  genreText: { color: '#A1A1AA', fontSize: 12, fontWeight: '500' },
-  desc: { color: '#D4D4D8', fontSize: 15, lineHeight: 24, marginBottom: spacing.xxl + 4 },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginBottom: spacing.xxl },
-  playBtn: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: spacing.xxl + 4, 
-    paddingVertical: spacing.lg, 
-    borderRadius: radii.lg - 2, 
-    gap: spacing.sm + 2,
-    // Shadow for depth
-    shadowColor: '#E9692A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
+  heroTextContent: {
+    flex: 1,
   },
-  playText: { color: '#FAFAFA', fontSize: 16, fontWeight: '600', letterSpacing: 0.3 },
-  favBtn: {
-    padding: spacing.lg, 
-    backgroundColor: 'rgba(255,255,255,0.08)', 
-    borderRadius: radii.lg - 2,
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm - 2,
+    marginBottom: spacing.sm,
+  },
+  eyebrow: {
+    ...typography.eyebrow,
+  },
+  title: {
+    ...typography.display,
+    color: colors.text,
+    fontSize: 36,
+    lineHeight: 40,
+    marginBottom: spacing.md,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm - 2,
+  },
+  metaText: {
+    ...typography.caption,
+    color: colors.textDim,
+    fontWeight: '600',
+  },
+  genresRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  genrePill: {
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: colors.borderSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
   },
-  infoRow: { flexDirection: 'row', marginBottom: 10, marginTop: 6 },
-  label: { fontWeight: '600', marginRight: 6, fontSize: 14 },
-  value: { flex: 1, fontSize: 14, opacity: 0.8 },
+  genreText: {
+    ...typography.caption,
+    color: colors.textDim,
+    fontSize: 12,
+  },
+  desc: {
+    ...typography.body,
+    color: colors.text,
+    marginBottom: spacing.xl,
+    opacity: 0.85,
+  },
+  descMobile: {
+    textAlign: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  actionRowMobile: {
+    justifyContent: 'center',
+  },
+  favBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metaBlock: {
+    marginTop: spacing.sm + 2,
+  },
+  metaLabel: {
+    ...typography.eyebrow,
+    color: colors.textDim,
+    marginBottom: spacing.xs,
+  },
+  metaValue: {
+    ...typography.body,
+    color: colors.text,
+    opacity: 0.9,
+  },
 });
 
 export default MediaInfoScreen;
