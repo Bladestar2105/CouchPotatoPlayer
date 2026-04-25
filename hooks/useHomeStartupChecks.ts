@@ -41,7 +41,7 @@ export const useHomeStartupChecks = ({
     setHasCheckedOnStartup(true);
     const timeoutId = setTimeout(() => {
       if (!Platform.isTV) {
-        void loadEPG(false, { preferCache: true });
+        void loadProfile(currentProfile, true);
         return;
       }
       Alert.alert(

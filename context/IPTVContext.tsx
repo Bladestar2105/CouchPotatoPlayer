@@ -40,6 +40,9 @@ const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const EPG_MIN_RELOAD_INTERVAL_MS = 5000;
 const QUICKSHARE_VALIDITY_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const XTREAM_EPG_BATCH_SIZE = 50;
+const PLAYLIST_UPDATE_INTERVAL_STORAGE_KEY = 'app_update_interval';
+const DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS = 24;
+const MIN_PLAYLIST_UPDATE_INTERVAL_HOURS = 1;
 
 /**
  * Sanitizes a URL by removing sensitive query parameters (username, password)
@@ -209,10 +212,20 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const lastEpgLoadAttemptRef = useRef(0);
   const hasEpgDataRef = useRef(false);
   const epgBatchInflightRef = useRef<Map<string, Promise<Record<string, { epg_listings?: any[] }>>>>(new Map());
+  const isLoadInFlightRef = useRef(false);
+  const currentProfileRef = useRef<IPTVProfile | null>(null);
 
   useEffect(() => {
     hasEpgDataRef.current = Object.keys(epg).length > 0;
   }, [epg]);
+
+  useEffect(() => {
+    isLoadInFlightRef.current = isLoading || isUpdating;
+  }, [isLoading, isUpdating]);
+
+  useEffect(() => {
+    currentProfileRef.current = currentProfile;
+  }, [currentProfile]);
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -474,6 +487,60 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [profiles, removeProfile]);
+
+  useEffect(() => {
+    if (isInitializing || !currentProfile) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const readUpdateIntervalMs = async (): Promise<number> => {
+      try {
+        const raw = await AsyncStorage.getItem(PLAYLIST_UPDATE_INTERVAL_STORAGE_KEY);
+        const parsed = raw ? Number.parseInt(raw, 10) : DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS;
+        const safeHours = Number.isFinite(parsed) && parsed >= MIN_PLAYLIST_UPDATE_INTERVAL_HOURS
+          ? parsed
+          : DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS;
+        return safeHours * 60 * 60 * 1000;
+      } catch (e) {
+        Logger.warn('[AUTO UPDATE] Failed to read update interval. Falling back to default.', sanitizeError(e));
+        return DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS * 60 * 60 * 1000;
+      }
+    };
+
+    const schedule = async () => {
+      clearTimer();
+      const intervalMs = await readUpdateIntervalMs();
+      if (cancelled) return;
+      timer = setTimeout(async () => {
+        if (cancelled) return;
+        const profileForRefresh = currentProfileRef.current;
+        if (profileForRefresh && !isLoadInFlightRef.current) {
+          Logger.log(`[AUTO UPDATE] Running scheduled refresh for profile ${profileForRefresh.id}`);
+          await loadProfile(profileForRefresh, true);
+        } else {
+          Logger.log('[AUTO UPDATE] Skipped scheduled refresh because load is already in progress or no active profile');
+        }
+        if (!cancelled) {
+          void schedule();
+        }
+      }, intervalMs);
+    };
+
+    void schedule();
+
+    return () => {
+      cancelled = true;
+      clearTimer();
+    };
+  }, [currentProfile, isInitializing, loadProfile]);
 
   const unloadProfile = useCallback(async () => {
     setCurrentProfile(null);
