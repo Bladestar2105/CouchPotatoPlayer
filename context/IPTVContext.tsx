@@ -26,6 +26,7 @@ import {
 import { generateCatchupUrl, hasCatchupSupport, CatchupType, CatchupConfig } from '../utils/catchupUtils';
 import { parseXMLTVFromString } from '../utils/epgParser';
 import { filterNonAdultRecentlyWatched, isAdultRecentlyWatchedItem } from '../utils/adultContent';
+import { buildSearchSnapshot, deleteSearchSnapshot, persistSearchSnapshot } from '../utils/searchSnapshot';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
 const PROFILES_STORAGE_KEY = 'IPTV_PROFILES';
@@ -227,6 +228,25 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentProfileRef.current = currentProfile;
   }, [currentProfile]);
 
+  // ─── Universal-search snapshot persistence ────────────────────────────
+  // Whenever the active profile finishes loading its library, persist a
+  // compact snapshot to AsyncStorage so SearchScreen can offer a search
+  // across every configured provider — including ones that aren't loaded
+  // right now. Debounced so we don't write while the library is still
+  // streaming in.
+  useEffect(() => {
+    if (!currentProfile) return;
+    if (isLoading) return;
+    if (channels.length === 0 && movies.length === 0 && series.length === 0) return;
+
+    const handle = setTimeout(() => {
+      const snapshot = buildSearchSnapshot(currentProfile, channels, movies, series, epg);
+      persistSearchSnapshot(snapshot);
+    }, 1500);
+
+    return () => clearTimeout(handle);
+  }, [currentProfile, isLoading, channels, movies, series, epg]);
+
   useEffect(() => {
     const loadDataFromStorage = async () => {
       try {
@@ -355,6 +375,9 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentProfile?.id === id) {
         unloadProfile();
       }
+      // Forget the cross-provider search snapshot so deleted providers
+      // can never reappear in Universal Search.
+      deleteSearchSnapshot(id).catch(() => { /* best-effort */ });
       setHasCheckedOnStartup(false);
     } catch (e) {
       Logger.error("Failed to remove profile", e);
