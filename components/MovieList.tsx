@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform, findNodeHandle, RefreshControl } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useIPTVAppState, useIPTVLibrary, useIPTVParental } from '../context/IPTVContext';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Movie } from '../types';
 import { useSettings } from '../context/SettingsContext';
@@ -144,6 +145,14 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_p
   const route = useRoute<any>();
   const dimensions = Dimensions.get('window');
   const [containerWidth, setContainerWidth] = useState(dimensions.width);
+  const { refreshing, onRefresh } = usePullToRefresh();
+  const refreshControl = useMemo(
+    () =>
+      Platform.isTV ? undefined : (
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      ),
+    [refreshing, onRefresh, colors.primary],
+  );
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
@@ -477,6 +486,7 @@ const MovieList = forwardRef<ContentRef, { onReturnToSidebar?: () => void }>((_p
                 key={numColumns} // Force re-render if columns change
                 extraData={movieListExtraData}
                 contentContainerStyle={styles.gridContainer}
+                refreshControl={refreshControl}
                 initialNumToRender={listPerfConfig.initialNumToRender}
                 maxToRenderPerBatch={listPerfConfig.maxToRenderPerBatch}
                 windowSize={listPerfConfig.windowSize}

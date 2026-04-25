@@ -11,7 +11,7 @@ import { useTVPreferredFocusKey } from '../../hooks/useTVPreferredFocusKey';
 
 interface HomeTVLayoutProps {
   colors: ThemeColors;
-  insets: { top: number; bottom: number };
+  insets: { top: number; right: number; bottom: number; left: number };
   isSidebarExpanded: boolean;
   expandedWidth: number;
   collapsedWidth: number;
@@ -78,13 +78,22 @@ export const HomeTVLayout = ({
           tvStyles.sidebar,
           styles.sidebar,
           {
-            width: sidebarWidth,
+            width: sidebarWidth + insets.left,
             backgroundColor: tokenColors.surface,
             borderRightColor: tokenColors.borderSoft,
           },
         ]}
       >
-        <View style={[styles.sidebarInner, { paddingTop: Math.max(insets.top, spacing.lg + 2), paddingBottom: Math.max(insets.bottom, spacing.sm + 2) }]}>
+        <View
+          style={[
+            styles.sidebarInner,
+            {
+              paddingTop: Math.max(insets.top, spacing.lg + 2),
+              paddingBottom: Math.max(insets.bottom, spacing.sm + 2),
+              paddingLeft: insets.left,
+            },
+          ]}
+        >
           <View style={[styles.brandHeader, !isSidebarExpanded && styles.brandHeaderCollapsed]}>
             <BrandMark size={32} />
             {isSidebarExpanded && (
@@ -166,6 +175,7 @@ export const HomeTVLayout = ({
                 borderBottomColor: tokenColors.borderSoft,
                 backgroundColor: tokenColors.bg,
                 paddingTop: Math.max(insets.top, spacing.sm),
+                paddingRight: Math.max(insets.right, spacing.lg),
               },
             ]}
           >

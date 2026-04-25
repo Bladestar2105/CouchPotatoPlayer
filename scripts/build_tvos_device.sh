@@ -4,9 +4,9 @@ echo "Preparing tvOS environment for Hardware Device build..."
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
 
-# Ensure any .npmrc changes (like public-hoist-pattern) are fully applied first
+# Ensure the pnpm workspace and native dependency patches are applied first
 echo "Ensuring base dependencies are installed and properly hoisted..."
-if ! pnpm install; then
+if ! pnpm install --frozen-lockfile; then
   echo "Error: Failed to install base dependencies."
   exit 1
 fi

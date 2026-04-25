@@ -115,7 +115,26 @@ export interface RecentlyWatchedItem {
   lastWatchedAt: number;
   position?: number;
   duration?: number;
-  episodeId?: number;
+  isAdult?: boolean;
+  seriesId?: string;
+  episodeId?: string | number;
+  episodeName?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}
+
+export interface PlaybackStream {
+  url: string;
+  id: string;
+  name?: string;
+  type?: 'live' | 'vod' | 'movie' | 'series';
+  icon?: string;
+  extension?: string;
+  directSource?: string;
+  direct_source?: string;
+  isAdult?: boolean;
+  seriesId?: string;
+  episodeId?: string | number;
   episodeName?: string;
   seasonNumber?: number;
   episodeNumber?: number;
@@ -158,7 +177,7 @@ export type IPTVContextType = {
   movies: Movie[];
   series: Series[];
 
-  currentStream: { url: string; id: string; } | null;
+  currentStream: PlaybackStream | null;
 
   favorites: FavoriteItem[];
   recentlyWatched: RecentlyWatchedItem[];
@@ -177,7 +196,7 @@ export type IPTVContextType = {
   unloadProfile: () => Promise<void>;
   setCurrentProfile: (profile: IPTVProfile | null) => void;
 
-  playStream: (stream: { url: string; id: string; }) => void;
+  playStream: (stream: PlaybackStream) => void;
   stopStream: () => void;
 
   epg: Record<string, EPGProgram[]>;

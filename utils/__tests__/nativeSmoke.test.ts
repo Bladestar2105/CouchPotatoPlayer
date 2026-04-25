@@ -48,6 +48,88 @@ describe('native smoke guards', () => {
     }
   });
 
+  test('Android manifest declares Android TV compatibility', () => {
+    // Play Store infers `android.hardware.touchscreen` as required unless
+    // the app explicitly opts out, which silently excludes Android TV /
+    // Google TV devices from the listing. `android.software.leanback` is
+    // the standard companion flag for TV-capable apps. Both must be
+    // marked `required="false"` so phones/tablets still install normally.
+    // The Leanback launcher category and banner make the release visible from
+    // Android TV launchers instead of only being install-compatible.
+    const manifest = readRepoFile('android/app/src/main/AndroidManifest.xml');
+    expect(manifest).toMatch(
+      /<uses-feature[^>]*android:name="android\.hardware\.touchscreen"[^>]*android:required="false"/,
+    );
+    expect(manifest).toMatch(
+      /<uses-feature[^>]*android:name="android\.software\.leanback"[^>]*android:required="false"/,
+    );
+    expect(manifest).toContain('android:banner="@drawable/android_tv_banner"');
+    expect(manifest).toContain('android.intent.category.LEANBACK_LAUNCHER');
+    expect(
+      fs.existsSync(path.join(process.cwd(), 'android/app/src/main/res/drawable-nodpi/android_tv_banner.png')),
+    ).toBe(true);
+  });
+
+  test('ErrorBoundary fallback keeps TV navigation recoverable', () => {
+    const source = readRepoFile('components/ErrorBoundary.tsx');
+    expect(source).toContain('onFallbackBack');
+    expect(source).toContain('isTVSelectable={true}');
+    expect(source).toContain('hasTVPreferredFocus={Platform.isTV}');
+    expect(source).toContain('errorBoundary.goHome');
+  });
+
+  test('Player sleep timer marks the armed preset as selected', () => {
+    const source = readRepoFile('screens/PlayerScreen.tsx');
+    expect(source).toContain('sleepTimerPresetMinutes');
+    expect(source).toContain('setSleepTimerPresetMinutes(minutes)');
+    expect(source).toContain('selected: sleepTimerPresetMinutes === minutes');
+  });
+
+  test('tvOS player surface press only shows the overlay instead of toggling it closed', () => {
+    const source = readRepoFile('screens/PlayerScreen.tsx');
+    const handlePressStart = source.indexOf('const handlePress = () =>');
+    expect(handlePressStart).toBeGreaterThan(-1);
+    const handlePressBlock = source.slice(handlePressStart, handlePressStart + 500);
+    expect(handlePressBlock).toContain('if (Platform.isTV)');
+    expect(handlePressBlock).toContain('showOverlayWithActivity()');
+    expect(handlePressBlock).toContain('return;');
+  });
+
+  test('tvOS KSPlayer settings are wired through TV row toggles', () => {
+    const source = readRepoFile('screens/SettingsScreen.tsx');
+    expect(source).toContain('getTVBooleanSettingPressHandler');
+    expect(source).toContain('renderBooleanSettingValue(ksplayerHardwareDecode, setKsplayerHardwareDecode)');
+    expect(source).toContain('getTVBooleanSettingPressHandler(Platform.isTV, ksplayerHardwareDecode, setKsplayerHardwareDecode)');
+    expect(source).toContain('renderBooleanSettingValue(ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression)');
+    expect(source).toContain('getTVBooleanSettingPressHandler(Platform.isTV, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression)');
+    expect(source).toContain('renderBooleanSettingValue(ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate)');
+    expect(source).toContain('getTVBooleanSettingPressHandler(Platform.isTV, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate)');
+  });
+
+  test('WelcomeScreen profile selector keeps VirtualizedList outside ScrollView', () => {
+    const source = readRepoFile('screens/WelcomeScreen.tsx');
+    const withProfilesStart = source.indexOf('const renderHeroWithProfiles');
+    const withoutProfilesStart = source.indexOf('const renderHeroWithoutProfiles');
+    expect(withProfilesStart).toBeGreaterThan(-1);
+    expect(withoutProfilesStart).toBeGreaterThan(withProfilesStart);
+
+    const withProfilesBlock = source.slice(withProfilesStart, withoutProfilesStart);
+    expect(withProfilesBlock).toContain('<FlatList');
+    expect(withProfilesBlock).toContain('ListHeaderComponent={renderHeroHeader}');
+    expect(withProfilesBlock).toContain('ListFooterComponent={renderHeroFooter}');
+    expect(withProfilesBlock).not.toContain('<ScrollView');
+  });
+
+  test('Settings appearance exposes user design customization controls', () => {
+    const source = readRepoFile('screens/SettingsScreen.tsx');
+    expect(source).toContain('useTheme()');
+    expect(source).toContain('ACCENT_CHOICES');
+    expect(source).toContain("t('settings.appearance.accent')");
+    expect(source).toContain('setAccent');
+    expect(source).toContain("t('settings.appearance.density')");
+    expect(source).toContain('setDensity');
+  });
+
   test('Android release build permits cleartext (HTTP) IPTV traffic', () => {
     // Most IPTV providers serve over plain HTTP. Android 9+ blocks cleartext
     // traffic by default once `targetSdkVersion >= 28`, so the application

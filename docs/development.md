@@ -4,7 +4,7 @@
 
 ### Install
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ### Run common checks
@@ -52,14 +52,14 @@ When debugging:
 ```
 - To summarize captured logs:
 ```bash
-npm run analyze:tv-perf -- /path/to/tv.log
+pnpm run analyze:tv-perf -- /path/to/tv.log
 ```
 
 ## tvOS performance test protocol (baseline)
 1. Build and run a dev tvOS app with current profiling enabled.
 2. Capture console output to a log file (Xcode device logs or simulator logs).
 3. Execute the scenarios below with a warm app state and stable network.
-4. Run `npm run analyze:tv-perf -- /path/to/tv.log` and compare p50/p95 against targets.
+4. Run `pnpm run analyze:tv-perf -- /path/to/tv.log` and compare p50/p95 against targets.
 
 ## tvOS scenarios
 1. Live TV category switching:
@@ -92,6 +92,8 @@ If upgrading a dependency:
 
 ## tvOS App Store Connect upload checks
 Before creating a tvOS archive for TestFlight/App Store Connect, verify:
+- `assets/store/tvos/app-icon-small-400x240.png` is exactly `400x240`
+- `assets/store/tvos/app-icon-small2x-800x480.png` is exactly `800x480`
 - `assets/store/tvos/app-icon-large-1280x768.png` is exactly `1280x768`
 - `assets/store/tvos/top-shelf-wide-2320x720.png` is exactly `2320x720`
 - `assets/store/tvos/top-shelf-wide2x-4640x1440.png` is exactly `4640x1440`

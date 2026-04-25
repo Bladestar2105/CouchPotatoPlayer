@@ -68,6 +68,18 @@ describe('playerRemoteEvents', () => {
     })).toBe('showOverlay');
   });
 
+  test('maps remote click/select to showing the player overlay while hidden', () => {
+    for (const eventType of ['select', 'enter', 'click', 'tap']) {
+      expect(resolvePlayerRemoteAction({
+        isFocused: true,
+        eventType,
+        showOverlay: false,
+        canSeek: true,
+        hasPendingSeek: false,
+      })).toBe('showOverlay');
+    }
+  });
+
   test('maps rewind/skip backward to previous channel action', () => {
     expect(resolvePlayerRemoteAction({
       isFocused: true,

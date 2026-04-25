@@ -10,6 +10,7 @@ const useTVEventHandler: (handler: (event: any) => void) => void =
 import VideoPlayer, { VideoMetadata, type PlaybackTrack, type PlaybackTrackGroups } from '../components/VideoPlayer';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import type * as ScreenOrientationModule from 'expo-screen-orientation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 let ScreenOrientation: typeof ScreenOrientationModule | undefined;
 if (!Platform.isTV) {
@@ -22,7 +23,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { Channel } from '../types';
+import { Channel, PlaybackStream } from '../types';
 import { findCurrentProgramIndex, findNextProgramIndex } from '../utils/epgUtils';
 import { resolvePlayerRemoteAction } from '../utils/playerRemoteEvents';
 import { EMPTY_PLAYBACK_TRACKS, serializePlaybackTrackGroups } from '../components/player/PlaybackTracks';
@@ -38,7 +39,9 @@ const RECONNECT_BACKOFF_MS = [1200, 2500, 4500] as const;
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_BACKOFF_MS.length;
 const MAX_SEEKABLE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 type PlaybackStatus = 'playing' | 'buffering' | 'reconnecting' | 'failed';
-type TrackPanelMode = 'audio' | 'text' | null;
+type TrackPanelMode = 'audio' | 'text' | 'sleep' | null;
+// Sleep-timer presets. Order matters — rendered in this order inside the panel.
+const SLEEP_TIMER_OPTIONS_MIN = [15, 30, 45, 60, 90] as const;
 const areTrackIdsEqual = (left: number | string | null | undefined, right: number | string | null | undefined): boolean => {
   if (left == null || right == null) return left === right;
   return String(left) === String(right);
@@ -49,14 +52,15 @@ const areTrackIdsEqual = (left: number | string | null | undefined, right: numbe
  */
 const PlayerScreen = () => {
   const { t } = useTranslation();
-  const { colors } = useSettings();
+  const { colors, overlayAutoHideSeconds } = useSettings();
   const { accent } = useTheme();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { addRecentlyWatched } = useIPTVCollections();
-  const { channels, epg } = useIPTVLibrary();
+  const { channels, movies, series, epg } = useIPTVLibrary();
   const { currentStream, stopStream, playStream } = useIPTVPlayback();
+  const insets = useSafeAreaInsets();
 
   const returnGroupId = route.params?.returnGroupId;
   const returnTab = route.params?.returnTab || 'channels';
@@ -76,6 +80,7 @@ const PlayerScreen = () => {
 
   // TiviMate-style overlay states
   const [showOverlay, setShowOverlay] = useState(false);
+  const [overlayActivityNonce, setOverlayActivityNonce] = useState(0);
   const [showChannelSwitch, setShowChannelSwitch] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seekTime, setSeekTime] = useState<number | undefined>(undefined);
@@ -88,6 +93,13 @@ const PlayerScreen = () => {
   const [availableTracks, setAvailableTracks] = useState<PlaybackTrackGroups>(EMPTY_PLAYBACK_TRACKS);
   const [selectedAudioTrackId, setSelectedAudioTrackId] = useState<number | string | null | undefined>(undefined);
   const [selectedTextTrackId, setSelectedTextTrackId] = useState<number | string | null>(null);
+  // Sleep-timer: `sleepTimerEndAt` is the epoch ms at which playback auto-pauses.
+  // `sleepRemainingMs` is a display value ticked once per second while the timer
+  // is armed, so the minutes-remaining label stays fresh without causing the
+  // whole player to re-render each frame.
+  const [sleepTimerEndAt, setSleepTimerEndAt] = useState<number | null>(null);
+  const [sleepRemainingMs, setSleepRemainingMs] = useState<number>(0);
+  const [sleepTimerPresetMinutes, setSleepTimerPresetMinutes] = useState<number | null>(null);
 
   // Channel switch animation
   const channelSwitchOpacity = useRef(new Animated.Value(0)).current;
@@ -96,7 +108,7 @@ const PlayerScreen = () => {
   const lastProgressAtRef = useRef<number>(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
-  const currentStreamRef = useRef<{ id: string; url: string } | null>(null);
+  const currentStreamRef = useRef<PlaybackStream | null>(null);
   const currentChannelRef = useRef<Channel | null>(null);
   const isFocusedRef = useRef(false);
   const initializedStreamIdRef = useRef<string | null>(null);
@@ -111,6 +123,8 @@ const PlayerScreen = () => {
   const audioSelectionByStreamRef = useRef(new Map<string, number | string>());
   const textSelectionByStreamRef = useRef(new Map<string, number | string | null>());
   const lastBackHandledAtRef = useRef(0);
+  const sleepTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sleepTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const backButtonRef = React.useRef<any>(null);
   const audioButtonRef = React.useRef<any>(null);
@@ -118,6 +132,15 @@ const PlayerScreen = () => {
   const overlayDestinationRefs = useMemo(() => [backButtonRef, audioButtonRef, subtitleButtonRef], []);
   const overlayFocusDestinations = useTVFocusGuideDestinations(overlayDestinationRefs, showOverlay);
   const preferredOverlayKey = useTVPreferredFocusKey(showOverlay ? 'overlay:back' : null);
+  const topOverlayOffset = Math.max(spacing.xl, insets.top + spacing.sm);
+  const leftOverlayOffset = Math.max(spacing.xl, insets.left + spacing.xl);
+  const rightOverlayOffset = Math.max(spacing.xl, insets.right + spacing.xl);
+  const bottomBarHeight = (Platform.isTV ? 188 : 160) + insets.bottom;
+
+  const showOverlayWithActivity = useCallback(() => {
+    setShowOverlay(true);
+    setOverlayActivityNonce((prev) => prev + 1);
+  }, []);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -125,6 +148,62 @@ const PlayerScreen = () => {
       reconnectTimerRef.current = null;
     }
   }, []);
+
+  const clearSleepTimers = useCallback(() => {
+    if (sleepTimeoutRef.current) {
+      clearTimeout(sleepTimeoutRef.current);
+      sleepTimeoutRef.current = null;
+    }
+    if (sleepTickRef.current) {
+      clearInterval(sleepTickRef.current);
+      sleepTickRef.current = null;
+    }
+  }, []);
+
+  // Public API: start (minutes > 0) or cancel (minutes = 0) the sleep timer.
+  // Guarded so the player never leaks a timeout across re-entrant calls: a new
+  // selection first clears any existing timer before arming the next one.
+  const setSleepTimerMinutes = useCallback((minutes: number) => {
+    clearSleepTimers();
+    if (minutes <= 0) {
+      setSleepTimerEndAt(null);
+      setSleepRemainingMs(0);
+      setSleepTimerPresetMinutes(null);
+      return;
+    }
+    const durationMs = minutes * 60 * 1000;
+    const endAt = Date.now() + durationMs;
+    setSleepTimerEndAt(endAt);
+    setSleepRemainingMs(durationMs);
+    setSleepTimerPresetMinutes(minutes);
+    sleepTimeoutRef.current = setTimeout(() => {
+      sleepTimeoutRef.current = null;
+      if (sleepTickRef.current) {
+        clearInterval(sleepTickRef.current);
+        sleepTickRef.current = null;
+      }
+      setSleepTimerEndAt(null);
+      setSleepRemainingMs(0);
+      setSleepTimerPresetMinutes(null);
+      setIsPaused(true);
+    }, durationMs);
+    sleepTickRef.current = setInterval(() => {
+      const remaining = Math.max(0, endAt - Date.now());
+      setSleepRemainingMs(remaining);
+      if (remaining <= 0 && sleepTickRef.current) {
+        clearInterval(sleepTickRef.current);
+        sleepTickRef.current = null;
+      }
+    }, 1000);
+  }, [clearSleepTimers]);
+
+  // Always drop any armed sleep timer when the player unmounts so a later
+  // pause cannot fire into a torn-down screen.
+  useEffect(() => {
+    return () => {
+      clearSleepTimers();
+    };
+  }, [clearSleepTimers]);
 
   const handleBack = useCallback(() => {
     if (trackPanelMode) {
@@ -374,14 +453,33 @@ const PlayerScreen = () => {
       ];
     }
 
+    if (trackPanelMode === 'sleep') {
+      return [
+        {
+          id: 0,
+          label: t('sleepTimerOff'),
+          secondaryLabel: undefined,
+          selected: sleepTimerPresetMinutes === null,
+        },
+        ...SLEEP_TIMER_OPTIONS_MIN.map((minutes) => ({
+          id: minutes,
+          label: t('sleepTimerMinutes', { minutes }),
+          secondaryLabel: undefined,
+          selected: sleepTimerPresetMinutes === minutes,
+        })),
+      ];
+    }
+
     return [];
-  }, [availableTracks.audioTracks, availableTracks.textTracks, selectedAudioTrack?.id, selectedTextTrack, t, trackPanelMode]);
+  }, [availableTracks.audioTracks, availableTracks.textTracks, selectedAudioTrack?.id, selectedTextTrack, sleepTimerPresetMinutes, t, trackPanelMode]);
 
   const trackPanelTitle = trackPanelMode === 'audio'
     ? t('playerAudioTracks')
     : trackPanelMode === 'text'
       ? t('playerSubtitleTracks')
-      : '';
+      : trackPanelMode === 'sleep'
+        ? t('sleepTimer')
+        : '';
 
   useEffect(() => {
     if (trackPanelMode === 'audio' && !hasAudioTrackOptions) {
@@ -408,12 +506,12 @@ const PlayerScreen = () => {
     if (showOverlay && !isPaused && !trackPanelMode && pendingSeekTime === undefined) {
         timer = setTimeout(() => {
             setShowOverlay(false);
-        }, 6000);
+        }, overlayAutoHideSeconds * 1000);
     }
     return () => {
         if (timer) clearTimeout(timer);
     };
-  }, [showOverlay, isPaused, trackPanelMode, pendingSeekTime]);
+  }, [showOverlay, overlayActivityNonce, isPaused, trackPanelMode, pendingSeekTime, overlayAutoHideSeconds]);
 
   useEffect(() => {
     if (seekTime === undefined) return;
@@ -432,8 +530,8 @@ const PlayerScreen = () => {
       currentStreamRef.current = null;
       return;
     }
-    currentStreamRef.current = { id: currentStream.id, url: currentStream.url };
-  }, [currentStream?.id, currentStream?.url]);
+    currentStreamRef.current = currentStream;
+  }, [currentStream]);
 
   useEffect(() => {
     const streamId = currentStream?.id;
@@ -534,7 +632,7 @@ const PlayerScreen = () => {
     reconnectAttemptRef.current = 0;
     setReconnectNonce((prev) => (prev === 0 ? prev : 0));
 
-    const stream = currentStream as any;
+    const stream = currentStream as PlaybackStream;
     const explicitType = typeof stream?.type === 'string' ? stream.type.toLowerCase() : '';
     const inferredType: 'live' | 'vod' | 'series' =
       explicitType === 'series'
@@ -557,17 +655,31 @@ const PlayerScreen = () => {
       : typeof stream?.direct_source === 'string' && stream.direct_source.length > 0
         ? stream.direct_source
         : currentStream.url;
+    const seriesId = typeof stream?.seriesId === 'string' ? stream.seriesId : undefined;
+    const movieSnapshot = movies.find((movie) => String(movie.id) === String(currentStream.id));
+    const seriesSnapshot = series.find((entry) => String(entry.id) === String(seriesId || currentStream.id));
+    const isAdultStream =
+      stream?.isAdult === true ||
+      channelSnapshot?.isAdult === true ||
+      movieSnapshot?.isAdult === true ||
+      seriesSnapshot?.isAdult === true;
 
     addRecentlyWatchedRef.current({
       id: currentStream.id,
       type: inferredType,
       name: streamName,
-      icon: channelSnapshot?.logo,
+      icon: stream?.icon || channelSnapshot?.logo || movieSnapshot?.cover || seriesSnapshot?.cover,
       extension: typeof stream?.extension === 'string' ? stream.extension : undefined,
       directSource,
       lastWatchedAt: Date.now(),
+      isAdult: isAdultStream,
+      seriesId,
+      episodeId: stream?.episodeId,
+      episodeName: stream?.episodeName,
+      seasonNumber: stream?.seasonNumber,
+      episodeNumber: stream?.episodeNumber,
     });
-    setShowOverlay(true);
+    showOverlayWithActivity();
     setVideoMetadata(null);
     setSeekTime(undefined);
     setPendingSeekTime(undefined);
@@ -578,7 +690,7 @@ const PlayerScreen = () => {
       if (prev.currentTime === 0 && prev.duration === 0) return prev;
       return { currentTime: 0, duration: 0 };
     });
-  }, [isFocused, currentStream?.id, currentStream?.url, clearReconnectTimer, route.params?.returnTab, route.params?.title]);
+  }, [isFocused, currentStream?.id, currentStream?.url, clearReconnectTimer, route.params?.returnTab, route.params?.title, showOverlayWithActivity, movies, series]);
 
   useEffect(() => {
     if (!isFocused || !currentStream?.id || isPaused) {
@@ -614,8 +726,8 @@ const PlayerScreen = () => {
     const nextSeekTime = Math.min(maxTime, Math.max(0, baseTime + deltaMs));
     setPendingSeekTime(nextSeekTime);
     setPlaybackProgress((prev) => ({ ...prev, currentTime: nextSeekTime }));
-    setShowOverlay(true);
-  }, [canSeek, pendingSeekTime]);
+    showOverlayWithActivity();
+  }, [canSeek, pendingSeekTime, showOverlayWithActivity]);
 
   const applySeekDelta = useCallback((deltaMs: number) => {
     if (!canSeek) return;
@@ -627,8 +739,8 @@ const PlayerScreen = () => {
     setSeekTime(nextSeekTime);
     setPendingSeekTime(undefined);
     setPlaybackProgress((prev) => ({ ...prev, currentTime: nextSeekTime }));
-    setShowOverlay(true);
-  }, [canSeek, pendingSeekTime]);
+    showOverlayWithActivity();
+  }, [canSeek, pendingSeekTime, showOverlayWithActivity]);
 
   const seekToProgressRatio = useCallback((ratio: number, commit: boolean) => {
     if (!canSeek) return;
@@ -646,8 +758,8 @@ const PlayerScreen = () => {
     } else {
       setPendingSeekTime(nextSeekTime);
     }
-    setShowOverlay(true);
-  }, [canSeek]);
+    showOverlayWithActivity();
+  }, [canSeek, showOverlayWithActivity]);
 
   const handleSeekBarTouch = useCallback((locationX: number, commit: boolean) => {
     const width = seekBarWidthRef.current;
@@ -661,10 +773,10 @@ const PlayerScreen = () => {
     // Auto-commit seek after short inactivity as fallback.
     const timer = setTimeout(() => {
       commitPendingSeek();
-      setShowOverlay(true);
+      showOverlayWithActivity();
     }, 1400);
     return () => clearTimeout(timer);
-  }, [pendingSeekTime, commitPendingSeek]);
+  }, [pendingSeekTime, commitPendingSeek, showOverlayWithActivity]);
 
   useEffect(() => {
     const setOrientation = async () => {
@@ -692,20 +804,25 @@ const PlayerScreen = () => {
 
   const handlePress = () => {
     if (commitPendingSeek()) {
-      setShowOverlay(true);
+      showOverlayWithActivity();
       return;
     }
-    setShowOverlay((prev) => {
-      const next = !prev;
-      if (!next) setTrackPanelMode(null);
-      return next;
-    });
+    if (Platform.isTV) {
+      showOverlayWithActivity();
+      return;
+    }
+    if (showOverlay) {
+      setTrackPanelMode(null);
+      setShowOverlay(false);
+      return;
+    }
+    showOverlayWithActivity();
   };
 
   const toggleTrackPanel = useCallback((mode: Exclude<TrackPanelMode, null>) => {
-    setShowOverlay(true);
+    showOverlayWithActivity();
     setTrackPanelMode((prev) => (prev === mode ? null : mode));
-  }, []);
+  }, [showOverlayWithActivity]);
 
   const handleTracksChange = useCallback((tracks: PlaybackTrackGroups) => {
     const signature = serializePlaybackTrackGroups(tracks);
@@ -775,7 +892,7 @@ const PlayerScreen = () => {
       if (streamId) {
         audioSelectionByStreamRef.current.set(streamId, track.id);
       }
-    } else {
+    } else if (mode === 'text') {
       const nextValue = track?.id ?? null;
       setSelectedTextTrackId(nextValue);
       if (streamId) {
@@ -783,8 +900,17 @@ const PlayerScreen = () => {
       }
     }
     setTrackPanelMode(null);
-    setShowOverlay(true);
-  }, [currentStream?.id]);
+    showOverlayWithActivity();
+  }, [currentStream?.id, showOverlayWithActivity]);
+
+  // Sleep-timer equivalent of `handleTrackSelection`: the panel hands us a
+  // numeric minutes value (0 = cancel). Close the panel afterwards so the
+  // user sees the new remaining-minutes label appear in the top bar.
+  const handleSleepOptionPress = useCallback((minutes: number) => {
+    setSleepTimerMinutes(minutes);
+    setTrackPanelMode(null);
+    showOverlayWithActivity();
+  }, [setSleepTimerMinutes, showOverlayWithActivity]);
 
   // Channel switching helper
   const switchChannel = useCallback((direction: 'up' | 'down') => {
@@ -832,7 +958,7 @@ const PlayerScreen = () => {
 
     if (action === 'commitPendingSeek') {
       commitPendingSeek();
-      setShowOverlay(true);
+      showOverlayWithActivity();
       return;
     }
 
@@ -840,7 +966,7 @@ const PlayerScreen = () => {
       handleBack();
     } else if (action === 'togglePause') {
       setIsPaused(prev => !prev);
-      setShowOverlay(true);
+      showOverlayWithActivity();
     } else if (action === 'seekLeft') {
       queueSeekDelta(-10000);
     } else if (action === 'seekRight') {
@@ -850,11 +976,11 @@ const PlayerScreen = () => {
     } else if (action === 'switchChannelDown') {
       switchChannel('down');
     } else if (action === 'showOverlay') {
-      setShowOverlay(true);
+      showOverlayWithActivity();
     } else if (action === 'switchToPreviousChannel') {
       switchToPreviousChannel();
     }
-  }, [isFocused, handleBack, showOverlay, switchChannel, switchToPreviousChannel, commitPendingSeek, queueSeekDelta]);
+  }, [isFocused, handleBack, showOverlay, canSeek, pendingSeekTime, switchChannel, switchToPreviousChannel, commitPendingSeek, queueSeekDelta, showOverlayWithActivity]);
 
   const handlePlayerProgress = useCallback((data: { currentTime: number; duration: number }) => {
     if (pendingSeekTime === undefined) {
@@ -921,7 +1047,16 @@ const PlayerScreen = () => {
     <View style={pStyles.container}>
       {/* TiviMate-style channel switch mini-overlay (top-right) */}
       {showChannelSwitch && currentChannel && (
-        <Animated.View style={[pStyles.channelSwitchOverlay, { opacity: channelSwitchOpacity }]}>
+        <Animated.View
+          style={[
+            pStyles.channelSwitchOverlay,
+            {
+              opacity: channelSwitchOpacity,
+              top: topOverlayOffset,
+              right: rightOverlayOffset,
+            },
+          ]}
+        >
           <View style={[pStyles.channelSwitchCard, { backgroundColor: 'rgba(30,30,46,0.92)', borderColor: accent }]}>
             <View style={[pStyles.channelNumberBadge, { backgroundColor: accent }]}>
               <Text style={pStyles.channelNumberText}>{currentChannelNumber}</Text>
@@ -960,7 +1095,16 @@ const PlayerScreen = () => {
       {showOverlay && (
         <TVFocusGuideView style={pStyles.overlay} destinations={overlayFocusDestinations} pointerEvents="box-none">
           {/* Top Bar - Back + Channel Number Badge */}
-          <View style={pStyles.topBar}>
+          <View
+            style={[
+              pStyles.topBar,
+              {
+                paddingTop: topOverlayOffset,
+                paddingLeft: leftOverlayOffset,
+                paddingRight: rightOverlayOffset,
+              },
+            ]}
+          >
             <TouchableOpacity
               ref={backButtonRef}
               style={[pStyles.iconBtn, { backgroundColor: 'rgba(30,30,46,0.75)' }]}
@@ -1064,11 +1208,40 @@ const PlayerScreen = () => {
                 <Text style={pStyles.quickActionLabel} numberOfLines={1}>{subtitleQuickLabel}</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={[
+                pStyles.quickActionBtn,
+                trackPanelMode === 'sleep' && [pStyles.quickActionBtnActive, { borderColor: colors.primary }],
+                sleepTimerEndAt !== null && { borderColor: colors.primary },
+              ]}
+              onPress={() => toggleTrackPanel('sleep')}
+              accessibilityRole="button"
+              accessibilityLabel={t('sleepTimerA11yLabel')}
+              isTVSelectable={true}
+              tvParallaxProperties={{ enabled: false }}
+            >
+              <Icon name="bedtime" size={18} color="#FFF" />
+              <Text style={pStyles.quickActionLabel} numberOfLines={1}>
+                {sleepTimerEndAt !== null
+                  ? t('sleepTimerRemaining', { minutes: Math.max(1, Math.ceil(sleepRemainingMs / 60000)) })
+                  : t('sleepTimer')}
+              </Text>
+            </TouchableOpacity>
 
           </View>
 
           {trackPanelMode && (
-            <View style={pStyles.trackPanelShell} pointerEvents="box-none">
+            <View
+              style={[
+                pStyles.trackPanelShell,
+                {
+                  top: topOverlayOffset + 54,
+                  left: Platform.isTV ? undefined : leftOverlayOffset,
+                  right: rightOverlayOffset,
+                },
+              ]}
+              pointerEvents="box-none"
+            >
               <View style={[pStyles.trackPanel, { borderColor: accent }]}>
                 <View style={pStyles.trackPanelHeader}>
                   <Text style={pStyles.trackPanelTitle}>{trackPanelTitle}</Text>
@@ -1091,12 +1264,20 @@ const PlayerScreen = () => {
                         pStyles.trackOptionBtn,
                         option.selected && [pStyles.trackOptionBtnSelected, { borderColor: accent, backgroundColor: 'rgba(255,255,255,0.14)' }],
                       ]}
-                      onPress={() => handleTrackSelection(
-                        option.id == null
-                          ? null
-                          : ({ id: option.id, label: option.label, language: option.secondaryLabel, kind: trackPanelMode } as PlaybackTrack),
-                        trackPanelMode,
-                      )}
+                      onPress={() => {
+                        if (trackPanelMode === 'sleep') {
+                          handleSleepOptionPress(typeof option.id === 'number' ? option.id : 0);
+                          return;
+                        }
+                        if (trackPanelMode) {
+                          handleTrackSelection(
+                            option.id == null
+                              ? null
+                              : ({ id: option.id, label: option.label, language: option.secondaryLabel, kind: trackPanelMode } as PlaybackTrack),
+                            trackPanelMode,
+                          );
+                        }
+                      }}
                       accessibilityRole="button"
                       accessibilityLabel={option.label}
                       isTVSelectable={true}
@@ -1125,7 +1306,7 @@ const PlayerScreen = () => {
 
           {/* Bottom Bar - TiviMate-style EPG info */}
           {currentChannel && (
-              <View style={[pStyles.bottomBar, { borderTopColor: accent }]}>
+              <View style={[pStyles.bottomBar, { borderTopColor: accent, height: bottomBarHeight, paddingBottom: insets.bottom }]}>
                  <View style={pStyles.infoContainer}>
                      <Image source={currentChannel.logo && currentChannel.logo.startsWith('http') ? { uri: currentChannel.logo } : defaultLogo} style={pStyles.channelLogo} resizeMode="contain" />
 
@@ -1194,7 +1375,7 @@ const PlayerScreen = () => {
 
           {/* VOD/Series/Catchup info bar */}
           {!currentChannel && (
-            <View style={[pStyles.bottomBar, { borderTopColor: accent }]}>
+            <View style={[pStyles.bottomBar, { borderTopColor: accent, height: bottomBarHeight, paddingBottom: insets.bottom }]}>
               <View style={pStyles.vodInfoContainer}>
                 <View style={pStyles.vodHeaderRow}>
                   <Text style={pStyles.vodTitle} numberOfLines={1}>{playbackTitle}</Text>

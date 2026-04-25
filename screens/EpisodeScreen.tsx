@@ -24,7 +24,7 @@ const EpisodeScreen = () => {
   const { accent } = useTheme();
   const { t } = useTranslation();
 
-  const { season, returnGroupId, returnTab } = route.params;
+  const { season, series, returnGroupId, returnTab } = route.params;
 
   useEffect(() => {
     if (!isFocused) return;
@@ -55,14 +55,26 @@ const EpisodeScreen = () => {
 
   const handleEpisodePress = useCallback((episode: Episode) => {
     Logger.log('[EpisodeScreen] Play episode:', episode.name);
-    playStream({ url: episode.streamUrl, id: episode.id, name: episode.name, type: 'series' } as any);
+    playStream({
+      url: episode.streamUrl,
+      id: episode.id,
+      name: episode.name,
+      type: 'series',
+      icon: series?.cover,
+      isAdult: series?.isAdult,
+      seriesId: series?.id,
+      episodeId: episode.id,
+      episodeName: episode.name,
+      episodeNumber: episode.episodeNumber,
+      seasonNumber: season.seasonNumber,
+    });
     navigation.navigate('Player', {
       returnGroupId,
       returnTab: returnTab || 'series',
       returnScreen: 'Home',
       title: episode.name,
     });
-  }, [navigation, playStream, returnGroupId, returnTab]);
+  }, [navigation, playStream, returnGroupId, returnTab, season.seasonNumber, series]);
 
   const renderItem = useCallback(({ item, index }: { item: Episode; index: number }) => (
     <FocusableCard

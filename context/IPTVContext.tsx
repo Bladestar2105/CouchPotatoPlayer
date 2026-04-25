@@ -6,7 +6,7 @@ import { File, Paths } from 'expo-file-system';
 
 import i18n from '../utils/i18n';
 import Logger from '../utils/logger';
-import { sanitizeUrl } from '../utils/sanitizeUrl';
+import { sanitizeError, sanitizeUrl } from '../utils/sanitizeUrl';
 import { resolveSeriesSeasonCount } from '../utils/seriesMetadata';
 export { sanitizeUrl };
 import {
@@ -20,10 +20,12 @@ import {
   Season,
   EPGProgram,
   FavoriteItem,
-  RecentlyWatchedItem
+  RecentlyWatchedItem,
+  PlaybackStream
 } from '../types';
 import { generateCatchupUrl, hasCatchupSupport, CatchupType, CatchupConfig } from '../utils/catchupUtils';
 import { parseXMLTVFromString } from '../utils/epgParser';
+import { filterNonAdultRecentlyWatched, isAdultRecentlyWatchedItem } from '../utils/adultContent';
 
 const seriesRegex = /(.*?) S(\d+) E(\d+)/i;
 const PROFILES_STORAGE_KEY = 'IPTV_PROFILES';
@@ -38,28 +40,13 @@ const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const EPG_MIN_RELOAD_INTERVAL_MS = 5000;
 const QUICKSHARE_VALIDITY_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const XTREAM_EPG_BATCH_SIZE = 50;
+const PLAYLIST_UPDATE_INTERVAL_STORAGE_KEY = 'app_update_interval';
+const DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS = 24;
+const MIN_PLAYLIST_UPDATE_INTERVAL_HOURS = 1;
 
 /**
  * Sanitizes a URL by removing sensitive query parameters (username, password)
  */
-
-/**
- * Sanitizes error objects to prevent leaking sensitive URLs in logs
- */
-const sanitizeError = (e: any): any => {
-  if (!e) return e;
-  if (typeof e === 'string') return sanitizeUrl(e);
-  if (e instanceof Error) {
-    const sanitized = new Error(sanitizeUrl(e.message));
-    sanitized.stack = e.stack ? sanitizeUrl(e.stack) : undefined;
-    sanitized.name = e.name;
-    return sanitized;
-  }
-  if (typeof e === 'object' && e.message) {
-    return { ...e, message: sanitizeUrl(e.message) };
-  }
-  return e;
-};
 
 /**
  * Decode Base64 string if needed
@@ -129,8 +116,8 @@ const fetchWithProxy = async (url: string, options?: RequestInit): Promise<Respo
 
 const IPTVContext = createContext<IPTVContextType | undefined>(undefined);
 type IPTVPlaybackContextType = {
-  currentStream: { url: string; id: string; } | null;
-  playStream: (stream: { url: string; id: string; }) => void;
+  currentStream: PlaybackStream | null;
+  playStream: (stream: PlaybackStream) => void;
   stopStream: () => void;
 };
 const IPTVPlaybackContext = createContext<IPTVPlaybackContextType | undefined>(undefined);
@@ -210,7 +197,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [movies, setMovies] = useState<Movie[]>([]);
   const [series, setSeries] = useState<Series[]>([]);
   const [hasAdultContent, setHasAdultContent] = useState<boolean>(false);
-  const [currentStream, setCurrentStream] = useState<{ url: string; id: string; } | null>(null);
+  const [currentStream, setCurrentStream] = useState<PlaybackStream | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [recentlyWatched, setRecentlyWatched] = useState<RecentlyWatchedItem[]>([]);
   const [epg, setEpg] = useState<Record<string, EPGProgram[]>>({});
@@ -225,10 +212,20 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const lastEpgLoadAttemptRef = useRef(0);
   const hasEpgDataRef = useRef(false);
   const epgBatchInflightRef = useRef<Map<string, Promise<Record<string, { epg_listings?: any[] }>>>>(new Map());
+  const isLoadInFlightRef = useRef(false);
+  const currentProfileRef = useRef<IPTVProfile | null>(null);
 
   useEffect(() => {
     hasEpgDataRef.current = Object.keys(epg).length > 0;
   }, [epg]);
+
+  useEffect(() => {
+    isLoadInFlightRef.current = isLoading || isUpdating;
+  }, [isLoading, isUpdating]);
+
+  useEffect(() => {
+    currentProfileRef.current = currentProfile;
+  }, [currentProfile]);
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -490,6 +487,60 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [profiles, removeProfile]);
+
+  useEffect(() => {
+    if (isInitializing || !currentProfile) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const readUpdateIntervalMs = async (): Promise<number> => {
+      try {
+        const raw = await AsyncStorage.getItem(PLAYLIST_UPDATE_INTERVAL_STORAGE_KEY);
+        const parsed = raw ? Number.parseInt(raw, 10) : DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS;
+        const safeHours = Number.isFinite(parsed) && parsed >= MIN_PLAYLIST_UPDATE_INTERVAL_HOURS
+          ? parsed
+          : DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS;
+        return safeHours * 60 * 60 * 1000;
+      } catch (e) {
+        Logger.warn('[AUTO UPDATE] Failed to read update interval. Falling back to default.', sanitizeError(e));
+        return DEFAULT_PLAYLIST_UPDATE_INTERVAL_HOURS * 60 * 60 * 1000;
+      }
+    };
+
+    const schedule = async () => {
+      clearTimer();
+      const intervalMs = await readUpdateIntervalMs();
+      if (cancelled) return;
+      timer = setTimeout(async () => {
+        if (cancelled) return;
+        const profileForRefresh = currentProfileRef.current;
+        if (profileForRefresh && !isLoadInFlightRef.current) {
+          Logger.log(`[AUTO UPDATE] Running scheduled refresh for profile ${profileForRefresh.id}`);
+          await loadProfile(profileForRefresh, true);
+        } else {
+          Logger.log('[AUTO UPDATE] Skipped scheduled refresh because load is already in progress or no active profile');
+        }
+        if (!cancelled) {
+          void schedule();
+        }
+      }, intervalMs);
+    };
+
+    void schedule();
+
+    return () => {
+      cancelled = true;
+      clearTimer();
+    };
+  }, [currentProfile, isInitializing, loadProfile]);
 
   const unloadProfile = useCallback(async () => {
     setCurrentProfile(null);
@@ -1232,7 +1283,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const seriesData = await seriesRes.json();
 
       const parsedChannels: Channel[] = Array.isArray(liveData) ? liveData.map((channel: any): Channel => {
-        const catInfo = categoryMap.get(String(channel.category_id)) || { name: 'Live TV', isAdult: false };
+        const catInfo = categoryMap.get(String(channel.category_id)) || { name: 'Live-TV', isAdult: false };
 
         let extension = channel.stream_type;
         if (!extension || extension === 'live') {
@@ -1395,7 +1446,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   }, [currentProfile]);
 
-  const playStream = useCallback((stream: { url: string; id: string; }) => {
+  const playStream = useCallback((stream: PlaybackStream) => {
     setCurrentStream(stream);
   }, []);
 
@@ -1451,9 +1502,40 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return favoritesSet.has(id);
   }, [favoritesSet]);
 
+  const adultContentLookup = useMemo(() => ({ channels, movies, series }), [channels, movies, series]);
+  const visibleRecentlyWatched = useMemo(
+    () => filterNonAdultRecentlyWatched(recentlyWatched, adultContentLookup),
+    [recentlyWatched, adultContentLookup],
+  );
+
+  useEffect(() => {
+    setRecentlyWatched(prev => {
+      const filtered = filterNonAdultRecentlyWatched(prev, adultContentLookup);
+      if (filtered.length === prev.length) return prev;
+
+      AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(filtered)).catch(e => {
+        Logger.error("Error pruning adult recently watched items", e);
+      });
+      return filtered;
+    });
+  }, [adultContentLookup]);
+
   // --- Recently Watched with progress ---
   const addRecentlyWatched = useCallback(async (item: RecentlyWatchedItem) => {
     try {
+      if (isAdultRecentlyWatchedItem(item, adultContentLookup)) {
+        setRecentlyWatched(prev => {
+          const filtered = prev.filter(r => !(r.id === item.id && r.type === item.type));
+          if (filtered.length === prev.length) return prev;
+
+          AsyncStorage.setItem(RECENTLY_WATCHED_KEY, JSON.stringify(filtered)).catch(e => {
+            Logger.error("Error removing adult item from recently watched", e);
+          });
+          return filtered;
+        });
+        return;
+      }
+
       setRecentlyWatched(prev => {
         const filtered = prev.filter(r => !(r.id === item.id && r.type === item.type));
         const newRecents = [item, ...filtered].slice(0, 50); // Keep last 50
@@ -1465,7 +1547,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       Logger.error("Error adding to recently watched", e);
     }
-  }, []);
+  }, [adultContentLookup]);
 
   const updatePlaybackPosition = useCallback(async (id: string, position: number, duration?: number) => {
     try {
@@ -1619,7 +1701,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     series,
     currentStream,
     favorites,
-    recentlyWatched,
+    recentlyWatched: visibleRecentlyWatched,
     pin,
     isAdultUnlocked,
     isLoading,
@@ -1665,7 +1747,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     series,
     currentStream,
     favorites,
-    recentlyWatched,
+    visibleRecentlyWatched,
     pin,
     isAdultUnlocked,
     isLoading,
@@ -1718,7 +1800,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }), [channels, movies, series, epg, hasAdultContent]);
   const collectionsValue = useMemo<IPTVCollectionsContextType>(() => ({
     favorites,
-    recentlyWatched,
+    recentlyWatched: visibleRecentlyWatched,
     addFavorite,
     removeFavorite,
     isFavorite,
@@ -1728,7 +1810,7 @@ export const IPTVProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearRecentlyWatched,
   }), [
     favorites,
-    recentlyWatched,
+    visibleRecentlyWatched,
     addFavorite,
     removeFavorite,
     isFavorite,

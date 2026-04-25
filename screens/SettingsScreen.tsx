@@ -10,6 +10,8 @@ import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle
 import { getAvailablePlayerTypesForPlatform } from '../components/player/PlayerAdapter';
 import { ACCENT_CHOICES, colors as tokens, radii, spacing, typography } from '../theme/tokens';
 import SectionHeader from '../components/ui/SectionHeader';
+import { OVERLAY_AUTO_HIDE_SECONDS_OPTIONS } from '../utils/playbackSettings';
+import { getTVBooleanSettingPressHandler } from '../utils/settingsControls';
 import { useTheme } from '../context/ThemeContext';
 import { FocusableButton } from '../components/Focusable';
 
@@ -25,9 +27,10 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
     ksplayerHardwareDecode, setKsplayerHardwareDecode,
     ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression,
     ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate,
+    overlayAutoHideSeconds, setOverlayAutoHideSeconds,
     tmdbApiKey, setTmdbApiKey
   } = useSettings();
-  const { accent, setAccent, density, setDensity } = useTheme();
+  const { accent, accentSoft, density, setAccent, setDensity } = useTheme();
 
   const navigation = useNavigation<any>();
   const isFocusedScreen = useIsFocused();
@@ -137,7 +140,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
   };
 
   const handleSetTmdbKey = () => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === 'ios' && !Platform.isTV) {
       Alert.prompt(
         t('settings.tmdbTitle'),
         t('settings.tmdbPrompt'),
@@ -237,7 +240,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
             }
           }
         ],
-        'plain-text',
+        'secure-text',
         '',
         'number-pad'
       );
@@ -258,8 +261,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
         style={[
           styles.categoryItem,
           tinted && (Platform.isTV
-            ? { backgroundColor: isFocused ? accent : `${accent}24`, borderLeftColor: accent, borderLeftWidth: 3 }
-            : { backgroundColor: `${accent}24`, borderBottomColor: accent, borderBottomWidth: 2 }),
+            ? { backgroundColor: isFocused ? accent : accentSoft, borderLeftColor: accent, borderLeftWidth: 3 }
+            : { backgroundColor: accentSoft, borderBottomColor: accent, borderBottomWidth: 2 }),
           isFocused && Platform.isTV ? { borderColor: accent, borderWidth: 1.5 } : null,
         ]}
         onPress={() => setActiveCategory(id)}
@@ -302,6 +305,28 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
 
   const openSubMenu = (title: string, options: any[], onSelect: (val: any) => void, selectedValue: any) => {
     setActiveSubMenu({ title, options, onSelect, selectedValue });
+  };
+
+  const renderBooleanSettingValue = (
+    value: boolean,
+    onValueChange: (enabled: boolean) => void,
+  ) => {
+    if (Platform.isTV) {
+      return (
+        <Text style={{ color: value ? accent : tokens.textDim, fontWeight: '600' }}>
+          {value ? t('settings.enabled') : t('settings.disabled')}
+        </Text>
+      );
+    }
+
+    return (
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: tokens.border, true: accent }}
+        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (value ? accent : '#f4f3f4')}
+      />
+    );
   };
 
   return (
@@ -464,7 +489,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                 {renderSettingRow(
                   t('settings.appearance.accent'),
                   t('settings.appearance.accentCurrent', {
-                    name: ACCENT_CHOICES.find(c => c.value === accent)?.name ?? 'Electric',
+                    name: ACCENT_CHOICES.find((choice) => choice.value === accent)?.name ?? ACCENT_CHOICES[0].name,
                   }),
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <View
@@ -481,7 +506,7 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                   </View>,
                   () => openSubMenu(
                     t('settings.appearance.accent'),
-                    ACCENT_CHOICES.map(c => ({ label: c.name, value: c.value })),
+                    ACCENT_CHOICES.map((choice) => ({ label: choice.name, value: choice.value })),
                     setAccent,
                     accent,
                   )
@@ -520,6 +545,21 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                 )}
 
                 {renderSettingRow(
+                  t('settings.overlayAutoHideSeconds'),
+                  t('settings.overlayAutoHideSecondsSubtitle', { seconds: overlayAutoHideSeconds }),
+                  <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.secondsValue', { value: overlayAutoHideSeconds })}</Text>,
+                  () => openSubMenu(
+                    t('settings.overlayAutoHideSeconds'),
+                    OVERLAY_AUTO_HIDE_SECONDS_OPTIONS.map((seconds) => ({
+                      label: t('settings.secondsValue', { value: seconds }),
+                      value: seconds,
+                    })),
+                    setOverlayAutoHideSeconds,
+                    overlayAutoHideSeconds,
+                  )
+                )}
+
+                {renderSettingRow(
                   t('settings.streamingBufferSize'),
                   t('settings.bufferSizeValue', { value: bufferSize }),
                   <Text style={{ color: accent, fontWeight: '600' }}>{t('settings.change')}</Text>,
@@ -536,13 +576,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                   renderSettingRow(
                     t('hardwareAcceleration'),
                     t('settings.useHardwareDecodingWhenAvailable'),
-                    <Switch
-                      value={vlcHardwareAcceleration}
-                      onValueChange={setVlcHardwareAcceleration}
-                      trackColor={{ false: tokens.border, true: accent }}
-                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (vlcHardwareAcceleration ? accent : '#f4f3f4')}
-                    />,
-                    Platform.isTV ? () => setVlcHardwareAcceleration(!vlcHardwareAcceleration) : undefined
+                    renderBooleanSettingValue(vlcHardwareAcceleration, setVlcHardwareAcceleration),
+                    getTVBooleanSettingPressHandler(Platform.isTV, vlcHardwareAcceleration, setVlcHardwareAcceleration)
                   )
                 )}
 
@@ -551,35 +586,20 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                     {renderSettingRow(
                       t('hardwareAcceleration'),
                       t('settings.useHardwareDecoding'),
-                      <Switch
-                        value={ksplayerHardwareDecode}
-                        onValueChange={setKsplayerHardwareDecode}
-                        trackColor={{ false: tokens.border, true: accent }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerHardwareDecode ? accent : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerHardwareDecode(!ksplayerHardwareDecode) : undefined
+                      renderBooleanSettingValue(ksplayerHardwareDecode, setKsplayerHardwareDecode),
+                      getTVBooleanSettingPressHandler(Platform.isTV, ksplayerHardwareDecode, setKsplayerHardwareDecode)
                     )}
                     {renderSettingRow(
                       t('asyncDecompression'),
                       t('settings.processVideoFramesAsync'),
-                      <Switch
-                        value={ksplayerAsynchronousDecompression}
-                        onValueChange={setKsplayerAsynchronousDecompression}
-                        trackColor={{ false: tokens.border, true: accent }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerAsynchronousDecompression ? accent : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerAsynchronousDecompression(!ksplayerAsynchronousDecompression) : undefined
+                      renderBooleanSettingValue(ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression),
+                      getTVBooleanSettingPressHandler(Platform.isTV, ksplayerAsynchronousDecompression, setKsplayerAsynchronousDecompression)
                     )}
                     {renderSettingRow(
                       t('adaptiveFrameRate'),
                       t('settings.autoAdjustDisplayFrameRate'),
-                      <Switch
-                        value={ksplayerDisplayFrameRate}
-                        onValueChange={setKsplayerDisplayFrameRate}
-                        trackColor={{ false: tokens.border, true: accent }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (ksplayerDisplayFrameRate ? accent : '#f4f3f4')}
-                      />,
-                      Platform.isTV ? () => setKsplayerDisplayFrameRate(!ksplayerDisplayFrameRate) : undefined
+                      renderBooleanSettingValue(ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate),
+                      getTVBooleanSettingPressHandler(Platform.isTV, ksplayerDisplayFrameRate, setKsplayerDisplayFrameRate)
                     )}
                   </>
                 )}
@@ -601,13 +621,8 @@ const SettingsScreen = forwardRef<ContentRef>((_props, ref) => {
                   renderSettingRow(
                     t('settings.showAdultContent'),
                     isAdultUnlocked ? t('settings.unlocked') : t('settings.locked'),
-                    <Switch
-                      value={isAdultUnlocked}
-                      onValueChange={handleToggleAdultContent}
-                      trackColor={{ false: tokens.border, true: accent }}
-                      thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (isAdultUnlocked ? accent : '#f4f3f4')}
-                    />,
-                    Platform.isTV ? () => handleToggleAdultContent(!isAdultUnlocked) : undefined
+                    renderBooleanSettingValue(isAdultUnlocked, handleToggleAdultContent),
+                    getTVBooleanSettingPressHandler(Platform.isTV, isAdultUnlocked, handleToggleAdultContent)
                   )
                 )}
               </View>
@@ -723,6 +738,18 @@ const styles = StyleSheet.create({
   settingRowRight: {
     marginLeft: spacing.lg,
     justifyContent: 'center',
+  },
+  appearanceValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  accentSwatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   profileTile: {
     flexDirection: 'row',
