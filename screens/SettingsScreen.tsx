@@ -6,7 +6,7 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
-import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle, ChevronRight, Plus } from 'lucide-react-native';
+import { Moon, Sun, Monitor, Palette, Settings, Tv, Shield, Database, PlayCircle, Plus } from 'lucide-react-native';
 import { getAvailablePlayerTypesForPlatform } from '../components/player/PlayerAdapter';
 import { ACCENT_CHOICES, colors as tokens, radii, spacing, typography } from '../theme/tokens';
 import SectionHeader from '../components/ui/SectionHeader';
@@ -738,18 +738,6 @@ const styles = StyleSheet.create({
   settingRowRight: {
     marginLeft: spacing.lg,
     justifyContent: 'center',
-  },
-  appearanceValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  accentSwatch: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.18)',
   },
   profileTile: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, Platform, BackHandler, TVEventControl, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, ScrollView, Platform, BackHandler, TVEventControl } from 'react-native';
 import { RouteProp, useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
 import { useIPTVCollections, useIPTVMetadata, useIPTVPlayback } from '../context/IPTVContext';
