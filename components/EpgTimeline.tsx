@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Platform, Animated } from 'react-native';
 import { Channel } from '../types';
 import { useIPTVCollections, useIPTVGuide } from '../context/IPTVContext';
+import { useTheme } from '../context/ThemeContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { getCatchupDays } from '../utils/catchupUtils';
 import { useTranslation } from 'react-i18next';
@@ -37,13 +38,13 @@ const alignToHalfHour = (date: Date) => {
   return aligned;
 };
 
-const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvailable, leftOffset, width, onProgramPress, onChannelPress, setFocusedChannelId }: any) => {
+const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvailable, leftOffset, width, onProgramPress, onChannelPress, setFocusedChannelId, accent, accentSoft }: any) => {
     const [isProgramFocused, setIsProgramFocused] = useState(false);
     const isDirectAction = isNow || isCatchupAvailable;
     const isClickable = Boolean(onProgramPress || isDirectAction);
 
     let bgColor = 'rgba(42, 42, 74, 0.7)'; // future
-    if (isNow) bgColor = 'rgba(233, 105, 42, 0.35)';
+    if (isNow) bgColor = accentSoft; // current program: live accent tint
     else if (isCatchupAvailable) bgColor = 'rgba(105, 240, 174, 0.15)'; // catchup-available past: subtle green tint
     else if (isPast) bgColor = 'rgba(26, 26, 46, 0.9)'; // non-catchup past: dark
 
@@ -53,7 +54,7 @@ const ProgramBlock = React.memo(({ prog, channel, isNow, isPast, isCatchupAvaila
                 styles.programBlock,
                 { left: leftOffset, width: Math.max(width - 2, 2) },
                 { backgroundColor: bgColor },
-                isProgramFocused && { backgroundColor: 'rgba(233, 105, 42, 0.4)', borderWidth: 2, borderColor: '#E9692A' }
+                isProgramFocused && { backgroundColor: accentSoft, borderWidth: 2, borderColor: accent }
             ]}
             onFocus={() => {
               setIsProgramFocused(true);
@@ -124,7 +125,7 @@ const EmptyProgramBlock = React.memo(({ channel, onChannelPress, setFocusedChann
   );
 });
 
-const ChannelColumnItem = React.memo(React.forwardRef(({ channel, isFocused, isPlaying, isFav, hasTVPreferredFocus, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, hasCatchup }: any, ref: React.Ref<any>) => (
+const ChannelColumnItem = React.memo(React.forwardRef(({ channel, isFocused, isPlaying, isFav, hasTVPreferredFocus, setFocusedChannelId, onChannelPress, addFavorite, removeFavorite, hasCatchup, accent, accentSoft }: any, ref: React.Ref<any>) => (
     <TouchableOpacity
         ref={ref}
         accessible={true}
@@ -135,8 +136,8 @@ const ChannelColumnItem = React.memo(React.forwardRef(({ channel, isFocused, isP
         hasTVPreferredFocus={hasTVPreferredFocus}
         style={[
             styles.channelBox,
-            isPlaying && { borderLeftWidth: 3, borderLeftColor: '#E9692A' },
-            isFocused && { backgroundColor: 'rgba(233, 105, 42, 0.2)', borderWidth: 2, borderColor: '#E9692A' }
+            isPlaying && { borderLeftWidth: 3, borderLeftColor: accent },
+            isFocused && { backgroundColor: accentSoft, borderWidth: 2, borderColor: accent }
         ]}
         onPress={() => onChannelPress(channel)}
         onFocus={() => setFocusedChannelId(channel.id)}
@@ -163,7 +164,7 @@ const ChannelColumnItem = React.memo(React.forwardRef(({ channel, isFocused, isP
     </TouchableOpacity>
 )));
 
-const EpgRow = React.memo(({ channel, programs, isFocused, onChannelPress, onProgramPress, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasCatchup, setFocusedChannelId, emptyEpgLabel }: any) => {
+const EpgRow = React.memo(({ channel, programs, isFocused, onChannelPress, onProgramPress, timelineStart, timelineEnd, now, PIXELS_PER_MINUTE, hasCatchup, setFocusedChannelId, emptyEpgLabel, accent, accentSoft }: any) => {
     // ⚡ Perf: Pre-compute program layout data in a memoized pass to avoid
     // recalculating boundaries, offsets, and time comparisons on every render.
     const programLayoutData = useMemo(() => {
@@ -260,6 +261,8 @@ const EpgRow = React.memo(({ channel, programs, isFocused, onChannelPress, onPro
                           onChannelPress={onChannelPress}
                           onProgramPress={onProgramPress}
                           setFocusedChannelId={setFocusedChannelId}
+                          accent={accent}
+                          accentSoft={accentSoft}
                       />
                   ))
                 ) : (
@@ -285,6 +288,7 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
   const { t } = useTranslation();
   const { epg, hasCatchup } = useIPTVGuide();
   const { isFavorite, addFavorite, removeFavorite } = useIPTVCollections();
+  const { accent, accentSoft } = useTheme();
 
   const [visibleWidth, setVisibleWidth] = useState(1000);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -611,9 +615,11 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
         hasCatchup={hasCatchup}
         setFocusedChannelId={handleFocusedChannelChange}
         emptyEpgLabel={t('emptyEpg')}
+        accent={accent}
+        accentSoft={accentSoft}
       />
     );
-  }, [epg, getEpgKey, focusedChannelId, onChannelPress, onProgramPress, timelineStart, timelineEnd, now, hasCatchup, handleFocusedChannelChange, t]);
+  }, [epg, getEpgKey, focusedChannelId, onChannelPress, onProgramPress, timelineStart, timelineEnd, now, hasCatchup, handleFocusedChannelChange, t, accent, accentSoft]);
 
   const renderChannelColumnItem = useCallback(({ item: channel, index }: { item: Channel; index: number }) => (
     <ChannelColumnItem
@@ -635,8 +641,10 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
       addFavorite={addFavorite}
       removeFavorite={removeFavorite}
       hasCatchup={hasCatchup}
+      accent={accent}
+      accentSoft={accentSoft}
     />
-  ), [focusedChannelId, currentStreamId, isFavorite, preferredFocusChannelId, shouldFocusFirstItem, handleFocusedChannelChange, onChannelPress, addFavorite, removeFavorite, hasCatchup]);
+  ), [focusedChannelId, currentStreamId, isFavorite, preferredFocusChannelId, shouldFocusFirstItem, handleFocusedChannelChange, onChannelPress, addFavorite, removeFavorite, hasCatchup, accent, accentSoft]);
 
   const skeletonRows = useMemo(() => {
     const rowCount = Math.min(displayedChannels.list.length || 6, Platform.isTV ? 6 : 5);
@@ -736,8 +744,8 @@ const EpgTimeline: React.FC<EpgTimelineProps> = ({ channels, onChannelPress, onP
                 {focusedPreview.channel.name}
               </Text>
               <View style={styles.focusPreviewFlags}>
-                {focusedPreview.isPlaying && <Icon name="play-arrow" size={Platform.isTV ? 13 : 12} color="#E9692A" />}
-                {focusedPreview.isFav && <Icon name="favorite" size={Platform.isTV ? 12 : 11} color="#E9692A" />}
+                {focusedPreview.isPlaying && <Icon name="play-arrow" size={Platform.isTV ? 13 : 12} color={accent} />}
+                {focusedPreview.isFav && <Icon name="favorite" size={Platform.isTV ? 12 : 11} color={accent} />}
                 {focusedPreview.hasCatchupSupport && <Icon name="history" size={Platform.isTV ? 12 : 11} color="#69F0AE" />}
               </View>
             </View>
