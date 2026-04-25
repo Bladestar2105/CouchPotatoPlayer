@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, GestureResponderEvent, ViewStyle, TextStyle } from 'react-native';
-import { focus, radii, spacing, typography } from '../../theme/tokens';
+import { radii, spacing, typography } from '../../theme/tokens';
 
 interface ThemedButtonProps {
   label: string;
@@ -37,16 +37,8 @@ const ThemedButton: React.FC<ThemedButtonProps> = ({
           backgroundColor,
           opacity: disabled ? 0.7 : 1,
           borderColor: enableTvFocusStyle && isFocused ? (focusBorderColor || textColor) : 'transparent',
-          borderWidth: enableTvFocusStyle ? focus.ringWidth : 0,
-          transform: [{ scale: enableTvFocusStyle && isFocused ? focus.scale : 1 }],
+          borderWidth: enableTvFocusStyle && isFocused ? 2 : 0,
         },
-        enableTvFocusStyle && isFocused ? {
-          shadowColor: focusBorderColor || textColor,
-          shadowOpacity: 0.35,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 8,
-        } : null,
         style,
       ]}
       onPress={onPress}
@@ -66,7 +58,7 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: spacing.lg - 1,
     paddingHorizontal: spacing.lg,
-    borderRadius: radii.lg,
+    borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },

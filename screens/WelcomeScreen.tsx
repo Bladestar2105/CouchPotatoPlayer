@@ -1,23 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  FlatList,
+  Pressable,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIPTVProfiles } from '../context/IPTVContext';
-import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { ChevronRight, ArrowLeft, ArrowRight, Check, Shield } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Crypto from 'expo-crypto';
+import { useTranslation } from 'react-i18next';
 import BrandMark from '../components/BrandMark';
-import { colors as tokenColors, effects, radii, shadows, spacing, typography } from '../theme/tokens';
+import { FocusableButton, FocusableCard } from '../components/Focusable';
 import ThemedTextInput from '../components/ui/ThemedTextInput';
-import ThemedButton from '../components/ui/ThemedButton';
+import { colors, radii, shadows, spacing, typography } from '../theme/tokens';
+
+type ProviderType = 'xtream' | 'm3u' | 'quickshare';
+
+const PREDEFINED_ICONS = [
+  'tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business',
+] as const;
+
+const PLATFORM_PILLS = ['iOS', 'iPadOS', 'tvOS', 'Android', 'Android TV', 'Web'];
+
+const isTV = Platform.isTV;
+const isAppleTV = isTV && Platform.OS === 'ios';
 
 const WelcomeScreen = () => {
   const { addProfile, loadProfile, profiles, currentProfile } = useIPTVProfiles();
-  const { colors } = useSettings();
+  const { accent, accentSoft } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
-  const [type, setType] = useState<'xtream' | 'm3u' | 'quickshare'>('xtream');
+  const [type, setType] = useState<ProviderType>('xtream');
   const [name, setName] = useState('');
   const [serverUrl, setServerUrl] = useState('');
   const [username, setUsername] = useState('');
@@ -25,47 +50,37 @@ const WelcomeScreen = () => {
   const [epgUrl, setEpgUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('dns');
-  const isAppleTV = Platform.isTV && Platform.OS === 'ios';
-  const isCompactLayout = !Platform.isTV;
-  const welcomeBackgroundColor = tokenColors.bg;
-  // Show add form if: no profiles exist, or explicitly requested via route params
+  const [selectedIcon, setSelectedIcon] = useState<string>('dns');
   const [showAddForm, setShowAddForm] = useState(profiles.length === 0 || route.params?.showAddForm === true);
 
-  const predefinedIcons = [
-    'tv', 'movie', 'star', 'public', 'dns', 'live-tv', 'sports-soccer', 'music-note', 'child-care', 'business'
-  ];
-
-  // If a profile is already loaded and we're not in add mode, navigate to Home
   useEffect(() => {
     if (currentProfile && !route.params?.showAddForm) {
       navigation.replace('Home');
     }
   }, [currentProfile, navigation, route.params?.showAddForm]);
 
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     const trimmedServerUrl = serverUrl.trim();
     if (!name || !trimmedServerUrl) {
-      setError('Name and Server URL are required.');
+      setError(t('welcome.errorRequired'));
       return;
     }
     if (!/^https?:\/\//i.test(trimmedServerUrl)) {
-      setError('URL must start with http:// or https://');
+      setError(t('welcome.errorUrlScheme'));
       return;
     }
     const trimmedEpgUrl = epgUrl.trim();
     if (type === 'm3u' && trimmedEpgUrl && !/^https?:\/\//i.test(trimmedEpgUrl)) {
-      setError('EPG URL must start with http:// or https://');
+      setError(t('welcome.errorEpgScheme'));
       return;
     }
     if (type === 'xtream' && (!username || !password)) {
-      setError('Username and Password are required for Xtream Codes.');
+      setError(t('welcome.errorXtreamCreds'));
       return;
     }
 
     setLoading(true);
     setError('');
-
     try {
       let newProfile: any;
       if (type === 'm3u') {
@@ -96,48 +111,56 @@ const WelcomeScreen = () => {
           icon: selectedIcon,
         };
       }
-
       await addProfile(newProfile);
-      
-      // If we're in add mode (already have a profile), go back to Home
-      // Otherwise load the new profile
       if (route.params?.showAddForm && currentProfile) {
         navigation.goBack();
       } else {
         await loadProfile(newProfile);
       }
-    } catch (e: any) {
-      setError('Failed to add profile');
+    } catch {
+      setError(t('welcome.errorAddFailed'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [addProfile, currentProfile, epgUrl, loadProfile, name, navigation, password, route.params?.showAddForm, selectedIcon, serverUrl, t, type, username]);
 
-  const handleLoadProfile = async (profile: any) => {
+  const handleLoadProfile = useCallback(async (profile: any) => {
     setLoading(true);
     try {
       await loadProfile(profile);
-    } catch (e: any) {
-      setError('Failed to load profile');
+    } catch {
+      setError(t('welcome.errorLoadFailed'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadProfile, t]);
 
-  const renderExistingProfiles = () => (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.profilesContainer}>
+  const providerTypes = useMemo<{ id: ProviderType; label: string }[]>(() => ([
+    { id: 'xtream', label: 'Xtream Codes' },
+    { id: 'm3u', label: 'M3U Playlist' },
+    { id: 'quickshare', label: 'Quickshare' },
+  ]), []);
+
+  const renderHero = () => (
+    <View style={[styles.heroRoot, { paddingTop: insets.top + spacing.xxxl, paddingBottom: insets.bottom + spacing.xxl }]}>
+      {/* Radial glow layers — approximates the spec's radial gradient on pure RN */}
       <View pointerEvents="none" style={styles.glowLayer}>
-        <View style={[styles.glowOrb, styles.glowOrbTopLeft]} />
-        <View style={[styles.glowOrb, styles.glowOrbBottomRight, { backgroundColor: colors.primaryLight }]} />
+        <View style={[styles.glowOrb, styles.glowOrbTopLeft, { backgroundColor: 'rgba(232, 93, 28, 0.25)' }]} />
+        <View style={[styles.glowOrb, styles.glowOrbBottomRight, { backgroundColor: `${accent}33` }]} />
       </View>
-      <BrandMark
-        size={Platform.isTV ? 220 : 164}
-        variant="character"
-        style={[styles.appLogo, shadows.modal]}
-      />
-      <View style={styles.wordmark}>
+
+      <ScrollView
+        contentContainerStyle={styles.heroScroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <BrandMark
+          size={isTV ? 220 : 164}
+          variant="character"
+          style={[styles.heroLogo, shadows.modal]}
+        />
+
         <Text
-          style={styles.wordmarkText}
+          style={styles.wordmark}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.55}
@@ -145,295 +168,359 @@ const WelcomeScreen = () => {
           <Text style={styles.wordmarkPrimary}>CouchPotato</Text>
           <Text style={styles.wordmarkSecondary}>Player</Text>
         </Text>
-      </View>
-      <Text style={[styles.subtitle, { color: colors.primary }]}>Select a Provider</Text>
-      {currentProfile?.name ? (
-        <Text style={[styles.currentProviderText, { color: colors.textSecondary }]} numberOfLines={1}>
-          Current: {currentProfile.name}
-        </Text>
-      ) : null}
 
-      <FlatList
-        data={profiles}
-        keyExtractor={(item) => item.id}
-        style={styles.profileList}
-        contentContainerStyle={styles.profileListContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.profileTile, { backgroundColor: colors.card, borderColor: colors.divider }]}
-            onPress={() => handleLoadProfile(item)}
-            accessibilityRole="button"
-            accessibilityLabel={`Load ${item.name}`}
-          >
-            <View style={styles.profileIconContainer}>
-              <Icon name={(item.icon?.replace('_', '-') as any) || 'dns'} size={28} color={colors.primary} />
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: colors.text }]}>{item.name}</Text>
-              <Text style={[styles.profileType, { color: colors.textSecondary }]}>
-                {item.type === 'xtream'
-                  ? 'Xtream Codes'
-                  : item.type === 'quickshare'
-                    ? 'Quickshare by IPTV-Manager'
-                    : 'M3U Playlist'}
+        <Text style={styles.tagline}>{t('welcome.tagline')}</Text>
+        <Text style={styles.description}>{t('welcome.description')}</Text>
+
+        {profiles.length > 0 ? (
+          <View style={styles.profilesBlock}>
+            <Text style={[styles.sectionEyebrow, { color: accent }]}>
+              {t('welcome.selectProfile')}
+            </Text>
+            {currentProfile?.name ? (
+              <Text style={styles.currentProviderText} numberOfLines={1}>
+                {t('welcome.currentProvider', { name: currentProfile.name })}
               </Text>
-              {item.providerInfo && (
-                <Text style={[styles.profileChannels, { color: colors.textMuted }]}>
-                  {item.providerInfo.channelsCount || 0} channels
-                </Text>
-              )}
-            </View>
-            <Icon name="chevron-right" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-      />
+            ) : null}
 
-      <ThemedButton
-        label="Add New Provider"
-        backgroundColor={colors.primary}
-        onPress={() => setShowAddForm(true)}
-        style={styles.addNewButton}
-      />
-    </SafeAreaView>
+            <FlatList
+              data={profiles}
+              keyExtractor={(item) => item.id}
+              style={styles.profileList}
+              contentContainerStyle={styles.profileListContent}
+              renderItem={({ item }) => {
+                const iconName = (item.icon?.replace('_', '-') as any) || 'dns';
+                return (
+                  <FocusableCard
+                    style={styles.profileCard}
+                    onSelect={() => handleLoadProfile(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Load ${item.name}`}
+                  >
+                    <View style={[styles.profileIconPlate, { backgroundColor: accentSoft }]}>
+                      <Icon name={iconName} size={26} color={accent} />
+                    </View>
+                    <View style={styles.profileInfo}>
+                      <Text style={styles.profileName} numberOfLines={1}>{item.name}</Text>
+                      <Text style={styles.profileSubtitle} numberOfLines={1}>
+                        {item.type === 'xtream'
+                          ? 'Xtream Codes'
+                          : item.type === 'quickshare'
+                            ? 'Quickshare'
+                            : 'M3U Playlist'}
+                        {item.providerInfo?.channelsCount
+                          ? ` · ${t('welcome.channelsSuffix', { count: item.providerInfo.channelsCount })}`
+                          : ''}
+                      </Text>
+                    </View>
+                    <ChevronRight size={22} color={colors.textDim} />
+                  </FocusableCard>
+                );
+              }}
+            />
+
+            <FocusableButton
+              variant="primary"
+              label={t('welcome.addProvider')}
+              onPress={() => setShowAddForm(true)}
+              fullWidth
+              style={styles.heroCta}
+              trailing={<ArrowRight size={16} color="#FFF" />}
+            />
+          </View>
+        ) : (
+          <View style={styles.ctaRow}>
+            <FocusableButton
+              variant="primary"
+              label={t('welcome.getStarted')}
+              onPress={() => setShowAddForm(true)}
+              trailing={<ArrowRight size={16} color="#FFF" />}
+            />
+          </View>
+        )}
+
+        <View style={styles.platformPills}>
+          {PLATFORM_PILLS.map((label) => (
+            <View key={label} style={styles.platformPill}>
+              <Text style={styles.platformPillText}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
   );
 
   const renderAddForm = () => (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: welcomeBackgroundColor }]}
+      style={styles.formRoot}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-          {profiles.length > 0 && (
-            <TouchableOpacity
-              style={styles.backToList}
-              onPress={() => setShowAddForm(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Back to Providers"
-            >
-              <Icon name="arrow-back" size={24} color={colors.textSecondary} />
-              <Text style={[styles.backToListText, { color: colors.text }]}>Back to Providers</Text>
-            </TouchableOpacity>
-          )}
-
-          <BrandMark size={Platform.isTV ? 156 : 124} variant="character" style={styles.appLogo} />
-          <View style={styles.wordmark}>
-            <Text
-              style={styles.wordmarkText}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.55}
-            >
-              <Text style={styles.wordmarkPrimary}>CouchPotato</Text>
-              <Text style={styles.wordmarkSecondary}>Player</Text>
-            </Text>
-          </View>
-          <Text style={[styles.subtitle, { color: colors.primary }]}>
-            {profiles.length > 0 ? 'Add New Provider' : 'Welcome'}
-          </Text>
-
-          {/* Type Selector */}
-          <View
-            style={[
-              styles.typeSelector,
-              isCompactLayout && styles.typeSelectorCompact,
-              { backgroundColor: colors.surface, borderColor: colors.divider },
-            ]}
-            accessibilityRole="tablist"
-          >
-            <TouchableOpacity
-              style={[styles.typeButton, isCompactLayout && styles.typeButtonCompact, type === 'xtream' && { backgroundColor: colors.primary }]}
-              onPress={() => setType('xtream')}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: type === 'xtream' }}
-              accessibilityLabel="Select Xtream Codes type"
-            >
-              <Text style={[styles.typeText, { color: type === 'xtream' ? '#FFF' : colors.text }]}>Xtream Codes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.typeButton, isCompactLayout && styles.typeButtonCompact, type === 'm3u' && { backgroundColor: colors.primary }]}
-              onPress={() => setType('m3u')}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: type === 'm3u' }}
-              accessibilityLabel="Select M3U Playlist type"
-            >
-              <Text style={[styles.typeText, { color: type === 'm3u' ? '#FFF' : colors.text }]}>M3U Playlist</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.typeButton, isCompactLayout && styles.typeButtonCompact, type === 'quickshare' && { backgroundColor: colors.primary }]}
-              onPress={() => setType('quickshare')}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: type === 'quickshare' }}
-              accessibilityLabel="Select Quickshare by IPTV-Manager type"
-            >
-              <Text style={[styles.typeText, { color: type === 'quickshare' ? '#FFF' : colors.text }]}>Quickshare by IPTV-Manager</Text>
-            </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={[styles.formScroll, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xxl }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.formCard}>
+          <View style={styles.formHeaderRow}>
+            {profiles.length > 0 ? (
+              <Pressable
+                style={styles.backChip}
+                onPress={() => setShowAddForm(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('welcome.backToProviders')}
+              >
+                <ArrowLeft size={18} color={colors.text} />
+                <Text style={styles.backChipText}>{t('welcome.backToProviders')}</Text>
+              </Pressable>
+            ) : <View />}
+            <BrandMark size={44} />
           </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <View style={{ width: '100%', marginBottom: 12 }}>
-             <Text style={[styles.inputLabel, { color: colors.text }]}>Select Icon:</Text>
-             <View style={styles.iconContainer}>
-               {predefinedIcons.map((iconName) => (
-                 <TouchableOpacity
-                   key={iconName}
-                   style={[
-                     styles.iconWrapper,
-                     { borderColor: colors.divider, backgroundColor: colors.surface },
-                     selectedIcon === iconName && { backgroundColor: colors.primaryLight, borderColor: colors.primary }
-                   ]}
-                   onPress={() => setSelectedIcon(iconName)}
-                   accessibilityRole="button"
-                   accessibilityState={{ selected: selectedIcon === iconName }}
-                   accessibilityLabel={`Select ${iconName.replace('_', ' ')} icon`}
-                 >
-                   <Icon name={iconName.replace('_', '-') as any} size={24} color={selectedIcon === iconName ? colors.primary : colors.textSecondary} />
-                 </TouchableOpacity>
-               ))}
-             </View>
+          <Text style={[styles.sectionEyebrow, { color: accent }]}>{t('welcome.onboardingEyebrow')}</Text>
+          <Text style={styles.formTitle}>{t('welcome.onboardingTitle')}</Text>
+          <View style={styles.formSubtitleRow}>
+            <Shield size={14} color={colors.textDim} />
+            <Text style={styles.formSubtitle}>{t('welcome.onboardingSubtitle')}</Text>
           </View>
 
-          {/* Inputs */}
-          <ThemedTextInput
-            style={styles.input}
-            backgroundColor={colors.surface}
-            borderColor={colors.divider}
-            focusedBorderColor={colors.primary}
-            textColor={colors.text}
-            placeholder="Provider Name"
-            placeholderTextColor='#888888'
-            selectionColor={colors.primary}
-            keyboardAppearance={isAppleTV ? "light" : "default"}
-            accessibilityLabel="Provider Name"
-            value={name}
-            onChangeText={setName}
-            autoFocus={!Platform.isTV && Platform.OS === 'android'}
-          />
-          <ThemedTextInput
-            style={styles.input}
-            backgroundColor={colors.surface}
-            borderColor={colors.divider}
-            focusedBorderColor={colors.primary}
-            textColor={colors.text}
-            placeholder={type === 'xtream' ? "Server URL (http://...)" : type === 'quickshare' ? "Quickshare URL (https://.../share/...)" : "M3U Playlist URL"}
-            placeholderTextColor='#888888'
-            selectionColor={colors.primary}
-            keyboardAppearance={isAppleTV ? "light" : "default"}
-            accessibilityLabel={type === 'xtream' ? "Server URL" : type === 'quickshare' ? "Quickshare URL" : "M3U Playlist URL"}
-            value={serverUrl}
-            onChangeText={setServerUrl}
-            keyboardType="url"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          {/* Type selector */}
+          <View style={styles.segmented} accessibilityRole="tablist">
+            {providerTypes.map((pt) => {
+              const selected = type === pt.id;
+              return (
+                <Pressable
+                  key={pt.id}
+                  onPress={() => setType(pt.id)}
+                  style={[
+                    styles.segmentedItem,
+                    selected && { backgroundColor: accent },
+                  ]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={pt.label}
+                >
+                  <Text style={[
+                    styles.segmentedItemText,
+                    { color: selected ? '#FFF' : colors.textDim },
+                  ]}>
+                    {pt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
-          {type === 'xtream' ? (
-            <>
-              <ThemedTextInput
-                style={styles.input}
-                backgroundColor={colors.surface}
-                borderColor={colors.divider}
-                focusedBorderColor={colors.primary}
-                textColor={colors.text}
-                placeholder="Username"
-                placeholderTextColor='#888888'
-                selectionColor={colors.primary}
-            keyboardAppearance={isAppleTV ? "light" : "default"}
-                accessibilityLabel="Username"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <ThemedTextInput
-                style={styles.input}
-                backgroundColor={colors.surface}
-                borderColor={colors.divider}
-                focusedBorderColor={colors.primary}
-                textColor={colors.text}
-                placeholder="Password"
-                placeholderTextColor='#888888'
-                selectionColor={colors.primary}
-            keyboardAppearance={isAppleTV ? "light" : "default"}
-                accessibilityLabel="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </>
-          ) : type === 'm3u' ? (
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {/* Fields */}
+          <Field label={t('welcome.providerName')}>
             <ThemedTextInput
-              style={styles.input}
-              backgroundColor={colors.surface}
-              borderColor={colors.divider}
-              focusedBorderColor={colors.primary}
+              backgroundColor={colors.sunken}
+              borderColor={colors.border}
+              focusedBorderColor={accent}
               textColor={colors.text}
-              placeholder="XMLTV EPG URL (Optional)"
-              placeholderTextColor='#888888'
-              selectionColor={colors.primary}
-            keyboardAppearance={isAppleTV ? "light" : "default"}
-              accessibilityLabel="XMLTV EPG URL"
-              value={epgUrl}
-              onChangeText={setEpgUrl}
+              placeholder={t('welcome.providerName')}
+              placeholderTextColor={colors.textMuted}
+              selectionColor={accent}
+              keyboardAppearance={isAppleTV ? 'light' : 'default'}
+              accessibilityLabel={t('welcome.providerName')}
+              value={name}
+              onChangeText={setName}
+              style={styles.textInput}
+              autoFocus={!isTV && Platform.OS === 'android'}
+            />
+          </Field>
+
+          <Field label={type === 'xtream'
+            ? t('welcome.serverUrl')
+            : type === 'quickshare'
+              ? t('welcome.quickshareUrl')
+              : t('welcome.m3uUrl')}>
+            <ThemedTextInput
+              backgroundColor={colors.sunken}
+              borderColor={colors.border}
+              focusedBorderColor={accent}
+              textColor={colors.text}
+              placeholder={type === 'xtream' ? 'http://example.com:8080' : 'https://…'}
+              placeholderTextColor={colors.textMuted}
+              selectionColor={accent}
+              keyboardAppearance={isAppleTV ? 'light' : 'default'}
+              accessibilityLabel={t('welcome.serverUrl')}
+              value={serverUrl}
+              onChangeText={setServerUrl}
               keyboardType="url"
               autoCapitalize="none"
               autoCorrect={false}
+              style={styles.textInput}
             />
+          </Field>
+
+          {type === 'xtream' ? (
+            <>
+              <Field label="Username">
+                <ThemedTextInput
+                  backgroundColor={colors.sunken}
+                  borderColor={colors.border}
+                  focusedBorderColor={accent}
+                  textColor={colors.text}
+                  placeholder="Username"
+                  placeholderTextColor={colors.textMuted}
+                  selectionColor={accent}
+                  keyboardAppearance={isAppleTV ? 'light' : 'default'}
+                  accessibilityLabel="Username"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.textInput}
+                />
+              </Field>
+              <Field label="Password">
+                <ThemedTextInput
+                  backgroundColor={colors.sunken}
+                  borderColor={colors.border}
+                  focusedBorderColor={accent}
+                  textColor={colors.text}
+                  placeholder="••••••••"
+                  placeholderTextColor={colors.textMuted}
+                  selectionColor={accent}
+                  keyboardAppearance={isAppleTV ? 'light' : 'default'}
+                  accessibilityLabel="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  style={styles.textInput}
+                />
+              </Field>
+            </>
+          ) : type === 'm3u' ? (
+            <Field label={t('welcome.epgUrlOptional')}>
+              <ThemedTextInput
+                backgroundColor={colors.sunken}
+                borderColor={colors.border}
+                focusedBorderColor={accent}
+                textColor={colors.text}
+                placeholder="https://…"
+                placeholderTextColor={colors.textMuted}
+                selectionColor={accent}
+                keyboardAppearance={isAppleTV ? 'light' : 'default'}
+                accessibilityLabel={t('welcome.epgUrlOptional')}
+                value={epgUrl}
+                onChangeText={setEpgUrl}
+                keyboardType="url"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.textInput}
+              />
+            </Field>
           ) : null}
 
-          {/* Login Button */}
-          <ThemedButton
-            style={styles.loginButton}
-            backgroundColor={colors.primary}
-            label={loading ? 'Adding...' : 'Add Provider'}
+          {/* Icon picker */}
+          <Text style={styles.iconPickerLabel}>{t('welcome.selectIcon')}</Text>
+          <View style={styles.iconGrid}>
+            {PREDEFINED_ICONS.map((iconName) => {
+              const isSelected = selectedIcon === iconName;
+              return (
+                <Pressable
+                  key={iconName}
+                  onPress={() => setSelectedIcon(iconName)}
+                  style={[
+                    styles.iconTile,
+                    isSelected && { backgroundColor: accentSoft, borderColor: accent },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  accessibilityLabel={iconName.replace('_', ' ')}
+                >
+                  <Icon
+                    name={iconName.replace('_', '-') as any}
+                    size={22}
+                    color={isSelected ? accent : colors.textDim}
+                  />
+                  {isSelected ? (
+                    <View style={[styles.iconTileCheck, { backgroundColor: accent }]}>
+                      <Check size={10} color="#FFF" strokeWidth={3} />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <FocusableButton
+            variant="primary"
+            label={loading ? t('welcome.adding') : t('welcome.addAction')}
             onPress={handleLogin}
             disabled={loading}
-            accessibilityLabel="Add Provider"
+            fullWidth
+            style={styles.submitButton}
+            trailing={<ArrowRight size={16} color="#FFF" />}
           />
         </View>
       </ScrollView>
-      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 
-  // If profiles exist and we're not showing the add form, show the profile list
   if (profiles.length > 0 && !showAddForm) {
     return (
-      <View style={[styles.container, { backgroundColor: welcomeBackgroundColor }]}>
+      <View style={styles.root}>
         {loading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={accent} />
           </View>
         )}
-        {renderExistingProfiles()}
+        {renderHero()}
       </View>
     );
   }
 
-  // Otherwise show the add form
-  return renderAddForm();
+  if (!showAddForm) {
+    return (
+      <View style={styles.root}>
+        {renderHero()}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.root}>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={accent} />
+        </View>
+      )}
+      {renderAddForm()}
+    </View>
+  );
 };
 
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <View style={styles.field}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    {children}
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
+    backgroundColor: colors.bg,
   },
-  scrollContent: {
-    flexGrow: 1,
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.scrim80,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: Platform.isTV ? spacing.huge : spacing.xxl,
+    zIndex: 100,
   },
-  profilesContainer: {
+
+  // Hero (profile selector + first-run intro)
+  heroRoot: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: Platform.isTV ? spacing.huge : spacing.xxl,
-    backgroundColor: tokenColors.bg,
+    backgroundColor: colors.bg,
   },
   glowLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -443,213 +530,295 @@ const styles = StyleSheet.create({
     width: 520,
     height: 520,
     borderRadius: 260,
-    opacity: 0.75,
-    backgroundColor: 'rgba(232,93,28,0.18)',
+    opacity: 0.8,
   },
   glowOrbTopLeft: {
-    top: -220,
+    top: -200,
     left: -180,
   },
   glowOrbBottomRight: {
     bottom: -240,
     right: -200,
   },
-  card: {
-    width: '100%',
-    maxWidth: 520,
-    borderRadius: radii.xxl,
-    padding: spacing.xxxl,
-    borderWidth: effects.subtleBorderWidth,
+  heroScroll: {
+    flexGrow: 1,
     alignItems: 'center',
-    ...shadows.card,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.xxl,
   },
-  appLogo: {
+  heroLogo: {
     marginBottom: spacing.lg,
   },
   wordmark: {
     width: '100%',
-    marginBottom: spacing.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  wordmarkText: {
-    width: '100%',
-    fontSize: Platform.isTV ? 56 : 40,
+    maxWidth: 520,
+    fontSize: isTV ? 56 : 40,
     fontWeight: '900',
-    letterSpacing: 0,
-    lineHeight: Platform.isTV ? 60 : 44,
+    letterSpacing: -1.2,
+    lineHeight: isTV ? 60 : 44,
     textAlign: 'center',
+    marginBottom: spacing.md,
   },
   wordmarkPrimary: {
-    color: tokenColors.brandOrange,
+    color: colors.brandOrange,
   },
   wordmarkSecondary: {
-    color: tokenColors.text,
+    color: colors.text,
   },
-  subtitle: {
-    ...typography.body,
-    marginBottom: spacing.xxl + 4,
+  tagline: {
+    ...typography.headline,
+    color: colors.text,
     textAlign: 'center',
-    opacity: 0.7,
+    marginBottom: spacing.md,
+  },
+  description: {
+    ...typography.body,
+    color: colors.textDim,
+    textAlign: 'center',
+    maxWidth: 520,
+    marginBottom: spacing.xxl,
+  },
+  sectionEyebrow: {
+    ...typography.eyebrow,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   currentProviderText: {
     ...typography.caption,
-    marginTop: -18,
-    marginBottom: spacing.lg + 2,
-    opacity: 0.75,
+    color: colors.textMuted,
     textAlign: 'center',
+    marginBottom: spacing.lg,
   },
-  typeSelector: {
-    flexDirection: 'row',
-    borderRadius: radii.lg,
-    padding: spacing.xs,
-    marginBottom: spacing.xl,
-    width: '100%',
-    borderWidth: 1,
-  },
-
-  typeSelectorCompact: {
-    flexDirection: 'column',
-    gap: spacing.xs,
-  },
-  typeButton: {
-    flex: 1,
-    paddingVertical: spacing.md + 2,
-    borderRadius: radii.md,
-    alignItems: 'center',
-  },
-
-  typeButtonCompact: {
-    width: '100%',
-  },
-  typeText: {
-    ...typography.body,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  input: {
-    width: '100%',
-    paddingHorizontal: Platform.isTV ? 18 : 16,
-    paddingVertical: Platform.isTV ? 14 : 12,
-    borderRadius: radii.md,
-    marginBottom: spacing.md + 2,
-    fontSize: Platform.isTV ? 20 : 16,
-    lineHeight: Platform.isTV ? 24 : 22,
-    minHeight: Platform.isTV ? 64 : 52,
-    borderWidth: 1.5,
-  },
-  loginButton: {
-    width: '100%',
-    paddingVertical: spacing.lg,
-    borderRadius: radii.lg,
-    alignItems: 'center',
-    marginTop: spacing.md,
-    // Button shadow for depth
-    shadowColor: '#E9692A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 15,
-    marginBottom: 20,
-    textAlign: 'center',
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  inputLabel: {
-    width: '100%',
-    textAlign: 'left',
-    marginBottom: spacing.sm + 2,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  iconContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm + 2,
-    width: '100%',
-  },
-  iconWrapper: {
-    padding: spacing.sm + 2,
-    borderRadius: radii.lg - 2,
-    borderWidth: 1.5,
-  },
-  profileTile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md + 2,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    marginBottom: spacing.sm + 2,
+  profilesBlock: {
     width: '100%',
     maxWidth: 520,
-  },
-  profileIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.md,
-    backgroundColor: 'rgba(233, 105, 42, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    alignItems: 'stretch',
   },
   profileList: {
-    width: '100%',
-    maxWidth: 560,
+    alignSelf: 'stretch',
     maxHeight: 320,
   },
   profileListContent: {
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    marginBottom: spacing.sm + 2,
+  },
+  profileIconPlate: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileInfo: {
     flex: 1,
   },
   profileName: {
-    fontSize: 18,
+    ...typography.subtitle,
+    color: colors.text,
+  },
+  profileSubtitle: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  heroCta: {
+    alignSelf: 'stretch',
+    marginTop: spacing.lg,
+  },
+  ctaRow: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  platformPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xxl + spacing.sm,
+  },
+  platformPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+  },
+  platformPillText: {
+    ...typography.eyebrow,
+    color: colors.textMuted,
+    fontSize: 10,
+  },
+
+  // Add form (onboarding)
+  formRoot: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  formScroll: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.xxl,
+    alignItems: 'center',
+  },
+  formCard: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: colors.surface,
+    borderRadius: radii.xxl,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: spacing.xxl,
+    ...shadows.card,
+  },
+  formHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xl,
+  },
+  backChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.sunken,
+  },
+  backChipText: {
+    ...typography.caption,
+    color: colors.text,
     fontWeight: '600',
   },
-  profileType: {
-    fontSize: 13,
-    marginTop: 2,
+  formTitle: {
+    ...typography.headline,
+    color: colors.text,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  profileChannels: {
-    fontSize: 12,
-    marginTop: 2,
-    opacity: 0.7,
-  },
-  addNewButton: {
+  formSubtitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  formSubtitle: {
+    ...typography.caption,
+    color: colors.textDim,
+    flexShrink: 1,
+  },
+
+  segmented: {
+    flexDirection: isTV ? 'row' : 'column',
+    backgroundColor: colors.sunken,
     borderRadius: radii.lg,
-    marginTop: 20,
-    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: spacing.xs,
+    gap: spacing.xs,
+    marginBottom: spacing.lg,
   },
-  backToList: {
-    flexDirection: 'row',
+  segmentedItem: {
+    flex: isTV ? 1 : undefined,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.md,
     alignItems: 'center',
-    marginBottom: 20,
-    gap: 8,
-  },
-  backToListText: {
-    fontSize: 15,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: tokenColors.scrim80,
     justifyContent: 'center',
+  },
+  segmentedItemText: {
+    ...typography.caption,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+
+  field: {
+    marginBottom: spacing.md,
+  },
+  fieldLabel: {
+    ...typography.caption,
+    color: colors.textDim,
+    fontWeight: '600',
+    marginBottom: spacing.xs + 2,
+  },
+  textInput: {
+    textAlign: 'left',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: isTV ? spacing.md + 2 : spacing.md,
+    borderRadius: radii.md,
+    fontSize: isTV ? 18 : 15,
+    minHeight: isTV ? 60 : 50,
+    marginBottom: 0,
+  },
+
+  iconPickerLabel: {
+    ...typography.caption,
+    color: colors.textDim,
+    fontWeight: '600',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  iconTile: {
+    width: 52,
+    height: 52,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.sunken,
     alignItems: 'center',
-    zIndex: 100,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  iconTileCheck: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  errorBanner: {
+    backgroundColor: 'rgba(255,69,58,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,69,58,0.45)',
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.danger,
+  },
+
+  submitButton: {
+    marginTop: spacing.md,
   },
 });
 

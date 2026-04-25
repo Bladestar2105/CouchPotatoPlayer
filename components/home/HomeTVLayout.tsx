@@ -6,7 +6,7 @@ import { TVSidebarItem, tvStyles } from './TabNavigation';
 import type { TabDef, TabId } from './types';
 import type { ThemeColors } from '../../context/SettingsContext';
 import type { IPTVProfile } from '../../types';
-import { radii, spacing, typography } from '../../theme/tokens';
+import { colors as tokenColors, radii, spacing, typography } from '../../theme/tokens';
 import { useTVPreferredFocusKey } from '../../hooks/useTVPreferredFocusKey';
 
 interface HomeTVLayoutProps {
@@ -71,8 +71,19 @@ export const HomeTVLayout = ({
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TVFocusGuideView autoFocus={isSidebarExpanded} style={[tvStyles.sidebar, styles.sidebar, { width: sidebarWidth + insets.left, backgroundColor: colors.card, borderRightColor: colors.divider }]}>
+    <View style={[styles.container, { backgroundColor: tokenColors.bg }]}>
+      <TVFocusGuideView
+        autoFocus={isSidebarExpanded}
+        style={[
+          tvStyles.sidebar,
+          styles.sidebar,
+          {
+            width: sidebarWidth + insets.left,
+            backgroundColor: tokenColors.surface,
+            borderRightColor: tokenColors.borderSoft,
+          },
+        ]}
+      >
         <View
           style={[
             styles.sidebarInner,
@@ -84,20 +95,16 @@ export const HomeTVLayout = ({
           ]}
         >
           <View style={[styles.brandHeader, !isSidebarExpanded && styles.brandHeaderCollapsed]}>
-            <BrandMark size="tv-header" />
+            <BrandMark size={32} />
             {isSidebarExpanded && (
               <View style={styles.brandText}>
-                <Text style={[styles.brandName, { color: colors.text }]} numberOfLines={1}>
-                  CouchPotato
-                </Text>
-                <Text style={[styles.brandSub, { color: colors.textMuted }]} numberOfLines={1}>
-                  Player
-                </Text>
+                <Text style={styles.brandName} numberOfLines={1}>CouchPotato</Text>
+                <Text style={styles.brandSub} numberOfLines={1}>Player</Text>
               </View>
             )}
           </View>
 
-          {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('menu')}</Text>}
+          {isSidebarExpanded && <Text style={tvStyles.sidebarSectionTitle}>{t('menu')}</Text>}
 
           {tabs.map((tab) => {
             const itemKey = `tab:${tab.id}`;
@@ -124,8 +131,8 @@ export const HomeTVLayout = ({
             );
           })}
 
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-          {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('providers')}</Text>}
+          <View style={[styles.divider, { backgroundColor: tokenColors.borderSoft }]} />
+          {isSidebarExpanded && <Text style={tvStyles.sidebarSectionTitle}>{t('providers')}</Text>}
 
           {profiles.map((profile) => {
             const isCurrent = currentProfileId === profile.id;
@@ -160,27 +167,27 @@ export const HomeTVLayout = ({
       </TVFocusGuideView>
 
       <TVFocusGuideView autoFocus={!isSidebarExpanded} style={styles.contentGuide}>
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: tokenColors.bg }]}>
           <View
             style={[
               styles.contentHeader,
               {
-                borderBottomColor: colors.divider,
-                backgroundColor: colors.card,
+                borderBottomColor: tokenColors.borderSoft,
+                backgroundColor: tokenColors.bg,
                 paddingTop: Math.max(insets.top, spacing.sm),
                 paddingRight: Math.max(insets.right, spacing.lg),
               },
             ]}
           >
             <View>
-              <Text style={[styles.activeSectionLabel, { color: colors.text }]}>{activeTabLabel}</Text>
+              <Text style={styles.activeSectionLabel} numberOfLines={1}>{activeTabLabel}</Text>
               {!!currentProfileName && (
-                <Text style={[styles.profileLabel, { color: colors.textMuted }]} numberOfLines={1}>
+                <Text style={styles.profileLabel} numberOfLines={1}>
                   {currentProfileName}
                 </Text>
               )}
             </View>
-            <Text style={[styles.clockLabel, { color: colors.textSecondary }]}>{nowLabel}</Text>
+            <Text style={styles.clockLabel}>{nowLabel}</Text>
           </View>
           <View style={styles.contentBody}>{children}</View>
         </View>
@@ -216,12 +223,14 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   brandName: {
+    color: tokenColors.text,
     fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0,
+    letterSpacing: -0.2,
   },
   brandSub: {
     ...typography.eyebrow,
+    color: tokenColors.textMuted,
     fontSize: 10,
     marginTop: 2,
   },
@@ -248,17 +257,20 @@ const styles = StyleSheet.create({
   },
   activeSectionLabel: {
     ...typography.headline,
+    color: tokenColors.text,
     textTransform: 'capitalize',
   },
   profileLabel: {
     ...typography.caption,
+    color: tokenColors.textMuted,
     marginTop: 4,
   },
   clockLabel: {
+    ...typography.subtitle,
+    color: tokenColors.textDim,
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0,
-    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   contentBody: {
     flex: 1,

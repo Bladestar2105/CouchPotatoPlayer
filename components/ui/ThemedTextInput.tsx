@@ -43,7 +43,7 @@ const ThemedTextInput: React.FC<ThemedTextInputProps> = ({
           backgroundColor,
           borderColor: isFocused ? (focusedBorderColor || borderColor) : borderColor,
           color: textColor,
-          borderWidth: 2,
+          borderWidth: isFocused ? 2 : 1,
         },
         style,
       ]}
