@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import type { ThemeColors } from '../../context/SettingsContext';
 import type { IPTVProfile } from '../../types';
 import type { TabId, TabDef } from './types';
+import BrandMark from '../BrandMark';
+import { focus, radii, spacing, typography } from '../../theme/tokens';
 
 export interface TabColors extends Pick<ThemeColors, 'primary' | 'text' | 'textMuted' | 'textSecondary' | 'primaryLight' | 'card' | 'divider'> {}
 
@@ -21,6 +23,9 @@ interface TVSidebarItemProps {
 }
 
 export const TVSidebarItem = ({ icon, label, isActive, isFocused = false, onPress, showLabel, onFocus, onBlur, colors, hasTVPreferredFocus = false }: TVSidebarItemProps) => {
+  const backgroundColor = isFocused ? colors.primary : (isActive ? colors.primaryLight : 'transparent');
+  const foregroundColor = isFocused ? '#FFFFFF' : (isActive ? colors.primary : colors.textSecondary);
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -29,16 +34,21 @@ export const TVSidebarItem = ({ icon, label, isActive, isFocused = false, onPres
       style={[
         tvStyles.menuItem,
         {
-          backgroundColor: isFocused
-            ? 'rgba(233, 105, 42, 0.22)'
-            : (isActive ? 'rgba(233, 105, 42, 0.12)' : 'transparent'),
+          backgroundColor,
           justifyContent: showLabel ? 'flex-start' : 'center',
           alignItems: 'center',
-          borderWidth: isFocused ? 1.5 : 0,
-          borderColor: isFocused ? 'rgba(233, 105, 42, 0.45)' : 'transparent',
-          borderLeftWidth: isActive ? 3 : 0,
-          borderLeftColor: isActive ? colors.primary : 'transparent',
-        }
+          borderWidth: focus.ringWidth,
+          borderColor: isFocused ? colors.primary : 'transparent',
+          transform: [{ scale: isFocused ? focus.scale : 1 }],
+        },
+        isFocused ? {
+          shadowColor: colors.primary,
+          shadowOpacity: focus.glow.shadowOpacity,
+          shadowRadius: focus.glow.shadowRadius,
+          shadowOffset: focus.glow.shadowOffset,
+          elevation: focus.glow.elevation,
+          zIndex: 2,
+        } : null,
       ]}
       accessible={true}
       isTVSelectable={true}
@@ -50,17 +60,17 @@ export const TVSidebarItem = ({ icon, label, isActive, isFocused = false, onPres
     >
       <Icon
         name={icon as any}
-        size={24}
-        color={isActive ? colors.primary : (isFocused ? colors.text : colors.textMuted)}
-        style={[showLabel ? tvStyles.menuIcon : {}, { textAlign: 'center' }]}
+        size={22}
+        color={foregroundColor}
+        style={[showLabel ? tvStyles.menuIcon : tvStyles.menuIconCentered, { textAlign: 'center' }]}
       />
       {showLabel && (
         <Text
           style={{
-            color: isActive ? colors.primary : (isFocused ? colors.text : colors.textSecondary),
-            fontWeight: isActive || isFocused ? '600' : '400',
-            fontSize: 16,
-            letterSpacing: 0.3,
+            color: isFocused ? '#FFFFFF' : (isActive ? colors.text : colors.textSecondary),
+            fontWeight: isActive || isFocused ? '700' : '500',
+            fontSize: 15,
+            letterSpacing: 0,
           }}
           numberOfLines={1}
         >
@@ -191,9 +201,9 @@ export const MobileTopTabBar = ({ tabs, activeTab, onTabPress, colors, profiles,
           accessibilityLabel={profiles.length > 1 ? 'Switch provider profile' : 'App logo'}
           accessibilityState={{ expanded: showProfileMenu }}
         >
-          <Image source={require('../../assets/brand-mark-small.png')} style={mobileTabStyles.brandLogo} resizeMode="contain" />
+          <BrandMark size="mobile-header" />
           {profiles.length > 1 && (
-            <Icon name="arrow-drop-down" size={18} color={colors.textMuted} />
+            <Icon name="arrow-drop-down" size={18} color={colors.textMuted} style={{ marginLeft: 2 }} />
           )}
         </TouchableOpacity>
 
@@ -291,23 +301,22 @@ const mobileTabStyles = StyleSheet.create({
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm + 2,
     borderRightWidth: 1,
     height: '100%',
     minWidth: 58,
     flexShrink: 0,
     marginRight: 4,
   },
-  brandLogo: { width: 34, height: 34, marginRight: 2 },
   profileDropdown: {
     position: 'absolute', top: 56, left: 0, minWidth: 220,
-    borderWidth: 1, borderRadius: 14, zIndex: 200, elevation: 12,
+    borderWidth: 1, borderRadius: radii.lg, zIndex: 200, elevation: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16,
     paddingVertical: 6,
   },
   profileItem: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 11, paddingHorizontal: 16, borderRadius: 10, marginHorizontal: 6, marginVertical: 2,
+    paddingVertical: 11, paddingHorizontal: spacing.lg, borderRadius: radii.md, marginHorizontal: 6, marginVertical: 2,
   },
   tabsRow: {
     flexDirection: 'row',
@@ -363,23 +372,25 @@ export const tvStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   sidebarSectionTitle: {
-    fontSize: 13,
+    ...typography.eyebrow,
     marginBottom: 10,
     paddingHorizontal: 18,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    letterSpacing: 1.2,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderRadius: radii.md,
     marginHorizontal: 8,
-    marginBottom: 6,
+    marginBottom: 4,
+    minHeight: 48,
   },
   menuIcon: {
     marginRight: 14,
+    width: 24,
+  },
+  menuIconCentered: {
+    width: 24,
   },
 });

@@ -41,7 +41,7 @@ export const HomeMobileLayout = ({
         />
       </SafeAreaView>
 
-      <View style={{ flex: 1, zIndex: 1 }}>{children}</View>
+      <View style={{ flex: 1, zIndex: 1, backgroundColor: colors.background }}>{children}</View>
     </View>
   );
 };

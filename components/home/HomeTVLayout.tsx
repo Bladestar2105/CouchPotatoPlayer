@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import TVFocusGuideView from '../TVFocusGuideView';
+import BrandMark from '../BrandMark';
 import { TVSidebarItem, tvStyles } from './TabNavigation';
 import type { TabDef, TabId } from './types';
 import type { ThemeColors } from '../../context/SettingsContext';
 import type { IPTVProfile } from '../../types';
-import { spacing } from '../../theme/tokens';
+import { radii, spacing, typography } from '../../theme/tokens';
 import { useTVPreferredFocusKey } from '../../hooks/useTVPreferredFocusKey';
 
 interface HomeTVLayoutProps {
@@ -82,6 +83,20 @@ export const HomeTVLayout = ({
             },
           ]}
         >
+          <View style={[styles.brandHeader, !isSidebarExpanded && styles.brandHeaderCollapsed]}>
+            <BrandMark size="tv-header" />
+            {isSidebarExpanded && (
+              <View style={styles.brandText}>
+                <Text style={[styles.brandName, { color: colors.text }]} numberOfLines={1}>
+                  CouchPotato
+                </Text>
+                <Text style={[styles.brandSub, { color: colors.textMuted }]} numberOfLines={1}>
+                  Player
+                </Text>
+              </View>
+            )}
+          </View>
+
           {isSidebarExpanded && <Text style={[tvStyles.sidebarSectionTitle, { color: colors.textMuted }]}>{t('menu')}</Text>}
 
           {tabs.map((tab) => {
@@ -185,10 +200,36 @@ const styles = StyleSheet.create({
   sidebarInner: {
     flex: 1,
   },
+  brandHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  brandHeaderCollapsed: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  brandText: {
+    flexShrink: 1,
+  },
+  brandName: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  brandSub: {
+    ...typography.eyebrow,
+    fontSize: 10,
+    marginTop: 2,
+  },
   divider: {
     height: 1,
     marginVertical: spacing.md + 2,
     marginHorizontal: spacing.md + 2,
+    borderRadius: radii.sm,
   },
   contentGuide: {
     flex: 1,
@@ -199,27 +240,24 @@ const styles = StyleSheet.create({
   contentHeader: {
     minHeight: 72,
     borderBottomWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.sm + 2,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
   activeSectionLabel: {
-    fontSize: 30,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    ...typography.headline,
     textTransform: 'capitalize',
   },
   profileLabel: {
+    ...typography.caption,
     marginTop: 4,
-    fontSize: 14,
-    fontWeight: '500',
   },
   clockLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.4,
+    letterSpacing: 0,
     textTransform: 'uppercase',
   },
   contentBody: {

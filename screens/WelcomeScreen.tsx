@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIPTVProfiles } from '../context/IPTVContext';
 import { useSettings } from '../context/SettingsContext';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Crypto from 'expo-crypto';
-import { effects, radii, spacing, typography } from '../theme/tokens';
+import BrandMark from '../components/BrandMark';
+import { colors as tokenColors, effects, radii, shadows, spacing, typography } from '../theme/tokens';
 import ThemedTextInput from '../components/ui/ThemedTextInput';
 import ThemedButton from '../components/ui/ThemedButton';
 
@@ -26,7 +28,7 @@ const WelcomeScreen = () => {
   const [selectedIcon, setSelectedIcon] = useState('dns');
   const isAppleTV = Platform.isTV && Platform.OS === 'ios';
   const isCompactLayout = !Platform.isTV;
-  const welcomeBackgroundColor = '#FFFFFF';
+  const welcomeBackgroundColor = tokenColors.bg;
   // Show add form if: no profiles exist, or explicitly requested via route params
   const [showAddForm, setShowAddForm] = useState(profiles.length === 0 || route.params?.showAddForm === true);
 
@@ -123,11 +125,15 @@ const WelcomeScreen = () => {
   };
 
   const renderExistingProfiles = () => (
-    <View style={styles.profilesContainer}>
-      <Image
-        source={require('../assets/character_logo.png')}
-        style={styles.appLogo}
-        resizeMode="contain"
+    <SafeAreaView edges={['top', 'bottom']} style={styles.profilesContainer}>
+      <View pointerEvents="none" style={styles.glowLayer}>
+        <View style={[styles.glowOrb, styles.glowOrbTopLeft]} />
+        <View style={[styles.glowOrb, styles.glowOrbBottomRight, { backgroundColor: colors.primaryLight }]} />
+      </View>
+      <BrandMark
+        size={Platform.isTV ? 220 : 164}
+        variant="character"
+        style={[styles.appLogo, shadows.modal]}
       />
       <View style={styles.wordmark}>
         <Text
@@ -140,7 +146,7 @@ const WelcomeScreen = () => {
           <Text style={styles.wordmarkSecondary}>Player</Text>
         </Text>
       </View>
-      <Text style={[styles.subtitle, { color: colors.accent }]}>Select a Provider</Text>
+      <Text style={[styles.subtitle, { color: colors.primary }]}>Select a Provider</Text>
       {currentProfile?.name ? (
         <Text style={[styles.currentProviderText, { color: colors.textSecondary }]} numberOfLines={1}>
           Current: {currentProfile.name}
@@ -150,8 +156,8 @@ const WelcomeScreen = () => {
       <FlatList
         data={profiles}
         keyExtractor={(item) => item.id}
-        style={{ width: '100%', maxHeight: 300 }}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        style={styles.profileList}
+        contentContainerStyle={styles.profileListContent}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.profileTile, { backgroundColor: colors.card, borderColor: colors.divider }]}
@@ -188,7 +194,7 @@ const WelcomeScreen = () => {
         onPress={() => setShowAddForm(true)}
         style={styles.addNewButton}
       />
-    </View>
+    </SafeAreaView>
   );
 
   const renderAddForm = () => (
@@ -196,7 +202,8 @@ const WelcomeScreen = () => {
       style={[styles.container, { backgroundColor: welcomeBackgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.divider }]}>
           {profiles.length > 0 && (
             <TouchableOpacity
@@ -210,11 +217,7 @@ const WelcomeScreen = () => {
             </TouchableOpacity>
           )}
 
-          <Image
-            source={require('../assets/character_logo.png')}
-            style={styles.appLogo}
-            resizeMode="contain"
-          />
+          <BrandMark size={Platform.isTV ? 156 : 124} variant="character" style={styles.appLogo} />
           <View style={styles.wordmark}>
             <Text
               style={styles.wordmarkText}
@@ -226,7 +229,7 @@ const WelcomeScreen = () => {
               <Text style={styles.wordmarkSecondary}>Player</Text>
             </Text>
           </View>
-          <Text style={[styles.subtitle, { color: colors.accent }]}>
+          <Text style={[styles.subtitle, { color: colors.primary }]}>
             {profiles.length > 0 ? 'Add New Provider' : 'Welcome'}
           </Text>
 
@@ -391,6 +394,7 @@ const WelcomeScreen = () => {
           />
         </View>
       </ScrollView>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 
@@ -420,53 +424,67 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xxl,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: Platform.isTV ? spacing.huge : spacing.xxl,
   },
   profilesContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xxl,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: Platform.isTV ? spacing.huge : spacing.xxl,
+    backgroundColor: tokenColors.bg,
+  },
+  glowLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  glowOrb: {
+    position: 'absolute',
+    width: 520,
+    height: 520,
+    borderRadius: 260,
+    opacity: 0.75,
+    backgroundColor: 'rgba(232,93,28,0.18)',
+  },
+  glowOrbTopLeft: {
+    top: -220,
+    left: -180,
+  },
+  glowOrbBottomRight: {
+    bottom: -240,
+    right: -200,
   },
   card: {
     width: '100%',
     maxWidth: 520,
-    borderRadius: radii.xl,
+    borderRadius: radii.xxl,
     padding: spacing.xxxl,
     borderWidth: effects.subtleBorderWidth,
     alignItems: 'center',
-    // Modern shadow for depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 8,
+    ...shadows.card,
   },
   appLogo: {
-    width: 136,
-    height: 112,
-    marginBottom: -10,
+    marginBottom: spacing.lg,
   },
   wordmark: {
     width: '100%',
-    minHeight: 72,
     marginBottom: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
   wordmarkText: {
     width: '100%',
-    fontSize: Platform.isTV ? 66 : 42,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    lineHeight: Platform.isTV ? 72 : 46,
+    fontSize: Platform.isTV ? 56 : 40,
+    fontWeight: '900',
+    letterSpacing: 0,
+    lineHeight: Platform.isTV ? 60 : 44,
     textAlign: 'center',
   },
   wordmarkPrimary: {
-    color: '#EB6C2A',
+    color: tokenColors.brandOrange,
   },
   wordmarkSecondary: {
-    color: '#FFFFFF',
+    color: tokenColors.text,
   },
   subtitle: {
     ...typography.body,
@@ -485,7 +503,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: radii.lg,
     padding: spacing.xs,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
     width: '100%',
     borderWidth: 1,
   },
@@ -513,7 +531,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: Platform.isTV ? 18 : 16,
     paddingVertical: Platform.isTV ? 14 : 12,
-    borderRadius: radii.lg - 2,
+    borderRadius: radii.md,
     marginBottom: spacing.md + 2,
     fontSize: Platform.isTV ? 20 : 16,
     lineHeight: Platform.isTV ? 24 : 22,
@@ -523,7 +541,7 @@ const styles = StyleSheet.create({
   loginButton: {
     width: '100%',
     paddingVertical: spacing.lg,
-    borderRadius: radii.lg - 2,
+    borderRadius: radii.lg,
     alignItems: 'center',
     marginTop: spacing.md,
     // Button shadow for depth
@@ -565,21 +583,31 @@ const styles = StyleSheet.create({
   profileTile: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    borderRadius: radii.lg,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: spacing.sm + 2,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 520,
   },
   profileIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
     backgroundColor: 'rgba(233, 105, 42, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+  },
+  profileList: {
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: 320,
+  },
+  profileListContent: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   profileInfo: {
     flex: 1,
@@ -603,7 +631,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 14,
+    borderRadius: radii.lg,
     marginTop: 20,
     gap: 8,
   },
@@ -618,7 +646,7 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: tokenColors.scrim80,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
