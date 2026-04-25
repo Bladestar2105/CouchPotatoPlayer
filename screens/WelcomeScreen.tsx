@@ -138,7 +138,7 @@ const WelcomeScreen = () => {
   const providerTypes = useMemo<{ id: ProviderType; label: string }[]>(() => ([
     { id: 'xtream', label: 'Xtream Codes' },
     { id: 'm3u', label: 'M3U Playlist' },
-    { id: 'quickshare', label: 'Quickshare' },
+    { id: 'quickshare', label: 'Quickshare by IPTV-Manager' },
   ]), []);
 
   const renderHeroIntro = () => (
