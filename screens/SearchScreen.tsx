@@ -101,7 +101,7 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
     return results;
   }, [debouncedQuery, channels, movies, series]);
 
-  const handleItemPress = (item: any) => {
+  const handleItemPress = React.useCallback((item: any) => {
     if (item.mediaType === 'live') {
       playStream({ url: item.url, id: item.id });
       navigation.navigate('Player');
@@ -112,9 +112,11 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
       // @ts-ignore
       navigation.navigate('MediaInfo', { id: item.id, type: 'vod', title: item.name, cover: item.cover, streamUrl: item.streamUrl });
     }
-  };
+  }, [navigation, playStream]);
 
-  const renderItem = ({ item }: { item: any }) => {
+  // ⚡ Bolt: Memoize renderItem to prevent recreating it on every keystroke,
+  // which was forcing the FlatList to re-render all visible items.
+  const renderItem = React.useCallback(({ item }: { item: any }) => {
     const cover = item.logo || item.cover || item.stream_icon;
 
     return (
@@ -142,7 +144,7 @@ const SearchScreen = forwardRef<ContentRef>((_props, ref) => {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [colors.divider, colors.card, colors.text, colors.textSecondary, handleItemPress, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
